@@ -191,7 +191,26 @@ label { display: block; font-size: 12.5px; color: var(--soft); margin-bottom: 5p
 /* semana: grid compartido por todos los días — cada franja (desayuno/comida/cena) es una
    fila del grid, así se auto-dimensiona a la receta más alta de ESA franja en toda la
    semana (subgrid), sin altura fija. Un día con mesa mixta estira esa fila para todos. */
-.week-grid { display: grid; grid-template-columns: 1fr; row-gap: 14px; column-gap: 10px; }
+/* <880px: vista de un día (day-strip + lista vertical). ≥880px: grid de 7 días (ver media query). */
+.week-grid { display: none; }
+.day-view { display: block; }
+.day-strip { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; margin-bottom: 14px; -webkit-overflow-scrolling: touch; }
+.day-pill { flex: 1 1 0; min-width: 42px; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 9px 4px; border-radius: 14px; background: var(--elev2); border: 1px solid var(--line); color: var(--soft); font-family: inherit; cursor: pointer; }
+.day-pill .dp-dow { font-size: 10px; text-transform: uppercase; letter-spacing: 0.4px; font-weight: 600; }
+.day-pill .dp-num { font-size: 16px; font-weight: 600; color: var(--ink); }
+.day-pill.active { background: var(--accent); border-color: var(--accent); }
+.day-pill.active .dp-dow, .day-pill.active .dp-num { color: var(--accent-ink); }
+#day-cards .meal-period { margin-bottom: 12px; }
+.shopping-teaser { display: flex; align-items: center; gap: 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 14px; margin-top: 4px; cursor: pointer; }
+.shopping-teaser .st-ico { width: 40px; height: 40px; border-radius: 12px; background: var(--elev3); display: flex; align-items: center; justify-content: center; color: var(--emerald); flex-shrink: 0; }
+.shopping-teaser .st-ico svg { width: 19px; height: 19px; stroke: currentColor; }
+.shopping-teaser .st-txt { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.shopping-teaser .st-txt strong { font-size: 14px; }
+.shopping-teaser .st-txt span { font-size: 12px; color: var(--muted); }
+.shopping-teaser .st-chev { color: var(--muted); font-size: 18px; }
+/* hueco reservado para foto del plato — sin banco de imágenes todavía, placeholder a propósito */
+.dish-photo { width: 72px; height: 72px; border-radius: 14px; flex-shrink: 0; background: linear-gradient(135deg, var(--elev3), var(--elev2)); border: 1px dashed var(--line-solid); }
+.dish-photo.empty { opacity: .5; }
 .day-col { grid-row: span 4; display: grid; grid-template-rows: subgrid; row-gap: 6px; background: var(--bg); border: 1px solid var(--line); border-radius: 16px; padding: 12px; min-width: 0; }
 .day-col.weekend { background: linear-gradient(160deg, rgba(232,181,77,.06), rgba(232,181,77,0) 55%), var(--bg); border-color: rgba(232,181,77,.18); }
 .day-col h4 { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: var(--emerald); font-weight: 600; align-self: start; }
@@ -222,8 +241,9 @@ label { display: block; font-size: 12.5px; color: var(--soft); margin-bottom: 5p
 .comensal-dot.absent { opacity: .28; filter: grayscale(1); }
 .comensal-dot:active { transform: scale(0.88); }
 /* plato: nombre protagonista, el resto secundario */
-.dish-row { display: flex; flex-direction: column; gap: 6px; }
-.dish-row + .dish-row { border-top: 1px solid var(--line); padding-top: 10px; }
+.dish-row { display: flex; gap: 12px; }
+.dish-row + .dish-row { border-top: 1px solid var(--line); padding-top: 12px; margin-top: 2px; }
+.dish-content { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
 .dish-name { font-size: 16px; font-weight: 600; color: var(--ink); line-height: 1.3; }
 .dish-name.empty { color: var(--muted); font-weight: 400; font-style: italic; font-size: 13px; }
 .dish-name.clickable { cursor: pointer; }
@@ -402,7 +422,8 @@ body.account-open { overflow: hidden; }
   .nav-indicator { display: none; }
   .week-actions .primary { flex: 0 1 340px; margin-right: auto; }
   .stats { grid-template-columns: repeat(4, minmax(0, 170px)); }
-  .week-grid { grid-template-columns: repeat(7, 1fr); column-gap: 6px; row-gap: 6px; }
+  .week-grid { display: grid; grid-template-columns: repeat(7, 1fr); column-gap: 6px; row-gap: 6px; }
+  .day-view { display: none; }
   .day-col { padding: 10px; border-radius: 12px; }
   .meal-slot { font-size: 11px; padding: 7px; }
   .meal-slot .meta-row { justify-content: flex-start; }
@@ -508,6 +529,16 @@ body.account-open { overflow: hidden; }
     </div>
     <div class="stats" id="week-stats"></div>
     <div class="week-grid" id="week-grid" style="margin-top:14px;"></div>
+    <!-- vista de un día — solo móvil (<640px), el grid de arriba se oculta ahí vía CSS -->
+    <div class="day-view">
+      <div class="day-strip" id="day-strip"></div>
+      <div id="day-cards"></div>
+      <div class="shopping-teaser" id="shopping-teaser" onclick="activateTab('compra')" style="display:none;">
+        <span class="st-ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 4h2l1.2 11.5h10.8L19 7.5H7"/><circle cx="9.5" cy="19" r="1.2" fill="currentColor" stroke="none"/><circle cx="16" cy="19" r="1.2" fill="currentColor" stroke="none"/></svg></span>
+        <span class="st-txt"><strong>Lista de la compra</strong><span class="st-count"></span></span>
+        <span class="st-chev">›</span>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1114,7 +1145,8 @@ function defaultState(){
     shoppingList: [],
     scope: 'week',
     signals: [],
-    activeMonday: isoDate(mondayOf(new Date()))
+    activeMonday: isoDate(mondayOf(new Date())),
+    activeDayIndex: new Date().getDay()===0 ? 6 : new Date().getDay()-1
   };
 }
 let state = defaultState();
@@ -1482,7 +1514,7 @@ function renderColeCalendar(){
   html += '</tbody></table>';
   document.getElementById("cole-calendar").innerHTML = html;
 }
-function goToday(){state.activeMonday=isoDate(mondayOf(new Date()));save();renderColeCalendar();renderWeek();}
+function goToday(){const dow=new Date().getDay();state.activeMonday=isoDate(mondayOf(new Date()));state.activeDayIndex=dow===0?6:dow-1;save();renderColeCalendar();renderWeek();}
 
 // ============================================================
 // SEMANA - generación con anti-rep
@@ -1788,6 +1820,69 @@ function missingIngredientHint(recipe){
   });
   return found ? found.n : null;
 }
+// construye el HTML de las 3 franjas de un día — lo usa tanto el grid de 7 días (desktop)
+// como la vista de un solo día (móvil), para no duplicar la lógica de render.
+function buildDayMealHTML(d){
+  const isWeekend = d.date.getDay()===0 || d.date.getDay()===6;
+  let coleHTML = '';
+  if(d.cole){
+    const cpRaw = detectColeProtein(d.cole), cb = detectColeBase(d.cole);
+    const cp = ['pescado','pollo','carne','legumbre','huevo'].includes(cpRaw) ? cpRaw : null;
+    const cProtHTML = cp ? `<span class="plato-proteina"><span class="ico">${PROTEIN_ICO[cp]||''}</span>${cp}</span>` : '';
+    const cHidHTML = (cb && HIDRATOS.includes(cb)) ? `<span class="tag base-${cb}">${BASE_LABELS[cb]}</span>` : '';
+    coleHTML = `<div class="meal-slot cole"><div class="label">Cole</div><div class="name" style="font-size:11px;line-height:1.25">${d.cole}</div>${(cProtHTML||cHidHTML)?`<div class="meta-row">${cProtHTML}${cHidHTML}</div>`:''}</div>`;
+  }
+  const renderRow = (r, kind, pattern) => {
+    const {proteinaHTML, verduraHTML, hidratoTag} = platoTags(r);
+    const patternLabel = pattern ? `<div class="diet-label">${pattern}</div>` : '';
+    const missing = missingIngredientHint(r);
+    const infoRow = `<div class="dish-info-row"><span>${ICO_CLOCK}${TIEMPO_APROX[r.tiempo]||''}</span>${missing?`<span>${ICO_CART}Falta: ${missing}</span>`:''}</div>`;
+    return `<div class="dish-row"><div class="dish-photo"></div><div class="dish-content">${patternLabel}<div class="dish-name clickable" onclick="openRecipeModal('${r.id}',${d.index},'${kind}'${pattern?`,'${pattern}'`:''})">${r.nombre}</div><div class="dish-meta-row">${proteinaHTML}${verduraHTML}${hidratoTag}</div>${infoRow}<button class="swap-link" onclick="openPickModal(${d.index},'${kind}'${pattern?`,'${pattern}'`:''})">${ICO_SWAP}Cambiar</button></div></div>`;
+  };
+  const renderSlot = (kind) => {
+    const label = MEAL_LABELS[kind];
+    const lcls = `label l-${kind}`;
+    const head = `<div class="meal-head"><span class="meal-ico">${ICO_MEAL[kind]}</span><span class="${lcls}">${label}</span></div>`;
+    const byPattern = d.slot[kind+'ByPattern'];
+    if(byPattern && Object.keys(byPattern).length){
+      const rows = Object.entries(byPattern).map(([pattern,id])=>{ const r=getRecipe(id); return r?renderRow(r,kind,pattern):''; }).join('');
+      return `<div class="meal-slot">${head}${comensalRow(d.index,kind)}${rows}</div>`;
+    }
+    const id = d.slot[kind];
+    const r = id ? getRecipe(id) : null;
+    if(r) return `<div class="meal-slot">${head}${comensalRow(d.index,kind)}${renderRow(r,kind,null)}</div>`;
+    return `<div class="meal-slot">${head}<div class="dish-row"><div class="dish-photo empty"></div><div class="dish-content"><div class="dish-name empty">Sin asignar</div><button class="swap-link" onclick="openPickModal(${d.index},'${kind}')">${ICO_SWAP}Elegir</button></div></div></div>`;
+  };
+  const showComidaSlot = !d.cole || isWeekend;
+  const showDesayuno = trackedMeals().includes('desayuno');
+  return {
+    isWeekend, showDesayuno,
+    desayunoHTML: showDesayuno ? `<div class="meal-period p-desayuno">${renderSlot('desayuno')}</div>` : '',
+    comidaHTML: `<div class="meal-period p-comida">${coleHTML}${showComidaSlot?renderSlot('comida'):''}</div>`,
+    cenaHTML: `<div class="meal-period p-cena">${renderSlot('cena')}</div>`
+  };
+}
+// vista de un solo día (móvil) — tira de días arriba + las 3 comidas de ese día debajo
+function renderDayView(){
+  const week = getActiveWeek();
+  const strip = document.getElementById('day-strip');
+  if(!strip) return;
+  if(state.activeDayIndex===undefined || state.activeDayIndex<0 || state.activeDayIndex>6) state.activeDayIndex = 0;
+  strip.innerHTML = week.map((d,i)=>`<button class="day-pill${i===state.activeDayIndex?' active':''}" onclick="selectDay(${i})"><span class="dp-dow">${DAY_NAMES[i]}</span><span class="dp-num">${d.date.getDate()}</span></button>`).join('');
+  const d = week[state.activeDayIndex];
+  const parts = buildDayMealHTML(d);
+  document.getElementById('day-cards').innerHTML = parts.desayunoHTML + parts.comidaHTML + parts.cenaHTML;
+  renderShoppingTeaser();
+}
+function selectDay(i){ buzz(); state.activeDayIndex = i; save(); renderDayView(); }
+function renderShoppingTeaser(){
+  const el = document.getElementById('shopping-teaser'); if(!el) return;
+  const list = state.shoppingList||[];
+  if(!list.length){ el.style.display='none'; return; }
+  const pending = list.filter(it=>!state.shoppingChecks[it.key]).length;
+  el.style.display='flex';
+  el.querySelector('.st-count').textContent = pending+' ingrediente'+(pending===1?'':'s')+' pendiente'+(pending===1?'':'s');
+}
 function renderWeek(){
   const monday = parseISO(state.activeMonday);
   document.getElementById("week-label").textContent = fmtWeekRange(monday);
@@ -1795,55 +1890,27 @@ function renderWeek(){
   const grid = document.getElementById("week-grid");
   document.getElementById("menu-gen-desayuno").style.display = trackedMeals().includes('desayuno') ? '' : 'none';
   if(!state.members.length){
-    grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><h3>Primero, tu familia</h3><p>Añade a los comensales: los menús, calorías y restricciones se calculan por persona.</p><button class="primary" onclick="activateTab(\'familia\')">Añadir a mi familia</button></div>';
+    const emptyHTML = '<div class="empty-state" style="grid-column:1/-1;"><h3>Primero, tu familia</h3><p>Añade a los comensales: los menús, calorías y restricciones se calculan por persona.</p><button class="primary" onclick="activateTab(\'familia\')">Añadir a mi familia</button></div>';
+    grid.innerHTML = emptyHTML;
     document.getElementById("week-stats").innerHTML = "";
+    document.getElementById("day-strip").innerHTML = "";
+    document.getElementById("day-cards").innerHTML = emptyHTML;
+    document.getElementById("shopping-teaser").style.display = "none";
     return;
   }
   grid.innerHTML = week.map(d=>{
-    const isWeekend = d.date.getDay()===0 || d.date.getDay()===6;
-    let coleHTML = '';
-    if(d.cole){
-      const cpRaw = detectColeProtein(d.cole), cb = detectColeBase(d.cole);
-      const cp = ['pescado','pollo','carne','legumbre','huevo'].includes(cpRaw) ? cpRaw : null;
-      const cProtHTML = cp ? `<span class="plato-proteina"><span class="ico">${PROTEIN_ICO[cp]||''}</span>${cp}</span>` : '';
-      const cHidHTML = (cb && HIDRATOS.includes(cb)) ? `<span class="tag base-${cb}">${BASE_LABELS[cb]}</span>` : '';
-      coleHTML = `<div class="meal-slot cole"><div class="label">Cole</div><div class="name" style="font-size:11px;line-height:1.25">${d.cole}</div>${(cProtHTML||cHidHTML)?`<div class="meta-row">${cProtHTML}${cHidHTML}</div>`:''}</div>`;
-    }
-    const renderRow = (r, kind, pattern) => {
-      const {proteinaHTML, verduraHTML, hidratoTag} = platoTags(r);
-      const patternLabel = pattern ? `<div class="diet-label">${pattern}</div>` : '';
-      const missing = missingIngredientHint(r);
-      const infoRow = `<div class="dish-info-row"><span>${ICO_CLOCK}${TIEMPO_APROX[r.tiempo]||''}</span>${missing?`<span>${ICO_CART}Falta: ${missing}</span>`:''}</div>`;
-      return `<div class="dish-row">${patternLabel}<div class="dish-name clickable" onclick="openRecipeModal('${r.id}',${d.index},'${kind}'${pattern?`,'${pattern}'`:''})">${r.nombre}</div><div class="dish-meta-row">${proteinaHTML}${verduraHTML}${hidratoTag}</div>${infoRow}<button class="swap-link" onclick="openPickModal(${d.index},'${kind}'${pattern?`,'${pattern}'`:''})">${ICO_SWAP}Cambiar</button></div>`;
-    };
-    const renderSlot = (kind) => {
-      const label = MEAL_LABELS[kind];
-      const lcls = `label l-${kind}`;
-      const head = `<div class="meal-head"><span class="meal-ico">${ICO_MEAL[kind]}</span><span class="${lcls}">${label}</span></div>`;
-      const byPattern = d.slot[kind+'ByPattern'];
-      if(byPattern && Object.keys(byPattern).length){
-        const rows = Object.entries(byPattern).map(([pattern,id])=>{ const r=getRecipe(id); return r?renderRow(r,kind,pattern):''; }).join('');
-        return `<div class="meal-slot">${head}${comensalRow(d.index,kind)}${rows}</div>`;
-      }
-      const id = d.slot[kind];
-      const r = id ? getRecipe(id) : null;
-      if(r) return `<div class="meal-slot">${head}${comensalRow(d.index,kind)}${renderRow(r,kind,null)}</div>`;
-      return `<div class="meal-slot">${head}<div class="dish-name empty">sin asignar</div><button class="swap-link" onclick="openPickModal(${d.index},'${kind}')">${ICO_SWAP}Elegir</button></div>`;
-    };
-    const showComidaSlot = !d.cole || isWeekend;
-    const showDesayuno = trackedMeals().includes('desayuno');
+    const parts = buildDayMealHTML(d);
     const freshCls = window.__justGenerated ? ' fresh' : '';
     const staggerStyle = window.__justGenerated ? `--stagger:${d.index*45}ms;` : '';
     // franjas = filas del subgrid — la altura de cada fila la fija el día con la receta
     // más alta de esa franja en la semana; el resto se estira igual. Nº de filas variable
     // según si la familia trackea desayuno (span en el estilo inline, coherente en todos los días).
-    return `<div class="day-col${isWeekend?' weekend':''}${freshCls}" style="${staggerStyle}grid-row:span ${showDesayuno?4:3};"><h4>${DAY_NAMES[d.index]}<span class="day-num">${d.date.getDate()}</span></h4>
-      ${showDesayuno?`<div class="meal-period p-desayuno">${renderSlot('desayuno')}</div>`:''}
-      <div class="meal-period p-comida">${coleHTML}${showComidaSlot?renderSlot('comida'):''}</div>
-      <div class="meal-period p-cena">${renderSlot('cena')}</div>
+    return `<div class="day-col${parts.isWeekend?' weekend':''}${freshCls}" style="${staggerStyle}grid-row:span ${parts.showDesayuno?4:3};"><h4>${DAY_NAMES[d.index]}<span class="day-num">${d.date.getDate()}</span></h4>
+      ${parts.desayunoHTML}${parts.comidaHTML}${parts.cenaHTML}
     </div>`;
   }).join("");
   window.__justGenerated = false;
+  renderDayView();
   // stats por ejes: proteínas e hidratos distintos (todas las tomas, todos los patrones)
   const stats = document.getElementById("week-stats");
   let total=0, count=0; const prots=new Set(), hidratos=new Set();
@@ -2040,6 +2107,7 @@ function generateShoppingList(){
   save();renderShoppingList();
 }
 function renderShoppingList(){
+  renderShoppingTeaser();
   document.getElementById("scope-week").classList.toggle("active", state.scope==='week');
   document.getElementById("scope-month").classList.toggle("active", state.scope==='month');
   const c = document.getElementById("shopping-list");

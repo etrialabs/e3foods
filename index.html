@@ -1224,6 +1224,7 @@ document.querySelectorAll(".modal-content").forEach(sheet=>{
   let startY=0, dy=0, dragging=false;
   sheet.addEventListener("touchstart", e=>{
     if(sheet.scrollTop>0) return; // no interferir si el usuario está leyendo contenido largo
+    if(e.target.closest("input, select, textarea, button, a, label")) return; // no robar el toque a controles interactivos
     startY=e.touches[0].clientY; dragging=true; sheet.classList.add("dragging");
   }, {passive:true});
   sheet.addEventListener("touchmove", e=>{

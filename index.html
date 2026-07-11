@@ -185,20 +185,8 @@ label { display: block; font-size: 12.5px; color: var(--soft); margin-bottom: 5p
 .week-top-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
 .week-top-center { flex: 1 1 auto; min-width: 0; }
 .week-top-center .week-label { display: none; font-family: var(--font-display); font-weight: 500; font-size: 17px; text-align: center; }
-.week-more-row { display: flex; justify-content: flex-end; margin-bottom: 8px; }
-.week-more-btn { background: none; border: none; color: var(--muted); font-size: 12.5px; font-family: inherit; cursor: pointer; padding: 6px 2px; }
-.week-more-btn:hover { color: var(--soft); }
 .nav-chev { flex: 0 0 44px; width: 44px; height: 44px; border: 1px solid var(--line-solid); background: var(--elev2); border-radius: 12px; font-size: 20px; line-height: 1; color: var(--soft); cursor: pointer; font-family: inherit; }
 .nav-chev:hover { border-color: var(--emerald); color: var(--ink); }
-.menu-wrap { position: relative; flex: 0 0 auto; }
-.dropdown { position: absolute; right: 0; top: calc(100% + 6px); background: rgba(37,56,48,.92); backdrop-filter: blur(16px) saturate(150%); -webkit-backdrop-filter: blur(16px) saturate(150%); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 16px 40px rgba(0,0,0,.45); min-width: 230px; padding: 6px; display: none; z-index: 60; }
-@supports not (backdrop-filter: blur(1px)) { .dropdown { background: var(--elev3); } }
-.dropdown.open { display: block; animation: menuIn var(--dur-fast) var(--ease-out); }
-@keyframes menuIn { from { opacity: 0; transform: translateY(-4px) scale(0.98); } to { opacity: 1; transform: none; } }
-.dropdown button { display: block; width: 100%; text-align: left; background: none; border: none; padding: 11px 12px; min-height: 42px; border-radius: 9px; font-size: 14px; font-family: inherit; color: var(--ink); cursor: pointer; }
-.dropdown button:hover { background: rgba(255,255,255,.07); }
-.dropdown hr { border: none; border-top: 1px solid var(--line); margin: 6px 4px; }
-.dropdown .danger-item { color: var(--danger); }
 
 /* ---------- semana: 1 columna en móvil ---------- */
 /* semana: grid compartido por todos los días — cada franja (desayuno/comida/cena) es una
@@ -547,22 +535,6 @@ body.account-open { overflow: hidden; }
       </div>
       <button class="nav-chev" onclick="navWeek(1)" aria-label="Semana siguiente">›</button>
     </div>
-    <div class="week-more-row">
-      <div class="menu-wrap">
-        <button class="week-more-btn" onclick="toggleWeekMenu(event)">⋯ Semana</button>
-        <div class="dropdown" id="week-menu">
-          <button onclick="toggleWeekMenu();generateWeek('all')">↻ Generar / regenerar semana</button>
-          <button onclick="toggleWeekMenu();goToday()">Hoy</button>
-          <hr>
-          <button id="menu-gen-desayuno" onclick="toggleWeekMenu();generateWeek('desayuno')">Generar solo desayunos</button>
-          <button onclick="toggleWeekMenu();generateWeek('comida')">Generar solo comidas</button>
-          <button onclick="toggleWeekMenu();generateWeek('cena')">Generar solo cenas</button>
-          <hr>
-          <button onclick="toggleWeekMenu();copyAIPrompt()">Pedir ideas a Claude</button>
-          <button class="danger-item" onclick="toggleWeekMenu();clearWeek()">Vaciar semana</button>
-        </div>
-      </div>
-    </div>
     <div class="stats" id="week-stats"></div>
     <div class="week-grid" id="week-grid" style="margin-top:14px;"></div>
     <!-- vista de un día — solo móvil (<880px), el grid de arriba se oculta ahí vía CSS -->
@@ -686,6 +658,23 @@ body.account-open { overflow: hidden; }
       <button class="more-row" data-more="cole" onclick="goMore('cole')"><span class="more-ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 9L12 5l9.5 4-9.5 4-9.5-4z"/><path d="M6.5 10.8v3.8c0 1.5 2.6 2.7 5.5 2.7s5.5-1.2 5.5-2.7v-3.8"/><path d="M20 9.6v4.6"/></svg></span><span class="more-txt"><strong>Cole</strong><span>Menú escolar: importar PDF y calendario</span></span></button>
       <button class="more-row" data-more="nevera" onclick="goMore('nevera')"><span class="more-ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="5.5" y="2.2" width="13" height="19.6" rx="1.8"/><path d="M5.5 9.5h13"/><path d="M8.3 4.5v2"/><path d="M8.3 12.3v2"/></svg></span><span class="more-txt"><strong>Nevera</strong><span>Qué cocinar con lo que ya tienes</span></span></button>
       <button class="more-row" data-more="ajustes" onclick="goMore('ajustes')"><span class="more-ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><circle cx="9" cy="7" r="1.8" fill="currentColor" stroke="none"/><path d="M4 12.5h16"/><circle cx="15" cy="12.5" r="1.8" fill="currentColor" stroke="none"/><path d="M4 18h16"/><circle cx="7.5" cy="18" r="1.8" fill="currentColor" stroke="none"/></svg></span><span class="more-txt"><strong>Ajustes</strong><span>Familia, backup y verificador de reglas</span></span></button>
+    </div>
+  </div>
+</div>
+
+<!-- SHEET SEMANA — se abre al re-tocar el tab "Semana" de la barra inferior estando ya en esa pestaña -->
+<div class="modal" id="week-menu">
+  <div class="modal-content">
+    <button class="close-btn" onclick="closeModal('week-menu')">&times;</button>
+    <h2>Semana</h2>
+    <div class="more-rows">
+      <button class="more-row" onclick="closeModal('week-menu');generateWeek('all')"><span class="more-ico" id="ico-gen"></span><span class="more-txt"><strong>Generar / regenerar semana</strong><span>Rehace los 7 días según tu familia</span></span></button>
+      <button class="more-row" onclick="closeModal('week-menu');goToday()"><span class="more-ico" id="ico-hoy"></span><span class="more-txt"><strong>Hoy</strong><span>Vuelve a la semana y el día actuales</span></span></button>
+      <button class="more-row" id="menu-gen-desayuno" onclick="closeModal('week-menu');generateWeek('desayuno')"><span class="more-ico" id="ico-desayuno"></span><span class="more-txt"><strong>Generar solo desayunos</strong></span></button>
+      <button class="more-row" onclick="closeModal('week-menu');generateWeek('comida')"><span class="more-ico" id="ico-comida"></span><span class="more-txt"><strong>Generar solo comidas</strong></span></button>
+      <button class="more-row" onclick="closeModal('week-menu');generateWeek('cena')"><span class="more-ico" id="ico-cena"></span><span class="more-txt"><strong>Generar solo cenas</strong></span></button>
+      <button class="more-row" onclick="closeModal('week-menu');copyAIPrompt()"><span class="more-ico" id="ico-claude"></span><span class="more-txt"><strong>Pedir ideas a Claude</strong></span></button>
+      <button class="more-row" onclick="closeModal('week-menu');clearWeek()" style="color:var(--danger);"><span class="more-ico" id="ico-vaciar" style="color:var(--danger);"></span><span class="more-txt"><strong>Vaciar semana</strong></span></button>
     </div>
   </div>
 </div>
@@ -1345,6 +1334,8 @@ function activateTab(name){
 TAB_BTNS.forEach(b=>{
   b.addEventListener("click",()=>{
     if(b.id==='tab-btn-more'){ openMoreSheet(); return; }
+    // re-tocar "Semana" estando ya en esa pestaña → abre opciones de semana, no navega (no hay a dónde ir)
+    if(b.dataset.tab==='semana' && currentTab==='semana'){ document.getElementById('week-menu').classList.add('active'); return; }
     activateTab(b.dataset.tab);
   });
 });
@@ -1355,13 +1346,6 @@ function openMoreSheet(){
 function goMore(name){ closeModal('more-sheet'); activateTab(name); }
 window.addEventListener("resize", positionNavIndicator);
 positionNavIndicator();
-
-// menú desbordamiento de acciones de semana (⋯)
-function toggleWeekMenu(e){ if(e) e.stopPropagation(); document.getElementById("week-menu").classList.toggle("open"); }
-document.addEventListener("click", e=>{
-  const m = document.getElementById("week-menu");
-  if(m && m.classList.contains("open") && !e.target.closest(".menu-wrap")) m.classList.remove("open");
-});
 
 // arrastrar hacia abajo para cerrar el bottom-sheet — gesto compuesto 2026 (no solo tap en la ×)
 document.querySelectorAll(".modal-content").forEach(sheet=>{
@@ -2558,6 +2542,13 @@ function renderFamilySettings(){
       <button class="danger" onclick="deleteFamily()">Eliminar esta familia</button>
     </div>`;
 }
+
+// iconos del sheet "Semana" (spans vacíos en el HTML estático, se rellenan aquí una vez
+// definidos los ICO_* — el HTML no interpola template literals, hace falta JS)
+['gen','hoy','desayuno','comida','cena','claude','vaciar'].forEach((k,i)=>{
+  const svgs=[ICO_SWAP,ICO_MEAL.comida,ICO_MEAL.desayuno,ICO_MEAL.comida,ICO_MEAL.cena,ICO_CART,ICO_SWAP];
+  const el=document.getElementById('ico-'+k); if(el) el.innerHTML=svgs[i];
+});
 
 // INIT
 loadAccounts();

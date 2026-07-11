@@ -2063,7 +2063,11 @@ function openRecipeModal(id, dayIdx, kind, pattern){
   let ingHeader, ingItems;
   if(portions){
     const n = eaters.length;
-    ingHeader = `Ingredientes (para ${n} comensal${n>1?'es':''})`;
+    // "comensales" = nº de personas; "raciones" = lo que consumen de verdad (suma de sus
+    // necesidades / kcal por ración). Se muestran los dos para que no se confundan (4 personas
+    // pueden consumir 7 raciones de comida bajo el modelo "cubrir TDEE").
+    const totalRac = Math.round(portions.reduce((s,p)=> s + (r.kcal>0 ? p.targetKcal/r.kcal : 1), 0)*10)/10;
+    ingHeader = `Ingredientes · ${n} comensal${n>1?'es':''} · ${totalRac} ${totalRac===1?'ración':'raciones'}`;
     ingItems = r.ingredientes.map((i,idx)=>{
       const tot = Math.round(portions.reduce((s,p)=>s+(p.ingredientes[idx]?.cantPersona||0),0)*10)/10;
       return `<li>· ${tot} ${i.u} de ${i.n}</li>`;

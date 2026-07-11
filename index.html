@@ -93,9 +93,7 @@ header {
   display: flex; justify-content: space-between; align-items: center; gap: 10px;
   padding: calc(16px + var(--safe-t)) 0 12px;
   margin: calc(-16px - var(--safe-t)) 0 14px;
-  background: rgba(33,53,45,0.86);
-  backdrop-filter: blur(18px) saturate(150%);
-  -webkit-backdrop-filter: blur(18px) saturate(150%);
+  background: var(--bg);
 }
 h1 { font-family: var(--font-display); font-weight: 550; font-size: 24px; letter-spacing: -0.4px; }
 h1 span { color: var(--accent); }
@@ -194,7 +192,7 @@ label { display: block; font-size: 12.5px; color: var(--soft); margin-bottom: 5p
    semana (subgrid), sin altura fija. Un día con mesa mixta estira esa fila para todos. */
 /* <880px: vista de un día (day-strip + lista vertical). ≥880px: grid de 7 días (ver media query). */
 .week-grid { display: none; }
-.day-view { display: block; }
+.day-view { display: block; margin-top: 18px; }
 /* cápsula única integrada — no 7 pills sueltos con hueco entre ellos */
 .day-strip { display: flex; gap: 2px; background: var(--elev2); border: 1px solid var(--line); border-radius: 18px; padding: 4px; }
 .day-pill { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 8px 2px; border-radius: 14px; background: none; border: none; color: var(--soft); font-family: inherit; cursor: pointer; transition: background var(--dur-fast) var(--ease-out); }
@@ -338,11 +336,6 @@ label { display: block; font-size: 12.5px; color: var(--soft); margin-bottom: 5p
 .callout strong { color: var(--ink); }
 
 .toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; align-items: center; }
-/* stats: número grande dominante (jerarquía numérica, no anillos) */
-.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; color: var(--soft); }
-.stats:empty { display: none; }
-.stats span { background: var(--elev2); border: 1px solid var(--line); padding: 8px 6px 7px 10px; border-radius: 12px; display: flex; flex-direction: column-reverse; gap: 1px; font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); white-space: nowrap; overflow: hidden; }
-.stats span strong { color: var(--ink); font-family: var(--font-display); font-size: 20px; font-weight: 550; line-height: 1.1; letter-spacing: 0; }
 
 /* tabla del cole con scroll horizontal en pantallas estrechas */
 #cole-calendar { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 0 -2px; }
@@ -439,7 +432,6 @@ body.account-open { overflow: hidden; }
   nav button .nav-lbl { font-size: 13px; }
   nav button.active .nav-lbl { color: var(--ink); font-weight: 500; }
   .nav-indicator { display: none; }
-  .stats { grid-template-columns: repeat(4, minmax(0, 170px)); }
   .week-grid { display: grid; grid-template-columns: repeat(7, 1fr); column-gap: 6px; row-gap: 6px; }
   .day-view { display: none; }
   .day-strip { display: none; }
@@ -451,7 +443,6 @@ body.account-open { overflow: hidden; }
   .modal { align-items: center; padding: 20px; }
   .modal-content { border-radius: 18px; border-bottom: 1px solid var(--line); padding: 24px; animation: fadeIn var(--dur-base) var(--ease-out); touch-action: auto; }
   .modal-content::before { display: none; }
-  .stats { gap: 8px; }
 }
 </style>
 </head>
@@ -535,7 +526,6 @@ body.account-open { overflow: hidden; }
       </div>
       <button class="nav-chev" onclick="navWeek(1)" aria-label="Semana siguiente">›</button>
     </div>
-    <div class="stats" id="week-stats"></div>
     <div class="week-grid" id="week-grid" style="margin-top:14px;"></div>
     <!-- vista de un día — solo móvil (<880px), el grid de arriba se oculta ahí vía CSS -->
     <div class="day-view">
@@ -1955,7 +1945,6 @@ function renderWeek(){
   if(!state.members.length){
     const emptyHTML = '<div class="empty-state" style="grid-column:1/-1;"><h3>Primero, tu familia</h3><p>Añade a los comensales: los menús, calorías y restricciones se calculan por persona.</p><button class="primary" onclick="activateTab(\'familia\')">Añadir a mi familia</button></div>';
     grid.innerHTML = emptyHTML;
-    document.getElementById("week-stats").innerHTML = "";
     document.getElementById("day-strip").innerHTML = "";
     document.getElementById("day-cards").innerHTML = emptyHTML;
     document.getElementById("shopping-teaser").style.display = "none";
@@ -1974,17 +1963,6 @@ function renderWeek(){
   }).join("");
   window.__justGenerated = false;
   renderDayView();
-  // stats por ejes: proteínas e hidratos distintos (todas las tomas, todos los patrones)
-  const stats = document.getElementById("week-stats");
-  let total=0, count=0; const prots=new Set(), hidratos=new Set();
-  week.forEach(d=>{
-    ['desayuno','comida','cena'].forEach(k=>{
-      const ids = d.slot[k+'ByPattern'] ? Object.values(d.slot[k+'ByPattern']) : (d.slot[k]?[d.slot[k]]:[]);
-      ids.forEach(id=>{ const r=getRecipe(id); if(!r)return; total+=r.kcal||0; count++; prots.add(r.proteina); if(HIDRATOS.includes(r.hidrato)) hidratos.add(r.hidrato); });
-    });
-  });
-  // semana vacía → sin chips de stats (ruido de ceros antes de generar nada)
-  stats.innerHTML = count===0 ? '' : `<span><strong>${count}</strong> platos</span><span><strong>${Math.round(total/count)}</strong> kcal media</span><span><strong>${prots.size}</strong> proteínas</span><span><strong>${hidratos.size}</strong> hidratos</span>`;
 }
 
 // ============================================================

@@ -2117,34 +2117,58 @@ function setScope(s){
 }
 function getMealsForScope(){
   const out = [];
-  const collect = (week)=>{ for(let i=0;i<7;i++){ const w=week[i]; if(!w)continue;
-    ['desayuno','comida','cena'].forEach(k=>{
-      if(w[k+'ByPattern']) Object.values(w[k+'ByPattern']).forEach(id=>out.push({id}));
-      else if(w[k]) out.push({id:w[k]});
-    });
-  }};
+  const collect = (week, mondayISO)=>{ const monday = parseISO(mondayISO);
+    for(let i=0;i<7;i++){ const w=week[i]; if(!w)continue;
+      const date = addDays(monday, i);
+      ['desayuno','comida','cena'].forEach(k=>{
+        if(w[k+'ByPattern']) Object.entries(w[k+'ByPattern']).forEach(([pattern,id])=>out.push({id, slot:w, date, kind:k, pattern}));
+        else if(w[k]) out.push({id:w[k], slot:w, date, kind:k, pattern:null});
+      });
+    }};
   if(state.scope==='week'){
-    collect(state.weekMenusByMonday[state.activeMonday] || {});
+    collect(state.weekMenusByMonday[state.activeMonday] || {}, state.activeMonday);
   } else {
     const monday = parseISO(state.activeMonday);
     const month = monday.getMonth(), year = monday.getFullYear();
     Object.entries(state.weekMenusByMonday).forEach(([mon, week])=>{
       const d = parseISO(mon), sun = addDays(d,6);
-      if((d.getMonth()===month && d.getFullYear()===year) || (sun.getMonth()===month && sun.getFullYear()===year)) collect(week);
+      if((d.getMonth()===month && d.getFullYear()===year) || (sun.getMonth()===month && sun.getFullYear()===year)) collect(week, mon);
     });
   }
   return out;
+}
+// Comensales reales de una toma concreta — misma lógica que el modal de receta
+// (ausentes · niños con cole en la comida entre semana · ayuno · filtro por patrón en
+// mesa mixta), parametrizada por slot/fecha para que valga en cualquier semana del scope.
+function mealEaters(slot, date, kind, pattern){
+  const absent = (slot.absent && slot.absent[kind]) || [];
+  const cole = state.coleMenuByDate[isoDate(date)] || "";
+  let eaters = state.members.filter(m=>{
+    if(absent.includes(m.id)) return false;
+    if(kind==='comida' && m.type==='nino' && cole && date.getDay()!==0 && date.getDay()!==6) return false;
+    return mealShare(m,kind)>0;
+  });
+  if(pattern) eaters = eaters.filter(m=>memberDietPattern(m)===pattern);
+  return eaters;
 }
 function getMealIdsForScope(){ return getMealsForScope().map(m=>m.id); }
 function generateShoppingList(){
   const meals = getMealsForScope();
   const agg = {};
   const add = (n,u,cant,seccion)=>{ const key=n+"|"+u; if(agg[key]) agg[key].cant+=cant; else agg[key]={n,u,cant,seccion:seccion||"despensa",key}; };
-  meals.forEach(({id})=>{
+  meals.forEach(({id, slot, date, kind, pattern})=>{
     const r=getRecipe(id); if(!r)return;
-    r.ingredientes.forEach(ing=>add(ing.n, ing.u, ing.cant, ing.seccion));
+    const eaters = mealEaters(slot, date, kind, pattern);
+    if(!eaters.length) return; // nadie come esta toma → no suma a la compra
+    // cantidad de cada ingrediente = suma de la ración de cada comensal presente,
+    // ya escalada por su % de calorías en portionsFor (un adulto grande pesa más que un niño)
+    const portions = portionsFor(r, eaters, kind);
+    r.ingredientes.forEach((ing, idx)=>{
+      const total = portions.reduce((s,p)=>s + (p.ingredientes[idx]?.cantPersona || 0), 0);
+      add(ing.n, ing.u, Math.round(total*10)/10, ing.seccion);
+    });
   });
-  state.shoppingList = Object.values(agg);
+  state.shoppingList = Object.values(agg).map(it=>({...it, cant: Math.round(it.cant*10)/10}));
   save();renderShoppingList();
 }
 function renderShoppingList(){

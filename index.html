@@ -1,0 +1,2250 @@
+<!DOCTYPE html>
+<script type="application/json" id="cowork-artifact-meta">
+{
+  "name": "e3Foods",
+  "schemaVersion": 1,
+  "description": "Planificador familiar de menús multi-familia (cuentas locales con PIN opcional): modelo Harvard 3 ejes, mesa mixta (omnívoro/vegano en la misma mesa), calorías por persona, menú del cole (PDF), 65 recetas, lista de compra y modo nevera. Tema dark Trufa & Coral 2026. Persiste en localStorage con export/import."
+}
+</script>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=5">
+<meta name="theme-color" content="#0D1512">
+<meta name="color-scheme" content="dark">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="e3Foods">
+<meta name="description" content="Planificador familiar de menús: semana, menú del cole, banco de recetas, lista de compra y modo nevera.">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='40' fill='%230D1512'/%3E%3Ctext x='50%25' y='50%25' font-size='110' text-anchor='middle' dominant-baseline='central'%3E🍽️%3C/text%3E%3C/svg%3E">
+<link rel="manifest" href="data:application/json,%7B%22name%22%3A%22e3Foods%22%2C%22short_name%22%3A%22e3Foods%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%230D1512%22%2C%22theme_color%22%3A%22%230D1512%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%2520xmlns%253D%2527http%253A%252F%252Fwww.w3.org%252F2000%252Fsvg%2527%2520viewBox%253D%25270%25200%2520180%2520180%2527%253E%253Crect%2520width%253D%2527180%2527%2520height%253D%2527180%2527%2520rx%253D%252740%2527%2520fill%253D%2527%25230D1512%2527%252F%253E%253Ctext%2520x%253D%252750%2525%2527%2520y%253D%252750%2525%2527%2520font-size%253D%2527110%2527%2520text-anchor%253D%2527middle%2527%2520dominant-baseline%253D%2527central%2527%253E%25F0%259F%258D%25BD%25EF%25B8%258F%253C%252Ftext%253E%253C%252Fsvg%253E%22%2C%22sizes%22%3A%22any%22%2C%22type%22%3A%22image%2Fsvg%2Bxml%22%7D%5D%7D">
+<title>e3Foods</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300..700&family=Inter:wght@400..700&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   MOBILE-FIRST · base = teléfono · se amplía en min-width
+   Tema 2026 "Trufa & Coral": dark verde-trufa (no negro puro),
+   elevación por luminosidad (+bordes hairline), acento coral en
+   CTA, esmeralda de marca, mostaza/lima puntuales. Glass solo en
+   overlays. Fraunces (display) + Inter (UI).
+   ============================================================ */
+:root {
+  color-scheme: dark;
+  --bg: #0D1512;            /* base */
+  --panel: #16211C;         /* elev-1: cards */
+  --elev2: #1E2E27;         /* elev-2: hover / slots */
+  --elev3: #253830;         /* elev-3: overlays */
+  --ink: #F4F7F4;           /* texto primario */
+  --soft: #B9C6BE;          /* texto secundario */
+  --muted: #8FA096;         /* texto terciario */
+  --line: rgba(255,255,255,0.09);   /* borde hairline */
+  --line-solid: #2C3D34;
+  --accent: #FF6B4A;        /* coral CTA (apetito) */
+  --accent-ink: #20110B;    /* texto sobre coral */
+  --emerald: #17A974;       /* marca */
+  --gold: #E8B54D;          /* mostaza puntual */
+  --lime: #B4FF39;          /* éxito / highlight */
+  --danger: #E36D6D;
+  --font-display: 'Fraunces', Georgia, serif;
+  --font-ui: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --nav-h: 62px;
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --safe-t: env(safe-area-inset-top, 0px);
+  /* motion tokens — el movimiento explica estado, no decora (2026: calm interfaces) */
+  --dur-fast: 150ms; --dur-base: 250ms; --dur-slow: 350ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.5, 0.64, 1);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { -webkit-text-size-adjust: 100%; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+}
+body {
+  font-family: var(--font-ui);
+  background: var(--bg); color: var(--ink); line-height: 1.5; font-size: 15px;
+  -webkit-font-smoothing: antialiased;
+  /* hueco para la barra de navegación inferior fija (móvil) */
+  padding-bottom: calc(var(--nav-h) + var(--safe-b));
+}
+/* iluminación ambiental: mesh de radiales tras el contenido, nunca tras texto largo */
+body::before {
+  content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background:
+    radial-gradient(circle at 12% -4%, rgba(23,169,116,.16) 0%, transparent 42%),
+    radial-gradient(circle at 88% -8%, rgba(255,107,74,.10) 0%, transparent 45%),
+    var(--bg);
+}
+/* grano sutil — textura contra el look "gradiente genérico" */
+body::after {
+  content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none; opacity: .05;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+}
+button { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+.container { max-width: 1200px; margin: 0 auto; padding: 16px 14px; padding-top: calc(16px + var(--safe-t)); }
+
+header { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding-bottom: 14px; margin-bottom: 14px; }
+h1 { font-family: var(--font-display); font-weight: 550; font-size: 24px; letter-spacing: -0.4px; }
+h1 span { color: var(--accent); }
+.tagline { font-size: 11.5px; color: var(--muted); margin-top: 3px; }
+
+/* ---------- NAV: barra inferior fija en móvil — glass sobre contenido ---------- */
+nav {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 50;
+  display: flex; gap: 0;
+  background: rgba(13,21,18,0.82);
+  backdrop-filter: blur(18px) saturate(150%);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+  border-top: 1px solid var(--line);
+  padding-bottom: var(--safe-b);
+}
+@supports not (backdrop-filter: blur(1px)) { nav { background: #101A15; } }
+nav button {
+  flex: 1 1 0; min-width: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+  background: none; border: none; cursor: pointer; font-family: inherit;
+  color: var(--muted); padding: 7px 2px; height: var(--nav-h);
+  border-top: 2px solid transparent; transition: color 0.15s;
+}
+nav button .nav-ico { line-height: 1; transition: transform var(--dur-fast) var(--ease-out); }
+nav button .nav-ico svg { width: 22px; height: 22px; display: block; stroke: currentColor; }
+nav button .nav-lbl { font-size: 10px; line-height: 1; letter-spacing: 0.2px; white-space: nowrap; font-weight: 500; }
+nav button.active { color: var(--ink); }
+nav button.active .nav-ico { transform: translateY(-1px); color: var(--accent); filter: drop-shadow(0 0 8px rgba(255,107,74,.55)); }
+nav button.active .nav-lbl { color: var(--accent); font-weight: 600; }
+/* indicador que desliza al cambiar de pestaña — continuidad espacial, no un salto */
+.nav-indicator { position: absolute; top: -1px; height: 2px; background: linear-gradient(90deg, transparent, var(--accent) 25%, var(--accent) 75%, transparent); border-radius: 2px; transition: left var(--dur-base) var(--ease-spring), width var(--dur-base) var(--ease-spring); pointer-events: none; box-shadow: 0 0 10px rgba(255,107,74,.5); }
+
+/* las pestañas entran desde la dirección de la que vienen — no un corte plano */
+.tab { display: none; }
+.tab.active { display: block; }
+.tab.active.enter-fwd { animation: tabInFwd var(--dur-base) var(--ease-out); }
+.tab.active.enter-back { animation: tabInBack var(--dur-base) var(--ease-out); }
+@keyframes tabInFwd { from { opacity: 0; transform: translateX(14px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes tabInBack { from { opacity: 0; transform: translateX(-14px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes sheetUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+/* día que aparece al generar semana: revelado escalonado — señala "esto es nuevo", no decora */
+@keyframes riseIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@media (prefers-reduced-motion: no-preference) {
+  .day-col.fresh { animation: riseIn var(--dur-slow) var(--ease-out) both; animation-delay: var(--stagger, 0ms); }
+}
+
+.card { position: relative; background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 16px; margin-bottom: 14px; box-shadow: 0 1px 2px rgba(0,0,0,.25), 0 10px 30px rgba(0,0,0,.22); }
+/* borde-gradiente hairline: luz desde arriba-izquierda, jerarquía sin sombra dura */
+.card::before { content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px; background: linear-gradient(135deg, rgba(255,255,255,.14), rgba(255,255,255,0) 42%); -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; pointer-events: none; }
+.card h2 { font-family: var(--font-display); font-size: 20px; font-weight: 550; letter-spacing: -0.2px; margin-bottom: 12px; color: var(--ink); }
+.card h3 { font-size: 12px; text-transform: uppercase; letter-spacing: 1.6px; color: var(--muted); margin-bottom: 10px; font-weight: 600; }
+
+/* feedback táctil: el botón "acusa recibo" del toque (squash), no decora — confirma que el sistema oyó al usuario */
+button { transition: transform var(--dur-fast) var(--ease-out); }
+button:active { transform: scale(0.96); }
+button.primary { background: var(--accent); color: var(--accent-ink); border: none; padding: 11px 18px; min-height: 44px; border-radius: 12px; cursor: pointer; font-size: 14px; font-weight: 600; font-family: inherit; transition: background 0.15s, box-shadow 0.15s, transform var(--dur-fast) var(--ease-out); box-shadow: 0 0 0 1px rgba(255,107,74,.35), 0 4px 16px rgba(255,107,74,.28); }
+button.primary:hover { background: #FF7E61; box-shadow: 0 0 0 1px rgba(255,107,74,.45), 0 4px 20px rgba(255,107,74,.4); }
+button.secondary { background: var(--elev2); color: var(--ink); border: 1px solid var(--line-solid); padding: 10px 14px; min-height: 44px; border-radius: 12px; cursor: pointer; font-size: 14px; font-family: inherit; transition: all 0.15s, transform var(--dur-fast) var(--ease-out); }
+button.secondary:hover { background: var(--elev3); border-color: var(--emerald); }
+button.danger { background: transparent; color: var(--danger); border: 1px solid rgba(227,109,109,.4); padding: 10px 14px; min-height: 44px; border-radius: 12px; cursor: pointer; font-size: 14px; font-family: inherit; }
+button.tiny { background: none; border: 1px solid var(--line-solid); color: var(--soft); padding: 7px 12px; min-height: 36px; border-radius: 9px; cursor: pointer; font-size: 12px; font-family: inherit; }
+
+/* inputs a 16px → evita el auto-zoom de iOS al enfocar */
+input[type="text"], input[type="number"], input[type="password"], textarea, select { width: 100%; padding: 11px 13px; border: 1px solid var(--line-solid); border-radius: 12px; font-size: 16px; font-family: inherit; background: var(--bg); color: var(--ink); }
+input::placeholder, textarea::placeholder { color: var(--muted); opacity: .7; }
+input:focus, textarea:focus, select:focus { outline: none; border-color: var(--emerald); box-shadow: 0 0 0 3px rgba(23,169,116,0.22); }
+textarea { resize: vertical; min-height: 90px; }
+label { display: block; font-size: 12.5px; color: var(--soft); margin-bottom: 5px; }
+
+.row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.col { flex: 1 1 100%; min-width: 0; }
+
+.member { display: flex; gap: 12px; align-items: center; padding: 12px; background: var(--elev2); border: 1px solid var(--line); border-radius: 14px; margin-bottom: 8px; flex-wrap: wrap; }
+.member-avatar { width: 42px; height: 42px; border-radius: 50%; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 16px; flex-shrink: 0; }
+.member-info { flex: 1 1 160px; min-width: 0; }
+.member-name { font-weight: 500; }
+.member-meta { font-size: 12px; color: var(--muted); }
+.member .tiny { flex: 0 0 auto; }
+.member .tiny:last-of-type { color: var(--danger); border-color: rgba(227,109,109,.3); }
+
+/* navegación de periodo: una sola fila compacta ‹ etiqueta › (antes: 3 botones anchos apilados) */
+.week-nav { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+.week-nav .week-label { font-family: var(--font-display); font-weight: 500; font-size: 17px; flex: 1 1 auto; text-align: center; min-width: 0; }
+.nav-chev { flex: 0 0 44px; width: 44px; height: 44px; border: 1px solid var(--line-solid); background: var(--elev2); border-radius: 12px; font-size: 20px; line-height: 1; color: var(--soft); cursor: pointer; font-family: inherit; }
+.nav-chev:hover { border-color: var(--emerald); color: var(--ink); }
+/* acciones de semana: UN primario + desbordamiento en menú ⋯ */
+.week-actions { display: flex; gap: 8px; align-items: center; margin-bottom: 14px; }
+.week-actions .primary { flex: 1 1 auto; }
+.menu-wrap { position: relative; flex: 0 0 auto; }
+.menu-dots { width: 44px; padding: 0; font-size: 19px; letter-spacing: 1px; }
+.dropdown { position: absolute; right: 0; top: calc(100% + 6px); background: rgba(37,56,48,.92); backdrop-filter: blur(16px) saturate(150%); -webkit-backdrop-filter: blur(16px) saturate(150%); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 16px 40px rgba(0,0,0,.45); min-width: 230px; padding: 6px; display: none; z-index: 60; }
+@supports not (backdrop-filter: blur(1px)) { .dropdown { background: var(--elev3); } }
+.dropdown.open { display: block; animation: menuIn var(--dur-fast) var(--ease-out); }
+@keyframes menuIn { from { opacity: 0; transform: translateY(-4px) scale(0.98); } to { opacity: 1; transform: none; } }
+.dropdown button { display: block; width: 100%; text-align: left; background: none; border: none; padding: 11px 12px; min-height: 42px; border-radius: 9px; font-size: 14px; font-family: inherit; color: var(--ink); cursor: pointer; }
+.dropdown button:hover { background: rgba(255,255,255,.07); }
+.dropdown hr { border: none; border-top: 1px solid var(--line); margin: 6px 4px; }
+.dropdown .danger-item { color: var(--danger); }
+
+/* ---------- semana: 1 columna en móvil ---------- */
+/* semana: grid compartido por todos los días — cada franja (desayuno/comida/cena) es una
+   fila del grid, así se auto-dimensiona a la receta más alta de ESA franja en toda la
+   semana (subgrid), sin altura fija. Un día con mesa mixta estira esa fila para todos. */
+.week-grid { display: grid; grid-template-columns: 1fr; row-gap: 14px; column-gap: 10px; }
+.day-col { grid-row: span 4; display: grid; grid-template-rows: subgrid; row-gap: 6px; background: var(--bg); border: 1px solid var(--line); border-radius: 16px; padding: 12px; min-width: 0; }
+.day-col.weekend { background: linear-gradient(160deg, rgba(232,181,77,.06), rgba(232,181,77,0) 55%), var(--bg); border-color: rgba(232,181,77,.18); }
+.day-col h4 { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: var(--emerald); font-weight: 600; align-self: start; }
+.day-col h4 .day-num { color: var(--muted); font-weight: 400; margin-left: 4px; }
+.meal-period { min-height: 0; display: flex; flex-direction: column; gap: 6px; }
+/* la caja visible aporta su altura de contenido a la fila (subgrid la iguala al más alto de la semana)
+   y luego crece (flex-grow) para rellenar si su día es más corto que ese máximo — basis:auto, no 0 */
+.meal-slot { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px; font-size: 13px; flex: 1 1 auto; min-height: 0; }
+.meal-slot.cole { background: linear-gradient(160deg, rgba(232,181,77,.10), rgba(232,181,77,.02)), var(--panel); border-color: rgba(232,181,77,.25); }
+.meal-slot .label { font-size: 9.5px; text-transform: uppercase; color: var(--muted); margin-bottom: 3px; letter-spacing: 0.7px; font-weight: 600; }
+/* tipo de comida codificado por color — se lee de un vistazo sin leer el texto */
+.meal-slot .label.l-desayuno { color: var(--gold); }
+.meal-slot .label.l-comida { color: #FF9377; }
+.meal-slot .label.l-cena { color: #4FC79A; }
+.meal-slot .name { font-weight: 500; color: var(--ink); line-height: 1.3; }
+.meal-slot .name.empty { color: var(--muted); font-weight: 400; font-style: italic; }
+.meal-slot .name.clickable { cursor: pointer; }
+.meal-slot .name.clickable:hover { color: var(--accent); }
+.meal-slot .meta-row { display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap; align-items: center; justify-content: space-between; }
+.meal-slot button.swap { background: rgba(23,169,116,.12); border: none; color: #4FC79A; font-size: 12px; cursor: pointer; padding: 6px 12px; border-radius: 8px; min-height: 32px; font-family: inherit; font-weight: 500; }
+.meal-slot button.swap:hover { background: rgba(23,169,116,.2); }
+
+.recipe-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.recipe-card { background: var(--elev2); border: 1px solid var(--line); border-radius: 14px; padding: 13px; cursor: pointer; transition: all 0.15s; }
+.recipe-card:active { border-color: var(--accent); }
+.recipe-card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: 0 8px 22px rgba(0,0,0,.3), 0 0 24px rgba(255,107,74,.07); }
+.recipe-card .name { font-weight: 500; margin-bottom: 6px; }
+.recipe-card .meta { font-size: 11.5px; color: var(--muted); display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+.tag { display: inline-block; padding: 3px 9px; background: var(--elev3); color: var(--soft); border-radius: 999px; font-size: 11px; font-weight: 500; }
+/* Proteína: texto simple con icono, no píldora — no compite en color con el hidrato (lo único que SÍ debe saltar a la vista para detectar repetición) */
+.plato-proteina { font-size: 12.5px; color: var(--ink); font-weight: 500; display: inline-flex; align-items: center; gap: 5px; }
+.plato-proteina .ico { font-size: 13px; line-height: 1; }
+.plato-verdura { font-size: 11.5px; color: var(--muted); }
+/* Hidrato: la única píldora con color, un tono distinto por hidrato → la repetición se nota por color, no solo por texto (versión dark: fondo tintado oscuro + texto claro del mismo tono) */
+.tag.base-arroz { background: #3D3312; color: #F0D98C; }
+.tag.base-pasta { background: #42250F; color: #FFB48A; }
+.tag.base-patata { background: #362A1D; color: #DcBC92; }
+.tag.base-pan { background: #3A1F38; color: #E9A6E5; }
+.tag.base-cuscus { background: #123329; color: #8FD9C0; }
+.tag.base-avena { background: #262047; color: #B9A9F5; }
+.tag.base-legumbre { background: #2B3413; color: #C8E08C; }
+.tag.base-ninguno { background: var(--elev3); color: var(--muted); }
+.tag.tiempo-rapido { background: rgba(180,255,57,.12); color: #C0E88A; }
+.tag.tiempo-elaborado { background: rgba(232,181,77,.14); color: var(--gold); }
+/* patrón dietético en mesa mixta: label de texto, no píldora sólida (que se leía como botón) */
+.diet-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--gold); font-weight: 600; }
+.tag.diet-badge { background: var(--ink); color: var(--bg); }
+/* sección "detalles avanzados" del modal de miembro: colapsada por defecto (onboarding progresivo) */
+.advanced-section { display: none; padding-top: 6px; }
+.advanced-section.open { display: block; }
+
+.shopping-list ul { list-style: none; }
+.shopping-list li { padding: 11px 0; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 12px; font-size: 14px; }
+.shopping-list li input[type="checkbox"] { width: 22px; height: 22px; flex-shrink: 0; accent-color: var(--emerald); }
+.shopping-list li.checked { text-decoration: line-through; color: var(--muted); }
+.shopping-list h4 { margin-top: 18px; margin-bottom: 6px; font-size: 12px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--emerald); }
+.shopping-list h4:first-child { margin-top: 0; }
+
+.fridge-tag { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; background: var(--elev3); border-radius: 999px; margin: 3px; font-size: 13px; }
+.fridge-tag button { background: none; border: none; color: var(--danger); cursor: pointer; font-size: 17px; line-height: 1; padding: 0 2px; }
+.match-bar { height: 5px; background: var(--elev3); border-radius: 3px; overflow: hidden; margin-top: 8px; }
+.match-bar-fill { height: 100%; background: linear-gradient(90deg, var(--emerald), var(--lime)); border-radius: 3px; }
+.empty-state { text-align: center; padding: 40px 20px; color: var(--muted); }
+.empty-state h3 { margin-bottom: 8px; color: var(--soft); }
+.empty-state .primary { margin-top: 14px; }
+
+/* ---------- modales: bottom-sheet en móvil ---------- */
+.modal { position: fixed; inset: 0; background: rgba(4,8,6,0.6); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); display: none; align-items: flex-end; justify-content: center; z-index: 100; transition: background var(--dur-base) var(--ease-out); }
+.modal.active { display: flex; }
+.modal-content { position: relative; background: var(--elev3); border: 1px solid var(--line); border-bottom: none; border-radius: 22px 22px 0 0; width: 100%; max-width: 600px; max-height: 92vh; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; padding: 28px 18px calc(22px + var(--safe-b)); animation: sheetUp var(--dur-slow) var(--ease-spring); touch-action: pan-y; box-shadow: 0 -12px 48px rgba(0,0,0,.5); }
+.modal-content::before { content: ''; position: absolute; top: 10px; left: 50%; width: 36px; height: 4px; background: rgba(255,255,255,.22); border-radius: 3px; transform: translateX(-50%); }
+.modal-content.dragging { transition: none !important; animation: none !important; }
+.modal-content h2 { font-family: var(--font-display); font-weight: 550; margin-bottom: 12px; padding-right: 32px; }
+.close-btn { float: right; background: var(--elev2); border: 1px solid var(--line); border-radius: 50%; width: 34px; height: 34px; font-size: 19px; cursor: pointer; color: var(--soft); line-height: 1; padding: 0; min-height: 34px; display: flex; align-items: center; justify-content: center; }
+.ingredients-list { background: var(--panel); padding: 12px; border-radius: 12px; margin: 10px 0; font-size: 14px; }
+.ingredients-list li { padding: 4px 0; list-style: none; }
+.steps-list { padding-left: 20px; font-size: 14px; }
+.steps-list li { padding: 5px 0; }
+.callout { background: rgba(232,181,77,.08); border-left: 3px solid var(--gold); padding: 12px 14px; border-radius: 8px; font-size: 13px; color: var(--soft); margin-bottom: 16px; }
+.callout strong { color: var(--ink); }
+
+.toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; align-items: center; }
+/* stats: número grande dominante (jerarquía numérica, no anillos) */
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; color: var(--soft); }
+.stats:empty { display: none; }
+.stats span { background: var(--elev2); border: 1px solid var(--line); padding: 8px 6px 7px 10px; border-radius: 12px; display: flex; flex-direction: column-reverse; gap: 1px; font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); white-space: nowrap; overflow: hidden; }
+.stats span strong { color: var(--ink); font-family: var(--font-display); font-size: 20px; font-weight: 550; line-height: 1.1; letter-spacing: 0; }
+
+/* tabla del cole con scroll horizontal en pantallas estrechas */
+#cole-calendar { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 0 -2px; }
+.cole-table { width: 100%; min-width: 520px; border-collapse: collapse; font-size: 12px; }
+.cole-table th { background: var(--elev2); padding: 8px; text-align: left; font-weight: 500; color: var(--soft); border: 1px solid var(--line-solid); }
+.cole-table td { padding: 8px; border: 1px solid var(--line-solid); vertical-align: top; }
+.cole-table .date-cell { width: 70px; font-weight: 500; color: var(--gold); }
+.cole-table .empty-cell { color: var(--muted); font-style: italic; }
+
+.scope-toggle { display: inline-flex; background: var(--bg); border: 1px solid var(--line); border-radius: 12px; padding: 3px; }
+.scope-toggle button { background: none; border: none; padding: 8px 14px; min-height: 38px; cursor: pointer; font-size: 13px; border-radius: 9px; color: var(--soft); font-family: inherit; }
+.scope-toggle button.active { background: var(--elev3); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
+
+/* ---------- multi-familia: pantalla de cuentas + chip ---------- */
+.account-screen { position: fixed; inset: 0; z-index: 200; display: flex; align-items: center; justify-content: center; overflow-y: auto;
+  background:
+    radial-gradient(circle at 18% 12%, rgba(23,169,116,.22) 0%, transparent 45%),
+    radial-gradient(circle at 85% 8%, rgba(255,107,74,.14) 0%, transparent 48%),
+    radial-gradient(circle at 60% 95%, rgba(232,181,77,.08) 0%, transparent 50%),
+    var(--bg);
+}
+body.account-open { overflow: hidden; }
+/* ---------- sheet "Más": cole / nevera / ajustes ---------- */
+.more-rows { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+.more-row { display: flex; align-items: center; gap: 14px; width: 100%; text-align: left; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 14px; cursor: pointer; font-family: inherit; color: var(--ink); }
+.more-row:hover { border-color: var(--emerald); background: var(--elev2); }
+.more-row.current { border-color: var(--accent); background: linear-gradient(135deg, rgba(255,107,74,.08), rgba(255,107,74,.02)), var(--panel); }
+.more-ico { flex: 0 0 auto; width: 40px; height: 40px; border-radius: 12px; background: var(--elev3); display: flex; align-items: center; justify-content: center; color: var(--emerald); }
+.more-ico svg { width: 21px; height: 21px; stroke: currentColor; }
+.more-row.current .more-ico { color: var(--accent); }
+.more-txt { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.more-txt strong { font-size: 15px; font-weight: 600; }
+.more-txt span { font-size: 12px; color: var(--muted); }
+.account-inner { width: 100%; max-width: 420px; padding: 40px 24px calc(40px + var(--safe-b)); text-align: center; animation: fadeIn var(--dur-slow) var(--ease-out); }
+.acc-brand { font-family: var(--font-display); font-weight: 600; font-size: 34px; letter-spacing: -0.6px; margin-bottom: 6px; }
+.acc-brand span { color: var(--accent); }
+.acc-title { font-family: var(--font-display); font-weight: 500; font-size: 22px; margin: 18px 0 22px; }
+.acc-sub { font-size: 13.5px; color: var(--muted); margin: -8px 0 22px; line-height: 1.55; }
+.acc-grid { display: flex; flex-wrap: wrap; gap: 18px; justify-content: center; margin-bottom: 26px; }
+.acc-tile { position: relative; background: none; border: none; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 9px; padding: 6px; border-radius: 14px; font-family: inherit; }
+.acc-tile:hover .acc-avatar { transform: scale(1.06); }
+.acc-avatar { display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; color: #fff; font-weight: 600; flex-shrink: 0; transition: transform var(--dur-fast) var(--ease-out); }
+.acc-name { font-size: 13.5px; color: var(--ink); font-weight: 500; max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.acc-lock { position: absolute; top: 2px; right: 2px; font-size: 13px; }
+.acc-new { display: block; width: 100%; background: none; border: 1.5px dashed var(--line); color: var(--soft); padding: 13px; border-radius: 12px; font-size: 14.5px; font-family: inherit; cursor: pointer; margin-bottom: 12px; }
+.acc-new:hover { border-color: var(--gold); color: var(--ink); }
+.acc-cancel { background: none; border: none; color: var(--muted); font-size: 13.5px; font-family: inherit; cursor: pointer; padding: 10px; }
+.acc-form { text-align: left; }
+.acc-form .acc-submit { width: 100%; margin-top: 20px; }
+.acc-hint { font-size: 12px; color: var(--muted); margin-top: 7px; }
+.acc-hues { display: flex; gap: 10px; }
+.acc-hue { width: 40px; height: 40px; border-radius: 50%; border: 2.5px solid transparent; cursor: pointer; flex-shrink: 0; }
+.acc-hue.sel { border-color: var(--ink); box-shadow: 0 0 12px rgba(255,255,255,.25); }
+.family-chip { display: inline-flex; align-items: center; gap: 8px; background: var(--elev2); border: 1px solid var(--line-solid); border-radius: 999px; padding: 5px 12px 5px 5px; cursor: pointer; font-family: inherit; flex-shrink: 0; }
+.family-chip .chip-name { font-size: 13px; font-weight: 500; color: var(--ink); max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.family-chip .chip-chev { font-size: 9px; color: var(--muted); }
+.fam-row { display: flex; align-items: center; gap: 12px; }
+.fam-info { display: flex; flex-direction: column; gap: 2px; }
+.fam-info span { font-size: 12px; color: var(--muted); }
+.hint { color: var(--soft); font-size: 13px; }
+
+/* ============================================================
+   ≥ 640px  ·  tablet / móvil grande
+   ============================================================ */
+@media (min-width: 640px) {
+  .container { padding: 20px 18px; }
+  .col { flex: 1 1 180px; }
+  .week-grid { grid-template-columns: repeat(2, 1fr); }
+  .week-nav .week-label { font-size: 17px; }
+}
+
+/* ============================================================
+   ≥ 880px  ·  escritorio  →  nav vuelve arriba como pestañas
+   ============================================================ */
+@media (min-width: 880px) {
+  body { padding-bottom: 0; }
+  .container { padding: 24px; }
+  header { align-items: center; padding-bottom: 20px; margin-bottom: 20px; }
+  h1 { font-size: 27px; }
+  nav {
+    position: relative; z-index: auto; box-shadow: none; padding-bottom: 0;
+    border-top: none; border-bottom: 1px solid var(--line);
+    gap: 4px; margin-bottom: 24px; background: transparent;
+    backdrop-filter: none; -webkit-backdrop-filter: none;
+  }
+  nav button {
+    flex: 0 0 auto; flex-direction: row; height: auto; gap: 0;
+    padding: 10px 14px; font-size: 13px;
+    border-top: none; border-bottom: 2px solid transparent;
+  }
+  nav button:hover { color: var(--ink); }
+  nav button.active { border-bottom-color: var(--accent); font-weight: 500; }
+  nav button .nav-ico { display: none; }
+  nav button .nav-lbl { font-size: 13px; }
+  nav button.active .nav-lbl { color: var(--ink); font-weight: 500; }
+  .nav-indicator { display: none; }
+  .week-actions .primary { flex: 0 1 340px; margin-right: auto; }
+  .stats { grid-template-columns: repeat(4, minmax(0, 170px)); }
+  .week-grid { grid-template-columns: repeat(7, 1fr); column-gap: 6px; row-gap: 6px; }
+  .day-col { padding: 10px; border-radius: 12px; }
+  .meal-slot { font-size: 11px; padding: 7px; }
+  .meal-slot .meta-row { justify-content: flex-start; }
+  .recipe-grid { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+  .modal { align-items: center; padding: 20px; }
+  .modal-content { border-radius: 18px; border-bottom: 1px solid var(--line); padding: 24px; animation: fadeIn var(--dur-base) var(--ease-out); touch-action: auto; }
+  .modal-content::before { display: none; }
+  .stats { gap: 8px; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+
+<header>
+  <div>
+    <h1>e3<span>Foods</span></h1>
+    <div class="tagline">Menús que piensan por ti · mesa mixta · calorías por persona</div>
+  </div>
+  <button class="family-chip" id="family-chip" onclick="showAccountScreen('pick')" aria-label="Cambiar de familia"></button>
+</header>
+
+<nav>
+  <button class="tab-btn active" data-tab="semana"><span class="nav-ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 9.5h17"/><path d="M8 3v3.3"/><path d="M16 3v3.3"/></svg></span><span class="nav-lbl">Semana</span></button>
+  <button class="tab-btn" data-tab="recetas"><span class="nav-ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5.2c-2.3-1.1-5.2-1.4-8-.7v13.6c2.8-.7 5.7-.4 8 .7 2.3-1.1 5.2-1.4 8-.7V4.5c-2.8-.7-5.7-.4-8 .7z"/><path d="M12 5.2v13.6"/></svg></span><span class="nav-lbl">Recetas</span></button>
+  <button class="tab-btn" data-tab="compra"><span class="nav-ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 8h11l-1 11.5h-9L6.5 8z"/><path d="M9 8V6.3a3 3 0 016 0V8"/></svg></span><span class="nav-lbl">Compra</span></button>
+  <button class="tab-btn" data-tab="familia"><span class="nav-ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="7.5" r="3.2"/><path d="M5.5 20c0-3.7 3-6.3 6.5-6.3s6.5 2.6 6.5 6.3"/></svg></span><span class="nav-lbl">Familia</span></button>
+  <button class="tab-btn" id="tab-btn-more"><span class="nav-ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="12" r="1.7" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.7" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.7" fill="currentColor" stroke="none"/></svg></span><span class="nav-lbl">Más</span></button>
+</nav>
+
+<!-- FAMILIA -->
+<div class="tab" id="tab-familia">
+  <div class="card">
+    <h2>Miembros de la familia</h2>
+    <p class="hint" style="margin-bottom:16px;">Sus perfiles afectan a las restricciones y filtros del banco de recetas.</p>
+    <div id="members-list"></div>
+    <div style="margin-top:14px;"><button class="primary" onclick="openMemberModal()">+ Añadir miembro</button></div>
+  </div>
+</div>
+
+<!-- MENU COLE -->
+<div class="tab" id="tab-cole">
+  <div class="card">
+    <h2>Menú escolar</h2>
+    <div class="callout">
+      <strong>3 formas de importar el menú:</strong>
+      <br>1) <strong>Sube el PDF directamente</strong> → la app lo procesa sola (recomendado).
+      <br>2) <strong>Pega el JSON mensual</strong> generado previamente.
+      <br>3) <strong>Pega texto libre</strong> semana a semana ("Lunes 13: lentejas...").
+    </div>
+    <div style="margin-bottom:20px;padding:14px;background:var(--elev2);border-radius:12px;border:1px solid var(--line);">
+      <label style="font-weight:500;color:var(--ink);font-size:13px;display:block;margin-bottom:8px;">Subir PDF del cole</label>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        <button class="primary" onclick="document.getElementById('pdf-upload').click()">Subir PDF del menú</button>
+        <input type="file" id="pdf-upload" accept=".pdf" style="display:none" onchange="processPDFUpload(event)">
+        <span id="pdf-status" class="hint" style="font-size:12px;"></span>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col" style="flex:2">
+        <label>Pegar JSON mensual o texto libre</label>
+        <textarea id="cole-input" rows="6" placeholder='{"coleMenuByDate": {"2026-04-13": "Lentejas estofadas...", ...}}&#10;&#10;O texto libre:&#10;Lunes 13: lentejas estofadas, tortilla de patata&#10;Martes 14: ...'></textarea>
+      </div>
+    </div>
+    <div class="toolbar">
+      <button class="primary" onclick="processColeInput()">Procesar e importar</button>
+      <button class="secondary" onclick="document.getElementById('json-import-cole').click()">Importar archivo JSON</button>
+      <input type="file" id="json-import-cole" accept=".json" style="display:none" onchange="importColeFile(event)">
+      <button class="secondary" onclick="clearColeMonth()">Vaciar mes activo</button>
+    </div>
+    <h3 style="margin-top:24px;">Calendario escolar</h3>
+    <div class="week-nav">
+      <button class="nav-chev" onclick="navMonth(-1)" aria-label="Mes anterior">‹</button>
+      <div class="week-label" id="cole-month-label"></div>
+      <button class="nav-chev" onclick="navMonth(1)" aria-label="Mes siguiente">›</button>
+    </div>
+    <div id="cole-calendar"></div>
+  </div>
+</div>
+
+<!-- SEMANA -->
+<div class="tab active" id="tab-semana">
+  <div class="card">
+    <div class="week-nav">
+      <button class="nav-chev" onclick="navWeek(-1)" aria-label="Semana anterior">‹</button>
+      <div class="week-label" id="week-label"></div>
+      <button class="nav-chev" onclick="navWeek(1)" aria-label="Semana siguiente">›</button>
+    </div>
+    <div class="week-actions">
+      <button class="primary" onclick="generateWeek('all')">Generar semana</button>
+      <button class="tiny" onclick="goToday()">Hoy</button>
+      <div class="menu-wrap">
+        <button class="secondary menu-dots" onclick="toggleWeekMenu(event)" aria-label="Más acciones">⋯</button>
+        <div class="dropdown" id="week-menu">
+          <button onclick="toggleWeekMenu();generateWeek('desayuno')">Generar solo desayunos</button>
+          <button onclick="toggleWeekMenu();generateWeek('comida')">Generar solo comidas</button>
+          <button onclick="toggleWeekMenu();generateWeek('cena')">Generar solo cenas</button>
+          <hr>
+          <button onclick="toggleWeekMenu();copyAIPrompt()">Pedir ideas a Claude</button>
+          <button class="danger-item" onclick="toggleWeekMenu();clearWeek()">Vaciar semana</button>
+        </div>
+      </div>
+    </div>
+    <div class="stats" id="week-stats"></div>
+    <div class="week-grid" id="week-grid" style="margin-top:14px;"></div>
+  </div>
+</div>
+
+<!-- RECETAS -->
+<div class="tab" id="tab-recetas">
+  <div class="card">
+    <h2>Banco de recetas</h2>
+    <div class="toolbar">
+      <input type="text" id="recipe-search" placeholder="Buscar receta..." style="max-width:300px;" oninput="renderRecipes()">
+      <select id="recipe-filter" style="max-width:220px;" onchange="renderRecipes()">
+        <option value="">Todas</option>
+        <optgroup label="Proteína">
+          <option value="pescado">Pescado</option><option value="pollo">Pollo</option><option value="carne">Carne</option>
+          <option value="legumbre">Legumbre</option><option value="huevo">Huevo</option><option value="vegetal">Vegetal</option>
+        </optgroup>
+        <optgroup label="Acompañamiento">
+          <option value="arroz">Arroz</option><option value="pasta">Pasta</option><option value="patata">Patata</option><option value="pan">Pan</option><option value="cuscus">Cuscús</option>
+        </optgroup>
+      </select>
+      <button class="secondary" onclick="openAddRecipeModal()">+ Añadir receta</button>
+    </div>
+    <div id="recipe-grid" class="recipe-grid"></div>
+  </div>
+</div>
+
+<!-- COMPRA -->
+<div class="tab" id="tab-compra">
+  <div class="card">
+    <h2>Lista de la compra</h2>
+    <p class="hint" style="margin-bottom:14px;">Suma automática de ingredientes de TODAS las comidas y cenas asignadas, agrupada por sección de supermercado.</p>
+    <div class="toolbar">
+      <div class="scope-toggle">
+        <button id="scope-week" class="active" onclick="setScope('week')">Semana activa</button>
+        <button id="scope-month" onclick="setScope('month')">Mes completo</button>
+      </div>
+      <button class="primary" onclick="generateShoppingList()">Generar lista</button>
+      <button class="secondary" onclick="copyShoppingList()">Copiar</button>
+      <button class="secondary" onclick="resetShoppingChecks()">Resetear marcas</button>
+    </div>
+    <div id="shopping-summary" class="hint" style="margin-bottom:10px;"></div>
+    <div id="shopping-list" class="shopping-list"></div>
+  </div>
+</div>
+
+<!-- NEVERA -->
+<div class="tab" id="tab-nevera">
+  <div class="card">
+    <h2>¿Qué hay en la nevera?</h2>
+    <p class="hint" style="margin-bottom:14px;">Añade los ingredientes que tienes y te muestro las recetas que mejor encajan.</p>
+    <div class="row">
+      <div class="col" style="flex:3"><input type="text" id="fridge-input" placeholder="Ej: pollo, arroz, tomate..." onkeydown="if(event.key==='Enter')addFridgeItem()"></div>
+      <button class="primary" onclick="addFridgeItem()">Añadir</button>
+    </div>
+    <div id="fridge-tags" style="margin:10px 0 14px;"></div>
+    <h3>Recetas que puedes hacer</h3>
+    <div id="fridge-results" class="recipe-grid"></div>
+  </div>
+</div>
+
+<!-- AJUSTES -->
+<div class="tab" id="tab-ajustes">
+  <div class="card">
+    <h2>Familia</h2>
+    <div id="family-settings"></div>
+  </div>
+  <div class="card">
+    <h2>Ajustes y respaldo</h2>
+    <p class="hint" style="margin-bottom:16px;">Los datos de cada familia viven en este navegador (localStorage). Te recomiendo exportar a JSON cada cierto tiempo como backup.</p>
+    <div class="toolbar">
+      <button class="primary" onclick="exportData()">Descargar backup JSON</button>
+      <button class="secondary" onclick="document.getElementById('json-import-all').click()">Restaurar backup</button>
+      <input type="file" id="json-import-all" accept=".json" style="display:none" onchange="importAllJson(event)">
+      <button class="danger" onclick="resetAll()">Borrar todo</button>
+    </div>
+    <h3 style="margin-top:24px;">Estado actual</h3>
+    <div id="state-summary" class="hint"></div>
+    <h3 style="margin-top:24px;">Verificar reglas del menú</h3>
+    <p class="hint" style="margin-bottom:12px;">Genera 100 menús de prueba con familias distintas y comprueba que se cumplen las reglas duras (no repetir proteína ni hidrato el mismo día, restricciones, fideuá/paella del cole = pasta/arroz). No toca tus datos.</p>
+    <button class="secondary" onclick="runVerifier()">Verificar reglas (100 menús)</button>
+    <div id="verifier-results" style="font-size:13px;margin-top:14px;"></div>
+  </div>
+</div>
+
+</div>
+
+<!-- SHEET MÁS (cole / nevera / ajustes) -->
+<div class="modal" id="more-sheet">
+  <div class="modal-content">
+    <button class="close-btn" onclick="closeModal('more-sheet')">&times;</button>
+    <h2>Más</h2>
+    <div class="more-rows">
+      <button class="more-row" data-more="cole" onclick="goMore('cole')"><span class="more-ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 9L12 5l9.5 4-9.5 4-9.5-4z"/><path d="M6.5 10.8v3.8c0 1.5 2.6 2.7 5.5 2.7s5.5-1.2 5.5-2.7v-3.8"/><path d="M20 9.6v4.6"/></svg></span><span class="more-txt"><strong>Cole</strong><span>Menú escolar: importar PDF y calendario</span></span></button>
+      <button class="more-row" data-more="nevera" onclick="goMore('nevera')"><span class="more-ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="5.5" y="2.2" width="13" height="19.6" rx="1.8"/><path d="M5.5 9.5h13"/><path d="M8.3 4.5v2"/><path d="M8.3 12.3v2"/></svg></span><span class="more-txt"><strong>Nevera</strong><span>Qué cocinar con lo que ya tienes</span></span></button>
+      <button class="more-row" data-more="ajustes" onclick="goMore('ajustes')"><span class="more-ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><circle cx="9" cy="7" r="1.8" fill="currentColor" stroke="none"/><path d="M4 12.5h16"/><circle cx="15" cy="12.5" r="1.8" fill="currentColor" stroke="none"/><path d="M4 18h16"/><circle cx="7.5" cy="18" r="1.8" fill="currentColor" stroke="none"/></svg></span><span class="more-txt"><strong>Ajustes</strong><span>Familia, backup y verificador de reglas</span></span></button>
+    </div>
+  </div>
+</div>
+
+<!-- PANTALLA DE CUENTAS (multi-familia) -->
+<div id="account-screen" class="account-screen" style="display:none;">
+  <div class="account-inner" id="account-inner"></div>
+</div>
+
+<!-- MODAL MIEMBRO -->
+<div class="modal" id="member-modal">
+  <div class="modal-content">
+    <button class="close-btn" onclick="closeModal('member-modal')">&times;</button>
+    <h2 id="member-modal-title">Nuevo miembro</h2>
+    <div class="row">
+      <div class="col"><label>Nombre</label><input type="text" id="m-name"></div>
+      <div class="col"><label>Año de nacimiento</label><input type="number" id="m-birthYear" min="1920" max="2025" placeholder="Ej: 1985"></div>
+    </div>
+    <div class="row">
+      <div class="col"><label>Sexo</label><select id="m-sex"><option value="hombre">Hombre</option><option value="mujer">Mujer</option></select></div>
+    </div>
+    <button type="button" class="secondary" style="width:100%;margin-bottom:4px;" onclick="toggleMemberAdvanced()">Detalles avanzados (opcional) ▾</button>
+    <div id="member-advanced" class="advanced-section">
+      <p class="hint" style="font-size:12px;margin:10px 0;">Nada aquí es obligatorio — sin rellenar, se usan valores por defecto (actividad media, patrón omnívoro, estimación por banda de edad).</p>
+      <div class="row">
+        <div class="col"><label>Actividad</label><select id="m-activity"><option value="baja">Baja</option><option value="media" selected>Media</option><option value="alta">Alta</option></select></div>
+        <div class="col"><label>Patrón dietético</label><select id="m-patron">
+          <option value="omnivoro">Omnívoro</option><option value="pescetariano">Pescetariano</option><option value="vegetariano">Vegetariano</option><option value="vegano">Vegano</option>
+        </select></div>
+      </div>
+      <div class="row">
+        <div class="col"><label>Altura (cm)</label><input type="number" id="m-altura" placeholder="Ej: 178"></div>
+        <div class="col"><label>Peso (kg)</label><input type="number" id="m-peso" placeholder="Ej: 75"></div>
+      </div>
+      <div class="row">
+        <div class="col"><label>Objetivo (solo adultos)</label><select id="m-objetivo"><option value="mantenimiento">Mantenimiento</option><option value="perdida">Pérdida de peso (−500 kcal/día)</option></select></div>
+        <div class="col"><label>Ayuno intermitente</label><select id="m-ayuno"><option value="">No</option><option value="desayuno">Salta desayuno</option><option value="comida">Salta comida</option><option value="cena">Salta cena</option></select></div>
+      </div>
+      <label>Alergias / restricciones (separadas por coma)</label>
+      <input type="text" id="m-restrictions" placeholder="Ej: sin lactosa, frutos secos, gluten">
+      <div style="margin-top:10px;"><label>No le gusta (separados por coma)</label><input type="text" id="m-dislikes" placeholder="Ej: brócoli, hígado"></div>
+    </div>
+    <div style="margin-top:18px;display:flex;gap:8px;justify-content:flex-end;">
+      <button class="secondary" onclick="closeModal('member-modal')">Cancelar</button>
+      <button class="primary" onclick="saveMember()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL RECETA -->
+<div class="modal" id="recipe-modal"><div class="modal-content" id="recipe-modal-content"></div></div>
+
+<!-- MODAL ELEGIR RECETA PARA SLOT -->
+<div class="modal" id="pick-modal">
+  <div class="modal-content">
+    <button class="close-btn" onclick="closeModal('pick-modal')">&times;</button>
+    <h2 id="pick-modal-title">Elegir receta</h2>
+    <input type="text" id="pick-search" placeholder="Buscar..." oninput="renderPickList()" style="margin-bottom:10px;">
+    <div id="pick-list" style="max-height:50vh;overflow-y:auto;"></div>
+  </div>
+</div>
+
+<!-- MODAL ADD RECIPE -->
+<div class="modal" id="add-recipe-modal">
+  <div class="modal-content">
+    <button class="close-btn" onclick="closeModal('add-recipe-modal')">&times;</button>
+    <h2>Nueva receta</h2>
+    <p class="hint" style="font-size:12px;margin-bottom:12px;">Usa el botón <em>"Pedir ideas a Claude"</em> (pestaña Mi semana) para copiar el prompt con el esquema correcto, o pega aquí un JSON con <em>proteina</em>, <em>verdura</em> (array, siempre presente) e <em>hidrato</em>. Si faltan, la app los deduce automáticamente.</p>
+    <label>JSON de la receta (objeto o array)</label>
+    <textarea id="add-recipe-json" rows="10" placeholder='{"id":"abc","nombre":"Pollo al horno con patata y judías","proteina":"pollo","verdura":["judía verde"],"hidrato":"patata","proteina_separable":true,"kcal":450,"ingredientes":[{"n":"pollo","cant":600,"u":"g","seccion":"carne"}],"pasos":["..."],"kid_friendly":true}'></textarea>
+    <div style="margin-top:12px;display:flex;gap:8px;justify-content:flex-end;">
+      <button class="secondary" onclick="closeModal('add-recipe-modal')">Cancelar</button>
+      <button class="primary" onclick="saveCustomRecipe()">Añadir al banco</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// BANCO DE RECETAS
+// ============================================================
+// ============================================================
+// BANCO DE RECETAS — esquema Harvard 3 ejes (proteina + verdura[] + hidrato)
+// slots: en qué tomas puede usarse · proteina_separable: la proteína se sirve
+// aparte (swappable por persona) · contiene_huevo/contiene_lacteos: para el
+// patrón vegano · tiempo: rapido (entre semana) | elaborado (finde)
+// ============================================================
+const RECIPES = [
+  {id:"r01",nombre:"Merluza al horno con patatas y cebolla",proteina:"pescado",verdura:["cebolla"],hidrato:"patata",proteina_separable:true,contiene_huevo:false,contiene_lacteos:false,tiempo:"rapido",kcal:430,ingredientes:[{n:"merluza",cant:600,u:"g",seccion:"pescado"},{n:"patata",cant:600,u:"g",seccion:"verdura"},{n:"cebolla",cant:2,u:"ud",seccion:"verdura"},{n:"limón",cant:1,u:"ud",seccion:"verdura"},{n:"aceite de oliva",cant:30,u:"ml",seccion:"despensa"},{n:"perejil",cant:1,u:"ramita",seccion:"verdura"}],pasos:["Pelar y cortar las patatas en rodajas finas y la cebolla en juliana.","Disponer en una bandeja de horno con aceite y sal. Hornear 20 min a 200°C.","Colocar la merluza encima, regar con limón y aceite. Hornear 12-15 min más.","Espolvorear perejil al servir."],kid_friendly:true},
+  {id:"r02",nombre:"Salmón a la plancha con calabacín y pimiento",proteina:"pescado",verdura:["calabacín","pimiento rojo"],hidrato:"ninguno",proteina_separable:true,contiene_huevo:false,contiene_lacteos:false,tiempo:"rapido",kcal:480,ingredientes:[{n:"salmón",cant:600,u:"g",seccion:"pescado"},{n:"calabacín",cant:2,u:"ud",seccion:"verdura"},{n:"pimiento rojo",cant:2,u:"ud",seccion:"verdura"},{n:"limón",cant:1,u:"ud",seccion:"verdura"},{n:"aceite de oliva",cant:20,u:"ml",seccion:"despensa"}],pasos:["Salpimentar el salmón. Pasar por la plancha 4 min por lado.","Saltear el calabacín y pimiento en cubos con aceite, sal.","Servir con limón."],kid_friendly:true},
+  {id:"r03",nombre:"Lubina al limón en papillote con calabacín y zanahoria",proteina:"pescado",verdura:["calabacín","zanahoria"],hidrato:"ninguno",proteina_separable:true,contiene_huevo:false,contiene_lacteos:false,tiempo:"rapido",kcal:380,ingredientes:[{n:"lubina filetes",cant:4,u:"ud",seccion:"pescado"},{n:"limón",cant:1,u:"ud",seccion:"verdura"},{n:"calabacín",cant:1,u:"ud",seccion:"verdura"},{n:"zanahoria",cant:2,u:"ud",seccion:"verdura"},{n:"aceite de oliva",cant:20,u:"ml",seccion:"despensa"}],pasos:["Cortar verduras en juliana fina.","Hacer paquetes de papel de horno: verdura debajo, lubina encima, limón, aceite, sal.","Hornear 15 min a 200°C."],kid_friendly:false},
+  {id:"r04",nombre:"Bacalao con tomate y cebolla",proteina:"pescado",verdura:["cebolla","tomate"],hidrato:"ninguno",proteina_separable:false,contiene_huevo:false,contiene_lacteos:false,tiempo:"rapido",kcal:410,ingredientes:[{n:"bacalao desalado",cant:600,u:"g",seccion:"pescado"},{n:"tomate frito",cant:400,u:"g",seccion:"despensa"},{n:"cebolla",cant:1,u:"ud",seccion:"verdura"},{n:"ajo",cant:2,u:"diente",seccion:"verdura"},{n:"aceite de oliva",cant:30,u:"ml",seccion:"despensa"}],pasos:["Sofrito de cebolla y ajo picados.","Añadir el tomate, cocinar 10 min.","Incorporar el bacalao, cocer 8-10 min a fuego suave."],kid_friendly:true},
+  {id:"r05",nombre:"Atún con pisto",proteina:"pescado",verdura:["pimiento verde","pimiento rojo","calabacín","tomate","cebolla"],hidrato:"ninguno",proteina_separable:true,contiene_huevo:false,contiene_lacteos:false,tiempo:"elaborado",kcal:420,ingredientes:[{n:"atún fresco",cant:500,u:"g",seccion:"pescado"},{n:"pimiento verde",cant:1,u:"ud",seccion:"verdura"},{n:"pimiento rojo",cant:1,u:"ud",seccion:"verdura"},{n:"calabacín",cant:1,u:"ud",seccion:"verdura"},{n:"tomate",cant:3,u:"ud",seccion:"verdura"},{n:"cebolla",cant:1,u:"ud",seccion:"verdura"},{n:"aceite de oliva",cant:30,u:"ml",seccion:"despensa"}],pasos:["Pisto: pochar cebolla y pimientos 10 min, añadir calabacín y tomate, 15 min más.","Marcar el atún en taquitos a fuego fuerte 1 min por lado.","Mezclar y servir."],kid_friendly:false},
+  {id:"r06",nombre:"Boquerones rebozados con patatas fritas y tomate",proteina:"pescado",verdura:["tomate"],hidrato:"patata",proteina_separable:true,contiene_huevo:true,contiene_lacteos:false,tiempo:"rapido",kcal:450,ingredientes:[{n:"boquerones",cant:500,u:"g",seccion:"pescado"},{n:"harina",cant:100,u:"g",seccion:"despensa"},{n:"huevo",cant:2,u:"ud",seccion:"lacteos"},{n:"aceite de girasol",cant:300,u:"ml",seccion:"despensa"},{n:"limón",cant:1,u:"ud",seccion:"verdura"},{n:"patata",cant:500,u:"g",seccion:"verdura"},{n:"tomate",cant:2,u:"ud",seccion:"verdura"}],pasos:["Limpiar y abrir los boquerones.","Pasar por harina y huevo batido.","Freír en aceite caliente hasta dorar.","Servir con patatas fritas, ensalada de tomate y limón."],kid_friendly:true},
+  {id:"r07",nombre:"Crema de calabaza con langostinos",proteina:"pescado",verdura:["calabaza","puerro"],hidrato:"ninguno",proteina_separable:true,contiene_huevo:false,contiene_lacteos:false,tiempo:"rapido",kcal:330,ingredientes:[{n:"calabaza",cant:600,u:"g",seccion:"verdura"},{n:"puerro",cant:1,u:"ud",seccion:"verdura"},{n:"patata",cant:1,u:"ud",seccion:"verdura"},{n:"langostinos",cant:200,u:"g",seccion:"pescado"},{n:"caldo de verduras",cant:500,u:"ml",seccion:"despensa"},{n:"aceite de oliva",cant:20,u:"ml",seccion:"despensa"}],pasos:["Pochar puerro, añadir calabaza y patata troceadas.","Cubrir con caldo y cocer 25 min. Triturar.","Saltear langostinos pelados y servir encima."],kid_friendly:true},
+  {id:"r08",nombre:"Pollo al limón con arroz y judías verdes",proteina:"pollo",verdura:["judía verde"],hidrato:"arroz",proteina_separable:true,contiene_huevo:false,contiene_lacteos:false,tiempo:"rapido",kcal:520,ingredientes:[{n:"pollo (pechuga o muslos)",cant:600,u:"g",seccion:"carne"},{n:"limón",cant:2,u:"ud",seccion:"verdura"},{n:"arroz basmati",cant:300,u:"g",seccion:"despensa"},{n:"ajo",cant:2,u:"diente",seccion:"verdura"},{n:"judía verde",cant:300,u:"g",seccion:"verdura"},{n:"aceite de oliva",cant:30,u:"ml",seccion:"despensa"}],pasos:["Marinar el pollo 15 min con limón, ajo, sal y aceite.","Cocinar el arroz como indique el paquete. Cocer al vapor las judías verdes.","Saltear el pollo en sartén 8-10 min.","Servir junto."],kid_friendly:true},
+  {id:"r09",nombre:"Pollo al curry suave con arroz y pimiento",proteina:"pollo",verdura:["cebolla","pimiento rojo"],hidrato:"arroz",proteina_separable:true,contiene_huevo:false,contiene_lacteos:false,tiempo:"rapido",kcal:540,ingredientes:[{n:"pollo en dados",cant:600,u:"g",seccion:"carne"},{n:"leche de coco",cant:400,u:"ml",seccion:"despensa"},{n:"cebolla",cant:1,u:"ud",seccion:"verdura"},{n:"pimiento rojo",cant:1,u:"ud",seccion:"verdura"},{n:"curry suave",cant:1,u:"cda",seccion:"despensa"},{n:"arroz basmati",cant:250,u:"g",seccion:"despensa"},{n:"aceite de oliva",cant:20,u:"ml",seccion:"despensa"}],pasos:["Pochar la cebolla y el pimiento picados.","Añadir el pollo y el curry, dorar 5 min.","Verter la leche de coco y cocer 15 min.","Servir con arroz."],kid_friendly:true},
+  {id:"r10",nombre:"Pollo al ajillo con patatas panaderas y pimientos",proteina:"pollo",verdura:["pimiento verde"],hidrato:"patata",proteina_separable:true,contiene_huevo:false,contiene_lacteos:false,tiempo:"rapido",kcal:480,ingredientes:[{n:"alitas o muslos de pollo",cant:800,u:"g",seccion:"carne"},{n:"ajo",cant:6,u:"diente",seccion:"verdura"},{n:"vino blanco",cant:100,u:"ml",seccion:"despensa"},{n:"patata",cant:500,u:"g",seccion:"verdura"},{n:"pimiento verde",cant:2,u:"ud",seccion:"verdura"},{n:"aceite de oliva",cant:40,u:"ml",seccion:"despensa"},{n:"perejil",cant:1,u:"ramita",seccion:"verdura"}],pasos:["Dorar el pollo en aceite con sal. Hornear las patatas en rodajas aparte.","Añadir ajos laminados y perejil, freír los pimientos.","Verter vino, cocer 15 min más. Servir junto a las patatas y pimientos."],kid_friendly:true},
+  {id:"r11",nombre:"Pollo asado con patatas y judías verdes",proteina:"pollo",verdura:["judía verde"],hidrato:"patata",proteina_separable:true,contiene_huevo:false,contiene_lacteos:false,tiempo:"elaborado",kcal:600,ingredientes:[{n:"pollo entero",cant:1500,u:"g",seccion:"carne"},{n:"patata",cant:800,u:"g",seccion:"verdura"},{n:"limón",cant:1,u:"ud",seccion:"verdura"},{n:"romero",cant:1,u:"ramita",seccion:"verdura"},{n:"judía verde",cant:300,u:"g",seccion:"verdura"},{n:"aceite de oliva",cant:40,u:"ml",seccion:"despensa"}],pasos:["Salpimentar el pollo, rellenar con limón y romero.","Disponer en bandeja con patatas en rodajas, aceite y sal.","Hornear 1h 15 min a 190°C, regando cada 20 min. Cocer al vapor las judías verdes."],kid_friendly:true},
+  {id:"r12",nombre:"Wraps de pollo, lechuga y tomate",proteina:"pollo",verdura:["lechuga","tomate"],hidrato:"pan",proteina_separable:true,contiene_huevo:false,contiene_lacteos:true,tiempo:"rapido",kcal:480,ingredientes:[{n:"pechuga de pollo",cant:500,u:"g",seccion:"carne"},{n:"tortillas de trigo",cant:6,u:"ud",seccion:"despensa"},{n:"lechuga",cant:1,u:"ud",seccion:"verdura"},{n:"tomate",cant:2,u:"ud",seccion:"verdura"},{n:"yogur natural",cant:150,u:"g",seccion:"lacteos"},{n:"aceite de oliva",cant:20,u:"ml",seccion:"despensa"}],pasos:["Cortar el pollo en tiras y saltear con aceite y sal.","Calentar las tortillas.","Rellenar con pollo, lechuga, tomate y una cucharada de yogur."],kid_friendly:true},
+  {id:"r13",nombre:"Pavo a la plancha con puré y espinacas",proteina:"pollo",verdura:["espinacas"],hidrato:"patata",proteina_separable:true,contiene_huevo:false,contiene_lacteos:true,tiempo:"rapido",kcal:440,ingredientes:[{n:"filetes de pavo",cant:600,u:"g",seccion:"carne"},{n:"patata",cant:600,u:"g",seccion:"verdura"},{n:"leche",cant:100,u:"ml",seccion:"lacteos"},{n:"mantequilla",cant:30,u:"g",seccion:"lacteos"},{n:"espinacas",cant:250,u:"g",seccion:"verdura"},{n:"aceite de oliva",cant:20,u:"ml",seccion:"despensa"}],pasos:["Cocer las patatas peladas 20 min. Triturar con leche y mantequilla.","Saltear las espinacas con ajo.","Pasar el pavo por la plancha 3 min por lado con sal.","Servir con el puré y las espinacas."],kid_friendly:true},
+  {id:"r14",nombre:"Albóndigas en salsa de tomate con arroz",proteina:"carne",verdura:["cebolla","tomate"],hidrato:"arroz",proteina_separable:false,contiene_huevo:true,contiene_lacteos:false,tiempo:"elaborado",kcal:520,ingredientes:[{n:"carne picada mixta",cant:500,u:"g",seccion:"carne"},{n:"pan rallado",cant:50,u:"g",seccion:"despensa"},{n:"huevo",cant:1,u:"ud",seccion:"lacteos"},{n:"tomate frito",cant:400,u:"g",seccion:"despensa"},{n:"cebolla",cant:1,u:"ud",seccion:"verdura"},{n:"ajo",cant:2,u:"diente",seccion:"verdura"},{n:"arroz",cant:300,u:"g",seccion:"despensa"},{n:"aceite de oliva",cant:30,u:"ml",seccion:"despensa"}],pasos:["Mezclar la carne con pan rallado, huevo, ajo picado y sal.","Formar bolitas y dorar en sartén.","Añadir cebolla pochada y tomate frito, cocer 15 min. Servir con arroz blanco."],kid_friendly:true},
+  {id:"r15",nombre:"Hamburguesa casera con boniato, lechuga y tomate",proteina:"carne",verdura:["lechuga","tomate"],hidrato:"patata",proteina_separable:true,contiene_huevo:false,contiene_lacteos:true,tiempo:"elaborado",kcal:600,ingredientes:[{n:"carne picada de ternera",cant:500,u:"g",seccion:"carne"},{n:"pan de hamburguesa",cant:4,u:"ud",seccion:"despensa"},{n:"boniato",cant:600,u:"g",seccion:"verdura"},{n:"queso",cant:80,u:"g",seccion:"lacteos"},{n:"lechuga",cant:1,u:"ud",seccion:"verdura"},{n:"tomate",cant:1,u:"ud",seccion:"verdura"},{n:"aceite de oliva",cant:20,u:"ml",seccion:"despensa"}],pasos:["Cortar boniato en bastones, hornear con aceite 25 min a 200°C.","Dar forma a las hamburguesas con sal y pimienta. Hacerlas a la plancha 4 min por lado.","Montar con pan, queso, lechuga y tomate."],kid_friendly:true},
+  {id:"r16",nombre:"Solomillo de cerdo con manzana y espinacas",proteina:"carne",verdura:["espinacas","cebolla"],hidrato:"ninguno",proteina_separable:true,contiene_huevo:false,contiene_lacteos:true,tiempo:"elaborado",kcal:480,ingredientes:[{n:"solomillo de cerdo",cant:600,u:"g",seccion:"carne"},{n:"manzana",cant:2,u:"ud",seccion:"verdura"},{n:"cebolla",cant:1,u:"ud",seccion:"verdura"},{n:"vino blanco",cant:100,u:"ml",seccion:"despensa"},{n:"espinacas",cant:200,u:"g",seccion:"verdura"},{n:"nata para cocinar",cant:100,u:"ml",seccion:"lacteos"},{n:"aceite de oliva",cant:20,u:"ml",seccion:"despensa"}],pasos:["Marcar el solomillo en medallones.","Pochar cebolla y manzana en gajos. Saltear las espinacas aparte.","Añadir vino, reducir, agregar nata y los medallones, cocer 5 min."],kid_friendly:false},
+  {id:"r17",nombre:"Estofado de ternera con patata y zanahoria",proteina:"carne",verdura:["zanahoria","cebolla"],hidrato:"patata",proteina_separable:false,contiene_huevo:false,contiene_lacteos:false,tiempo:"elaborado",kcal:560,ingredientes:[{n:"ternera para estofar",cant:600,u:"g",seccion:"carne"},{n:"zanahoria",cant:3,u:"ud",seccion:"verdura"},{n:"cebolla",cant:1,u:"ud",seccion:"verdura"},{n:"patata",cant:500,u:"g",seccion:"verdura"},{n:"vino tinto",cant:150,u:"ml",seccion:"despensa"},{n:"caldo de carne",cant:300,u:"ml",seccion:"despensa"},{n:"aceite de oliva",cant:30,u:"ml",seccion:"despensa"}],pasos:["Sellar la carne en aceite. Reservar.","Pochar cebolla y zanahoria. Añadir carne, vino y caldo.","Cocer 1h. Añadir patata troceada, 25 min más."],kid_friendly:true},
+  {id:"r18",nombre:"Lentejas con verduras",proteina:"legumbre",verdura:["zanahoria","cebolla","pimiento verde","tomate"],hidrato:"ninguno",proteina_separable:false,contiene_huevo:false,contiene_lacteos:false,tiempo:"rapido",kcal:430,ingredientes:[{n:"lentejas",cant:300,u:"g",seccion:"despensa"},{n:"zanahoria",cant:2,u:"ud",seccion:"verdura"},{n:"cebolla",cant:1,u:"ud",seccion:"verdura"},{n:"pimiento verde",cant:1,u:"ud",seccion:"verdura"},{n:"tomate",cant:2,u:"ud",seccion:"verdura"},{n:"ajo",cant:2,u:"diente",seccion:"verdura"},{n:"laurel",cant:1,u:"hoja",seccion:"despensa"},{n:"aceite de oliva",cant:30,u:"ml",seccion:"despensa"}],pasos:["Sofrito de cebolla, ajo, pimiento y zanahoria.","Añadir tomate, lentejas, laurel y agua hasta cubrir 3 cm por encima.","Cocer 35-40 min."],kid_friendly:true},
+  {id:"r19",nombre:"Garbanzos con espinacas",proteina:"legumbre",verdura:["espinacas","cebolla"],hidrato:"ninguno",proteina_separable:false,contiene_huevo:false,contiene_lacteos:false,tiempo:"rapido",kcal:410,ingredientes:[{n:"garbanzos cocidos",cant:600,u:"g",seccion:"despensa"},{n:"espinacas",cant:300,u:"g",seccion:"verdura"},{n:"cebolla",cant:1,u:"ud",seccion:"verdura"},{n:"ajo",cant:3,u:"diente",seccion:"verdura"},{n:"pimentón",cant:1,u:"cdita",seccion:"despensa"},{n:"comino",cant:1,u:"cdita",seccion:"despensa"},{n:"aceite de oliva",cant:30,u:"ml",seccion:"despensa"}],pasos:["Pochar cebolla y ajo. Añadir pimentón y comino.","Incorporar espinacas hasta que reduzcan.","Añadir garbanzos escurridos, calentar 5 min."],kid_friendly:false},
+  {id:"r20",nombre:"Hummus con pan pita y crudités",proteina:"legumbre",verdura:["zanahoria","pepino"],hidrato:"pan",proteina_separable:false,contiene_huevo:false,contiene_lacteos:false,tiempo:"rapido",kcal:340,ingredientes:[{n:"garbanzos cocidos",cant:400,u:"g",seccion:"despensa"},{n:"tahini",cant:30,u:"g",seccion:"despensa"},{n:"limón",cant:1,u:"ud",seccion:"verdura"},{n:"ajo",cant:1,u:"diente",seccion:"verdura"},{n:"zanahoria",cant:2,u:"ud",seccion:"verdura"},{n:"pepino",cant:1,u:"ud",seccion:"verdura"},{n:"pan pita",cant:4,u:"ud",seccion:"despensa"},{n:"aceite de oliva",cant:30,u:"ml",seccion:"despensa"}],pasos:["Triturar garbanzos, tahini, ajo, limón, sal y aceite.","Cortar zanahoria y pepino en bastones.","Servir con pan pita tostado."],kid_friendly:true},
+  {id:"r21",nombre:"Alubias blancas con verduras",proteina:"legumbre",verdura:["puerro","zanahoria","pimiento verde","tomate"],hidrato:"ninguno",proteina_separable:false,contiene_huevo:false,contiene_lacteos:false,tiempo:"rapido",kcal:420,ingredientes:[{n:"alubias blancas cocidas",cant:600,u:"g",seccion:"despensa"},{n:"puerro",cant:1,u:"ud",seccion:"verdura"},{n:"zanahoria",cant:2,u:"ud",seccion:"verdura"},{n:"pimiento verde",cant:1,u:"ud",seccion:"verdura"},{n:"tomate",cant:2,u:"ud",seccion:"verdura"},{n:"pimentón",cant:1,u:"cdita",seccion:"despensa"},{n:"aceite de oliva",cant:30,u:"ml",seccion:"despensa"}],pasos:["Pochar puerro, zanahoria y pimiento.","Añadir tomate y pimentón.","Incorporar alubias y un poco de agua, cocer 15 min."],kid_friendly:true},
+  {id:"r22",nombre:"Crema de verduras",proteina:"vegetal",verdura:["puerro","calabacín","zanahoria"],hidrato:"ninguno",proteina_separable:false,contiene_huevo:false,contiene_lacteos:false,tiempo:"rapido",kcal:280,ingredientes:[{n:"puerro",cant:1,u:"ud",seccion:"verdura"},{n:"calabacín",cant:1,u:"ud",seccion:"verdura"},{n:"zanahoria",cant:2,u:"ud",seccion:"verdura"},{n:"patata",cant:1,u:"ud",seccion:"verdura"},{n:"caldo de verduras",cant:600,u:"ml",seccion:"despensa"},{n:"aceite de oliva",cant:20,u:"ml",seccion:"despensa"}],pasos:["Pochar puerro. Añadir resto de verduras troceadas.","Cubrir con caldo y cocer 25 min.","Triturar y servir."],kid_friendly:true},
+  {id:"r23",nombre:"Ensalada templada de quinoa",proteina:"vegetal",verdura:["tomate cherry","pepino","aguacate"],hidrato:"cuscus",proteina_separable:false,contiene_huevo:false,contiene_lacteos:true,tiempo:"rapido",kcal:380,ingredientes:[{n:"quinoa",cant:200,u:"g",seccion:"despensa"},{n:"tomate cherry",cant:200,u:"g",seccion:"verdura"},{n:"pepino",cant:1,u:"ud",seccion:"verdura"},{n:"queso feta",cant:100,u:"g",seccion:"lacteos"},{n:"aguacate",cant:1,u:"ud",seccion:"verdura"},{n:"limón",cant:1,u:"ud",seccion:"verdura"},{n:"aceite de oliva",cant:30,u:"ml",seccion:"despensa"}],pasos:["Cocer la quinoa según paquete.","Cortar tomate, pepino, aguacate y queso en cubos.","Mezclar todo con limón, aceite y sal."],kid_friendly:false},
+  {id:"r24",nombre:"Verduras al horno con patata",proteina:"vegetal",verdura:["calabacín","berenjena","pimiento rojo","cebolla"],hidrato:"patata",proteina_separable:false,contiene_huevo:false,contiene_lacteos:false,tiempo:"rapido",kcal:300,ingredientes:[{n:"calabacín",cant:1,u:"ud",seccion:"verdura"},{n:"berenjena",cant:1,u:"ud",seccion:"verdura"},{n:"pimiento rojo",cant:1,u:"ud",seccion:"verdura"},{n:"cebolla",cant:1,u:"ud",seccion:"verdura"},{n:"patata",cant:2,u:"ud",seccion:"verdura"},{n:"aceite de oliva",cant:40,u:"ml",seccion:"despensa"},{n:"tomillo",cant:1,u:"cdita",seccion:"despensa"}],pasos:["Cortar todo en trozos similares.","Aliñar con aceite, sal y tomillo.","Hornear 35 min a 200°C."],kid_friendly:true},
+  {id:"r25",nombre:"Tortilla de patatas y cebolla",proteina:"huevo",verdura:["cebolla"],hidrato:"patata",proteina_separable:false,contiene_huevo:true,contiene_lacteos:false,tiempo:"rapido",kcal:480,ingredientes:[{n:"huevo",cant:6,u:"ud",seccion:"lacteos"},{n:"patata",cant:600,u:"g",seccion:"verdura"},{n:"cebolla",cant:2,u:"ud",seccion:"verdura"},{n:"aceite de oliva",cant:200,u:"ml",seccion:"despensa"}],pasos:["Pelar y cortar patatas en láminas. Freír a fuego medio con cebolla 20 min.","Escurrir y mezclar con huevos batidos y sal.","Cuajar en sartén 4 min por lado."],kid_friendly:true},
+  {id:"r26",nombre:"Huevos rotos con jamón y patatas",proteina:"huevo",verdura:["tomate"],hidrato:"patata",proteina_separable:false,contiene_huevo:true,contiene_lacteos:false,tiempo:"rapido",kcal:550,ingredientes:[{n:"huevo",cant:4,u:"ud",seccion:"lacteos"},{n:"patata",cant:500,u:"g",seccion:"verdura"},{n:"jamón serrano",cant:100,u:"g",seccion:"carne"},{n:"tomate",cant:2,u:"ud",seccion:"verdura"},{n:"aceite de oliva",cant:200,u:"ml",seccion:"despensa"}],pasos:["Freír las patatas en bastones.","Freír los huevos en aceite caliente.","Servir patatas con huevos rotos por encima, el jamón y una ensalada de tomate."],kid_friendly:true},
+  {id:"r27",nombre:"Frittata de calabacín y cebolla",proteina:"huevo",verdura:["calabacín","cebolla"],hidrato:"ninguno",proteina_separable:false,contiene_huevo:true,contiene_lacteos:true,tiempo:"rapido",kcal:380,ingredientes:[{n:"huevo",cant:6,u:"ud",seccion:"lacteos"},{n:"calabacín",cant:2,u:"ud",seccion:"verdura"},{n:"queso parmesano",cant:50,u:"g",seccion:"lacteos"},{n:"cebolla",cant:1,u:"ud",seccion:"verdura"},{n:"aceite de oliva",cant:20,u:"ml",seccion:"despensa"}],pasos:["Pochar cebolla y calabacín en rodajas.","Mezclar con huevos batidos, sal y queso.","Cuajar en sartén o al horno 15 min a 180°C."],kid_friendly:true},
+  {id:"r28",nombre:"Espaguetis a la boloñesa con zanahoria",proteina:"carne",verdura:["cebolla","zanahoria"],hidrato:"pasta",proteina_separable:false,contiene_huevo:false,contiene_lacteos:false,tiempo:"rapido",kcal:580,ingredientes:[{n:"espaguetis",cant:400,u:"g",seccion:"despensa"},{n:"carne picada",cant:400,u:"g",seccion:"carne"},{n:"tomate triturado",cant:400,u:"g",seccion:"despensa"},{n:"cebolla",cant:1,u:"ud",seccion:"verdura"},{n:"zanahoria",cant:1,u:"ud",seccion:"verdura"},{n:"ajo",cant:2,u:"diente",seccion:"verdura"},{n:"aceite de oliva",cant:20,u:"ml",seccion:"despensa"}],pasos:["Sofrito de cebolla, ajo y zanahoria picados.","Añadir carne, dorar. Incorporar tomate, cocer 20 min.","Cocer la pasta. Mezclar con la salsa."],kid_friendly:true},
+  {id:"r29",nombre:"Macarrones con tomate y atún",proteina:"pescado",verdura:["cebolla","tomate"],hidrato:"pasta",proteina_separable:false,contiene_huevo:false,contiene_lacteos:true,tiempo:"rapido",kcal:520,ingredientes:[{n:"macarrones",cant:400,u:"g",seccion:"despensa"},{n:"tomate frito",cant:400,u:"g",seccion:"despensa"},{n:"atún en aceite",cant:200,u:"g",seccion:"despensa"},{n:"cebolla",cant:1,u:"ud",seccion:"verdura"},{n:"queso rallado",cant:60,u:"g",seccion:"lacteos"},{n:"aceite de oliva",cant:20,u:"ml",seccion:"despensa"}],pasos:["Cocer la pasta.","Pochar cebolla, añadir tomate y atún.","Mezclar pasta con salsa, espolvorear queso."],kid_friendly:true},
+  {id:"r30",nombre:"Pasta al pesto con tomate cherry",proteina:"vegetal",verdura:["tomate cherry"],hidrato:"pasta",proteina_separable:false,contiene_huevo:false,contiene_lacteos:true,tiempo:"rapido",kcal:540,ingredientes:[{n:"penne",cant:400,u:"g",seccion:"despensa"},{n:"pesto",cant:120,u:"g",seccion:"despensa"},{n:"tomate cherry",cant:250,u:"g",seccion:"verdura"},{n:"queso parmesano",cant:50,u:"g",seccion:"lacteos"},{n:"piñones",cant:30,u:"g",seccion:"despensa"}],pasos:["Cocer la pasta.","Saltear los tomates cherry partidos por la mitad.","Mezclar pasta con pesto, tomates, piñones y queso."],kid_friendly:true},
+  {id:"r31",nombre:"Lasaña de carne",proteina:"carne",verdura:["cebolla","tomate"],hidrato:"pasta",proteina_separable:false,contiene_huevo:false,contiene_lacteos:true,tiempo:"elaborado",kcal:650,ingredientes:[{n:"placas de lasaña",cant:12,u:"ud",seccion:"despensa"},{n:"carne picada",cant:500,u:"g",seccion:"carne"},{n:"tomate frito",cant:400,u:"g",seccion:"despensa"},{n:"bechamel",cant:500,u:"ml",seccion:"despensa"},{n:"queso rallado",cant:150,u:"g",seccion:"lacteos"},{n:"cebolla",cant:1,u:"ud",seccion:"verdura"},{n:"aceite de oliva",cant:20,u:"ml",seccion:"despensa"}],pasos:["Boloñesa: pochar cebolla, dorar carne, añadir tomate, cocer 20 min.","Hidratar las placas según paquete.","Montar capas: placa, boloñesa, bechamel. Coronar con queso.","Hornear 25 min a 200°C."],kid_friendly:true},
+  {id:"r32",nombre:"Arroz a la cubana",proteina:"huevo",verdura:["tomate"],hidrato:"arroz",proteina_separable:false,contiene_huevo:true,contiene_lacteos:false,tiempo:"rapido",kcal:580,ingredientes:[{n:"arroz",cant:400,u:"g",seccion:"despensa"},{n:"huevo",cant:4,u:"ud",seccion:"lacteos"},{n:"plátano",cant:4,u:"ud",seccion:"verdura"},{n:"tomate frito",cant:300,u:"g",seccion:"despensa"},{n:"aceite de oliva",cant:30,u:"ml",seccion:"despensa"}],pasos:["Cocer el arroz blanco.","Freír los plátanos partidos por la mitad.","Freír los huevos.","Servir arroz con tomate frito, huevo y plátano."],kid_friendly:true},
+  {id:"r33",nombre:"Paella de verduras",proteina:"vegetal",verdura:["judía verde","alcachofa","pimiento rojo","tomate"],hidrato:"arroz",proteina_separable:false,contiene_huevo:false,contiene_lacteos:false,tiempo:"elaborado",kcal:480,ingredientes:[{n:"arroz bomba",cant:400,u:"g",seccion:"despensa"},{n:"judía verde",cant:200,u:"g",seccion:"verdura"},{n:"alcachofa",cant:4,u:"ud",seccion:"verdura"},{n:"pimiento rojo",cant:1,u:"ud",seccion:"verdura"},{n:"tomate",cant:2,u:"ud",seccion:"verdura"},{n:"caldo de verduras",cant:1000,u:"ml",seccion:"despensa"},{n:"azafrán",cant:1,u:"pizca",seccion:"despensa"},{n:"aceite de oliva",cant:30,u:"ml",seccion:"despensa"}],pasos:["Sofreír verduras en la paellera.","Añadir tomate rallado, arroz, azafrán y caldo caliente.","Cocer 18 min sin remover. Reposar 5 min."],kid_friendly:true},
+  {id:"r34",nombre:"Arroz tres delicias",proteina:"huevo",verdura:["zanahoria"],hidrato:"arroz",proteina_separable:false,contiene_huevo:true,contiene_lacteos:false,tiempo:"rapido",kcal:520,ingredientes:[{n:"arroz",cant:400,u:"g",seccion:"despensa"},{n:"jamón cocido",cant:150,u:"g",seccion:"carne"},{n:"guisantes",cant:150,u:"g",seccion:"congelados"},{n:"zanahoria",cant:1,u:"ud",seccion:"verdura"},{n:"huevo",cant:2,u:"ud",seccion:"lacteos"},{n:"salsa de soja",cant:30,u:"ml",seccion:"despensa"},{n:"aceite de oliva",cant:20,u:"ml",seccion:"despensa"}],pasos:["Cocer el arroz, escurrir.","Saltear zanahoria en cubos y guisantes.","Añadir jamón en taquitos, huevo batido y arroz.","Aliñar con soja."],kid_friendly:true},
+  {id:"r35",nombre:"Sopa de fideos con pollo",proteina:"pollo",verdura:["zanahoria","apio"],hidrato:"pasta",proteina_separable:false,contiene_huevo:false,contiene_lacteos:false,tiempo:"rapido",kcal:380,ingredientes:[{n:"fideos finos",cant:200,u:"g",seccion:"despensa"},{n:"caldo de pollo",cant:1500,u:"ml",seccion:"despensa"},{n:"pechuga de pollo cocida",cant:200,u:"g",seccion:"carne"},{n:"zanahoria",cant:1,u:"ud",seccion:"verdura"},{n:"apio",cant:1,u:"rama",seccion:"verdura"}],pasos:["Llevar el caldo a ebullición con zanahoria y apio en daditos.","Añadir los fideos, cocer 6 min.","Incorporar el pollo desmenuzado al servir."],kid_friendly:true},
+  {id:"r36",nombre:"Crema de champiñones",proteina:"vegetal",verdura:["champiñones","puerro"],hidrato:"ninguno",proteina_separable:false,contiene_huevo:false,contiene_lacteos:true,tiempo:"rapido",kcal:320,ingredientes:[{n:"champiñones",cant:500,u:"g",seccion:"verdura"},{n:"puerro",cant:1,u:"ud",seccion:"verdura"},{n:"patata",cant:1,u:"ud",seccion:"verdura"},{n:"caldo de verduras",cant:600,u:"ml",seccion:"despensa"},{n:"nata para cocinar",cant:100,u:"ml",seccion:"lacteos"},{n:"aceite de oliva",cant:20,u:"ml",seccion:"despensa"}],pasos:["Pochar puerro y champiñones laminados.","Añadir patata y caldo, cocer 20 min.","Triturar con la nata."],kid_friendly:true},
+  {id:"r37",nombre:"Pizza casera margarita",proteina:"vegetal",verdura:["tomate","albahaca"],hidrato:"pan",proteina_separable:false,contiene_huevo:false,contiene_lacteos:true,tiempo:"rapido",kcal:560,ingredientes:[{n:"masa de pizza",cant:1,u:"ud",seccion:"despensa"},{n:"tomate frito",cant:200,u:"g",seccion:"despensa"},{n:"mozzarella",cant:200,u:"g",seccion:"lacteos"},{n:"albahaca fresca",cant:1,u:"ramita",seccion:"verdura"},{n:"aceite de oliva",cant:20,u:"ml",seccion:"despensa"}],pasos:["Estirar la masa.","Cubrir con tomate y mozzarella.","Hornear 12 min a 230°C. Añadir albahaca al final."],kid_friendly:true},
+  {id:"r38",nombre:"Bowl de salmón, arroz y edamame",proteina:"pescado",verdura:["aguacate","pepino","edamame"],hidrato:"arroz",proteina_separable:true,contiene_huevo:false,contiene_lacteos:false,tiempo:"rapido",kcal:520,ingredientes:[{n:"salmón",cant:500,u:"g",seccion:"pescado"},{n:"arroz integral",cant:300,u:"g",seccion:"despensa"},{n:"aguacate",cant:1,u:"ud",seccion:"verdura"},{n:"pepino",cant:1,u:"ud",seccion:"verdura"},{n:"edamame",cant:150,u:"g",seccion:"congelados"},{n:"salsa de soja",cant:30,u:"ml",seccion:"despensa"},{n:"sésamo",cant:10,u:"g",seccion:"despensa"}],pasos:["Cocer el arroz integral.","Cocer al vapor el edamame.","Pasar el salmón por la plancha en tacos.","Montar el bowl con todos los ingredientes y aliñar con soja y sésamo."],kid_friendly:true},
+  {id:"r39",nombre:"Tacos de carne con tomate y aguacate",proteina:"carne",verdura:["tomate","aguacate","cebolla"],hidrato:"pan",proteina_separable:true,contiene_huevo:false,contiene_lacteos:true,tiempo:"rapido",kcal:560,ingredientes:[{n:"carne picada",cant:500,u:"g",seccion:"carne"},{n:"tortillas de maíz",cant:8,u:"ud",seccion:"despensa"},{n:"tomate",cant:2,u:"ud",seccion:"verdura"},{n:"aguacate",cant:1,u:"ud",seccion:"verdura"},{n:"cebolla",cant:1,u:"ud",seccion:"verdura"},{n:"queso rallado",cant:80,u:"g",seccion:"lacteos"},{n:"comino",cant:1,u:"cdita",seccion:"despensa"},{n:"aceite de oliva",cant:20,u:"ml",seccion:"despensa"}],pasos:["Saltear cebolla y carne con comino y sal.","Calentar las tortillas.","Montar con carne, queso, tomate y aguacate."],kid_friendly:true},
+  {id:"r40",nombre:"Quiche de espinacas",proteina:"huevo",verdura:["espinacas","cebolla"],hidrato:"pan",proteina_separable:false,contiene_huevo:true,contiene_lacteos:true,tiempo:"elaborado",kcal:480,ingredientes:[{n:"masa quebrada",cant:1,u:"ud",seccion:"despensa"},{n:"espinacas",cant:300,u:"g",seccion:"verdura"},{n:"huevo",cant:4,u:"ud",seccion:"lacteos"},{n:"nata para cocinar",cant:200,u:"ml",seccion:"lacteos"},{n:"queso rallado",cant:80,u:"g",seccion:"lacteos"},{n:"cebolla",cant:1,u:"ud",seccion:"verdura"},{n:"aceite de oliva",cant:20,u:"ml",seccion:"despensa"}],pasos:["Forrar un molde con la masa.","Pochar cebolla con espinacas.","Batir huevos con nata, queso, sal. Mezclar con espinacas. Verter en la masa.","Hornear 30 min a 180°C."],kid_friendly:true},
+  {id:"r41",nombre:"Sopa minestrone",proteina:"legumbre",verdura:["zanahoria","apio","calabacín","tomate"],hidrato:"pasta",proteina_separable:false,contiene_huevo:false,contiene_lacteos:false,tiempo:"rapido",kcal:340,ingredientes:[{n:"alubias rojas",cant:200,u:"g",seccion:"despensa"},{n:"zanahoria",cant:2,u:"ud",seccion:"verdura"},{n:"apio",cant:2,u:"rama",seccion:"verdura"},{n:"calabacín",cant:1,u:"ud",seccion:"verdura"},{n:"tomate triturado",cant:300,u:"g",seccion:"despensa"},{n:"caldo de verduras",cant:1000,u:"ml",seccion:"despensa"},{n:"pasta corta",cant:100,u:"g",seccion:"despensa"},{n:"aceite de oliva",cant:20,u:"ml",seccion:"despensa"}],pasos:["Pochar verduras en cubos.","Añadir tomate, caldo y alubias. Cocer 15 min.","Incorporar pasta, cocer 8 min más."],kid_friendly:true},
+  {id:"r42",nombre:"Empanada gallega de atún",proteina:"pescado",verdura:["cebolla","pimiento rojo","tomate"],hidrato:"pan",proteina_separable:false,contiene_huevo:true,contiene_lacteos:false,tiempo:"elaborado",kcal:540,ingredientes:[{n:"masa de empanada",cant:2,u:"ud",seccion:"despensa"},{n:"atún en aceite",cant:300,u:"g",seccion:"despensa"},{n:"cebolla",cant:2,u:"ud",seccion:"verdura"},{n:"pimiento rojo",cant:1,u:"ud",seccion:"verdura"},{n:"tomate frito",cant:200,u:"g",seccion:"despensa"},{n:"huevo",cant:1,u:"ud",seccion:"lacteos"},{n:"aceite de oliva",cant:20,u:"ml",seccion:"despensa"}],pasos:["Pochar cebolla y pimiento, añadir tomate y atún.","Forrar molde con masa, rellenar y cubrir con la otra.","Pintar con huevo. Hornear 35 min a 200°C."],kid_friendly:true},
+  {id:"r43",nombre:"Garbanzos al curry con arroz",proteina:"legumbre",verdura:["cebolla","tomate"],hidrato:"arroz",proteina_separable:false,contiene_huevo:false,contiene_lacteos:false,tiempo:"rapido",kcal:430,ingredientes:[{n:"garbanzos cocidos",cant:600,u:"g",seccion:"despensa"},{n:"leche de coco",cant:400,u:"ml",seccion:"despensa"},{n:"cebolla",cant:1,u:"ud",seccion:"verdura"},{n:"tomate triturado",cant:200,u:"g",seccion:"despensa"},{n:"curry suave",cant:1,u:"cda",seccion:"despensa"},{n:"jengibre",cant:1,u:"cdita",seccion:"despensa"},{n:"arroz basmati",cant:250,u:"g",seccion:"despensa"},{n:"aceite de oliva",cant:20,u:"ml",seccion:"despensa"}],pasos:["Pochar cebolla con jengibre y curry.","Añadir tomate, leche de coco y garbanzos. Cocer 15 min.","Servir con arroz."],kid_friendly:true},
+  {id:"r44",nombre:"Pollo teriyaki con arroz, brócoli y zanahoria",proteina:"pollo",verdura:["brócoli","zanahoria"],hidrato:"arroz",proteina_separable:true,contiene_huevo:false,contiene_lacteos:false,tiempo:"rapido",kcal:520,ingredientes:[{n:"pechuga de pollo",cant:600,u:"g",seccion:"carne"},{n:"salsa teriyaki",cant:80,u:"ml",seccion:"despensa"},{n:"brócoli",cant:300,u:"g",seccion:"verdura"},{n:"zanahoria",cant:2,u:"ud",seccion:"verdura"},{n:"arroz",cant:300,u:"g",seccion:"despensa"},{n:"sésamo",cant:10,u:"g",seccion:"despensa"},{n:"aceite de oliva",cant:20,u:"ml",seccion:"despensa"}],pasos:["Cocer el arroz.","Saltear el pollo en tiras hasta dorar.","Añadir verduras y salsa teriyaki, cocer 5 min.","Servir con arroz y sésamo."],kid_friendly:true},
+  {id:"r45",nombre:"Risotto de setas",proteina:"vegetal",verdura:["setas","cebolla"],hidrato:"arroz",proteina_separable:false,contiene_huevo:false,contiene_lacteos:true,tiempo:"elaborado",kcal:540,ingredientes:[{n:"arroz arborio",cant:300,u:"g",seccion:"despensa"},{n:"setas variadas",cant:300,u:"g",seccion:"verdura"},{n:"caldo de verduras",cant:800,u:"ml",seccion:"despensa"},{n:"vino blanco",cant:100,u:"ml",seccion:"despensa"},{n:"cebolla",cant:1,u:"ud",seccion:"verdura"},{n:"queso parmesano",cant:60,u:"g",seccion:"lacteos"},{n:"mantequilla",cant:30,u:"g",seccion:"lacteos"},{n:"aceite de oliva",cant:20,u:"ml",seccion:"despensa"}],pasos:["Pochar cebolla, añadir arroz y nacarar.","Verter vino, evaporar.","Ir añadiendo caldo caliente cazo a cazo, removiendo, 18 min.","Incorporar setas salteadas, mantequilla y queso."],kid_friendly:true},
+  {id:"r46",nombre:"Tortilla francesa con jamón y tomate aliñado",proteina:"huevo",verdura:["tomate"],hidrato:"ninguno",proteina_separable:false,contiene_huevo:true,contiene_lacteos:true,tiempo:"rapido",kcal:380,ingredientes:[{n:"huevo",cant:6,u:"ud",seccion:"lacteos"},{n:"jamón cocido",cant:100,u:"g",seccion:"carne"},{n:"queso",cant:60,u:"g",seccion:"lacteos"},{n:"tomate",cant:2,u:"ud",seccion:"verdura"},{n:"aceite de oliva",cant:15,u:"ml",seccion:"despensa"}],pasos:["Batir los huevos con sal.","Añadir jamón y queso en daditos.","Cuajar en sartén con poco aceite, doblar. Servir con tomate aliñado."],kid_friendly:true},
+  {id:"r47",nombre:"Salteado de ternera con pimientos y arroz",proteina:"carne",verdura:["pimiento rojo","pimiento verde","cebolla"],hidrato:"arroz",proteina_separable:true,contiene_huevo:false,contiene_lacteos:false,tiempo:"rapido",kcal:480,ingredientes:[{n:"ternera para salteado",cant:500,u:"g",seccion:"carne"},{n:"pimiento rojo",cant:1,u:"ud",seccion:"verdura"},{n:"pimiento verde",cant:1,u:"ud",seccion:"verdura"},{n:"cebolla",cant:1,u:"ud",seccion:"verdura"},{n:"arroz",cant:300,u:"g",seccion:"despensa"},{n:"salsa de soja",cant:30,u:"ml",seccion:"despensa"},{n:"jengibre",cant:1,u:"cdita",seccion:"despensa"},{n:"aceite de oliva",cant:20,u:"ml",seccion:"despensa"}],pasos:["Cortar la carne y verduras en tiras.","Saltear la carne 2 min a fuego fuerte.","Añadir verduras, jengibre y soja. Saltear 5 min más. Servir con arroz."],kid_friendly:false},
+  {id:"r48",nombre:"Crema de zanahoria y jengibre",proteina:"vegetal",verdura:["zanahoria","cebolla"],hidrato:"ninguno",proteina_separable:false,contiene_huevo:false,contiene_lacteos:false,tiempo:"rapido",kcal:260,ingredientes:[{n:"zanahoria",cant:600,u:"g",seccion:"verdura"},{n:"cebolla",cant:1,u:"ud",seccion:"verdura"},{n:"jengibre",cant:1,u:"cdita",seccion:"despensa"},{n:"caldo de verduras",cant:600,u:"ml",seccion:"despensa"},{n:"aceite de oliva",cant:20,u:"ml",seccion:"despensa"}],pasos:["Pochar cebolla con jengibre.","Añadir zanahoria troceada y caldo, cocer 25 min.","Triturar."],kid_friendly:true},
+  {id:"r49",nombre:"Pinchos morunos con cuscús y ensalada de tomate",proteina:"carne",verdura:["tomate","cebolla"],hidrato:"cuscus",proteina_separable:true,contiene_huevo:false,contiene_lacteos:false,tiempo:"elaborado",kcal:540,ingredientes:[{n:"lomo de cerdo",cant:600,u:"g",seccion:"carne"},{n:"cuscús",cant:250,u:"g",seccion:"despensa"},{n:"comino",cant:1,u:"cdita",seccion:"despensa"},{n:"pimentón",cant:1,u:"cdita",seccion:"despensa"},{n:"limón",cant:1,u:"ud",seccion:"verdura"},{n:"tomate",cant:2,u:"ud",seccion:"verdura"},{n:"cebolla",cant:1,u:"ud",seccion:"verdura"},{n:"perejil",cant:1,u:"ramita",seccion:"verdura"},{n:"aceite de oliva",cant:30,u:"ml",seccion:"despensa"}],pasos:["Marinar la carne en taquitos con especias, ajo, aceite y limón 30 min.","Hidratar el cuscús con agua hirviendo.","Hacer los pinchos a la plancha 6 min.","Servir sobre cuscús con ensalada de tomate y cebolla, perejil."],kid_friendly:false},
+  {id:"r50",nombre:"Bowl mediterráneo de pollo con cuscús",proteina:"pollo",verdura:["tomate cherry","pepino"],hidrato:"cuscus",proteina_separable:true,contiene_huevo:false,contiene_lacteos:true,tiempo:"rapido",kcal:520,ingredientes:[{n:"pechuga de pollo",cant:500,u:"g",seccion:"carne"},{n:"cuscús",cant:250,u:"g",seccion:"despensa"},{n:"tomate cherry",cant:200,u:"g",seccion:"verdura"},{n:"pepino",cant:1,u:"ud",seccion:"verdura"},{n:"aceitunas",cant:80,u:"g",seccion:"despensa"},{n:"queso feta",cant:80,u:"g",seccion:"lacteos"},{n:"limón",cant:1,u:"ud",seccion:"verdura"},{n:"aceite de oliva",cant:30,u:"ml",seccion:"despensa"}],pasos:["Hidratar el cuscús.","Pasar el pollo a la plancha en tiras con sal y limón.","Montar el bowl con todos los ingredientes."],kid_friendly:true}
+];
+// Todas las recetas de arriba son de comida/cena. Se añade slots más abajo (tras BREAKFAST) vía applyDefaultSlots().
+
+// ============================================================
+// BANCO DE DESAYUNOS — mismo esquema 3 ejes, plantillas ligeras
+// raciones_base = 1 (ya en cantidad individual, no familiar)
+// ============================================================
+const BREAKFAST = [
+  {id:"d01",nombre:"Tostada con aguacate y huevo",proteina:"huevo",verdura:["aguacate","tomate"],hidrato:"pan",proteina_separable:true,contiene_huevo:true,contiene_lacteos:false,tiempo:"rapido",kcal:320,slots:["desayuno"],ingredientes:[{n:"pan integral",cant:2,u:"rebanada",seccion:"despensa"},{n:"huevo",cant:1,u:"ud",seccion:"lacteos"},{n:"aguacate",cant:0.5,u:"ud",seccion:"verdura"},{n:"tomate",cant:0.5,u:"ud",seccion:"verdura"},{n:"aceite de oliva",cant:5,u:"ml",seccion:"despensa"}],pasos:["Tostar el pan.","Aplastar el aguacate con sal y untar.","Añadir el huevo (poché o frito) y tomate en rodajas."],kid_friendly:true},
+  {id:"d02",nombre:"Porridge de avena con plátano y fresas",proteina:"vegetal",verdura:["plátano","fresas"],hidrato:"avena",proteina_separable:false,contiene_huevo:false,contiene_lacteos:true,tiempo:"rapido",kcal:280,slots:["desayuno"],ingredientes:[{n:"copos de avena",cant:50,u:"g",seccion:"despensa"},{n:"leche",cant:200,u:"ml",seccion:"lacteos"},{n:"plátano",cant:0.5,u:"ud",seccion:"verdura"},{n:"fresas",cant:80,u:"g",seccion:"verdura"}],pasos:["Cocer la avena con la leche 3-4 min.","Cubrir con plátano y fresas troceadas."],kid_friendly:true},
+  {id:"d03",nombre:"Yogur con granola y frutos rojos",proteina:"lacteos",verdura:["fresas","arándanos"],hidrato:"avena",proteina_separable:false,contiene_huevo:false,contiene_lacteos:true,tiempo:"rapido",kcal:300,slots:["desayuno"],ingredientes:[{n:"yogur natural",cant:150,u:"g",seccion:"lacteos"},{n:"granola",cant:40,u:"g",seccion:"despensa"},{n:"fresas",cant:60,u:"g",seccion:"verdura"},{n:"arándanos",cant:40,u:"g",seccion:"verdura"}],pasos:["Poner el yogur en un bol.","Añadir la granola y la fruta por encima."],kid_friendly:true},
+  {id:"d04",nombre:"Tortilla francesa con tomate",proteina:"huevo",verdura:["tomate"],hidrato:"pan",proteina_separable:false,contiene_huevo:true,contiene_lacteos:false,tiempo:"rapido",kcal:280,slots:["desayuno"],ingredientes:[{n:"huevo",cant:2,u:"ud",seccion:"lacteos"},{n:"pan integral",cant:1,u:"rebanada",seccion:"despensa"},{n:"tomate",cant:1,u:"ud",seccion:"verdura"},{n:"aceite de oliva",cant:5,u:"ml",seccion:"despensa"}],pasos:["Batir los huevos con sal.","Cuajar en sartén con poco aceite.","Servir con pan tostado y tomate."],kid_friendly:true},
+  {id:"d05",nombre:"Bocadillo de jamón y tomate",proteina:"carne",verdura:["tomate"],hidrato:"pan",proteina_separable:true,contiene_huevo:false,contiene_lacteos:false,tiempo:"rapido",kcal:320,slots:["desayuno"],ingredientes:[{n:"pan",cant:1,u:"barra pequeña",seccion:"despensa"},{n:"jamón serrano",cant:40,u:"g",seccion:"carne"},{n:"tomate",cant:1,u:"ud",seccion:"verdura"},{n:"aceite de oliva",cant:5,u:"ml",seccion:"despensa"}],pasos:["Untar el pan con tomate rallado y aceite.","Añadir el jamón."],kid_friendly:true},
+  {id:"d06",nombre:"Smoothie bowl de plátano y avena",proteina:"lacteos",verdura:["plátano","fresas"],hidrato:"avena",proteina_separable:false,contiene_huevo:false,contiene_lacteos:true,tiempo:"rapido",kcal:290,slots:["desayuno"],ingredientes:[{n:"plátano",cant:1,u:"ud",seccion:"verdura"},{n:"yogur natural",cant:100,u:"g",seccion:"lacteos"},{n:"copos de avena",cant:30,u:"g",seccion:"despensa"},{n:"fresas",cant:60,u:"g",seccion:"verdura"}],pasos:["Triturar plátano con yogur.","Servir en bol y cubrir con avena y fresas."],kid_friendly:true},
+  {id:"d07",nombre:"Huevos revueltos con espinacas",proteina:"huevo",verdura:["espinacas"],hidrato:"pan",proteina_separable:false,contiene_huevo:true,contiene_lacteos:false,tiempo:"rapido",kcal:300,slots:["desayuno"],ingredientes:[{n:"huevo",cant:2,u:"ud",seccion:"lacteos"},{n:"espinacas",cant:60,u:"g",seccion:"verdura"},{n:"pan integral",cant:1,u:"rebanada",seccion:"despensa"},{n:"aceite de oliva",cant:5,u:"ml",seccion:"despensa"}],pasos:["Saltear las espinacas.","Añadir el huevo batido y remover a fuego suave.","Servir con pan tostado."],kid_friendly:false},
+  {id:"d08",nombre:"Tostada con queso fresco y tomate",proteina:"lacteos",verdura:["tomate"],hidrato:"pan",proteina_separable:true,contiene_huevo:false,contiene_lacteos:true,tiempo:"rapido",kcal:270,slots:["desayuno"],ingredientes:[{n:"pan integral",cant:2,u:"rebanada",seccion:"despensa"},{n:"queso fresco",cant:60,u:"g",seccion:"lacteos"},{n:"tomate",cant:1,u:"ud",seccion:"verdura"},{n:"aceite de oliva",cant:5,u:"ml",seccion:"despensa"}],pasos:["Tostar el pan.","Untar con queso fresco y añadir tomate en rodajas."],kid_friendly:true},
+  {id:"d09",nombre:"Porridge proteico con crema de cacahuete",proteina:"vegetal",verdura:["plátano"],hidrato:"avena",proteina_separable:false,contiene_huevo:false,contiene_lacteos:true,tiempo:"rapido",kcal:340,slots:["desayuno"],ingredientes:[{n:"copos de avena",cant:50,u:"g",seccion:"despensa"},{n:"leche",cant:200,u:"ml",seccion:"lacteos"},{n:"crema de cacahuete",cant:15,u:"g",seccion:"despensa"},{n:"plátano",cant:0.5,u:"ud",seccion:"verdura"}],pasos:["Cocer la avena con la leche.","Añadir la crema de cacahuete y el plátano."],kid_friendly:true},
+  {id:"d10",nombre:"Tostada con hummus y pepino",proteina:"legumbre",verdura:["pepino","tomate"],hidrato:"pan",proteina_separable:false,contiene_huevo:false,contiene_lacteos:false,tiempo:"rapido",kcal:260,slots:["desayuno"],ingredientes:[{n:"pan integral",cant:2,u:"rebanada",seccion:"despensa"},{n:"hummus",cant:50,u:"g",seccion:"despensa"},{n:"pepino",cant:0.5,u:"ud",seccion:"verdura"},{n:"tomate",cant:0.5,u:"ud",seccion:"verdura"}],pasos:["Tostar el pan.","Untar con hummus y añadir pepino y tomate."],kid_friendly:false},
+  {id:"d11",nombre:"Yogur griego con nueces, miel y manzana",proteina:"lacteos",verdura:["manzana"],hidrato:"avena",proteina_separable:false,contiene_huevo:false,contiene_lacteos:true,tiempo:"rapido",kcal:310,slots:["desayuno"],ingredientes:[{n:"yogur griego",cant:150,u:"g",seccion:"lacteos"},{n:"nueces",cant:15,u:"g",seccion:"despensa"},{n:"miel",cant:10,u:"g",seccion:"despensa"},{n:"manzana",cant:0.5,u:"ud",seccion:"verdura"},{n:"granola",cant:20,u:"g",seccion:"despensa"}],pasos:["Poner el yogur en un bol.","Añadir manzana troceada, granola, nueces y un hilo de miel."],kid_friendly:true},
+  {id:"d12",nombre:"Sándwich de pavo, queso y lechuga",proteina:"carne",verdura:["lechuga","tomate"],hidrato:"pan",proteina_separable:true,contiene_huevo:false,contiene_lacteos:true,tiempo:"rapido",kcal:330,slots:["desayuno"],ingredientes:[{n:"pan de molde integral",cant:2,u:"rebanada",seccion:"despensa"},{n:"pechuga de pavo",cant:40,u:"g",seccion:"carne"},{n:"queso",cant:20,u:"g",seccion:"lacteos"},{n:"lechuga",cant:1,u:"hoja",seccion:"verdura"},{n:"tomate",cant:0.5,u:"ud",seccion:"verdura"}],pasos:["Montar el sándwich con pavo, queso, lechuga y tomate."],kid_friendly:true},
+  {id:"d13",nombre:"Tortitas de avena y plátano",proteina:"vegetal",verdura:["plátano"],hidrato:"avena",proteina_separable:false,contiene_huevo:true,contiene_lacteos:false,tiempo:"rapido",kcal:310,slots:["desayuno"],ingredientes:[{n:"copos de avena",cant:50,u:"g",seccion:"despensa"},{n:"huevo",cant:1,u:"ud",seccion:"lacteos"},{n:"plátano",cant:1,u:"ud",seccion:"verdura"},{n:"aceite de oliva",cant:5,u:"ml",seccion:"despensa"}],pasos:["Triturar avena, huevo y medio plátano.","Hacer tortitas pequeñas en sartén.","Servir con el resto del plátano en rodajas."],kid_friendly:true},
+  {id:"d14",nombre:"Bol de requesón con fresas y arándanos",proteina:"lacteos",verdura:["fresas","arándanos"],hidrato:"ninguno",proteina_separable:false,contiene_huevo:false,contiene_lacteos:true,tiempo:"rapido",kcal:250,slots:["desayuno"],ingredientes:[{n:"requesón",cant:150,u:"g",seccion:"lacteos"},{n:"fresas",cant:80,u:"g",seccion:"verdura"},{n:"arándanos",cant:50,u:"g",seccion:"verdura"},{n:"miel",cant:10,u:"g",seccion:"despensa"}],pasos:["Poner el requesón en un bol.","Añadir la fruta y un hilo de miel."],kid_friendly:true},
+  {id:"d15",nombre:"Porridge vegano de avena con manzana y canela",proteina:"vegetal",verdura:["manzana"],hidrato:"avena",proteina_separable:false,contiene_huevo:false,contiene_lacteos:false,tiempo:"rapido",kcal:270,slots:["desayuno"],ingredientes:[{n:"copos de avena",cant:50,u:"g",seccion:"despensa"},{n:"bebida de avena",cant:200,u:"ml",seccion:"despensa"},{n:"manzana",cant:0.5,u:"ud",seccion:"verdura"},{n:"canela",cant:1,u:"pizca",seccion:"despensa"}],pasos:["Cocer la avena con la bebida vegetal.","Añadir manzana troceada y canela."],kid_friendly:true}
+];
+RECIPES.forEach(r=>{ if(!r.slots) r.slots=["comida","cena"]; });
+
+// ============================================================
+// PATRONES DIETÉTICOS (whitelist) — qué proteínas puede comer cada patrón
+// Compone con ALERGIAS (blacklist) por encima. Se escanea también el TEXTO
+// de ingredientes (regex) para cazar proteínas ocultas (p.ej. jamón en un
+// plato de huevo) — doble red, igual que el filtro vegetariano original.
+// ============================================================
+const DIET_PATTERNS = {
+  omnivoro:      {proteinas:["pollo","pescado","carne","huevo","legumbre","vegetal","lacteos"]},
+  pescetariano:  {proteinas:["pescado","huevo","legumbre","vegetal","lacteos"]},
+  vegetariano:   {proteinas:["huevo","legumbre","vegetal","lacteos"]},
+  vegano:        {proteinas:["legumbre","vegetal"], sinHuevo:true, sinLacteos:true}
+};
+const MEATFISH_RX = /(pollo|ternera|cerdo|carne|jam[oó]n|pavo|merluza|salm[oó]n|at[uú]n|bacalao|pescado|langostino|gamba|lubina|boquer[oó]n|calamar)/i;
+const EGGDAIRY_RX = /(huevo|leche|nata|queso|mantequilla|yogur|requesón|bechamel|mozzarella)/i;
+const NUTS_RX = /(piñon|nuez|nueces|almendra|avellana|pistacho|cacahuete|sésamo)/i;
+const GLUTEN_HIDRATOS = ["pan","pasta","cuscus"];
+function recipeAllowedForPattern(r, patternName){
+  const pat = DIET_PATTERNS[patternName] || DIET_PATTERNS.omnivoro;
+  if(!pat.proteinas.includes(r.proteina)) return false;
+  const ing = (r.ingredientes||[]).map(i=>i.n).join(" ");
+  if(patternName!=="omnivoro" && MEATFISH_RX.test(ing) && !["pollo","pescado","carne"].includes(r.proteina)) {
+    // proteína oculta (p.ej. jamón en receta de huevo) que el patrón no permite
+    if(!pat.proteinas.some(p=>["pollo","pescado","carne"].includes(p))) return false;
+  }
+  if(pat.sinHuevo && (r.contiene_huevo || /huevo/i.test(ing))) return false;
+  if(pat.sinLacteos && (r.contiene_lacteos || EGGDAIRY_RX.test(ing.replace(/huevo/i,"")))) return false;
+  return true;
+}
+function recipeAllowedForAllergies(r, restrictions){
+  const ing = (r.ingredientes||[]).map(i=>i.n).join(" ").toLowerCase();
+  if(restrictions.some(x=>x.includes("pescado")) && (r.proteina==="pescado" || /(merluza|salm[oó]n|lubina|bacalao|at[uú]n|boquer|gamba|langostino|calamar|marisco)/.test(ing))) return false;
+  if(restrictions.some(x=>x.includes("frutos secos")) && NUTS_RX.test(ing)) return false;
+  if(restrictions.some(x=>x.includes("lactosa")) && EGGDAIRY_RX.test(ing.replace(/huevo/i,""))) return false;
+  if(restrictions.includes("gluten") && GLUTEN_HIDRATOS.includes(r.hidrato)) return false;
+  return true;
+}
+
+// ============================================================
+// PDF.js — IMPORTACIÓN DIRECTA DEL MENÚ ESCOLAR
+// ============================================================
+if (typeof pdfjsLib !== 'undefined') {
+  pdfjsLib.GlobalWorkerOptions.workerSrc =
+    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+}
+
+async function processPDFUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  event.target.value = ''; // reset input
+
+  const status = document.getElementById('pdf-status');
+  const set = (msg, color) => { status.textContent = msg; status.style.color = color || 'var(--muted)'; };
+
+  if (typeof pdfjsLib === 'undefined') {
+    set('❌ PDF.js no cargó. Comprueba tu conexión a internet.', 'var(--danger)'); return;
+  }
+
+  set('Cargando PDF…');
+  try {
+    const buf = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+    set(`PDF abierto · ${pdf.numPages} páginas · extrayendo menú…`);
+
+    let best = null, bestCount = 0;
+
+    for (let p = 1; p <= Math.min(pdf.numPages, 5); p++) {
+      const page  = await pdf.getPage(p);
+      const tc    = await page.getTextContent();
+      const vp    = page.getViewport({ scale: 1 });
+      const res   = pdfExtractMenu(tc.items, vp);
+      if (res && Object.keys(res.menu).length > bestCount) {
+        bestCount = Object.keys(res.menu).length;
+        best = res;
+      }
+    }
+
+    if (!best || bestCount < 3) {
+      set('⚠ No se pudo extraer el menú. Prueba pegando el JSON o texto manualmente.', 'var(--danger)');
+      return;
+    }
+
+    Object.assign(state.coleMenuByDate, best.menu);
+    const firstDate = Object.keys(best.menu).sort()[0];
+    if (firstDate) state.activeMonday = isoDate(mondayOf(parseISO(firstDate)));
+    save(); renderColeCalendar(); renderWeek();
+    set(`✅ ${bestCount} días importados · ${best.label}`, '#4A7A5A');
+
+  } catch (e) {
+    set('❌ Error: ' + e.message, 'var(--danger)');
+    console.error(e);
+  }
+}
+
+function pdfExtractMenu(items, viewport) {
+  const H = viewport.height, W = viewport.width;
+
+  // Normalizar ítems: x e y en rango 0-1, y invertido (top-down)
+  const els = items.map(it => ({
+    t: it.str.trim(),
+    x: it.transform[4] / W,
+    y: (H - it.transform[5]) / H
+  })).filter(e => e.t.length > 0);
+
+  // Detectar mes y año
+  const { month, year } = pdfDetectMonthYear(els.map(e => e.t).join(' '));
+  if (!month || !year) return null;
+
+  // Extraer números de día (1-31 como texto exacto)
+  const dateEls = els.filter(e => {
+    const n = parseInt(e.t);
+    return !isNaN(n) && n >= 1 && n <= 31 && e.t === String(n);
+  }).sort((a, b) => a.y - b.y || a.x - b.x);
+
+  if (dateEls.length < 4) return null;
+
+  // Detectar las 5 columnas (Lun-Vie) agrupando x de los días
+  const cols = pdfFindColumns(dateEls.map(d => d.x));
+
+  const menu = {};
+
+  dateEls.forEach(dateEl => {
+    const n = parseInt(dateEl.t);
+
+    // Verificar que es día laborable
+    const dateObj = new Date(year, month - 1, n);
+    const dow = dateObj.getDay();
+    if (dow === 0 || dow === 6) return;
+
+    // Columna de este día
+    const colIdx = pdfNearestCol(dateEl.x, cols);
+    const colMin = colIdx > 0 ? (cols[colIdx - 1] + cols[colIdx]) / 2 : 0;
+    const colMax = colIdx < cols.length - 1 ? (cols[colIdx] + cols[colIdx + 1]) / 2 : 1;
+
+    // Rango Y: desde este día hasta el siguiente en la misma columna
+    const nextInCol = dateEls.filter(d =>
+      d.y > dateEl.y + 0.02 && Math.abs(pdfNearestCol(d.x, cols) - colIdx) === 0
+    );
+    const yMax = nextInCol.length ? nextInCol[0].y : dateEl.y + 0.28;
+
+    // ¿Es festivo?
+    const nearText = els.filter(e =>
+      e.x >= colMin && e.x <= colMax && e.y > dateEl.y && e.y < yMax
+    ).map(e => e.t).join(' ');
+    if (/(vacances|festiu|festivo|fête)/i.test(nearText)) return;
+
+    // Recoger ítems de menú en esta columna y rango Y
+    const menuItems = els.filter(e => {
+      if (e === dateEl) return false;
+      const inCol = e.x >= colMin && e.x <= colMax;
+      const inRow = e.y > dateEl.y + 0.008 && e.y < yMax;
+      const notNum = !(parseInt(e.t) >= 1 && parseInt(e.t) <= 31 && e.t === String(parseInt(e.t)));
+      const notHol = !/(vacances|festiu|festivo)/i.test(e.t);
+      return inCol && inRow && notNum && notHol && e.t.length >= 2;
+    }).sort((a, b) => a.y - b.y);
+
+    if (!menuItems.length) return;
+
+    const key = `${year}-${String(month).padStart(2,'0')}-${String(n).padStart(2,'0')}`;
+    menu[key] = menuItems.map(e => e.t).join(' · ');
+  });
+
+  const monthNames = ['enero','febrero','marzo','abril','mayo','junio',
+    'julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  return { menu, label: `${monthNames[month-1]} ${year}` };
+}
+
+function pdfDetectMonthYear(text) {
+  const t = text.toLowerCase();
+  const months = {
+    // ES
+    'enero':1,'febrero':2,'marzo':3,'abril':4,'mayo':5,'junio':6,
+    'julio':7,'agosto':8,'septiembre':9,'octubre':10,'noviembre':11,'diciembre':12,
+    // FR
+    'janvier':1,'février':2,'mars':3,'avril':4,'mai':5,'juin':6,
+    'juillet':7,'août':8,'septembre':9,'octobre':10,'novembre':11,'décembre':12,
+    // CA
+    'gener':1,'febrer':2,'març':3,'maig':5,'juny':6,
+    'juliol':7,'agost':8,'setembre':9,'desembre':12
+  };
+  let month = null;
+  for (const [name, num] of Object.entries(months)) {
+    if (t.includes(name)) { month = num; break; }
+  }
+  const ym = text.match(/20\d{2}/);
+  return { month, year: ym ? parseInt(ym[0]) : null };
+}
+
+function pdfFindColumns(xVals) {
+  // Agrupa valores x en 5 clusters (columnas Lun-Vie)
+  const uniq = [...new Set(xVals.map(x => Math.round(x * 1000) / 1000))].sort((a, b) => a - b);
+  if (uniq.length <= 5) return uniq.length === 5 ? uniq : [0.08,0.26,0.44,0.62,0.80];
+  // Encontrar 4 gaps mayores → 5 clusters
+  const gaps = [];
+  for (let i = 1; i < uniq.length; i++) gaps.push({ g: uniq[i] - uniq[i-1], i });
+  gaps.sort((a, b) => b.g - a.g);
+  const splits = gaps.slice(0, 4).map(g => g.i).sort((a, b) => a - b);
+  const clusters = [];
+  let s = 0;
+  splits.forEach(sp => { clusters.push(uniq.slice(s, sp)[0]); s = sp; });
+  clusters.push(uniq[s]);
+  return clusters.sort((a, b) => a - b);
+}
+
+function pdfNearestCol(x, cols) {
+  return cols.reduce((best, cx, i) =>
+    Math.abs(x - cx) < Math.abs(x - cols[best]) ? i : best, 0);
+}
+
+// ============================================================
+// CÁLCULO DE EDAD Y NECESIDADES NUTRICIONALES
+// ============================================================
+function calcAge(birthYear) {
+  return new Date().getFullYear() - (birthYear || 1990);
+}
+
+function deriveTipo(age) {
+  if (age < 13) return 'nino';
+  if (age < 18) return 'adolescente';
+  return 'adulto';
+}
+
+// Bandas por edad/sexo (WHO/DRI) — se usan SIEMPRE para niños, y como fallback
+// para adultos/adolescentes si falta peso o altura (Mifflin-St Jeor no aplica).
+function calcNeedsBanda(member) {
+  const age = calcAge(member.birthYear);
+  const sex = member.sex || 'hombre';
+  const act = member.activity || 'media';
+  let base;
+  if      (age < 4)  base = 1000;
+  else if (age < 9)  base = 1200;
+  else if (age < 14) base = sex === 'hombre' ? 1600 : 1400;
+  else if (age < 19) base = sex === 'hombre' ? 2000 : 1800;
+  else if (age < 31) base = sex === 'hombre' ? 2400 : 2000;
+  else if (age < 51) base = sex === 'hombre' ? 2200 : 1800;
+  else if (age < 71) base = sex === 'hombre' ? 2000 : 1600;
+  else               base = sex === 'hombre' ? 1800 : 1600;
+  const mult = { baja: 1.0, media: 1.2, alta: 1.4 }[act] || 1.2;
+  return Math.round(base * mult);
+}
+// Mifflin-St Jeor (adultos/adolescentes con peso+altura) · objetivo:
+// mantenimiento = TDEE · pérdida de peso = TDEE − 500 kcal/día (estándar NIH, no %).
+function calcNeeds(member) {
+  const age = calcAge(member.birthYear);
+  const tipo = deriveTipo(age);
+  const sex = member.sex || 'hombre';
+  const actMult = { baja: 1.2, media: 1.375, alta: 1.55 }[member.activity || 'media'] || 1.375;
+  let tdee;
+  if (tipo !== 'nino' && member.peso && member.altura) {
+    const bmr = 10*member.peso + 6.25*member.altura - 5*age + (sex==='hombre'?5:-161);
+    tdee = Math.round(bmr * actMult);
+  } else {
+    tdee = calcNeedsBanda(member); // fallback: bandas (niños siempre, o adultos sin peso/altura)
+  }
+  const objetivo = (tipo!=='nino' && member.objetivo==='perdida') ? 'perdida' : 'mantenimiento';
+  const kcal = objetivo==='perdida' ? Math.max(1200, tdee - 500) : tdee;
+  const protein = Math.round(kcal * 0.15 / 4);
+  const carbs   = Math.round(kcal * 0.50 / 4);
+  const fat     = Math.round(kcal * 0.35 / 9);
+  return { kcal, protein, carbs, fat, tdee, objetivo };
+}
+// Reparto de kcal diarias entre tomas (30/40/30 desayuno/comida/cena), con
+// redistribución proporcional si la persona hace ayuno saltándose una toma.
+const MEAL_SHARE_BASE = { desayuno: 0.30, comida: 0.40, cena: 0.30 };
+function mealShare(member, kind) {
+  const skip = member.ayuno && member.ayuno.salta;
+  if (skip === kind) return 0;
+  if (!skip) return MEAL_SHARE_BASE[kind];
+  return MEAL_SHARE_BASE[kind] / (1 - MEAL_SHARE_BASE[skip]);
+}
+function memberDietPattern(member) {
+  return (member.patronDietetico) || 'omnivoro';
+}
+
+// ============================================================
+// DATE UTILS
+// ============================================================
+function pad(n){return n<10?'0'+n:''+n;}
+function isoDate(d){return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());}
+function parseISO(s){const [y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d);}
+function mondayOf(d){const x=new Date(d);const dow=x.getDay();const diff=(dow===0?-6:1-dow);x.setDate(x.getDate()+diff);return x;}
+function addDays(d,n){const x=new Date(d);x.setDate(x.getDate()+n);return x;}
+function weekDates(monday){return [0,1,2,3,4,5,6].map(i=>addDays(monday,i));}
+const DAY_NAMES = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+const DAY_FULL = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
+const MONTHS = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+function fmtMonthYear(d){return MONTHS[d.getMonth()]+' '+d.getFullYear();}
+function fmtWeekRange(monday){const sun=addDays(monday,6); const sm=monday.getMonth(),em=sun.getMonth(); if(sm===em)return monday.getDate()+'–'+sun.getDate()+' '+MONTHS[sm]+' '+sun.getFullYear(); return monday.getDate()+' '+MONTHS[sm]+' – '+sun.getDate()+' '+MONTHS[em]+' '+sun.getFullYear();}
+
+// ============================================================
+// CUENTAS — multi-familia local. Cada familia = un namespace de
+// localStorage (STORE_KEY::id). Sin backend: el registro es local
+// a este navegador; el PIN es disuasorio (hash), no seguridad real.
+// ============================================================
+const ACCOUNTS_KEY = "e3foods.accounts.v1";
+let accounts = { list: [], activeId: null };
+function pinHash(s){ let h=5381; for(let i=0;i<s.length;i++){ h=((h<<5)+h+s.charCodeAt(i))|0; } return String(h); }
+function genAccountId(){ return 'f'+Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+function getAccount(id){ return accounts.list.find(a=>a.id===id); }
+function activeAccount(){ return getAccount(accounts.activeId); }
+function saveAccounts(){ try{ localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts)); }catch(e){} }
+function loadAccounts(){
+  try{ const raw = localStorage.getItem(ACCOUNTS_KEY); if(raw) accounts = Object.assign(accounts, JSON.parse(raw)); }catch(e){}
+  // migración: datos previos sin sistema de cuentas → pasan a ser la familia "Mi familia"
+  if(!accounts.list.length && localStorage.getItem(STORE_KEY)){
+    const id = genAccountId();
+    accounts.list.push({id, name:"Mi familia", hue:158, pin:null, createdAt:isoDate(new Date())});
+    try{
+      localStorage.setItem(STORE_KEY+"::"+id, localStorage.getItem(STORE_KEY));
+      localStorage.removeItem(STORE_KEY);
+    }catch(e){}
+    accounts.activeId = id;
+    saveAccounts();
+  }
+  if(accounts.activeId && !getAccount(accounts.activeId)) accounts.activeId = null;
+}
+
+// ============================================================
+// ESTADO
+// ============================================================
+const STORE_KEY = "menuFamilia.v2";
+const OLD_KEY = "menuFamilia.v1";
+function storeKey(){ return accounts.activeId ? STORE_KEY+"::"+accounts.activeId : STORE_KEY; }
+function defaultState(){
+  return {
+    members: [],
+    coleMenuByDate: {},
+    weekMenusByMonday: {},
+    customRecipes: [],
+    fridge: [],
+    shoppingChecks: {},
+    shoppingList: [],
+    scope: 'week',
+    signals: [],
+    activeMonday: isoDate(mondayOf(new Date()))
+  };
+}
+let state = defaultState();
+
+function load() {
+  state = defaultState();
+  try {
+    const raw = localStorage.getItem(storeKey());
+    if (raw) { state = Object.assign(state, JSON.parse(raw)); return; }
+    // migración v1 -> v2
+    const old = localStorage.getItem(OLD_KEY);
+    if (old) {
+      const o = JSON.parse(old);
+      if (o.members) state.members = o.members;
+      if (o.customRecipes) state.customRecipes = o.customRecipes;
+      if (o.fridge) state.fridge = o.fridge;
+      // map old day-name based week to current week
+      if (o.weekMenu) {
+        const monday = parseISO(state.activeMonday);
+        const slots = {};
+        ['lunes','martes','miércoles','jueves','viernes'].forEach((dn,i)=>{
+          if (o.weekMenu[dn]?.cena) slots[i] = {comida:null, cena:o.weekMenu[dn].cena};
+        });
+        if (Object.keys(slots).length) state.weekMenusByMonday[state.activeMonday] = slots;
+      }
+      if (o.coleMenu) {
+        const monday = parseISO(state.activeMonday);
+        ['lunes','martes','miércoles','jueves','viernes'].forEach((dn,i)=>{
+          if (o.coleMenu[dn]) state.coleMenuByDate[isoDate(addDays(monday,i))] = o.coleMenu[dn];
+        });
+      }
+      save();
+    }
+  } catch(e) { console.warn("Carga:", e); }
+}
+function save(){try{localStorage.setItem(storeKey(), JSON.stringify(state));}catch(e){alert("No se pudo guardar.");}}
+// ============================================================
+// EJES DE PLATO — hidrato (para anti-repetición) + etiquetas + inferencia
+// de respaldo (solo para recetas propias/importadas que no declaren ejes).
+// ============================================================
+const HIDRATOS = ['arroz','pasta','patata','pan','cuscus','avena'];
+const BASE_LABELS = {arroz:'Arroz',pasta:'Pasta',patata:'Patata',pan:'Pan',cuscus:'Cuscús',avena:'Avena',legumbre:'Legumbre',verdura:'Verdura',ninguno:'Sin hidrato'};
+// Proteínas "específicas": repetirlas el mismo día sí se nota (pollo dos veces). legumbre/vegetal
+// son categorías paraguas (lentejas≠garbanzos≠crema de calabaza) y no cuentan, igual que "verdura"
+// nunca contó como hidrato — necesario además porque vegano solo tiene 2 categorías para 3 comidas/día.
+const PROTEINAS_ESPECIFICAS = ['pollo','pescado','carne','huevo'];
+function inferProtein(r){
+  const ing=((r.ingredientes||[]).map(i=>i.n).join(' ')+' '+(r.nombre||'')).toLowerCase();
+  if(/(pollo|pavo)/.test(ing))return'pollo';
+  if(/(merluza|salm|lubina|bacalao|at[uú]n|pescado|gamba|langostino|marisco|boquer|calamar|sepia|mejill)/.test(ing))return'pescado';
+  if(/(ternera|cerdo|carne|hamburg|alb[oó]ndig|chuleta|solomillo|jam[oó]n|chorizo|salchich|moruno)/.test(ing))return'carne';
+  if(/(lenteja|garbanzo|alubia|jud[ií]a|\bfab|hummus)/.test(ing))return'legumbre';
+  if(/(huevo|tortilla|frittata|quiche)/.test(ing))return'huevo';
+  if(/(yogur|queso|requesón|leche)/.test(ing))return'lacteos';
+  return'vegetal';
+}
+function inferHidrato(r){
+  const blob=((r.nombre||'')+' '+(r.ingredientes||[]).map(i=>i.n).join(' ')).toLowerCase();
+  if(/(arroz|paella|risotto)/.test(blob))return'arroz';
+  if(/(pasta|macarr|espagueti|lasaña|tallarin|fideo|ñoqui|noqui|canelon|raviol)/.test(blob))return'pasta';
+  if(/avena/.test(blob))return'avena';
+  if(/cusc[uú]s/.test(blob))return'cuscus';
+  if(/(patata|boniato|pur[eé])/.test(blob))return'patata';
+  if(/(\bpan\b|wrap|tortilla de trigo|masa|pizza|empanada|\btaco)/.test(blob))return'pan';
+  return'ninguno';
+}
+function inferVerdura(r){
+  const VEG_RX=/(tomate|cebolla|calabacín|calabaza|pimiento|zanahoria|espinacas|lechuga|pepino|berenjena|brócoli|champiñones|setas|puerro|judía verde|alcachofa|aguacate|manzana|plátano|fresas|arándanos)/gi;
+  const found=new Set(); (r.ingredientes||[]).forEach(i=>{ const m=i.n.match(VEG_RX); if(m) m.forEach(x=>found.add(x.toLowerCase())); });
+  return [...found];
+}
+// Añade los ejes a cualquier receta que no los traiga ya (banco base y desayunos ya los declaran). Idempotente.
+function ensureAxes(r){
+  if(!r||r._ax) return r;
+  if(!r.proteina) r.proteina=inferProtein(r);
+  if(!r.hidrato) r.hidrato=inferHidrato(r);
+  if(!r.verdura || !r.verdura.length) r.verdura=inferVerdura(r);
+  if(r.proteina_separable===undefined) r.proteina_separable=false;
+  if(r.contiene_huevo===undefined) r.contiene_huevo=/huevo/i.test((r.ingredientes||[]).map(i=>i.n).join(' '));
+  if(r.contiene_lacteos===undefined) r.contiene_lacteos=EGGDAIRY_RX.test((r.ingredientes||[]).map(i=>i.n).join(' ').replace(/huevo/gi,''));
+  if(!r.tiempo) r.tiempo='rapido';
+  if(!r.slots) r.slots=['comida','cena'];
+  r._ax=true; return r;
+}
+function getAllRecipes(){return [...RECIPES, ...BREAKFAST, ...(state.customRecipes||[])].map(ensureAxes);}
+function getRecipe(id){return getAllRecipes().find(r=>r.id===id);}
+
+// ============================================================
+// NAV
+// ============================================================
+const TAB_BTNS = [...document.querySelectorAll(".tab-btn")];
+const navIndicator = document.createElement("div");
+navIndicator.className = "nav-indicator";
+document.querySelector("nav").appendChild(navIndicator);
+function positionNavIndicator(){
+  const active = document.querySelector(".tab-btn.active");
+  const nav = document.querySelector("nav");
+  if(!active) return;
+  const ar = active.getBoundingClientRect(), nr = nav.getBoundingClientRect();
+  navIndicator.style.left = (ar.left - nr.left) + "px";
+  navIndicator.style.width = ar.width + "px";
+}
+const MORE_TABS = ['cole','nevera','ajustes'];
+let currentTab = 'semana';
+function tabButtonFor(name){ return MORE_TABS.includes(name) ? document.getElementById('tab-btn-more') : document.querySelector(`.tab-btn[data-tab="${name}"]`); }
+function activateTab(name){
+  const btn = tabButtonFor(name); if(!btn || !document.getElementById("tab-"+name)) return;
+  const fromIdx = TAB_BTNS.findIndex(x=>x.classList.contains("active"));
+  const toIdx = TAB_BTNS.indexOf(btn);
+  TAB_BTNS.forEach(x=>x.classList.remove("active"));
+  document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active","enter-fwd","enter-back"));
+  btn.classList.add("active");
+  const panel = document.getElementById("tab-"+name);
+  panel.classList.add("active", toIdx>=fromIdx ? "enter-fwd" : "enter-back");
+  currentTab = name;
+  positionNavIndicator();
+  if(name==="recetas")renderRecipes();
+  if(name==="ajustes"){renderState();renderFamilySettings();}
+  if(name==="cole")renderColeCalendar();
+  if(name==="semana")renderWeek();
+  window.scrollTo({top:0});
+}
+TAB_BTNS.forEach(b=>{
+  b.addEventListener("click",()=>{
+    if(b.id==='tab-btn-more'){ openMoreSheet(); return; }
+    activateTab(b.dataset.tab);
+  });
+});
+function openMoreSheet(){
+  document.querySelectorAll('#more-sheet .more-row').forEach(r=>r.classList.toggle('current', r.dataset.more===currentTab));
+  document.getElementById('more-sheet').classList.add('active');
+}
+function goMore(name){ closeModal('more-sheet'); activateTab(name); }
+window.addEventListener("resize", positionNavIndicator);
+positionNavIndicator();
+
+// menú desbordamiento de acciones de semana (⋯)
+function toggleWeekMenu(e){ if(e) e.stopPropagation(); document.getElementById("week-menu").classList.toggle("open"); }
+document.addEventListener("click", e=>{
+  const m = document.getElementById("week-menu");
+  if(m && m.classList.contains("open") && !e.target.closest(".menu-wrap")) m.classList.remove("open");
+});
+
+// arrastrar hacia abajo para cerrar el bottom-sheet — gesto compuesto 2026 (no solo tap en la ×)
+document.querySelectorAll(".modal-content").forEach(sheet=>{
+  let startY=0, dy=0, dragging=false;
+  sheet.addEventListener("touchstart", e=>{
+    if(sheet.scrollTop>0) return; // no interferir si el usuario está leyendo contenido largo
+    startY=e.touches[0].clientY; dragging=true; sheet.classList.add("dragging");
+  }, {passive:true});
+  sheet.addEventListener("touchmove", e=>{
+    if(!dragging) return;
+    dy = Math.max(0, e.touches[0].clientY - startY);
+    sheet.style.transform = `translateY(${dy}px)`;
+  }, {passive:true});
+  sheet.addEventListener("touchend", ()=>{
+    if(!dragging) return;
+    dragging=false; sheet.classList.remove("dragging");
+    if(dy>90){ const modal=sheet.closest(".modal"); if(modal) modal.classList.remove("active"); }
+    sheet.style.transform="";
+    dy=0;
+  });
+});
+
+// ============================================================
+// FAMILIA
+// ============================================================
+let editingMemberId = null;
+function memberHue(m){ const i = state.members.findIndex(x=>x.id===m.id); return ACCOUNT_HUES[(i<0?0:i) % ACCOUNT_HUES.length]; }
+function renderMembers(){
+  const c = document.getElementById("members-list");
+  if(!state.members.length){c.innerHTML='<div class="empty-state"><h3>Aún no hay miembros</h3><p>Añade a tu familia.</p></div>';return;}
+  c.innerHTML = state.members.map(m=>{
+    const ini = m.name?m.name.charAt(0).toUpperCase():"?";
+    const age = calcAge(m.birthYear);
+    const tipo = deriveTipo(age);
+    const meta = [age+" años", m.sex||"", tipo, "actividad "+(m.activity||'media')].filter(Boolean).join(" · ");
+    const patron = memberDietPattern(m);
+    const patronTag = patron!=='omnivoro' ? '<div class="member-meta">🌱 '+patron+'</div>' : '';
+    const objTag = (tipo!=='nino' && m.objetivo==='perdida') ? '<div class="member-meta">🎯 pérdida de peso</div>' : '';
+    const ayunoTag = (m.ayuno && m.ayuno.salta) ? '<div class="member-meta">⏱ ayuno: salta '+(MEAL_LABELS[m.ayuno.salta]||m.ayuno.salta).toLowerCase()+'</div>' : '';
+    const restr = m.restrictions?.length?'<div class="member-meta">⚠ '+m.restrictions.join(", ")+'</div>':'';
+    const dis = m.dislikes?.length?'<div class="member-meta">✗ '+m.dislikes.join(", ")+'</div>':'';
+    const n = calcNeeds(m);
+    const estFallback = (tipo!=='nino' && (!m.peso||!m.altura)) ? ' <span style="color:var(--muted)">· estimado por banda (falta peso/altura)</span>' : '';
+    const needs = `<div class="member-meta" style="margin-top:6px;padding:6px 8px;background:var(--elev3);border-radius:8px;font-size:11px;line-height:1.8;">
+      <strong style="color:var(--ink)">${n.kcal} kcal/día</strong>${n.objetivo==='perdida'?' <span style="color:var(--muted)">(déficit −500)</span>':''} &nbsp;·&nbsp;
+      Proteína <strong>${n.protein}g</strong> &nbsp;·&nbsp;
+      Hidratos <strong>${n.carbs}g</strong> &nbsp;·&nbsp;
+      Grasa <strong>${n.fat}g</strong>${estFallback}
+    </div>`;
+    const hue = memberHue(m);
+    return `<div class="member"><div class="member-avatar" style="background:linear-gradient(135deg, hsl(${hue} 60% 52%), hsl(${(hue+40)%360} 55% 40%));">${ini}</div><div class="member-info"><div class="member-name">${m.name}</div><div class="member-meta">${meta}</div>${patronTag}${objTag}${ayunoTag}${restr}${dis}${needs}</div><button class="tiny" onclick="editMember('${m.id}')">Editar</button> <button class="tiny" onclick="deleteMember('${m.id}')">Eliminar</button></div>`;
+  }).join("");
+}
+// Onboarding progresivo: solo nombre+nacimiento+sexo son obligatorios. El resto
+// (actividad/altura/peso/objetivo/ayuno/patrón/alergias) vive en "Detalles avanzados",
+// colapsado por defecto en alta nueva — no bloquea el primer uso.
+function openMemberModal(){
+  editingMemberId=null;
+  document.getElementById("member-modal-title").textContent="Nuevo miembro";
+  ["m-name","m-birthYear","m-altura","m-peso","m-restrictions","m-dislikes"].forEach(id=>document.getElementById(id).value="");
+  document.getElementById("m-sex").value="hombre";
+  document.getElementById("m-activity").value="media";
+  document.getElementById("m-objetivo").value="mantenimiento";
+  document.getElementById("m-ayuno").value="";
+  document.getElementById("m-patron").value="omnivoro";
+  document.getElementById("member-advanced").classList.remove("open");
+  document.getElementById("member-modal").classList.add("active");
+}
+function editMember(id){
+  const m=state.members.find(x=>x.id===id);if(!m)return;
+  editingMemberId=id;
+  document.getElementById("member-modal-title").textContent="Editar miembro";
+  document.getElementById("m-name").value=m.name;
+  document.getElementById("m-birthYear").value=m.birthYear||"";
+  document.getElementById("m-sex").value=m.sex||"hombre";
+  document.getElementById("m-activity").value=m.activity||"media";
+  document.getElementById("m-altura").value=m.altura||"";
+  document.getElementById("m-peso").value=m.peso||"";
+  document.getElementById("m-objetivo").value=m.objetivo||"mantenimiento";
+  document.getElementById("m-ayuno").value=(m.ayuno&&m.ayuno.salta)||"";
+  document.getElementById("m-patron").value=m.patronDietetico||"omnivoro";
+  document.getElementById("m-restrictions").value=(m.restrictions||[]).join(", ");
+  document.getElementById("m-dislikes").value=(m.dislikes||[]).join(", ");
+  const hasAdvanced = m.altura||m.peso||(m.objetivo&&m.objetivo!=='mantenimiento')||(m.ayuno&&m.ayuno.salta)||(m.patronDietetico&&m.patronDietetico!=='omnivoro')||(m.restrictions&&m.restrictions.length);
+  document.getElementById("member-advanced").classList.toggle("open", !!hasAdvanced);
+  document.getElementById("member-modal").classList.add("active");
+}
+function toggleMemberAdvanced(){ document.getElementById("member-advanced").classList.toggle("open"); }
+function saveMember(){
+  const birthYear = parseInt(document.getElementById("m-birthYear").value)||new Date().getFullYear()-30;
+  const age = calcAge(birthYear);
+  const ayunoSalta = document.getElementById("m-ayuno").value;
+  const data={
+    id:editingMemberId||"m"+Date.now(),
+    name:document.getElementById("m-name").value.trim(),
+    birthYear, sex:document.getElementById("m-sex").value, type:deriveTipo(age),
+    activity:document.getElementById("m-activity").value,
+    altura: parseFloat(document.getElementById("m-altura").value)||null,
+    peso: parseFloat(document.getElementById("m-peso").value)||null,
+    objetivo: document.getElementById("m-objetivo").value,
+    ayuno: ayunoSalta ? {salta:ayunoSalta} : null,
+    patronDietetico: document.getElementById("m-patron").value,
+    restrictions:document.getElementById("m-restrictions").value.split(",").map(s=>s.trim().toLowerCase()).filter(Boolean),
+    dislikes:document.getElementById("m-dislikes").value.split(",").map(s=>s.trim()).filter(Boolean)
+  };
+  if(!data.name){alert("Pon un nombre");return;}
+  if(editingMemberId)state.members=state.members.map(m=>m.id===editingMemberId?data:m);
+  else state.members.push(data);
+  save();renderMembers();closeModal("member-modal");
+}
+function deleteMember(id){if(!confirm("¿Eliminar?"))return;state.members=state.members.filter(m=>m.id!==id);save();renderMembers();}
+
+// ============================================================
+// MENU COLE
+// ============================================================
+function processColeInput(){
+  const txt = document.getElementById("cole-input").value.trim();
+  if(!txt){alert("Pega contenido");return;}
+  // Try JSON first
+  try{
+    const data = JSON.parse(txt);
+    const menu = data.coleMenuByDate || data;
+    let added = 0;
+    Object.entries(menu).forEach(([k,v])=>{if(/^\d{4}-\d{2}-\d{2}$/.test(k)){state.coleMenuByDate[k]=v;added++;}});
+    if(added){
+      // jump to first imported date
+      const firstDate = Object.keys(menu).sort()[0];
+      if(firstDate)state.activeMonday=isoDate(mondayOf(parseISO(firstDate)));
+      save();renderColeCalendar();renderWeek();alert(`Importados ${added} días de menú escolar.`);
+      return;
+    }
+  }catch(e){}
+  // Fallback: parse free text "Lunes 13: ..." or "Lunes: ..." for active week
+  const lines = txt.split("\n").map(l=>l.trim()).filter(Boolean);
+  const monday = parseISO(state.activeMonday);
+  let added = 0;
+  lines.forEach(line=>{
+    const m = line.match(/^(lunes|martes|mi[eé]rcoles|jueves|viernes|s[aá]bado|domingo)\s*(\d+)?\s*[:\-]\s*(.+)$/i);
+    if(m){
+      const day = m[1].toLowerCase().replace('é','e').replace('á','a');
+      const dayIdx = ['lunes','martes','miercoles','jueves','viernes','sabado','domingo'].indexOf(day);
+      if(dayIdx>=0){
+        const date = isoDate(addDays(monday, dayIdx));
+        state.coleMenuByDate[date] = m[3].trim();
+        added++;
+      }
+    }
+  });
+  if(added){save();renderColeCalendar();renderWeek();alert(`Importados ${added} días en la semana activa.`);}
+  else alert("No he reconocido el formato. Usa JSON o líneas tipo 'Lunes 13: lentejas...'");
+}
+function importColeFile(ev){
+  const f = ev.target.files[0]; if(!f)return;
+  const r = new FileReader();
+  r.onload = e => {document.getElementById("cole-input").value=e.target.result; processColeInput();};
+  r.readAsText(f);
+}
+function clearColeMonth(){
+  const monday = parseISO(state.activeMonday);
+  const month = monday.getMonth(), year = monday.getFullYear();
+  if(!confirm(`¿Vaciar el menú escolar de ${MONTHS[month]} ${year}?`))return;
+  Object.keys(state.coleMenuByDate).forEach(k=>{
+    const d = parseISO(k);
+    if(d.getMonth()===month && d.getFullYear()===year) delete state.coleMenuByDate[k];
+  });
+  save();renderColeCalendar();renderWeek();
+}
+function navMonth(dir){
+  const monday = parseISO(state.activeMonday);
+  monday.setMonth(monday.getMonth()+dir);
+  state.activeMonday = isoDate(mondayOf(monday));
+  save();renderColeCalendar();renderWeek();
+}
+function renderColeCalendar(){
+  const monday = parseISO(state.activeMonday);
+  document.getElementById("cole-month-label").textContent = fmtMonthYear(monday);
+  const month = monday.getMonth(), year = monday.getFullYear();
+  // get all weeks of this month
+  const first = new Date(year, month, 1);
+  const last = new Date(year, month+1, 0);
+  let firstMon = mondayOf(first);
+  const weeks = [];
+  for(let m = new Date(firstMon); m<=last; m=addDays(m,7)){
+    weeks.push(weekDates(m));
+  }
+  let html = '<table class="cole-table"><thead><tr><th>Semana</th><th>Lun</th><th>Mar</th><th>Mié</th><th>Jue</th><th>Vie</th></tr></thead><tbody>';
+  weeks.forEach(week=>{
+    html += '<tr><td class="date-cell">'+week[0].getDate()+'–'+week[4].getDate()+'</td>';
+    for(let i=0;i<5;i++){
+      const d = week[i];
+      const inMonth = d.getMonth()===month;
+      const text = state.coleMenuByDate[isoDate(d)];
+      html += `<td>${inMonth?'<div style="font-size:10px;color:#C9A96E;font-weight:600;">'+DAY_NAMES[i]+' '+d.getDate()+'</div>':''}<div class="${text?'':'empty-cell'}">${text||(inMonth?'(sin datos)':'')}</div></td>`;
+    }
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+  document.getElementById("cole-calendar").innerHTML = html;
+}
+function goToday(){state.activeMonday=isoDate(mondayOf(new Date()));save();renderColeCalendar();renderWeek();}
+
+// ============================================================
+// SEMANA - generación con anti-rep
+// ============================================================
+function detectColeProtein(text){
+  if(!text)return null;
+  const t=text.toLowerCase();
+  if(/(merluza|salm[oó]n|lubina|bacalao|at[uú]n|boquer|pescado|gamba|langostino|calamar|sepia|mejill|anchoa)/i.test(t))return"pescado";
+  if(/(pollo|pavo|gall[oa] dindi|gall dindi)/i.test(t))return"pollo";
+  if(/(ternera|cerdo|hamburguesa|alb[oó]ndiga|chuleta|filete|salchicha|jam[oó]n|magro|rost|ranchero|chorizo|croqueta)/i.test(t))return"carne";
+  if(/(lenteja|garbanzo|alubia|jud[ií]a|fab|legumbre|falafel|frijol)/i.test(t))return"legumbre";
+  if(/(huevo|tortilla)/i.test(t))return"huevo";
+  if(/(pasta|macarr|espagueti|lasaña|tallarin|sopa de letras)/i.test(t))return"pasta";
+  if(/(arroz|paella|risotto)/i.test(t))return"arroz";
+  return null;
+}
+function detectColeBase(text){
+  if(!text)return null;
+  const t=text.toLowerCase();
+  if(/(arroz|paella|risotto)/.test(t))return"arroz";
+  if(/(pasta|macarr|espagueti|lasaña|tallarin|fideo|fideu|ñoqui|noqui|canelon|raviol|sopa de letras|sopa de fideo)/.test(t))return"pasta";
+  if(/cusc[uú]s/.test(t))return"cuscus";
+  if(/(patata|pur[eé]|boniato)/.test(t))return"patata";
+  if(/(lenteja|garbanzo|alubia|jud[ií]a|\bfab)/.test(t))return"legumbre";
+  if(/(\bpan\b|bocadillo|wrap|pizza|empanada|\btaco|masa)/.test(t))return"pan";
+  return null;
+}
+function navWeek(dir){
+  const monday = parseISO(state.activeMonday);
+  state.activeMonday = isoDate(addDays(monday, 7*dir));
+  save();renderWeek();
+}
+function getActiveWeek(){
+  const monday = parseISO(state.activeMonday);
+  return weekDates(monday).map((d,i)=>({
+    index:i, date:d, iso:isoDate(d),
+    cole: state.coleMenuByDate[isoDate(d)] || "",
+    slot: (state.weekMenusByMonday[state.activeMonday]||{})[i] || {desayuno:null, comida:null, cena:null}
+  }));
+}
+// Señal de aceptación/rechazo (semilla — no se explota aún, solo se acumula para uso futuro)
+function logSignal(type, recipeId, dayIdx, kind){
+  if(!state.signals) state.signals=[];
+  state.signals.push({ts:Date.now(), type, recipeId, day:dayIdx, kind});
+  if(state.signals.length>500) state.signals=state.signals.slice(-500);
+}
+// pattern opcional: en mesa mixta, a qué patrón dietético se asigna esta receta
+function setSlot(dayIdx, mealKind, recipeId, pattern){
+  const wk = state.weekMenusByMonday[state.activeMonday] || (state.weekMenusByMonday[state.activeMonday]={});
+  if(!wk[dayIdx]) wk[dayIdx] = {desayuno:null,comida:null,cena:null};
+  const slot = wk[dayIdx];
+  if(pattern){
+    if(!slot[mealKind+'ByPattern']) slot[mealKind+'ByPattern']={};
+    const prev = slot[mealKind+'ByPattern'][pattern];
+    if(prev && prev!==recipeId) logSignal('rejected', prev, dayIdx, mealKind);
+    slot[mealKind+'ByPattern'][pattern] = recipeId;
+  } else {
+    const prev = slot[mealKind];
+    if(prev && prev!==recipeId) logSignal('rejected', prev, dayIdx, mealKind);
+    slot[mealKind] = recipeId;
+    delete slot[mealKind+'ByPattern'];
+  }
+  save();renderWeek();
+}
+// ============================================================
+// GENERADOR — mesa mixta: hidrato compartido (base) + proteína resuelta
+// por persona según su patrón dietético. 3 tomas (desayuno/comida/cena).
+// ============================================================
+function generateWeek(mode, skipConfirm){
+  // mode: 'desayuno' | 'comida' | 'cena' | 'all'
+  const recipes = getAllRecipes();
+  if(!recipes.length){alert("No hay recetas");return;}
+  const week = getActiveWeek();
+  const members = state.members;
+  if(!members.length){activateTab('familia');alert("Añade primero a tu familia — los menús se generan a su medida.");return;}
+  const existingSlots = state.weekMenusByMonday[state.activeMonday];
+  if(!skipConfirm && mode==='all' && existingSlots && Object.keys(existingSlots).length && !confirm("Regenerar la semana reemplaza las comidas ya asignadas. ¿Continuar?")) return;
+  buzz();
+  const hasNino = members.some(m=>m.type==="nino");
+  const allDislikes = [].concat(...members.map(m=>m.dislikes||[])).map(s=>s.toLowerCase());
+  const usedIds = new Set();
+  const usedHidrato = {};
+  const usedProtByPerson = {}; members.forEach(m=>usedProtByPerson[m.id]={});
+  const dayHidratos = week.map(()=>new Set());
+  // Proteína ya asignada HOY a cada persona (bloqueo duro, no repite ni entre desayuno/comida/cena).
+  // Se siembra con lo que ya hubiera en el slot (regenerar solo una toma respeta las otras).
+  function proteinInSlotForPerson(wkSlot, kind, member){
+    if(!wkSlot) return null;
+    const byPattern = wkSlot[kind+'ByPattern'];
+    const id = byPattern ? byPattern[memberDietPattern(member)] : wkSlot[kind];
+    if(!id) return null;
+    const r=getRecipe(id); return r?r.proteina:null;
+  }
+  const existingWk = state.weekMenusByMonday[state.activeMonday]||{};
+  const dayProtByPerson = week.map(d=>{
+    const map=new Map(); members.forEach(m=>map.set(m.id,new Set()));
+    const wkSlot = existingWk[d.index];
+    ['desayuno','comida','cena'].forEach(k=>members.forEach(m=>{
+      const p=proteinInSlotForPerson(wkSlot,k,m); if(p) map.get(m.id).add(p);
+    }));
+    return map;
+  });
+
+  function eatersFor(kind, d){
+    return members.filter(m=>{
+      if(kind==='comida' && m.type==='nino' && d.cole && d.date.getDay()!==0 && d.date.getDay()!==6) return false;
+      return mealShare(m, kind) > 0;
+    });
+  }
+  function tiempoBiasFor(d){
+    const dow = d.date.getDay();
+    if(d.index<=3) return 'rapido';          // Lun-Jue
+    if(dow===0||dow===6) return 'elaborado'; // Sáb-Dom
+    return null;                              // Viernes: neutro
+  }
+  function candidateScore(r, ctx){
+    let s = Math.random()*0.3;
+    if(ctx.coleProt && r.proteina===ctx.coleProt) s -= 100;
+    if(ctx.sibProt && r.proteina===ctx.sibProt) s -= 8;
+    s -= (ctx.usedProt[r.proteina]||0)*1.5;
+    if(usedIds.has(r.id)) s -= 50;
+    if(hasNino && r.kid_friendly) s += 1;
+    if(hasNino && !r.kid_friendly) s -= 0.5;
+    const ingNames = r.ingredientes.map(i=>i.n.toLowerCase()).join(" ");
+    allDislikes.forEach(d2=>{ if(d2 && ingNames.includes(d2)) s -= 3; });
+    if(ctx.sameDay.has(r.hidrato)) s -= 60;
+    if(ctx.prevDay && ctx.prevDay.has(r.hidrato)) s -= 25;
+    s -= (usedHidrato[r.hidrato]||0)*1.2;
+    if(ctx.tiempoBias && r.tiempo===ctx.tiempoBias) s += 15;
+    return s;
+  }
+  function commitRecipe(r){
+    usedIds.add(r.id);
+    if(HIDRATOS.includes(r.hidrato)) usedHidrato[r.hidrato]=(usedHidrato[r.hidrato]||0)+1;
+  }
+  function trackPerson(m, r){ usedProtByPerson[m.id][r.proteina]=(usedProtByPerson[m.id][r.proteina]||0)+1; }
+
+  function generateSlot(d, kind, coleProt, sibProt){
+    const eaters = eatersFor(kind, d);
+    if(!eaters.length) return null;
+    const candidates = recipes.filter(r=>r.slots.includes(kind));
+    const patterns = [...new Set(eaters.map(memberDietPattern))];
+    const sameDay = new Set(dayHidratos[d.index]);
+    const prevDay = d.index>0 ? dayHidratos[d.index-1] : null;
+    const tiempoBias = tiempoBiasFor(d);
+    const dayProt = dayProtByPerson[d.index];
+
+    function bestFor(pattern, pool){
+      const membersOfPattern = eaters.filter(m=>memberDietPattern(m)===pattern);
+      let allowed = pool.filter(r=>recipeAllowedForPattern(r,pattern) &&
+        membersOfPattern.every(m=>recipeAllowedForAllergies(r,(m.restrictions||[]).map(s=>s.toLowerCase()))));
+      if(!allowed.length) return null;
+      // duro: no repetir hoy el mismo hidrato (con fallback si vacía el pool) — la propia petición de Roger (fideuá/pasta)
+      const noHidratoRepeat = allowed.filter(r=>!sameDay.has(r.hidrato));
+      if(noHidratoRepeat.length) allowed = noHidratoRepeat;
+      // duro: no repetir hoy la misma proteína ESPECÍFICA (pollo/pescado/carne/huevo) para estas personas.
+      // legumbre/vegetal quedan fuera: son categorías paraguas (lentejas≠garbanzos≠crema de calabaza),
+      // igual que "verdura" nunca contó como hidrato — y con solo 2 categorías veganas, 3 comidas/día
+      // siempre repetirían alguna por pura combinatoria.
+      const noRepeatToday = allowed.filter(r=>!PROTEINAS_ESPECIFICAS.includes(r.proteina) || !membersOfPattern.some(m=>dayProt.get(m.id).has(r.proteina)));
+      if(noRepeatToday.length) allowed = noRepeatToday;
+      const usedProtAvg = {};
+      membersOfPattern.forEach(m=>{ Object.entries(usedProtByPerson[m.id]).forEach(([p,c])=>{ usedProtAvg[p]=(usedProtAvg[p]||0)+c/membersOfPattern.length; }); });
+      const ranked = allowed.map(r=>({r, s:candidateScore(r,{coleProt, sibProt, usedProt:usedProtAvg, sameDay, prevDay, tiempoBias})})).sort((a,b)=>b.s-a.s);
+      return ranked[0];
+    }
+    function markDay(m, r){ dayProt.get(m.id).add(r.proteina); }
+
+    if(patterns.length===1){
+      const best = bestFor(patterns[0], candidates);
+      if(!best) return null;
+      commitRecipe(best.r); if(HIDRATOS.includes(best.r.hidrato)) dayHidratos[d.index].add(best.r.hidrato);
+      eaters.forEach(m=>{trackPerson(m,best.r); markDay(m,best.r);});
+      return { single: best.r.id };
+    }
+    // mesa mixta: mejor hidrato compartido factible para TODOS los patrones presentes
+    const hidratoValues = [...new Set(candidates.map(r=>r.hidrato))];
+    let bestBucket=null;
+    hidratoValues.forEach(h=>{
+      const pool = candidates.filter(r=>r.hidrato===h);
+      const perPattern = {}; let feasible=true, total=0;
+      patterns.forEach(p=>{ const b=bestFor(p,pool); if(!b){feasible=false;return;} perPattern[p]=b; total+=b.s; });
+      if(feasible && (!bestBucket || total>bestBucket.total)) bestBucket={h, perPattern, total};
+    });
+    if(bestBucket){
+      const byPattern={};
+      patterns.forEach(p=>{
+        const r=bestBucket.perPattern[p].r; byPattern[p]=r.id; commitRecipe(r);
+        eaters.filter(m=>memberDietPattern(m)===p).forEach(m=>{trackPerson(m,r); markDay(m,r);});
+      });
+      if(HIDRATOS.includes(bestBucket.h)) dayHidratos[d.index].add(bestBucket.h);
+      return { byPattern, hidratoCompartido:true };
+    }
+    // fallback (raro): ningún hidrato sirve a todos los patrones a la vez → cada patrón su mejor receta
+    const byPattern={}; let firstH=null, sharedOk=true;
+    patterns.forEach(p=>{
+      const b=bestFor(p,candidates); if(!b) return;
+      byPattern[p]=b.r.id; commitRecipe(b.r);
+      if(firstH===null) firstH=b.r.hidrato; else if(firstH!==b.r.hidrato) sharedOk=false;
+      if(HIDRATOS.includes(b.r.hidrato)) dayHidratos[d.index].add(b.r.hidrato);
+      eaters.filter(m=>memberDietPattern(m)===p).forEach(m=>{trackPerson(m,b.r); markDay(m,b.r);});
+    });
+    return { byPattern, hidratoCompartido:sharedOk };
+  }
+
+  const wk = state.weekMenusByMonday[state.activeMonday] || (state.weekMenusByMonday[state.activeMonday]={});
+  week.forEach(d=>{
+    const coleProt = detectColeProtein(d.cole);
+    const coleBase = detectColeBase(d.cole);
+    if(coleBase && HIDRATOS.includes(coleBase)) dayHidratos[d.index].add(coleBase);
+    if(!wk[d.index]) wk[d.index] = {desayuno:null, comida:null, cena:null};
+    const slot = wk[d.index];
+    const isWeekendDay = d.date.getDay()===0 || d.date.getDay()===6;
+
+    if(mode==='desayuno' || mode==='all'){
+      const res = generateSlot(d,'desayuno', null, null);
+      if(res){ if(res.single){slot.desayuno=res.single; delete slot.desayunoByPattern;} else {slot.desayunoByPattern=res.byPattern; slot.desayuno=null;} }
+    }
+    if((mode==='comida' || mode==='all') && (!d.cole || isWeekendDay)){
+      const sibId = slot.cena || (slot.cenaByPattern && Object.values(slot.cenaByPattern)[0]);
+      const sib = sibId?getRecipe(sibId):null;
+      const res = generateSlot(d,'comida', null, sib?sib.proteina:null);
+      if(res){ if(res.single){slot.comida=res.single; delete slot.comidaByPattern;} else {slot.comidaByPattern=res.byPattern; slot.comida=null;} }
+    }
+    if(mode==='cena' || mode==='all'){
+      const comId = slot.comida || (slot.comidaByPattern && Object.values(slot.comidaByPattern)[0]);
+      const com = comId?getRecipe(comId):null;
+      const res = generateSlot(d,'cena', coleProt, com?com.proteina:null);
+      if(res){ if(res.single){slot.cena=res.single; delete slot.cenaByPattern;} else {slot.cenaByPattern=res.byPattern; slot.cena=null;} }
+    }
+  });
+  save(); window.__justGenerated=true; renderWeek();
+}
+function clearWeek(){
+  if(!confirm("¿Vaciar todas las comidas y cenas de la semana activa?"))return;
+  delete state.weekMenusByMonday[state.activeMonday];
+  save();renderWeek();
+}
+const MEAL_LABELS = {desayuno:'Desayuno', comida:'Comida', cena:'Cena'};
+const PROTEIN_ICO = {pollo:'🐔',pescado:'🐟',carne:'🥩',huevo:'🥚',legumbre:'🫘',vegetal:'🥬',lacteos:'🥛'};
+function platoTags(r){
+  const proteinaHTML = `<span class="plato-proteina"><span class="ico">${PROTEIN_ICO[r.proteina]||'🍽️'}</span>${r.proteina}</span>`;
+  const verduraHTML = (r.verdura&&r.verdura.length)?`<span class="plato-verdura">${r.verdura.slice(0,2).join(', ')}</span>`:'';
+  const hidratoTag = (r.hidrato&&r.hidrato!=='ninguno')?`<span class="tag base-${r.hidrato}">${BASE_LABELS[r.hidrato]||r.hidrato}</span>`:'';
+  const tiempoTag = `<span class="tag tiempo-${r.tiempo}">${r.tiempo==='rapido'?'rápido':'elaborado'}</span>`;
+  return {proteinaHTML, verduraHTML, hidratoTag, tiempoTag};
+}
+function renderWeek(){
+  const monday = parseISO(state.activeMonday);
+  document.getElementById("week-label").textContent = fmtWeekRange(monday);
+  const week = getActiveWeek();
+  const grid = document.getElementById("week-grid");
+  if(!state.members.length){
+    grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><h3>Primero, tu familia</h3><p>Añade a los comensales: los menús, calorías y restricciones se calculan por persona.</p><button class="primary" onclick="activateTab(\'familia\')">Añadir a mi familia</button></div>';
+    document.getElementById("week-stats").innerHTML = "";
+    return;
+  }
+  grid.innerHTML = week.map(d=>{
+    const isWeekend = d.date.getDay()===0 || d.date.getDay()===6;
+    let coleHTML = '';
+    if(d.cole){
+      const cpRaw = detectColeProtein(d.cole), cb = detectColeBase(d.cole);
+      const cp = ['pescado','pollo','carne','legumbre','huevo'].includes(cpRaw) ? cpRaw : null;
+      const cProtHTML = cp ? `<span class="plato-proteina"><span class="ico">${PROTEIN_ICO[cp]||''}</span>${cp}</span>` : '';
+      const cHidHTML = (cb && HIDRATOS.includes(cb)) ? `<span class="tag base-${cb}">${BASE_LABELS[cb]}</span>` : '';
+      coleHTML = `<div class="meal-slot cole"><div class="label">Cole</div><div class="name" style="font-size:11px;line-height:1.25">${d.cole}</div>${(cProtHTML||cHidHTML)?`<div class="meta-row">${cProtHTML}${cHidHTML}</div>`:''}</div>`;
+    }
+    const renderRow = (r, kind, pattern, isSecond) => {
+      const {proteinaHTML, verduraHTML, hidratoTag} = platoTags(r);
+      const patternLabel = pattern ? `<div class="diet-label">${pattern}</div>` : '';
+      const divider = isSecond ? ' style="border-top:1px solid var(--line);padding-top:10px;margin-top:10px;"' : '';
+      return `<div${divider}>${patternLabel}<div class="name clickable" onclick="openRecipeModal('${r.id}',${d.index},'${kind}'${pattern?`,'${pattern}'`:''})">${r.nombre}</div><div class="meta-row">${proteinaHTML}${verduraHTML}${hidratoTag}</div><button class="swap" onclick="openPickModal(${d.index},'${kind}'${pattern?`,'${pattern}'`:''})">cambiar →</button></div>`;
+    };
+    const renderSlot = (kind) => {
+      const label = MEAL_LABELS[kind];
+      const lcls = `label l-${kind}`;
+      const byPattern = d.slot[kind+'ByPattern'];
+      if(byPattern && Object.keys(byPattern).length){
+        const rows = Object.entries(byPattern).map(([pattern,id],i)=>{ const r=getRecipe(id); return r?renderRow(r,kind,pattern,i>0):''; }).join('');
+        return `<div class="meal-slot"><div class="${lcls}">${label} · mesa mixta</div>${rows}</div>`;
+      }
+      const id = d.slot[kind];
+      const r = id ? getRecipe(id) : null;
+      if(r) return `<div class="meal-slot"><div class="${lcls}">${label}</div>${renderRow(r,kind,null)}</div>`;
+      return `<div class="meal-slot"><div class="${lcls}">${label}</div><div class="name empty">sin asignar</div><button class="swap" onclick="openPickModal(${d.index},'${kind}')">elegir</button></div>`;
+    };
+    const showComidaSlot = !d.cole || isWeekend;
+    const freshCls = window.__justGenerated ? ' fresh' : '';
+    const freshStyle = window.__justGenerated ? ` style="--stagger:${d.index*45}ms"` : '';
+    // 3 franjas (desayuno/comida/cena) = filas del subgrid — la altura de cada fila la
+    // fija el día con la receta más alta de esa franja en la semana; el resto se estira igual.
+    return `<div class="day-col${isWeekend?' weekend':''}${freshCls}"${freshStyle}><h4>${DAY_NAMES[d.index]}<span class="day-num">${d.date.getDate()}</span></h4>
+      <div class="meal-period p-desayuno">${renderSlot('desayuno')}</div>
+      <div class="meal-period p-comida">${coleHTML}${showComidaSlot?renderSlot('comida'):''}</div>
+      <div class="meal-period p-cena">${renderSlot('cena')}</div>
+    </div>`;
+  }).join("");
+  window.__justGenerated = false;
+  // stats por ejes: proteínas e hidratos distintos (todas las tomas, todos los patrones)
+  const stats = document.getElementById("week-stats");
+  let total=0, count=0; const prots=new Set(), hidratos=new Set();
+  week.forEach(d=>{
+    ['desayuno','comida','cena'].forEach(k=>{
+      const ids = d.slot[k+'ByPattern'] ? Object.values(d.slot[k+'ByPattern']) : (d.slot[k]?[d.slot[k]]:[]);
+      ids.forEach(id=>{ const r=getRecipe(id); if(!r)return; total+=r.kcal||0; count++; prots.add(r.proteina); if(HIDRATOS.includes(r.hidrato)) hidratos.add(r.hidrato); });
+    });
+  });
+  // semana vacía → sin chips de stats (ruido de ceros antes de generar nada)
+  stats.innerHTML = count===0 ? '' : `<span><strong>${count}</strong> platos</span><span><strong>${Math.round(total/count)}</strong> kcal media</span><span><strong>${prots.size}</strong> proteínas</span><span><strong>${hidratos.size}</strong> hidratos</span>`;
+}
+
+// ============================================================
+// PICK MODAL - elegir receta para slot (opcionalmente para un patrón en mesa mixta)
+// ============================================================
+let pickContext = null;
+function openPickModal(dayIdx, kind, pattern){
+  pickContext = {dayIdx, kind, pattern};
+  document.getElementById("pick-modal-title").textContent = `${DAY_FULL[dayIdx]} · ${MEAL_LABELS[kind]}${pattern?' · '+pattern:''}`;
+  document.getElementById("pick-search").value = "";
+  renderPickList();
+  document.getElementById("pick-modal").classList.add("active");
+}
+function renderPickList(){
+  const q = (document.getElementById("pick-search").value||"").toLowerCase();
+  const kind = pickContext?pickContext.kind:'cena';
+  const list = getAllRecipes().filter(r=>r.slots.includes(kind) && (!q || r.nombre.toLowerCase().includes(q)));
+  document.getElementById("pick-list").innerHTML = list.map(r=>{
+    const {proteinaHTML, verduraHTML, hidratoTag} = platoTags(r);
+    return `<div class="recipe-card" onclick="pickRecipe('${r.id}')"><div class="name">${r.nombre}</div><div class="meta">${proteinaHTML}${verduraHTML}${hidratoTag}<span>${r.kcal} kcal</span></div></div>`;
+  }).join("");
+}
+function pickRecipe(id){
+  if(!pickContext)return;
+  buzz();
+  setSlot(pickContext.dayIdx, pickContext.kind, id, pickContext.pattern);
+  closeModal("pick-modal");
+}
+
+// ============================================================
+// AI PROMPT
+// ============================================================
+function copyAIPrompt(){
+  const week = getActiveWeek();
+  const monday = parseISO(state.activeMonday);
+  const cole = week.map(d=>{const cp=detectColeProtein(d.cole),cb=detectColeBase(d.cole);const tag=[cp,cb&&HIDRATOS.includes(cb)?cb:''].filter(Boolean).join('+');return `${DAY_NAMES[d.index]} ${d.date.getDate()}: ${d.cole||"-"}${tag?` [${tag}]`:''}`;}).join("\n");
+  const restr = state.members.map(m=>`${m.name} (${calcAge(m.birthYear)}a, ${m.sex||""}): ${(m.restrictions||[]).join(", ")||"sin restr"}; no le gusta: ${(m.dislikes||[]).join(", ")||"-"}`).join("\n");
+  const recipes = getAllRecipes().slice(0,40).map(r=>r.nombre).join(", ");
+  const txt = `Hola Claude. Dame 5 recetas nuevas para cenas de la semana del ${fmtWeekRange(monday)} que NO repitan ni la PROTEÍNA ni el ACOMPAÑAMIENTO del menú escolar de ese día (entre corchetes te indico proteína+base detectadas) y respeten las restricciones.
+
+MIEMBROS:
+${restr}
+
+MENÚ COLE:
+${cole}
+
+RECETAS QUE YA TENGO:
+${recipes}
+
+Devuelve cada una como JSON con: id, nombre (el plato completo, incl. su hidrato), kcal, proteina (pescado|pollo|carne|legumbre|huevo|vegetal), verdura (array de verduras reales del plato, SIEMPRE al menos 1), hidrato (arroz|pasta|patata|pan|cuscus|avena|ninguno), proteina_separable (true si la proteína se sirve aparte y se puede cambiar por otra sin rehacer el plato), ingredientes [{n,cant,u,seccion (verdura|carne|pescado|lacteos|despensa|congelados)}], pasos[], kid_friendly. Lo importaré en el banco directamente.`;
+  navigator.clipboard.writeText(txt).then(()=>alert("Prompt copiado. Pégalo en el chat → recibe JSON → pestaña Recetas → Añadir receta."));
+}
+
+// ============================================================
+// RECETAS
+// ============================================================
+function renderRecipes(){
+  const q = (document.getElementById("recipe-search")?.value||"").toLowerCase();
+  const cat = document.getElementById("recipe-filter")?.value||"";
+  const list = getAllRecipes().filter(r=>(!cat||r.proteina===cat||r.hidrato===cat)&&(!q||r.nombre.toLowerCase().includes(q)));
+  const c = document.getElementById("recipe-grid");
+  if(!list.length){c.innerHTML='<div class="empty-state" style="grid-column:1/-1">Ninguna receta coincide.</div>';return;}
+  c.innerHTML = list.map(r=>{
+    const {proteinaHTML, verduraHTML, hidratoTag, tiempoTag} = platoTags(r);
+    return `<div class="recipe-card" onclick="openRecipeModal('${r.id}')"><div class="name">${r.nombre}</div><div class="meta">${proteinaHTML}${verduraHTML}${hidratoTag}${tiempoTag}<span>${r.kcal} kcal</span>${r.kid_friendly?'<span class="tag">kid</span>':''}</div></div>`;
+  }).join("");
+}
+// Raciones para las que están escritas las cantidades de ingredientes del banco
+const RACION_ESTANDAR = 4, RACION_ESTANDAR_DESAYUNO = 1;
+function personMealTargetKcal(member, kind){ return Math.round(calcNeeds(member).kcal * mealShare(member, kind)); }
+function portionsFor(recipe, eaters, kind){
+  const base = recipe.slots.includes('desayuno') ? RACION_ESTANDAR_DESAYUNO : RACION_ESTANDAR;
+  return eaters.map(m=>{
+    const targetKcal = personMealTargetKcal(m, kind);
+    const factor = recipe.kcal>0 ? targetKcal/recipe.kcal : 1;
+    return { member:m, targetKcal, ingredientes: recipe.ingredientes.map(i=>({...i, cantPersona: Math.round((i.cant/base*factor)*10)/10})) };
+  });
+}
+function openRecipeModal(id, dayIdx, kind, pattern){
+  const r=getRecipe(id);if(!r)return;
+  const {proteinaHTML, verduraHTML, hidratoTag, tiempoTag} = platoTags(r);
+  let portionsHTML = '';
+  if(dayIdx!==undefined && kind){
+    const d = getActiveWeek()[dayIdx];
+    let eaters = state.members.filter(m=>{
+      if(kind==='comida' && m.type==='nino' && d.cole && d.date.getDay()!==0 && d.date.getDay()!==6) return false;
+      return mealShare(m,kind)>0;
+    });
+    if(pattern) eaters = eaters.filter(m=>memberDietPattern(m)===pattern);
+    if(eaters.length){
+      const portions = portionsFor(r, eaters, kind);
+      portionsHTML = `<h3>Por persona</h3><div class="ingredients-list">${portions.map(p=>`<div style="margin-bottom:8px;"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:hsl(${memberHue(p.member)} 60% 55%);margin-right:6px;"></span><strong>${p.member.name}</strong> <span style="color:var(--muted);">(${p.targetKcal} kcal ${MEAL_LABELS[kind].toLowerCase()})</span>: ${p.ingredientes.map(i=>`${i.cantPersona} ${i.u} ${i.n}`).join(' · ')}</div>`).join('')}</div>`;
+    }
+  }
+  const html = `<button class="close-btn" onclick="closeModal('recipe-modal')">&times;</button><h2>${r.nombre}</h2><div style="margin-bottom:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">${proteinaHTML}${verduraHTML}${hidratoTag}${tiempoTag}<span class="tag">${r.kcal} kcal</span>${r.kid_friendly?'<span class="tag">apta peques</span>':''}</div><h3>Ingredientes (${RACION_ESTANDAR} raciones)</h3><ul class="ingredients-list">${r.ingredientes.map(i=>`<li>· ${i.cant} ${i.u} de ${i.n}</li>`).join("")}</ul>${portionsHTML}<h3>Pasos</h3><ol class="steps-list">${r.pasos.map(p=>`<li>${p}</li>`).join("")}</ol>`;
+  document.getElementById("recipe-modal-content").innerHTML = html;
+  document.getElementById("recipe-modal").classList.add("active");
+}
+function openAddRecipeModal(){document.getElementById("add-recipe-modal").classList.add("active");}
+function saveCustomRecipe(){
+  const txt=document.getElementById("add-recipe-json").value.trim();
+  try{
+    const data=JSON.parse(txt);
+    const items=Array.isArray(data)?data:[data];
+    items.forEach(r=>{if(!r.id)r.id="c"+Date.now()+Math.random().toString(36).substr(2,4);state.customRecipes.push(r);});
+    save();renderRecipes();closeModal("add-recipe-modal");document.getElementById("add-recipe-json").value="";
+    alert(`${items.length} receta(s) añadida(s)`);
+  }catch(e){alert("JSON inválido: "+e.message);}
+}
+
+// ============================================================
+// LISTA COMPRA - scope semana o mes
+// ============================================================
+const SECCION_LABELS = {verdura:"Frutas y verduras",carne:"Carnicería",pescado:"Pescadería",lacteos:"Lácteos y huevos",despensa:"Despensa",congelados:"Congelados"};
+function setScope(s){
+  state.scope = s; save();
+  document.getElementById("scope-week").classList.toggle("active", s==='week');
+  document.getElementById("scope-month").classList.toggle("active", s==='month');
+  generateShoppingList();
+}
+function getMealsForScope(){
+  const out = [];
+  const collect = (week)=>{ for(let i=0;i<7;i++){ const w=week[i]; if(!w)continue;
+    ['desayuno','comida','cena'].forEach(k=>{
+      if(w[k+'ByPattern']) Object.values(w[k+'ByPattern']).forEach(id=>out.push({id}));
+      else if(w[k]) out.push({id:w[k]});
+    });
+  }};
+  if(state.scope==='week'){
+    collect(state.weekMenusByMonday[state.activeMonday] || {});
+  } else {
+    const monday = parseISO(state.activeMonday);
+    const month = monday.getMonth(), year = monday.getFullYear();
+    Object.entries(state.weekMenusByMonday).forEach(([mon, week])=>{
+      const d = parseISO(mon), sun = addDays(d,6);
+      if((d.getMonth()===month && d.getFullYear()===year) || (sun.getMonth()===month && sun.getFullYear()===year)) collect(week);
+    });
+  }
+  return out;
+}
+function getMealIdsForScope(){ return getMealsForScope().map(m=>m.id); }
+function generateShoppingList(){
+  const meals = getMealsForScope();
+  const agg = {};
+  const add = (n,u,cant,seccion)=>{ const key=n+"|"+u; if(agg[key]) agg[key].cant+=cant; else agg[key]={n,u,cant,seccion:seccion||"despensa",key}; };
+  meals.forEach(({id})=>{
+    const r=getRecipe(id); if(!r)return;
+    r.ingredientes.forEach(ing=>add(ing.n, ing.u, ing.cant, ing.seccion));
+  });
+  state.shoppingList = Object.values(agg);
+  save();renderShoppingList();
+}
+function renderShoppingList(){
+  document.getElementById("scope-week").classList.toggle("active", state.scope==='week');
+  document.getElementById("scope-month").classList.toggle("active", state.scope==='month');
+  const c = document.getElementById("shopping-list");
+  const sum = document.getElementById("shopping-summary");
+  const list = state.shoppingList || [];
+  const ids = getMealIdsForScope();
+  const monday = parseISO(state.activeMonday);
+  const scopeText = state.scope==='week' ? `semana del ${fmtWeekRange(monday)}` : `mes de ${fmtMonthYear(monday)}`;
+  sum.innerHTML = `Mostrando ingredientes de <strong>${ids.length}</strong> comida(s) planificada(s) en la ${scopeText}.`;
+  if(!list.length){c.innerHTML='<div class="empty-state" style="padding:20px"><p>Pulsa "Generar lista" después de planificar comidas/cenas.</p></div>';return;}
+  const groups = {};
+  list.forEach(it=>{const sec=it.seccion||"despensa";(groups[sec]=groups[sec]||[]).push(it);});
+  let html = "";
+  Object.keys(SECCION_LABELS).forEach(sec=>{
+    if(!groups[sec])return;
+    html += `<h4>${SECCION_LABELS[sec]}</h4><ul>`;
+    groups[sec].forEach(it=>{
+      const checked = state.shoppingChecks[it.key]?"checked":"";
+      const cls = state.shoppingChecks[it.key]?"checked":"";
+      html += `<li class="${cls}"><input type="checkbox" ${checked} onchange="toggleCheck('${it.key.replace(/'/g,"\\'")}')"><span>${it.cant} ${it.u} ${it.n}</span></li>`;
+    });
+    html += "</ul>";
+  });
+  c.innerHTML = html;
+}
+function toggleCheck(key){state.shoppingChecks[key]=!state.shoppingChecks[key];save();renderShoppingList();}
+function resetShoppingChecks(){state.shoppingChecks={};save();renderShoppingList();}
+function copyShoppingList(){
+  const list = state.shoppingList || [];
+  const groups = {};
+  list.forEach(it=>{const sec=it.seccion||"despensa";(groups[sec]=groups[sec]||[]).push(it);});
+  let txt = "LISTA DE LA COMPRA\n\n";
+  Object.keys(SECCION_LABELS).forEach(sec=>{
+    if(!groups[sec])return;
+    txt += SECCION_LABELS[sec].toUpperCase()+"\n";
+    groups[sec].forEach(it=>txt+=`- ${it.cant} ${it.u} ${it.n}\n`);
+    txt+="\n";
+  });
+  navigator.clipboard.writeText(txt).then(()=>alert("Lista copiada"));
+}
+
+// ============================================================
+// NEVERA
+// ============================================================
+function addFridgeItem(){
+  const i=document.getElementById("fridge-input");
+  const v=i.value.trim().toLowerCase();
+  if(!v)return;
+  const items=v.split(",").map(s=>s.trim()).filter(Boolean);
+  state.fridge=[...new Set([...(state.fridge||[]),...items])];
+  i.value="";save();renderFridge();
+}
+function removeFridgeItem(idx){state.fridge.splice(idx,1);save();renderFridge();}
+function renderFridge(){
+  const tags = document.getElementById("fridge-tags");
+  tags.innerHTML = (state.fridge||[]).map((t,i)=>`<span class="fridge-tag">${t}<button onclick="removeFridgeItem(${i})">×</button></span>`).join("");
+  const r = document.getElementById("fridge-results");
+  if(!state.fridge?.length){r.innerHTML='<div class="empty-state" style="grid-column:1/-1"><p>Añade ingredientes para ver sugerencias.</p></div>';return;}
+  const matches = getAllRecipes().map(rec=>{
+    const ingNames = rec.ingredientes.map(i=>i.n.toLowerCase());
+    const matched = state.fridge.filter(f=>ingNames.some(n=>n.includes(f)||f.includes(n)));
+    const ratio = matched.length/Math.max(ingNames.length,1);
+    return {rec, matched:matched.length, ratio, total:ingNames.length};
+  }).filter(x=>x.matched>0).sort((a,b)=>b.ratio-a.ratio).slice(0,12);
+  if(!matches.length){r.innerHTML='<div class="empty-state" style="grid-column:1/-1"><p>No encuentro recetas con esos ingredientes.</p></div>';return;}
+  r.innerHTML = matches.map(m=>`<div class="recipe-card" onclick="openRecipeModal('${m.rec.id}')"><div class="name">${m.rec.nombre}</div><div class="meta"><span>${m.matched}/${m.total} ingredientes</span><span class="plato-proteina"><span class="ico">${PROTEIN_ICO[m.rec.proteina]||''}</span>${m.rec.proteina}</span></div><div class="match-bar"><div class="match-bar-fill" style="width:${Math.round(m.ratio*100)}%"></div></div></div>`).join("");
+}
+
+// ============================================================
+// AJUSTES
+// ============================================================
+function exportData(){
+  const data = JSON.stringify(state, null, 2);
+  const blob = new Blob([data],{type:"application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href=url; a.download="menu-familia-"+new Date().toISOString().split("T")[0]+".json"; a.click();
+  URL.revokeObjectURL(url);
+}
+function importAllJson(ev){
+  const f=ev.target.files[0]; if(!f)return;
+  const r=new FileReader();
+  r.onload=e=>{
+    try{
+      const data=JSON.parse(e.target.result);
+      if(!confirm("¿Sobrescribir todos los datos actuales?"))return;
+      state=Object.assign(state,data); save(); renderAll(); alert("Backup restaurado");
+    }catch(err){alert("JSON inválido: "+err.message);}
+  };
+  r.readAsText(f);
+}
+function resetAll(){
+  if(!confirm("¿BORRAR los datos de esta familia? Recomiendo exportar antes."))return;
+  localStorage.removeItem(storeKey());
+  state = defaultState();
+  renderAll();
+}
+function renderState(){
+  const c = document.getElementById("state-summary");
+  const totalSlots = Object.values(state.weekMenusByMonday).reduce((acc,w)=>{
+    let n=0; for(let i=0;i<7;i++){ ['desayuno','comida','cena'].forEach(k=>{ if(w[i]?.[k] || w[i]?.[k+'ByPattern']) n++; }); } return acc+n;
+  }, 0);
+  c.innerHTML = `<div>Miembros: <strong>${state.members.length}</strong></div><div>Días con menú escolar: <strong>${Object.keys(state.coleMenuByDate).length}</strong></div><div>Semanas planificadas: <strong>${Object.keys(state.weekMenusByMonday).length}</strong> (${totalSlots} tomas)</div><div>Recetas: <strong>${RECIPES.length}</strong> comida/cena + <strong>${BREAKFAST.length}</strong> desayuno + <strong>${state.customRecipes.length}</strong> propias</div><div>Ingredientes en nevera: <strong>${(state.fridge||[]).length}</strong></div>`;
+}
+
+function renderAll(){renderMembers();renderColeCalendar();renderWeek();renderRecipes();renderShoppingList();renderFridge();renderState();renderFamilySettings();}
+function closeModal(id){document.getElementById(id).classList.remove("active");}
+document.querySelectorAll(".modal").forEach(m=>m.addEventListener("click",e=>{if(e.target===m)m.classList.remove("active");}));
+
+// ===== VERIFICADOR DE REGLAS (gate de regresión) =====
+// Genera N menús de prueba (familias variadas: omnívoro, vegetariano, vegano,
+// alergias, MESA MIXTA, objetivo+ayuno) y comprueba las invariantes. NO altera
+// los datos reales (snapshot + restore). Las reglas viven aquí escritas: si una
+// generación las rompe, sale en rojo.
+function vNorm(s){return (s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');}
+function vTrueBase(t){t=vNorm(t);
+  if(/(arroz|paella|risotto)/.test(t))return'arroz';
+  if(/(pasta|macarr|espagueti|lasa|tallarin|fideo|fideua|noqui|canelon|raviol|sopa de letras)/.test(t))return'pasta';
+  if(/cuscus/.test(t))return'cuscus';
+  if(/(patata|pure|boniato)/.test(t))return'patata';
+  if(/(lenteja|garbanzo|alubia|judia|fab)/.test(t))return'legumbre';
+  if(/(\bpan\b|bocadillo|pizza|empanada|taco|masa)/.test(t))return'pan';
+  return null;}
+function vTrueProt(t){t=vNorm(t);
+  if(/(merluza|salmon|lubina|bacalao|atun|boquer|pescado|gamba|langostino|calamar|sepia|mejill|anchoa)/.test(t))return'pescado';
+  if(/(pollo|pavo|dindi)/.test(t))return'pollo';
+  if(/(ternera|cerdo|hamburguesa|albondiga|chuleta|filete|salchicha|jamon|magro|rost|chorizo|croqueta)/.test(t))return'carne';
+  return null;}
+function runVerifier(){
+  const NUTS=/(piñon|nuez|almendra|avellana|pistacho|sésamo)/;
+  const ingN=r=>r.ingredientes.map(i=>i.n.toLowerCase()).join(' ');
+  const adult=(over)=>Object.assign({id:'a'+Math.random(),name:'A',birthYear:1978,sex:'hombre',activity:'media',altura:178,peso:78,objetivo:'mantenimiento',patronDietetico:'omnivoro',restrictions:[],dislikes:[],type:'adulto'},over);
+  const FAMS={
+    normal:      [adult({}), {id:'n1',name:'N',birthYear:2014,sex:'hombre',activity:'alta',restrictions:[],dislikes:[],type:'nino'}],
+    vegetariano: [adult({sex:'mujer',patronDietetico:'vegetariano'})],
+    vegano:      [adult({patronDietetico:'vegano'})],
+    sin_pescado: [adult({restrictions:['sin pescado']})],
+    frutos_secos:[adult({restrictions:['frutos secos']})],
+    mesa_mixta:  [adult({name:'Omni'}), adult({name:'Vegano',patronDietetico:'vegano',sex:'mujer'})],
+    perdida_ayuno:[adult({objetivo:'perdida',ayuno:{salta:'desayuno'}})],
+  };
+  const COLE=['Fideuá de marisco','Paella de pollo','Macarrones boloñesa','Lentejas estofadas','Merluza al horno'];
+  const snapshot=JSON.stringify(state);
+  const monday=parseISO(state.activeMonday);
+  const V={harvard:0,veg:0,vegano_eh:0,pesc:0,nuts:0,protDia:0,hidratoDia:0,mesaMixta:0}, EX={}; let runs=0; const spread=[];
+  const ex=(k,m)=>{(EX[k]=EX[k]||[]).length<3&&EX[k].push(m);};
+  try{
+    Object.entries(FAMS).forEach(([fn,members])=>{
+      for(let n=0;n<15;n++){
+        state.members=JSON.parse(JSON.stringify(members));
+        state.coleMenuByDate={}; for(let i=0;i<5;i++)state.coleMenuByDate[isoDate(addDays(monday,i))]=COLE[i];
+        delete state.weekMenusByMonday[state.activeMonday];
+        generateWeek('all', true); runs++;
+        const wp={};
+        getActiveWeek().forEach(d=>{
+          const wknd=d.date.getDay()===0||d.date.getDay()===6, dh=[];
+          if(d.cole&&!wknd){const cb=vTrueBase(d.cole); if(cb&&HIDRATOS.includes(cb))dh.push({b:cb,s:'cole('+d.cole+')'});}
+          const perPersonProt={}; members.forEach(m=>perPersonProt[m.id]=[]);
+          ['desayuno','comida','cena'].forEach(k=>{
+            const byPattern=d.slot&&d.slot[k+'ByPattern'];
+            const entries = byPattern ? Object.entries(byPattern) : (d.slot&&d.slot[k]?[[null,d.slot[k]]]:[]);
+            if(byPattern && Object.keys(byPattern).length>1){
+              const hs=[...new Set(Object.values(byPattern).map(id=>{const r=getRecipe(id);return r?r.hidrato:null;}))];
+              if(hs.length>1){V.mesaMixta++;ex('Mesa mixta sin hidrato compartido',fn+' '+k+': '+hs.join(' vs '));}
+            }
+            let mealHidrato=null, mealLabel=null;
+            entries.forEach(([pattern,id])=>{
+              const r=getRecipe(id); if(!r)return;
+              if(!r.proteina || !r.verdura || !r.verdura.length || !r.hidrato){V.harvard++;ex('Plato Harvard incompleto',fn+' '+k+': '+r.nombre);}
+              const nm=ingN(r);
+              const eaters = pattern ? members.filter(m=>memberDietPattern(m)===pattern) : members.filter(m=>mealShare(m,k)>0);
+              if(eaters.some(m=>['vegetariano','vegano'].includes(memberDietPattern(m))) && /(pollo|ternera|cerdo|carne|jam[oó]n|pavo|merluza|salm[oó]n|at[uú]n|bacalao|pescado|langostino|gamba)/.test(nm)){V.veg++;ex('Vegetariano/vegano con carne/pescado',fn+' '+k+': '+r.nombre);}
+              if(eaters.some(m=>memberDietPattern(m)==='vegano') && (r.contiene_huevo||r.contiene_lacteos)){V.vegano_eh++;ex('Vegano con huevo/lácteos',fn+' '+k+': '+r.nombre);}
+              if(eaters.some(m=>(m.restrictions||[]).includes('sin pescado')) && r.proteina==='pescado'){V.pesc++;ex('Sin pescado → pescado',fn+' '+k+': '+r.nombre);}
+              if(eaters.some(m=>(m.restrictions||[]).includes('frutos secos')) && NUTS.test(nm)){V.nuts++;ex('Frutos secos',fn+' '+k+': '+r.nombre);}
+              eaters.forEach(m=>{ perPersonProt[m.id].push(r.proteina); if(r.proteina!=='vegetal') wp[r.proteina]=(wp[r.proteina]||0)+1; });
+              // 1 entrada por TOMA (no por patrón/persona) — mesa mixta comparte hidrato, no cuenta como repetición
+              if(HIDRATOS.includes(r.hidrato)){ mealHidrato=r.hidrato; mealLabel=k+'('+r.nombre+')'; }
+            });
+            if(mealHidrato) dh.push({b:mealHidrato,s:mealLabel});
+          });
+          Object.entries(perPersonProt).forEach(([pid,list])=>{
+            const pc={}; list.forEach(p=>{if(PROTEINAS_ESPECIFICAS.includes(p)) pc[p]=(pc[p]||0)+1;});
+            Object.entries(pc).forEach(([p,c])=>{if(c>1){V.protDia++;ex('Proteína repetida en el día (misma persona)',pid+': '+p+' x'+c);}});
+          });
+          const bc={}; dh.forEach(o=>bc[o.b]=(bc[o.b]||0)+1);
+          Object.entries(bc).forEach(([b,c])=>{if(c>1){V.hidratoDia++;ex('Hidrato repetido en el día',dh.map(o=>o.s+'='+o.b).join(' | '));}});
+        });
+        spread.push(Object.keys(wp).length);
+      }
+    });
+  }finally{ state=JSON.parse(snapshot); save(); renderAll(); }
+  // Invariante de ayuno: el reparto de kcal del día debe sumar 100% (sin perder ni duplicar)
+  let ayunoSumOk=0, ayunoSumTotal=0;
+  [null,'desayuno','comida','cena'].forEach(skip=>{
+    ayunoSumTotal++;
+    const m={ayuno:skip?{salta:skip}:null};
+    const sum=['desayuno','comida','cena'].reduce((a,k)=>a+mealShare(m,k),0);
+    if(Math.abs(sum-1)<0.001) ayunoSumOk++; else ex('Reparto ayuno no suma 100%','salta:'+skip+' → suma '+sum.toFixed(3));
+  });
+  const V_ayuno = ayunoSumTotal-ayunoSumOk;
+  // Limpieza estructural: nada del modelo viejo (adaptable/basesOk) debe quedar en el banco
+  const legacy = getAllRecipes().filter(r=>r.adaptable!==undefined||r.basesOk!==undefined).length;
+  const total=Object.values(V).reduce((a,b)=>a+b,0)+V_ayuno+legacy;
+  const separables=getAllRecipes().filter(r=>r.proteina_separable).length;
+  const labels={harvard:'Plato Harvard completo (proteína+verdura+hidrato)',veg:'Vegetariano/vegano sin carne/pescado',vegano_eh:'Vegano sin huevo/lácteos',pesc:'Restricción sin pescado',nuts:'Restricción frutos secos',protDia:'No repetir proteína el mismo día (por persona)',hidratoDia:'No repetir hidrato el mismo día',mesaMixta:'Mesa mixta comparte hidrato'};
+  let html=`<div style="padding:12px;border-radius:10px;background:${total===0?'rgba(180,255,57,.08)':'rgba(227,109,109,.1)'};border:1px solid ${total===0?'rgba(180,255,57,.35)':'rgba(227,109,109,.45)'};">`;
+  html+=`<strong style="font-size:15px;">${total===0?'✅ VERDE — '+runs+' menús, 0 violaciones':'🔴 ROJO — '+total+' violación(es) en '+runs+' menús'}</strong>`;
+  html+='<table style="width:100%;margin-top:10px;border-collapse:collapse;font-size:12px;">';
+  Object.keys(labels).forEach(k=>{html+=`<tr><td style="padding:3px 6px;">${V[k]===0?'✅':'🔴'} ${labels[k]}</td><td style="padding:3px 6px;text-align:right;font-variant-numeric:tabular-nums;">${V[k]}</td></tr>`;});
+  html+=`<tr><td style="padding:3px 6px;">${V_ayuno===0?'✅':'🔴'} Reparto de ayuno suma 100%</td><td style="padding:3px 6px;text-align:right;">${V_ayuno}</td></tr>`;
+  html+=`<tr><td style="padding:3px 6px;">${legacy===0?'✅':'🔴'} Sin residuos del modelo viejo (adaptable/basesOk)</td><td style="padding:3px 6px;text-align:right;">${legacy}</td></tr>`;
+  html+='</table>';
+  Object.entries(EX).forEach(([k,arr])=>{html+=`<div style="margin-top:8px;"><strong>${k}:</strong><ul style="margin:4px 0 0 18px;padding:0;">${arr.map(m=>'<li>'+m+'</li>').join('')}</ul></div>`;});
+  html+=`<div style="margin-top:10px;color:var(--soft);">Recetas con proteína separable: <strong>${separables}/${getAllRecipes().length}</strong> · variedad media de proteína/semana: <strong>${(spread.reduce((a,b)=>a+b,0)/spread.length).toFixed(1)}</strong></div>`;
+  html+='</div>';
+  document.getElementById('verifier-results').innerHTML=html;
+}
+
+function buzz(){ if(navigator.vibrate) navigator.vibrate(10); }
+
+// ============================================================
+// PANTALLA DE CUENTAS — selector estilo perfiles / registro / PIN
+// ============================================================
+const ACCOUNT_HUES = [158, 200, 262, 330, 22, 48];
+let pendingAccountId = null;
+let createHue = ACCOUNT_HUES[0];
+
+function accountAvatar(a, size){
+  const ini = (a.name||"?").trim().split(/\s+/).slice(0,2).map(w=>w.charAt(0).toUpperCase()).join('') || "?";
+  return `<span class="acc-avatar" style="width:${size}px;height:${size}px;font-size:${Math.round(size*0.42)}px;background:linear-gradient(135deg, hsl(${a.hue} 60% 52%), hsl(${(a.hue+40)%360} 55% 40%));">${ini}</span>`;
+}
+function renderFamilyChip(){
+  const chip = document.getElementById("family-chip");
+  const a = activeAccount();
+  if(!a){ chip.style.display="none"; return; }
+  chip.style.display="";
+  chip.innerHTML = accountAvatar(a, 26) + `<span class="chip-name">${a.name}</span><span class="chip-chev">▾</span>`;
+}
+function showAccountScreen(mode){
+  const scr = document.getElementById("account-screen");
+  const inner = document.getElementById("account-inner");
+  const canClose = !!activeAccount() && mode==='pick';
+  let html = '';
+  if(mode==='pick'){
+    html += `<div class="acc-brand">e3<span>Foods</span></div>`;
+    html += `<h2 class="acc-title">${accounts.list.length ? '¿Quién cocina hoy?' : 'Crea tu familia'}</h2>`;
+    if(accounts.list.length){
+      html += `<div class="acc-grid">` + accounts.list.map(a=>
+        `<button class="acc-tile" onclick="pickAccount('${a.id}')">${accountAvatar(a,72)}<span class="acc-name">${a.name}</span>${a.pin?'<span class="acc-lock">🔒</span>':''}</button>`
+      ).join('') + `</div>`;
+    } else {
+      html += `<p class="acc-sub">Cada familia tiene sus menús, miembros y lista de compra propios, guardados en este dispositivo.</p>`;
+    }
+    html += `<button class="acc-new" onclick="showAccountScreen('create')">+ Nueva familia</button>`;
+    if(canClose) html += `<button class="acc-cancel" onclick="hideAccountScreen()">Cancelar</button>`;
+  }
+  if(mode==='create'){
+    html += `<div class="acc-brand">e3<span>Foods</span></div>`;
+    html += `<h2 class="acc-title">Nueva familia</h2>`;
+    html += `<div class="acc-form">`;
+    html += `<label>Nombre de la familia</label><input type="text" id="acc-name" placeholder="Ej: Los García" maxlength="24" autocomplete="off">`;
+    html += `<label style="margin-top:14px;">Color</label><div class="acc-hues">` + ACCOUNT_HUES.map(h=>
+      `<button class="acc-hue${h===createHue?' sel':''}" data-hue="${h}" style="background:linear-gradient(135deg, hsl(${h} 60% 52%), hsl(${(h+40)%360} 55% 40%));" onclick="selectHue(${h})"></button>`
+    ).join('') + `</div>`;
+    html += `<label style="margin-top:14px;">PIN de 4 dígitos (opcional)</label><input type="password" id="acc-pin" inputmode="numeric" maxlength="4" placeholder="····" autocomplete="off"><p class="acc-hint">Evita que otro perfil de la casa entre por error. Se puede quitar en Ajustes.</p>`;
+    html += `<button class="primary acc-submit" onclick="submitCreateAccount()">Crear familia</button>`;
+    html += `<button class="acc-cancel" onclick="showAccountScreen('pick')">Volver</button>`;
+    html += `</div>`;
+  }
+  if(mode==='pin'){
+    const a = getAccount(pendingAccountId);
+    html += `<div class="acc-brand">e3<span>Foods</span></div>`;
+    html += `<div style="text-align:center;">${accountAvatar(a,72)}</div>`;
+    html += `<h2 class="acc-title">${a.name}</h2>`;
+    html += `<div class="acc-form"><label>PIN</label><input type="password" id="acc-pin-entry" inputmode="numeric" maxlength="4" placeholder="····" autocomplete="off" onkeydown="if(event.key==='Enter')submitPin()">`;
+    html += `<p class="acc-hint" id="acc-pin-err" style="color:#E36D6D;display:none;">PIN incorrecto</p>`;
+    html += `<button class="primary acc-submit" onclick="submitPin()">Entrar</button>`;
+    html += `<button class="acc-cancel" onclick="showAccountScreen('pick')">Volver</button></div>`;
+  }
+  inner.innerHTML = html;
+  scr.style.display = "flex";
+  document.body.classList.add("account-open");
+  if(mode==='create'){ setTimeout(()=>document.getElementById('acc-name')?.focus(), 60); }
+  if(mode==='pin'){ setTimeout(()=>document.getElementById('acc-pin-entry')?.focus(), 60); }
+}
+function hideAccountScreen(){
+  document.getElementById("account-screen").style.display = "none";
+  document.body.classList.remove("account-open");
+}
+function selectHue(h){
+  createHue = h;
+  document.querySelectorAll('.acc-hue').forEach(b=>b.classList.toggle('sel', Number(b.dataset.hue)===h));
+}
+function pickAccount(id){
+  const a = getAccount(id); if(!a) return;
+  if(a.pin){ pendingAccountId = id; showAccountScreen('pin'); return; }
+  activateAccount(id);
+}
+function activateAccount(id){
+  buzz();
+  accounts.activeId = id; saveAccounts();
+  load(); renderAll(); renderFamilyChip(); hideAccountScreen();
+}
+function submitCreateAccount(){
+  const name = (document.getElementById('acc-name').value||"").trim();
+  if(!name){ alert("Ponle nombre a la familia."); return; }
+  const pinRaw = (document.getElementById('acc-pin').value||"").trim();
+  if(pinRaw && !/^\d{4}$/.test(pinRaw)){ alert("El PIN debe ser de 4 dígitos (o dejarlo vacío)."); return; }
+  const a = {id:genAccountId(), name, hue:createHue, pin:pinRaw?pinHash(pinRaw):null, createdAt:isoDate(new Date())};
+  accounts.list.push(a); saveAccounts();
+  activateAccount(a.id);
+}
+function submitPin(){
+  const val = (document.getElementById('acc-pin-entry').value||"").trim();
+  const a = getAccount(pendingAccountId);
+  if(a && pinHash(val)===a.pin){ activateAccount(a.id); }
+  else{ const el=document.getElementById('acc-pin-err'); el.style.display=''; document.getElementById('acc-pin-entry').value=''; }
+}
+// gestión desde Ajustes
+function renameFamily(){
+  const a = activeAccount(); if(!a) return;
+  const name = (document.getElementById('fam-rename').value||"").trim();
+  if(!name) return;
+  a.name = name; saveAccounts(); renderFamilyChip(); renderFamilySettings();
+}
+function changeFamilyPin(){
+  const a = activeAccount(); if(!a) return;
+  const v = (document.getElementById('fam-pin').value||"").trim();
+  if(v && !/^\d{4}$/.test(v)){ alert("El PIN debe ser de 4 dígitos (vacío = sin PIN)."); return; }
+  a.pin = v ? pinHash(v) : null; saveAccounts(); renderFamilySettings();
+  document.getElementById('fam-pin').value='';
+}
+function deleteFamily(){
+  const a = activeAccount(); if(!a) return;
+  if(!confirm(`¿Eliminar la familia "${a.name}" y TODOS sus datos? No hay vuelta atrás.`)) return;
+  localStorage.removeItem(STORE_KEY+"::"+a.id);
+  accounts.list = accounts.list.filter(x=>x.id!==a.id);
+  accounts.activeId = null; saveAccounts();
+  state = defaultState();
+  showAccountScreen('pick');
+}
+function renderFamilySettings(){
+  const c = document.getElementById('family-settings'); if(!c) return;
+  const a = activeAccount(); if(!a){ c.innerHTML=''; return; }
+  c.innerHTML = `
+    <div class="fam-row">${accountAvatar(a,44)}<div class="fam-info"><strong>${a.name}</strong><span>${a.pin?'Con PIN':'Sin PIN'} · ${accounts.list.length} familia(s) en este dispositivo</span></div></div>
+    <div class="row" style="margin-top:12px;">
+      <div class="col"><label>Renombrar</label><div style="display:flex;gap:8px;"><input type="text" id="fam-rename" value="${a.name}" maxlength="24"><button class="secondary" onclick="renameFamily()">OK</button></div></div>
+      <div class="col"><label>PIN (vacío = quitar)</label><div style="display:flex;gap:8px;"><input type="password" id="fam-pin" inputmode="numeric" maxlength="4" placeholder="····"><button class="secondary" onclick="changeFamilyPin()">OK</button></div></div>
+    </div>
+    <div class="toolbar" style="margin-top:10px;margin-bottom:0;">
+      <button class="secondary" onclick="showAccountScreen('pick')">Cambiar de familia</button>
+      <button class="danger" onclick="deleteFamily()">Eliminar esta familia</button>
+    </div>`;
+}
+
+// INIT
+loadAccounts();
+if(activeAccount()){
+  load(); renderAll(); renderFamilyChip();
+} else {
+  state = defaultState(); renderAll(); renderFamilyChip();
+  showAccountScreen('pick');
+}
+</script>
+</body>
+</html>

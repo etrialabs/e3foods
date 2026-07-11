@@ -232,6 +232,8 @@ label { display: block; font-size: 12.5px; color: var(--soft); margin-bottom: 5p
 .meal-slot.cole { background: linear-gradient(160deg, rgba(201,169,110,.12), rgba(201,169,110,.03)), var(--panel); border-color: rgba(201,169,110,.28); }
 /* cabecera: icono de franja horaria + label — una vez por card, no por plato */
 .meal-head { display: flex; align-items: center; gap: 6px; }
+/* acción "Cambiar/Elegir" a la derecha, en la misma línea que el eyebrow */
+.meal-head .swap-link { margin-left: auto; padding: 0; align-self: center; }
 .meal-head .meal-ico { display: flex; flex-shrink: 0; }
 .meal-head .meal-ico svg { width: 15px; height: 15px; stroke: currentColor; }
 .meal-slot .label { font-size: 9.5px; text-transform: uppercase; color: var(--muted); letter-spacing: 0.7px; font-weight: 600; }
@@ -1360,7 +1362,7 @@ document.querySelectorAll(".modal-content").forEach(sheet=>{
   });
 });
 
-// swipe horizontal en la vista de un día (móvil) — derecha = día siguiente, izquierda = anterior
+// swipe horizontal en la vista de un día (móvil) — arrastrar a la derecha = día anterior, a la izquierda = siguiente (como pasar página)
 (function setupDaySwipe(){
   const wrap = document.getElementById('day-cards-wrap');
   if(!wrap) return;
@@ -1372,8 +1374,8 @@ document.querySelectorAll(".modal-content").forEach(sheet=>{
     if(!tracking) return; tracking=false;
     const dx = e.changedTouches[0].clientX-startX, dy = e.changedTouches[0].clientY-startY;
     if(Math.abs(dx)>60 && Math.abs(dx)>Math.abs(dy)*1.5){
-      if(dx>0){ if(state.activeDayIndex<6) selectDay(state.activeDayIndex+1); }
-      else{ if(state.activeDayIndex>0) selectDay(state.activeDayIndex-1); }
+      if(dx>0){ if(state.activeDayIndex>0) selectDay(state.activeDayIndex-1); }
+      else{ if(state.activeDayIndex<6) selectDay(state.activeDayIndex+1); }
     }
   }, {passive:true});
 })();
@@ -1886,26 +1888,29 @@ function buildDayMealHTML(d){
     const cHidHTML = (cb && HIDRATOS.includes(cb)) ? `<span class="tag base-${cb}">${BASE_LABELS[cb]}</span>` : '';
     coleHTML = `<div class="meal-slot cole"><div class="label">Cole</div><div class="name" style="font-size:11px;line-height:1.25">${d.cole}</div>${(cProtHTML||cHidHTML)?`<div class="meta-row">${cProtHTML}${cHidHTML}</div>`:''}</div>`;
   }
-  const renderRow = (r, kind, pattern) => {
+  // withSwap=false cuando el "Cambiar" se sube a la cabecera (plato único) → la fila no repite el botón.
+  const renderRow = (r, kind, pattern, withSwap=true) => {
     const {proteinaHTML, verduraHTML, hidratoTag} = platoTags(r);
     const patternLabel = pattern ? `<div class="diet-label">${pattern}</div>` : '';
     const missing = missingIngredientHint(r);
     const infoRow = `<div class="dish-info-row"><span>${ICO_CLOCK}${TIEMPO_APROX[r.tiempo]||''}</span>${missing?`<span>${ICO_CART}Falta: ${missing}</span>`:''}</div>`;
-    return `<div class="dish-row"><div class="dish-photo"></div><div class="dish-content">${patternLabel}<div class="dish-name clickable" onclick="openRecipeModal('${r.id}',${d.index},'${kind}'${pattern?`,'${pattern}'`:''})">${r.nombre}</div><div class="dish-meta-row">${proteinaHTML}${verduraHTML}${hidratoTag}</div>${infoRow}<button class="swap-link" onclick="openPickModal(${d.index},'${kind}'${pattern?`,'${pattern}'`:''})">${ICO_SWAP}Cambiar</button></div></div>`;
+    const swap = withSwap ? `<button class="swap-link" onclick="openPickModal(${d.index},'${kind}'${pattern?`,'${pattern}'`:''})">${ICO_SWAP}Cambiar</button>` : '';
+    return `<div class="dish-row"><div class="dish-photo"></div><div class="dish-content">${patternLabel}<div class="dish-name clickable" onclick="openRecipeModal('${r.id}',${d.index},'${kind}'${pattern?`,'${pattern}'`:''})">${r.nombre}</div><div class="dish-meta-row">${proteinaHTML}${verduraHTML}${hidratoTag}</div>${infoRow}${swap}</div></div>`;
   };
+  // "Cambiar"/"Elegir" en la cabecera, alineado a la derecha en la misma línea que el eyebrow → ahorra una línea por comida.
+  const headOf = (kind, action='') => `<div class="meal-head"><span class="meal-ico">${ICO_MEAL[kind]}</span><span class="label l-${kind}">${MEAL_LABELS[kind]}</span>${action}</div>`;
+  const headSwap = (kind, pattern, txt) => `<button class="swap-link" onclick="openPickModal(${d.index},'${kind}'${pattern?`,'${pattern}'`:''})">${ICO_SWAP}${txt}</button>`;
   const renderSlot = (kind) => {
-    const label = MEAL_LABELS[kind];
-    const lcls = `label l-${kind}`;
-    const head = `<div class="meal-head"><span class="meal-ico">${ICO_MEAL[kind]}</span><span class="${lcls}">${label}</span></div>`;
     const byPattern = d.slot[kind+'ByPattern'];
     if(byPattern && Object.keys(byPattern).length){
-      const rows = Object.entries(byPattern).map(([pattern,id])=>{ const r=getRecipe(id); return r?renderRow(r,kind,pattern):''; }).join('');
-      return `<div class="meal-slot">${head}${comensalRow(d.index,kind)}${rows}</div>`;
+      // mesa mixta: cada patrón conserva su propio "Cambiar" en su fila (la cabecera es única)
+      const rows = Object.entries(byPattern).map(([pattern,id])=>{ const r=getRecipe(id); return r?renderRow(r,kind,pattern,true):''; }).join('');
+      return `<div class="meal-slot">${headOf(kind)}${comensalRow(d.index,kind)}${rows}</div>`;
     }
     const id = d.slot[kind];
     const r = id ? getRecipe(id) : null;
-    if(r) return `<div class="meal-slot">${head}${comensalRow(d.index,kind)}${renderRow(r,kind,null)}</div>`;
-    return `<div class="meal-slot">${head}<div class="dish-row"><div class="dish-photo empty"></div><div class="dish-content"><div class="dish-name empty">Sin asignar</div><button class="swap-link" onclick="openPickModal(${d.index},'${kind}')">${ICO_SWAP}Elegir</button></div></div></div>`;
+    if(r) return `<div class="meal-slot">${headOf(kind, headSwap(kind,null,'Cambiar'))}${comensalRow(d.index,kind)}${renderRow(r,kind,null,false)}</div>`;
+    return `<div class="meal-slot">${headOf(kind, headSwap(kind,null,'Elegir'))}<div class="dish-row"><div class="dish-photo empty"></div><div class="dish-content"><div class="dish-name empty">Sin asignar</div></div></div></div>`;
   };
   const showComidaSlot = !d.cole || isWeekend;
   const showDesayuno = trackedMeals().includes('desayuno');

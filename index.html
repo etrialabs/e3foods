@@ -2045,22 +2045,43 @@ function portionsFor(recipe, eaters, kind){
 function openRecipeModal(id, dayIdx, kind, pattern){
   const r=getRecipe(id);if(!r)return;
   const {proteinaHTML, verduraHTML, hidratoTag, tiempoTag} = platoTags(r);
-  let portionsHTML = '';
+  const base = r.slots.includes('desayuno') ? RACION_ESTANDAR_DESAYUNO : RACION_ESTANDAR;
+  let eaters = null, portions = null;
   if(dayIdx!==undefined && kind){
     const d = getActiveWeek()[dayIdx];
     const absent = getAbsent(dayIdx, kind);
-    let eaters = state.members.filter(m=>{
+    eaters = state.members.filter(m=>{
       if(absent.includes(m.id)) return false;
       if(kind==='comida' && m.type==='nino' && d.cole && d.date.getDay()!==0 && d.date.getDay()!==6) return false;
       return mealShare(m,kind)>0;
     });
     if(pattern) eaters = eaters.filter(m=>memberDietPattern(m)===pattern);
-    if(eaters.length){
-      const portions = portionsFor(r, eaters, kind);
-      portionsHTML = `<h3>Por persona</h3><div class="ingredients-list">${portions.map(p=>`<div style="margin-bottom:8px;"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:hsl(${memberHue(p.member)} 60% 55%);margin-right:6px;"></span><strong>${p.member.name}</strong> <span style="color:var(--muted);">(${p.targetKcal} kcal ${MEAL_LABELS[kind].toLowerCase()})</span>: ${p.ingredientes.map(i=>`${i.cantPersona} ${i.u} ${i.n}`).join(' · ')}</div>`).join('')}</div>`;
-    }
+    if(!eaters.length) eaters = null; else portions = portionsFor(r, eaters, kind);
   }
-  const html = `<button class="close-btn" onclick="closeModal('recipe-modal')">&times;</button><h2>${r.nombre}</h2><div style="margin-bottom:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">${proteinaHTML}${verduraHTML}${hidratoTag}${tiempoTag}<span class="tag">${r.kcal} kcal</span>${r.kid_friendly?'<span class="tag">apta peques</span>':''}</div><h3>Ingredientes (${RACION_ESTANDAR} raciones)</h3><ul class="ingredients-list">${r.ingredientes.map(i=>`<li>· ${i.cant} ${i.u} de ${i.n}</li>`).join("")}</ul>${portionsHTML}<h3>Pasos</h3><ol class="steps-list">${r.pasos.map(p=>`<li>${p}</li>`).join("")}</ol><button class="secondary" style="width:100%;margin-top:16px;" onclick="hideRecipeForFamily('${r.id}')">No nos gusta — ocultar esta receta</button>`;
+  // Lista de ingredientes: con comensales reales se muestra PARA ELLOS (suma de sus raciones
+  // escaladas por kcal); sin contexto (abierto desde Recetas) se muestra la receta base.
+  let ingHeader, ingItems;
+  if(portions){
+    const n = eaters.length;
+    ingHeader = `Ingredientes (para ${n} comensal${n>1?'es':''})`;
+    ingItems = r.ingredientes.map((i,idx)=>{
+      const tot = Math.round(portions.reduce((s,p)=>s+(p.ingredientes[idx]?.cantPersona||0),0)*10)/10;
+      return `<li>· ${tot} ${i.u} de ${i.n}</li>`;
+    }).join("");
+  } else {
+    ingHeader = `Ingredientes (${base} ${base>1?'raciones':'ración'})`;
+    ingItems = r.ingredientes.map(i=>`<li>· ${i.cant} ${i.u} de ${i.n}</li>`).join("");
+  }
+  // Por persona: nº de raciones (kcal necesarias / kcal por ración) + kcal → hace explícito
+  // que "864 kcal" = 2,3 raciones del plato de "380 kcal/ración", no una contradicción.
+  let portionsHTML = '';
+  if(portions){
+    portionsHTML = `<h3>Por persona</h3><div class="ingredients-list">${portions.map(p=>{
+      const rac = r.kcal>0 ? Math.round((p.targetKcal/r.kcal)*10)/10 : 1;
+      return `<div style="margin-bottom:8px;"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:hsl(${memberHue(p.member)} 60% 55%);margin-right:6px;"></span><strong>${p.member.name}</strong> <span style="color:var(--muted);">(${rac} ${rac===1?'ración':'raciones'} · ${p.targetKcal} kcal)</span>: ${p.ingredientes.map(i=>`${i.cantPersona} ${i.u} ${i.n}`).join(' · ')}</div>`;
+    }).join('')}</div>`;
+  }
+  const html = `<button class="close-btn" onclick="closeModal('recipe-modal')">&times;</button><h2>${r.nombre}</h2><div style="margin-bottom:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">${proteinaHTML}${verduraHTML}${hidratoTag}${tiempoTag}<span class="tag">${r.kcal} kcal/ración</span>${r.kid_friendly?'<span class="tag">apta peques</span>':''}</div><h3>${ingHeader}</h3><ul class="ingredients-list">${ingItems}</ul>${portionsHTML}<h3>Pasos</h3><ol class="steps-list">${r.pasos.map(p=>`<li>${p}</li>`).join("")}</ol><button class="secondary" style="width:100%;margin-top:16px;" onclick="hideRecipeForFamily('${r.id}')">No nos gusta — ocultar esta receta</button>`;
   document.getElementById("recipe-modal-content").innerHTML = html;
   document.getElementById("recipe-modal").classList.add("active");
 }

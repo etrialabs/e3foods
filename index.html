@@ -637,6 +637,10 @@ body.account-open { overflow: hidden; }
     <p class="hint" style="margin-bottom:12px;">Genera 100 menús de prueba con familias distintas y comprueba que se cumplen las reglas duras (no repetir proteína ni hidrato el mismo día, restricciones, fideuá/paella del cole = pasta/arroz). No toca tus datos.</p>
     <button class="secondary" onclick="runVerifier()">Verificar reglas (100 menús)</button>
     <div id="verifier-results" style="font-size:13px;margin-top:14px;"></div>
+    <h3 style="margin-top:24px;">Composición del banco (dúo comida)</h3>
+    <p class="hint" style="margin-bottom:12px;">Fase 1: kcal reales computadas por ingrediente + reparto por rol (único / primero / segundo). Base para el generador primero+segundo de la comida. No toca tus menús.</p>
+    <button class="secondary" onclick="bankReport()">Ver composición del banco</button>
+    <div id="bank-report" style="font-size:13px;margin-top:14px;"></div>
   </div>
 </div>
 
@@ -841,6 +845,53 @@ const BREAKFAST = [
   {id:"d15",nombre:"Porridge vegano de avena con manzana y canela",proteina:"vegetal",verdura:["manzana"],hidrato:"avena",proteina_separable:false,contiene_huevo:false,contiene_lacteos:false,tiempo:"rapido",kcal:270,slots:["desayuno"],ingredientes:[{n:"copos de avena",cant:50,u:"g",seccion:"despensa"},{n:"bebida de avena",cant:200,u:"ml",seccion:"despensa"},{n:"manzana",cant:0.5,u:"ud",seccion:"verdura"},{n:"canela",cant:1,u:"pizca",seccion:"despensa"}],pasos:["Cocer la avena con la bebida vegetal.","Añadir manzana troceada y canela."],kid_friendly:true}
 ];
 RECIPES.forEach(r=>{ if(!r.slots) r.slots=["comida","cena"]; });
+
+// ============================================================
+// FASE 1 (2026-07-12) — INFRA CALÓRICA + TAXONOMÍA primero/segundo (dúo solo en comida)
+// ============================================================
+// kcal por 1 unidad tal como se usa en las recetas (g→kcal/g, ml→kcal/ml, ud→kcal/pieza,
+// aromáticos≈0). Fuente BEDCA/USDA. Cubre los 136 ingredientes del banco (0 sin precio).
+// Con esto recipe.kcal es COMPUTABLE de las cantidades → coherencia permanente cant↔kcal.
+const KCAL_ING = {
+"aceite de girasol||ml":8.8,"aceite de oliva||ml":8.8,"aceitunas||g":1.5,"aguacate||ud":200,"ajo||diente":4,"albahaca fresca||ramita":0,"alcachofa||ud":60,"alitas o muslos de pollo||g":2.1,"alubias blancas cocidas||g":1.2,"alubias rojas||g":3.3,"apio||rama":6,"arándanos||g":0.57,"arroz||g":3.6,"arroz arborio||g":3.5,"arroz basmati||g":3.5,"arroz bomba||g":3.5,"arroz integral||g":3.6,"atún en aceite||g":1.9,"atún fresco||g":1.3,"azafrán||pizca":0,"bacalao desalado||g":1.1,"bebida de avena||ml":0.45,"bechamel||ml":1.4,"berenjena||ud":30,"boniato||g":0.86,"boquerones||g":1.3,"brócoli||g":0.34,"calabacín||ud":33,"calabaza||g":0.26,"caldo de carne||ml":0.1,"caldo de pollo||ml":0.08,"caldo de verduras||ml":0.06,"canela||pizca":1,"carne picada||g":2.4,"carne picada de ternera||g":2.4,"carne picada mixta||g":2.6,"cebolla||ud":44,"champiñones||g":0.22,"comino||cdita":8,"copos de avena||g":3.7,"crema de cacahuete||g":5.9,"curry suave||cda":15,"cuscús||g":3.6,"edamame||g":1.2,"espaguetis||g":3.6,"espinacas||g":0.23,"fideos finos||g":3.6,"filetes de pavo||g":1.2,"fresas||g":0.32,"garbanzos cocidos||g":1.6,"granola||g":4.7,"guisantes||g":0.8,"harina||g":3.6,"huevo||ud":78,"hummus||g":1.7,"jamón cocido||g":1.45,"jamón serrano||g":2.4,"jengibre||cdita":3,"judía verde||g":0.31,"langostinos||g":0.85,"laurel||hoja":0,"leche||ml":0.62,"leche de coco||ml":1.9,"lechuga||ud":30,"lechuga||hoja":2,"lentejas||g":3.4,"limón||ud":17,"lomo de cerdo||g":1.8,"lubina filetes||ud":130,"macarrones||g":3.6,"mantequilla||g":7.2,"manzana||ud":80,"masa de empanada||ud":900,"masa de pizza||ud":700,"masa quebrada||ud":1100,"merluza||g":0.9,"miel||g":3.0,"mozzarella||g":2.8,"nata para cocinar||ml":1.9,"nueces||g":6.5,"pan||barra pequeña":250,"pan de hamburguesa||ud":150,"pan de molde integral||rebanada":65,"pan integral||rebanada":70,"pan pita||ud":165,"pan rallado||g":3.9,"pasta corta||g":3.6,"patata||g":0.77,"patata||ud":110,"pechuga de pavo||g":1.1,"pechuga de pollo||g":1.65,"pechuga de pollo cocida||g":1.7,"penne||g":3.6,"pepino||ud":30,"perejil||ramita":0,"pesto||g":4.5,"pimentón||cdita":6,"pimiento rojo||ud":37,"pimiento verde||ud":24,"piñones||g":6.7,"placas de lasaña||ud":30,"plátano||ud":105,"pollo (pechuga o muslos)||g":1.9,"pollo en dados||g":1.7,"pollo entero||g":1.4,"puerro||ud":54,"queso||g":3.6,"queso feta||g":2.6,"queso fresco||g":1.1,"queso parmesano||g":4.3,"queso rallado||g":3.8,"quinoa||g":3.68,"requesón||g":1.0,"romero||ramita":0,"salmón||g":2.0,"salsa de soja||ml":0.6,"salsa teriyaki||ml":0.9,"sésamo||g":5.7,"setas variadas||g":0.25,"solomillo de cerdo||g":1.4,"tahini||g":5.9,"ternera para estofar||g":2.0,"ternera para salteado||g":1.8,"tomate||ud":22,"tomate cherry||g":0.18,"tomate frito||g":0.9,"tomate triturado||g":0.3,"tomillo||cdita":3,"tortillas de maíz||ud":50,"tortillas de trigo||ud":90,"vino blanco||ml":0.83,"vino tinto||ml":0.85,"yogur griego||g":1.3,"yogur natural||g":0.63,"zanahoria||ud":25,"zanahoria||g":0.41
+};
+// kcal reales por ración de una receta = Σ(cant × tabla) / raciones base. Ingrediente sin precio → 0.
+function kcalRacion(r){
+  const base = (r.slots||['comida','cena']).includes('desayuno') ? 1 : 4;
+  let t=0; (r.ingredientes||[]).forEach(i=>{ const k=KCAL_ING[i.n+'||'+i.u]; if(k!==undefined) t+=i.cant*k; });
+  return Math.round(t/base);
+}
+// rol: unico (plato completo que va solo) · primero (crema/sopa/verdura de arranque) ·
+// segundo (proteína principal ligera que se empareja con un primero). Solo primero/segundo se
+// listan; el resto (incl. desayunos y recetas propias) queda 'unico' por defecto. El dúo
+// primero+segundo es SOLO en comida (cena/desayuno = plato único).
+const ROL_RECETA = {
+  r07:'primero', r22:'primero', r23:'primero', r24:'primero', r35:'primero', r36:'primero', r41:'primero', r48:'primero',
+  r01:'segundo', r02:'segundo', r03:'segundo', r04:'segundo', r05:'segundo', r13:'segundo', r16:'segundo', r27:'segundo', r46:'segundo'
+};
+RECIPES.forEach(r=>{ r.rol = ROL_RECETA[r.id] || 'unico'; });
+
+// Reporte de composición del banco (Fase 1) — foto para el generador dúo. Solo lectura.
+const BANDA_CC = [650, 850]; // comida/cena: ración completa objetivo (adulto de referencia)
+function bankReport(){
+  const cc = getAllRecipes().filter(r=> !(r.slots||['comida','cena']).includes('desayuno'));
+  const byRol = {unico:[], primero:[], segundo:[]};
+  cc.forEach(r=> (byRol[r.rol]||byRol.unico).push(Object.assign({}, r, {kc: kcalRacion(r)})));
+  const unicoOk = byRol.unico.filter(r=> r.kc>=BANDA_CC[0]).length;
+  const unicoLow = byRol.unico.length - unicoOk;
+  const protMix = arr=>{ const m={}; arr.forEach(r=> m[r.proteina]=(m[r.proteina]||0)+1); return Object.entries(m).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`${k} ${v}`).join(' · '); };
+  const veganSeg = byRol.segundo.filter(r=> ['vegetal','legumbre'].includes(r.proteina)).length;
+  const list = arr=> arr.sort((a,b)=>a.kc-b.kc).map(r=>`&nbsp;&nbsp;· ${r.kc} kcal — ${r.nombre}`).join('<br>');
+  const combos = byRol.primero.length * byRol.segundo.length;
+  const el = document.getElementById('bank-report');
+  el.innerHTML = `
+  <div class="callout"><strong>Comida/cena: ${cc.length} recetas.</strong> Banda de ración completa: ${BANDA_CC[0]}–${BANDA_CC[1]} kcal.</div>
+  <p><strong>ÚNICO (van solos): ${byRol.unico.length}</strong> · ${unicoOk} ya en banda, <strong style="color:var(--danger)">${unicoLow} por debajo de ${BANDA_CC[0]}</strong> (habrá que subirlos o pasarlos a segundo).</p>
+  <p style="margin-top:10px;"><strong>PRIMERO (arranque): ${byRol.primero.length}</strong> — ${protMix(byRol.primero)}<br>${list(byRol.primero)}</p>
+  <p style="margin-top:10px;"><strong>SEGUNDO (proteína, se empareja): ${byRol.segundo.length}</strong> — ${protMix(byRol.segundo)}<br>${list(byRol.segundo)}</p>
+  <p style="margin-top:10px;"><strong>Combos dúo posibles: ${combos}</strong> (${byRol.primero.length} primeros × ${byRol.segundo.length} segundos).</p>
+  <p style="margin-top:10px;color:${veganSeg?'var(--soft)':'var(--danger)'}"><strong>Gap mesa mixta:</strong> segundos aptos para vegano/vegetariano = <strong>${veganSeg}</strong>. ${veganSeg<2?'Insuficiente — Fase 2 debe crear segundos veganos (tofu, seitán, legumbre-como-segundo) para el dúo en familias con patrón vegano.':''}</p>`;
+}
 
 // ============================================================
 // PATRONES DIETÉTICOS (whitelist) — qué proteínas puede comer cada patrón

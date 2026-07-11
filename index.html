@@ -34,10 +34,10 @@
    ============================================================ */
 :root {
   color-scheme: dark;
-  --bg: #0D1512;            /* base */
-  --panel: #16211C;         /* elev-1: cards */
-  --elev2: #1E2E27;         /* elev-2: hover / slots */
-  --elev3: #253830;         /* elev-3: overlays */
+  --bg: #21352D;            /* base (+10pt luminosidad sobre versión anterior #0D1512) */
+  --panel: #2A4036;         /* elev-1: cards */
+  --elev2: #324D41;         /* elev-2: hover / slots */
+  --elev3: #39574A;         /* elev-3: overlays */
   --ink: #F4F7F4;           /* texto primario */
   --soft: #B9C6BE;          /* texto secundario */
   --muted: #8FA096;         /* texto terciario */
@@ -199,20 +199,43 @@ label { display: block; font-size: 12.5px; color: var(--soft); margin-bottom: 5p
 .meal-period { min-height: 0; display: flex; flex-direction: column; gap: 6px; }
 /* la caja visible aporta su altura de contenido a la fila (subgrid la iguala al más alto de la semana)
    y luego crece (flex-grow) para rellenar si su día es más corto que ese máximo — basis:auto, no 0 */
-.meal-slot { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px; font-size: 13px; flex: 1 1 auto; min-height: 0; }
+.meal-slot { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 12px; font-size: 13px; flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 10px; }
 .meal-slot.cole { background: linear-gradient(160deg, rgba(232,181,77,.10), rgba(232,181,77,.02)), var(--panel); border-color: rgba(232,181,77,.25); }
-.meal-slot .label { font-size: 9.5px; text-transform: uppercase; color: var(--muted); margin-bottom: 3px; letter-spacing: 0.7px; font-weight: 600; }
+/* cabecera: icono de franja horaria + label — una vez por card, no por plato */
+.meal-head { display: flex; align-items: center; gap: 6px; }
+.meal-head .meal-ico { display: flex; flex-shrink: 0; }
+.meal-head .meal-ico svg { width: 15px; height: 15px; stroke: currentColor; }
+.meal-slot .label { font-size: 9.5px; text-transform: uppercase; color: var(--muted); letter-spacing: 0.7px; font-weight: 600; }
 /* tipo de comida codificado por color — se lee de un vistazo sin leer el texto */
-.meal-slot .label.l-desayuno { color: var(--gold); }
-.meal-slot .label.l-comida { color: #FF9377; }
-.meal-slot .label.l-cena { color: #4FC79A; }
-.meal-slot .name { font-weight: 500; color: var(--ink); line-height: 1.3; }
-.meal-slot .name.empty { color: var(--muted); font-weight: 400; font-style: italic; }
-.meal-slot .name.clickable { cursor: pointer; }
-.meal-slot .name.clickable:hover { color: var(--accent); }
-.meal-slot .meta-row { display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap; align-items: center; justify-content: space-between; }
-.meal-slot button.swap { background: rgba(23,169,116,.12); border: none; color: #4FC79A; font-size: 12px; cursor: pointer; padding: 6px 12px; border-radius: 8px; min-height: 32px; font-family: inherit; font-weight: 500; }
-.meal-slot button.swap:hover { background: rgba(23,169,116,.2); }
+.meal-slot .label.l-desayuno, .meal-head:has(.label.l-desayuno) .meal-ico { color: var(--gold); }
+.meal-slot .label.l-comida, .meal-head:has(.label.l-comida) .meal-ico { color: #FF9377; }
+.meal-slot .label.l-cena, .meal-head:has(.label.l-cena) .meal-ico { color: #4FC79A; }
+/* quién come: una fila por card, tocable */
+.comensal-row { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--soft); }
+.comensal-row .ico-row { display: flex; flex-shrink: 0; color: var(--muted); }
+.comensal-row .ico-row svg { width: 14px; height: 14px; stroke: currentColor; }
+.comensal-txt { flex: 1 1 auto; min-width: 0; }
+.comensal-avatars { display: flex; gap: 6px; flex-shrink: 0; }
+/* 32px — mínimo táctil recomendado (44px) se relaja aquí porque son varios en fila; con
+   gap de 6px queda un objetivo cómodo sin que la fila reviente en anchos de móvil estrechos */
+.comensal-dot { width: 32px; height: 32px; border-radius: 50%; border: none; cursor: pointer; color: #fff; font-size: 12px; font-weight: 600; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, hsl(var(--hue) 60% 52%), hsl(calc(var(--hue) + 40) 55% 40%)); transition: opacity var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out); }
+.comensal-dot.absent { opacity: .28; filter: grayscale(1); }
+.comensal-dot:active { transform: scale(0.88); }
+/* plato: nombre protagonista, el resto secundario */
+.dish-row { display: flex; flex-direction: column; gap: 6px; }
+.dish-row + .dish-row { border-top: 1px solid var(--line); padding-top: 10px; }
+.dish-name { font-size: 16px; font-weight: 600; color: var(--ink); line-height: 1.3; }
+.dish-name.empty { color: var(--muted); font-weight: 400; font-style: italic; font-size: 13px; }
+.dish-name.clickable { cursor: pointer; }
+.dish-name.clickable:hover { color: var(--accent); }
+.dish-meta-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.dish-info-row { display: flex; gap: 14px; flex-wrap: wrap; font-size: 11.5px; color: var(--muted); }
+.dish-info-row span { display: inline-flex; align-items: center; gap: 5px; }
+.dish-info-row svg { width: 13px; height: 13px; stroke: currentColor; flex-shrink: 0; }
+/* "Cambiar": link de texto, no botón — la comida es la protagonista, no la acción */
+.swap-link { display: inline-flex; align-items: center; gap: 5px; background: none; border: none; color: #4FC79A; font-size: 12.5px; font-weight: 500; cursor: pointer; padding: 4px 0; font-family: inherit; align-self: flex-start; }
+.swap-link:hover { color: #6FDBAF; }
+.swap-link svg { width: 13px; height: 13px; stroke: currentColor; }
 
 .recipe-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
 .recipe-card { background: var(--elev2); border: 1px solid var(--line); border-radius: 14px; padding: 13px; cursor: pointer; transition: all 0.15s; }
@@ -224,7 +247,8 @@ label { display: block; font-size: 12.5px; color: var(--soft); margin-bottom: 5p
 .tag { display: inline-block; padding: 3px 9px; background: var(--elev3); color: var(--soft); border-radius: 999px; font-size: 11px; font-weight: 500; }
 /* Proteína: texto simple con icono, no píldora — no compite en color con el hidrato (lo único que SÍ debe saltar a la vista para detectar repetición) */
 .plato-proteina { font-size: 12.5px; color: var(--ink); font-weight: 500; display: inline-flex; align-items: center; gap: 5px; }
-.plato-proteina .ico { font-size: 13px; line-height: 1; }
+.plato-proteina .ico { display: inline-flex; line-height: 1; }
+.plato-proteina .ico svg { width: 14px; height: 14px; stroke: currentColor; }
 .plato-verdura { font-size: 11.5px; color: var(--muted); }
 /* Hidrato: la única píldora con color, un tono distinto por hidrato → la repetición se nota por color, no solo por texto (versión dark: fondo tintado oscuro + texto claro del mismo tono) */
 .tag.base-arroz { background: #3D3312; color: #F0D98C; }
@@ -473,7 +497,7 @@ body.account-open { overflow: hidden; }
       <div class="menu-wrap">
         <button class="secondary menu-dots" onclick="toggleWeekMenu(event)" aria-label="Más acciones">⋯</button>
         <div class="dropdown" id="week-menu">
-          <button onclick="toggleWeekMenu();generateWeek('desayuno')">Generar solo desayunos</button>
+          <button id="menu-gen-desayuno" onclick="toggleWeekMenu();generateWeek('desayuno')">Generar solo desayunos</button>
           <button onclick="toggleWeekMenu();generateWeek('comida')">Generar solo comidas</button>
           <button onclick="toggleWeekMenu();generateWeek('cena')">Generar solo cenas</button>
           <hr>
@@ -548,6 +572,11 @@ body.account-open { overflow: hidden; }
   <div class="card">
     <h2>Familia</h2>
     <div id="family-settings"></div>
+  </div>
+  <div class="card">
+    <h2>Recetas ocultas</h2>
+    <p class="hint" style="margin-bottom:12px;">Platos que no gustan a tu familia — ocultos del banco y de la generación de menús, sin borrar para el resto de familias.</p>
+    <div id="hidden-recipes"></div>
   </div>
   <div class="card">
     <h2>Ajustes y respaldo</h2>
@@ -646,6 +675,16 @@ body.account-open { overflow: hidden; }
     <button class="close-btn" onclick="closeModal('add-recipe-modal')">&times;</button>
     <h2>Nueva receta</h2>
     <p class="hint" style="font-size:12px;margin-bottom:12px;">Usa el botón <em>"Pedir ideas a Claude"</em> (pestaña Mi semana) para copiar el prompt con el esquema correcto, o pega aquí un JSON con <em>proteina</em>, <em>verdura</em> (array, siempre presente) e <em>hidrato</em>. Si faltan, la app los deduce automáticamente.</p>
+    <label>¿La receta es un vídeo de YouTube o un PDF?</label>
+    <div class="row" style="margin-bottom:4px;">
+      <div class="col" style="flex:2"><input type="text" id="yt-link" placeholder="Pega aquí el link de YouTube..."></div>
+      <button class="secondary" onclick="copyYoutubePrompt()">Copiar prompt</button>
+    </div>
+    <div class="row" style="margin-bottom:12px;">
+      <button class="secondary" style="flex:1;" onclick="document.getElementById('recipe-pdf-upload').click()">Subir PDF de receta</button>
+      <input type="file" id="recipe-pdf-upload" accept=".pdf" style="display:none" onchange="processRecipePDF(event)">
+    </div>
+    <p class="hint" style="font-size:11.5px;margin:-6px 0 12px;">Ambos casos: la app no puede estructurar la receta sola (necesita IA) — el botón copia un prompt listo para pegar en un chat con Claude; el PDF vuelca su texto abajo para pegarlo tú mismo en ese chat. Recibes un JSON → lo pegas en la caja de debajo.</p>
     <label>JSON de la receta (objeto o array)</label>
     <textarea id="add-recipe-json" rows="10" placeholder='{"id":"abc","nombre":"Pollo al horno con patata y judías","proteina":"pollo","verdura":["judía verde"],"hidrato":"patata","proteina_separable":true,"kcal":450,"ingredientes":[{"n":"pollo","cant":600,"u":"g","seccion":"carne"}],"pasos":["..."],"kid_friendly":true}'></textarea>
     <div style="margin-top:12px;display:flex;gap:8px;justify-content:flex-end;">
@@ -1160,7 +1199,32 @@ function ensureAxes(r){
   if(!r.slots) r.slots=['comida','cena'];
   r._ax=true; return r;
 }
-function getAllRecipes(){return [...RECIPES, ...BREAKFAST, ...(state.customRecipes||[])].map(ensureAxes);}
+function getAllRecipes(){
+  const blacklist = new Set(state.blacklistedRecipeIds||[]);
+  return [...RECIPES, ...BREAKFAST, ...(state.customRecipes||[])].filter(r=>!blacklist.has(r.id)).map(ensureAxes);
+}
+// receta que no gusta a esta familia — se oculta (banco base es compartido, no se borra de verdad)
+function hideRecipeForFamily(id){
+  if(!confirm("¿Ocultar esta receta para tu familia? No volverá a salir en el banco ni en la generación de menús. Puedes restaurarla luego en Ajustes.")) return;
+  if(!state.blacklistedRecipeIds) state.blacklistedRecipeIds=[];
+  if(!state.blacklistedRecipeIds.includes(id)) state.blacklistedRecipeIds.push(id);
+  save(); closeModal('recipe-modal'); renderRecipes(); renderHiddenRecipes();
+}
+function restoreRecipeForFamily(id){
+  state.blacklistedRecipeIds=(state.blacklistedRecipeIds||[]).filter(x=>x!==id);
+  save(); renderHiddenRecipes(); renderRecipes();
+}
+function renderHiddenRecipes(){
+  const c = document.getElementById('hidden-recipes'); if(!c) return;
+  const ids = state.blacklistedRecipeIds||[];
+  if(!ids.length){ c.innerHTML = '<p class="hint">Ninguna — todo el banco visible.</p>'; return; }
+  const all = [...RECIPES, ...BREAKFAST, ...(state.customRecipes||[])];
+  c.innerHTML = ids.map(id=>{
+    const r = all.find(x=>x.id===id);
+    if(!r) return '';
+    return `<div class="member"><div class="member-info"><div class="member-name">${r.nombre}</div></div><button class="tiny" onclick="restoreRecipeForFamily('${id}')">Restaurar</button></div>`;
+  }).join('');
+}
 function getRecipe(id){return getAllRecipes().find(r=>r.id===id);}
 
 // ============================================================
@@ -1193,7 +1257,7 @@ function activateTab(name){
   currentTab = name;
   positionNavIndicator();
   if(name==="recetas")renderRecipes();
-  if(name==="ajustes"){renderState();renderFamilySettings();}
+  if(name==="ajustes"){renderState();renderFamilySettings();renderHiddenRecipes();}
   if(name==="cole")renderColeCalendar();
   if(name==="semana")renderWeek();
   window.scrollTo({top:0});
@@ -1312,7 +1376,7 @@ function saveMember(){
   const age = calcAge(birthYear);
   const ayunoSalta = document.getElementById("m-ayuno").value;
   const data={
-    id:editingMemberId||"m"+Date.now(),
+    id:editingMemberId||"m"+Date.now()+Math.random().toString(36).slice(2,6),
     name:document.getElementById("m-name").value.trim(),
     birthYear, sex:document.getElementById("m-sex").value, type:deriveTipo(age),
     activity:document.getElementById("m-activity").value,
@@ -1633,7 +1697,7 @@ function generateWeek(mode, skipConfirm){
     const slot = wk[d.index];
     const isWeekendDay = d.date.getDay()===0 || d.date.getDay()===6;
 
-    if(mode==='desayuno' || mode==='all'){
+    if((mode==='desayuno' || mode==='all') && trackedMeals().includes('desayuno')){
       const res = generateSlot(d,'desayuno', null, null);
       if(res){ if(res.single){slot.desayuno=res.single; delete slot.desayunoByPattern;} else {slot.desayunoByPattern=res.byPattern; slot.desayuno=null;} }
     }
@@ -1658,19 +1722,78 @@ function clearWeek(){
   save();renderWeek();
 }
 const MEAL_LABELS = {desayuno:'Desayuno', comida:'Comida', cena:'Cena'};
-const PROTEIN_ICO = {pollo:'🐔',pescado:'🐟',carne:'🥩',huevo:'🥚',legumbre:'🫘',vegetal:'🥬',lacteos:'🥛'};
+// iconografía de línea consistente (sustituye emoji) — mismo estilo que los iconos de nav
+const SVG_ATTR = 'viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"';
+const PROTEIN_ICO = {
+  pollo: `<svg ${SVG_ATTR}><path d="M9 15c-2 2-4.5 2.2-5.8.8-1.3-1.3-1-3.8 1-5.8 2.7-2.7 6.8-3.4 9.3-1l3.2 3.2c1.6 1.6 1.3 4.5-.6 6.4-2 2-4.8 2.2-6.4.6z"/><circle cx="15" cy="9" r="3.3"/></svg>`,
+  pescado: `<svg ${SVG_ATTR}><path d="M3 12c3-4 8-6 13-4.5C19 8.5 21 10 21 12s-2 3.5-5 4.5C11 18 6 16 3 12z"/><path d="M21 12l2-2.5M21 12l2 2.5"/><circle cx="8" cy="11" r=".6" fill="currentColor" stroke="none"/></svg>`,
+  carne: `<svg ${SVG_ATTR}><path d="M5 8.5c0-2.5 2.7-4.5 7-4.5s7 2 7 4.5-2.7 6.5-7 6.5c-.8 0-1.6-.1-2.3-.4L7 18l-2-1 2.5-4.3c-1.5-1-2.5-2.5-2.5-3.7z"/><circle cx="11" cy="8.3" r="1.4"/></svg>`,
+  huevo: `<svg ${SVG_ATTR}><path d="M12 21c-4 0-6.5-3.3-6.5-7.5C5.5 8.5 8.2 3 12 3s6.5 5.5 6.5 10.5S16 21 12 21z"/></svg>`,
+  legumbre: `<svg ${SVG_ATTR}><path d="M6 5c7-2 13 2 13 9 0 5-4 8-8 6-3.5-1.7-5.5-6-5-11 0-1.5.5-3 0-4z"/><circle cx="10.5" cy="10.5" r="1.1" fill="currentColor" stroke="none"/><circle cx="13.5" cy="14.5" r="1.1" fill="currentColor" stroke="none"/></svg>`,
+  vegetal: `<svg ${SVG_ATTR}><path d="M5 19C5 10 11 4 20 4c0 9-6 15-15 15z"/><path d="M5 19c2.5-5 6-8.5 11-11"/></svg>`,
+  lacteos: `<svg ${SVG_ATTR}><path d="M8 3h8l-.7 4H8.7L8 3z"/><path d="M8.7 7h6.6l.9 12.2a1.6 1.6 0 0 1-1.6 1.8H9.4a1.6 1.6 0 0 1-1.6-1.8L8.7 7z"/><path d="M8.4 11.5h7.2"/></svg>`
+};
+const ICO_MEAL = {
+  desayuno: `<svg ${SVG_ATTR}><circle cx="12" cy="17" r="4"/><path d="M12 3v2M5 7l1.4 1.4M19 7l-1.4 1.4M3 17h1M20 17h1"/></svg>`,
+  comida: `<svg ${SVG_ATTR}><circle cx="12" cy="12" r="4.2"/><path d="M12 3v2.3M12 18.7V21M4.2 12H2M22 12h-2.2M5.6 5.6l1.5 1.5M16.9 16.9l1.5 1.5M18.4 5.6l-1.5 1.5M7.1 16.9l-1.5 1.5"/></svg>`,
+  cena: `<svg ${SVG_ATTR}><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>`
+};
+const ICO_COMENSALES = `<svg ${SVG_ATTR}><circle cx="8.5" cy="8" r="2.6"/><path d="M3.5 19c0-3 2.2-5 5-5s5 2 5 5"/><circle cx="17" cy="9" r="2.1"/><path d="M14.5 19c.2-2.4 1.7-4 3.7-4"/></svg>`;
+const ICO_CLOCK = `<svg ${SVG_ATTR}><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>`;
+const ICO_CART = `<svg ${SVG_ATTR}><path d="M3.5 4h2l1.2 11.5h10.8L19 7.5H7"/><circle cx="9.5" cy="19" r="1.2" fill="currentColor" stroke="none"/><circle cx="16" cy="19" r="1.2" fill="currentColor" stroke="none"/></svg>`;
+const ICO_SWAP = `<svg ${SVG_ATTR}><path d="M4 12a8 8 0 0 1 13.6-5.7M20 12a8 8 0 0 1-13.6 5.7"/><path d="M17 3v4h-4M7 21v-4h4"/></svg>`;
+const TIEMPO_APROX = {rapido:'~20 min', elaborado:'~45 min'};
 function platoTags(r){
-  const proteinaHTML = `<span class="plato-proteina"><span class="ico">${PROTEIN_ICO[r.proteina]||'🍽️'}</span>${r.proteina}</span>`;
+  const proteinaHTML = `<span class="plato-proteina"><span class="ico">${PROTEIN_ICO[r.proteina]||''}</span>${r.proteina}</span>`;
   const verduraHTML = (r.verdura&&r.verdura.length)?`<span class="plato-verdura">${r.verdura.slice(0,2).join(', ')}</span>`:'';
   const hidratoTag = (r.hidrato&&r.hidrato!=='ninguno')?`<span class="tag base-${r.hidrato}">${BASE_LABELS[r.hidrato]||r.hidrato}</span>`:'';
   const tiempoTag = `<span class="tag tiempo-${r.tiempo}">${r.tiempo==='rapido'?'rápido':'elaborado'}</span>`;
   return {proteinaHTML, verduraHTML, hidratoTag, tiempoTag};
+}
+// comensal ausente por comida (día+toma) — no afecta a cantidades de la lista de compra
+// (las recetas tienen cantidades fijas, no escalan por nº de comensales)
+function getAbsent(dayIdx, kind){
+  const wk = state.weekMenusByMonday[state.activeMonday]||{};
+  return (wk[dayIdx]&&wk[dayIdx].absent&&wk[dayIdx].absent[kind]) || [];
+}
+function toggleAbsent(dayIdx, kind, memberId){
+  const wk = state.weekMenusByMonday[state.activeMonday] || (state.weekMenusByMonday[state.activeMonday]={});
+  if(!wk[dayIdx]) wk[dayIdx] = {desayuno:null,comida:null,cena:null};
+  if(!wk[dayIdx].absent) wk[dayIdx].absent = {};
+  const arr = wk[dayIdx].absent[kind] || [];
+  const idx = arr.indexOf(memberId);
+  if(idx>=0) arr.splice(idx,1); else arr.push(memberId);
+  wk[dayIdx].absent[kind] = arr;
+  save(); renderWeek();
+}
+function comensalRow(dayIdx, kind){
+  const absent = getAbsent(dayIdx, kind);
+  const avatars = state.members.map(m=>{
+    const isAbsent = absent.includes(m.id);
+    return `<button class="comensal-dot${isAbsent?' absent':''}" style="--hue:${memberHue(m)}" onclick="toggleAbsent(${dayIdx},'${kind}','${m.id}')" title="${m.name}${isAbsent?' — no come':''}">${m.name.charAt(0).toUpperCase()}</button>`;
+  }).join('');
+  const ausentes = state.members.filter(m=>absent.includes(m.id));
+  let txt = 'Todos comen';
+  if(ausentes.length===state.members.length) txt = 'Nadie come';
+  else if(ausentes.length) txt = 'Sin '+ausentes.map(m=>m.name).join(', ');
+  return `<div class="comensal-row"><span class="ico-row">${ICO_COMENSALES}</span><span class="comensal-txt">${txt}</span><span class="comensal-avatars">${avatars}</span></div>`;
+}
+// "falta comprar X" — solo si ya se generó lista de compra y el ingrediente sigue sin marcar (evita ruido)
+function missingIngredientHint(recipe){
+  if(!state.shoppingList || !state.shoppingList.length) return null;
+  const found = recipe.ingredientes.find(i=>{
+    const key = i.n+"|"+i.u;
+    const item = state.shoppingList.find(it=>it.key===key);
+    return item && !state.shoppingChecks[key];
+  });
+  return found ? found.n : null;
 }
 function renderWeek(){
   const monday = parseISO(state.activeMonday);
   document.getElementById("week-label").textContent = fmtWeekRange(monday);
   const week = getActiveWeek();
   const grid = document.getElementById("week-grid");
+  document.getElementById("menu-gen-desayuno").style.display = trackedMeals().includes('desayuno') ? '' : 'none';
   if(!state.members.length){
     grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><h3>Primero, tu familia</h3><p>Añade a los comensales: los menús, calorías y restricciones se calculan por persona.</p><button class="primary" onclick="activateTab(\'familia\')">Añadir a mi familia</button></div>';
     document.getElementById("week-stats").innerHTML = "";
@@ -1686,32 +1809,36 @@ function renderWeek(){
       const cHidHTML = (cb && HIDRATOS.includes(cb)) ? `<span class="tag base-${cb}">${BASE_LABELS[cb]}</span>` : '';
       coleHTML = `<div class="meal-slot cole"><div class="label">Cole</div><div class="name" style="font-size:11px;line-height:1.25">${d.cole}</div>${(cProtHTML||cHidHTML)?`<div class="meta-row">${cProtHTML}${cHidHTML}</div>`:''}</div>`;
     }
-    const renderRow = (r, kind, pattern, isSecond) => {
+    const renderRow = (r, kind, pattern) => {
       const {proteinaHTML, verduraHTML, hidratoTag} = platoTags(r);
       const patternLabel = pattern ? `<div class="diet-label">${pattern}</div>` : '';
-      const divider = isSecond ? ' style="border-top:1px solid var(--line);padding-top:10px;margin-top:10px;"' : '';
-      return `<div${divider}>${patternLabel}<div class="name clickable" onclick="openRecipeModal('${r.id}',${d.index},'${kind}'${pattern?`,'${pattern}'`:''})">${r.nombre}</div><div class="meta-row">${proteinaHTML}${verduraHTML}${hidratoTag}</div><button class="swap" onclick="openPickModal(${d.index},'${kind}'${pattern?`,'${pattern}'`:''})">cambiar →</button></div>`;
+      const missing = missingIngredientHint(r);
+      const infoRow = `<div class="dish-info-row"><span>${ICO_CLOCK}${TIEMPO_APROX[r.tiempo]||''}</span>${missing?`<span>${ICO_CART}Falta: ${missing}</span>`:''}</div>`;
+      return `<div class="dish-row">${patternLabel}<div class="dish-name clickable" onclick="openRecipeModal('${r.id}',${d.index},'${kind}'${pattern?`,'${pattern}'`:''})">${r.nombre}</div><div class="dish-meta-row">${proteinaHTML}${verduraHTML}${hidratoTag}</div>${infoRow}<button class="swap-link" onclick="openPickModal(${d.index},'${kind}'${pattern?`,'${pattern}'`:''})">${ICO_SWAP}Cambiar</button></div>`;
     };
     const renderSlot = (kind) => {
       const label = MEAL_LABELS[kind];
       const lcls = `label l-${kind}`;
+      const head = `<div class="meal-head"><span class="meal-ico">${ICO_MEAL[kind]}</span><span class="${lcls}">${label}</span></div>`;
       const byPattern = d.slot[kind+'ByPattern'];
       if(byPattern && Object.keys(byPattern).length){
-        const rows = Object.entries(byPattern).map(([pattern,id],i)=>{ const r=getRecipe(id); return r?renderRow(r,kind,pattern,i>0):''; }).join('');
-        return `<div class="meal-slot"><div class="${lcls}">${label} · mesa mixta</div>${rows}</div>`;
+        const rows = Object.entries(byPattern).map(([pattern,id])=>{ const r=getRecipe(id); return r?renderRow(r,kind,pattern):''; }).join('');
+        return `<div class="meal-slot">${head}${comensalRow(d.index,kind)}${rows}</div>`;
       }
       const id = d.slot[kind];
       const r = id ? getRecipe(id) : null;
-      if(r) return `<div class="meal-slot"><div class="${lcls}">${label}</div>${renderRow(r,kind,null)}</div>`;
-      return `<div class="meal-slot"><div class="${lcls}">${label}</div><div class="name empty">sin asignar</div><button class="swap" onclick="openPickModal(${d.index},'${kind}')">elegir</button></div>`;
+      if(r) return `<div class="meal-slot">${head}${comensalRow(d.index,kind)}${renderRow(r,kind,null)}</div>`;
+      return `<div class="meal-slot">${head}<div class="dish-name empty">sin asignar</div><button class="swap-link" onclick="openPickModal(${d.index},'${kind}')">${ICO_SWAP}Elegir</button></div>`;
     };
     const showComidaSlot = !d.cole || isWeekend;
+    const showDesayuno = trackedMeals().includes('desayuno');
     const freshCls = window.__justGenerated ? ' fresh' : '';
-    const freshStyle = window.__justGenerated ? ` style="--stagger:${d.index*45}ms"` : '';
-    // 3 franjas (desayuno/comida/cena) = filas del subgrid — la altura de cada fila la
-    // fija el día con la receta más alta de esa franja en la semana; el resto se estira igual.
-    return `<div class="day-col${isWeekend?' weekend':''}${freshCls}"${freshStyle}><h4>${DAY_NAMES[d.index]}<span class="day-num">${d.date.getDate()}</span></h4>
-      <div class="meal-period p-desayuno">${renderSlot('desayuno')}</div>
+    const staggerStyle = window.__justGenerated ? `--stagger:${d.index*45}ms;` : '';
+    // franjas = filas del subgrid — la altura de cada fila la fija el día con la receta
+    // más alta de esa franja en la semana; el resto se estira igual. Nº de filas variable
+    // según si la familia trackea desayuno (span en el estilo inline, coherente en todos los días).
+    return `<div class="day-col${isWeekend?' weekend':''}${freshCls}" style="${staggerStyle}grid-row:span ${showDesayuno?4:3};"><h4>${DAY_NAMES[d.index]}<span class="day-num">${d.date.getDate()}</span></h4>
+      ${showDesayuno?`<div class="meal-period p-desayuno">${renderSlot('desayuno')}</div>`:''}
       <div class="meal-period p-comida">${coleHTML}${showComidaSlot?renderSlot('comida'):''}</div>
       <div class="meal-period p-cena">${renderSlot('cena')}</div>
     </div>`;
@@ -1812,7 +1939,9 @@ function openRecipeModal(id, dayIdx, kind, pattern){
   let portionsHTML = '';
   if(dayIdx!==undefined && kind){
     const d = getActiveWeek()[dayIdx];
+    const absent = getAbsent(dayIdx, kind);
     let eaters = state.members.filter(m=>{
+      if(absent.includes(m.id)) return false;
       if(kind==='comida' && m.type==='nino' && d.cole && d.date.getDay()!==0 && d.date.getDay()!==6) return false;
       return mealShare(m,kind)>0;
     });
@@ -1822,11 +1951,41 @@ function openRecipeModal(id, dayIdx, kind, pattern){
       portionsHTML = `<h3>Por persona</h3><div class="ingredients-list">${portions.map(p=>`<div style="margin-bottom:8px;"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:hsl(${memberHue(p.member)} 60% 55%);margin-right:6px;"></span><strong>${p.member.name}</strong> <span style="color:var(--muted);">(${p.targetKcal} kcal ${MEAL_LABELS[kind].toLowerCase()})</span>: ${p.ingredientes.map(i=>`${i.cantPersona} ${i.u} ${i.n}`).join(' · ')}</div>`).join('')}</div>`;
     }
   }
-  const html = `<button class="close-btn" onclick="closeModal('recipe-modal')">&times;</button><h2>${r.nombre}</h2><div style="margin-bottom:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">${proteinaHTML}${verduraHTML}${hidratoTag}${tiempoTag}<span class="tag">${r.kcal} kcal</span>${r.kid_friendly?'<span class="tag">apta peques</span>':''}</div><h3>Ingredientes (${RACION_ESTANDAR} raciones)</h3><ul class="ingredients-list">${r.ingredientes.map(i=>`<li>· ${i.cant} ${i.u} de ${i.n}</li>`).join("")}</ul>${portionsHTML}<h3>Pasos</h3><ol class="steps-list">${r.pasos.map(p=>`<li>${p}</li>`).join("")}</ol>`;
+  const html = `<button class="close-btn" onclick="closeModal('recipe-modal')">&times;</button><h2>${r.nombre}</h2><div style="margin-bottom:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">${proteinaHTML}${verduraHTML}${hidratoTag}${tiempoTag}<span class="tag">${r.kcal} kcal</span>${r.kid_friendly?'<span class="tag">apta peques</span>':''}</div><h3>Ingredientes (${RACION_ESTANDAR} raciones)</h3><ul class="ingredients-list">${r.ingredientes.map(i=>`<li>· ${i.cant} ${i.u} de ${i.n}</li>`).join("")}</ul>${portionsHTML}<h3>Pasos</h3><ol class="steps-list">${r.pasos.map(p=>`<li>${p}</li>`).join("")}</ol><button class="secondary" style="width:100%;margin-top:16px;" onclick="hideRecipeForFamily('${r.id}')">No nos gusta — ocultar esta receta</button>`;
   document.getElementById("recipe-modal-content").innerHTML = html;
   document.getElementById("recipe-modal").classList.add("active");
 }
 function openAddRecipeModal(){document.getElementById("add-recipe-modal").classList.add("active");}
+// La app no puede estructurar una receta sola (necesita IA) — se copia un prompt listo
+// para pegar en un chat con Claude; el resultado (JSON) se pega en la caja de abajo.
+const RECIPE_JSON_SCHEMA = "id, nombre (el plato completo, incl. su hidrato), kcal (estimado), proteina (pescado|pollo|carne|legumbre|huevo|vegetal), verdura (array de verduras reales del plato, SIEMPRE al menos 1), hidrato (arroz|pasta|patata|pan|cuscus|avena|ninguno), proteina_separable (true si la proteína se sirve aparte y se puede cambiar por otra sin rehacer el plato), ingredientes [{n,cant,u,seccion (verdura|carne|pescado|lacteos|despensa|congelados)}], pasos[], kid_friendly";
+function copyYoutubePrompt(){
+  const link = (document.getElementById('yt-link').value||'').trim();
+  if(!link){ alert('Pega primero el link del vídeo de YouTube.'); return; }
+  const txt = `Hola Claude. Este vídeo de YouTube tiene una receta: ${link}\n\nSaca la transcripción/descripción del vídeo y devuélveme la receta estructurada como JSON con: ${RECIPE_JSON_SCHEMA}. Lo voy a pegar directamente en mi app de menús familiares.`;
+  navigator.clipboard.writeText(txt).then(()=>alert('Prompt copiado. Pégalo en un chat con Claude → recibe el JSON → pégalo aquí abajo → "Añadir al banco".'));
+}
+async function processRecipePDF(event){
+  const file = event.target.files[0];
+  if(!file) return;
+  event.target.value = '';
+  const ta = document.getElementById('add-recipe-json');
+  if(typeof pdfjsLib === 'undefined'){ alert('PDF.js no cargó. Comprueba tu conexión a internet.'); return; }
+  ta.value = 'Extrayendo texto del PDF…';
+  try{
+    const buf = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({data:buf}).promise;
+    let text = '';
+    for(let p=1; p<=Math.min(pdf.numPages,10); p++){
+      const page = await pdf.getPage(p);
+      const tc = await page.getTextContent();
+      text += tc.items.map(i=>i.str).join(' ') + '\n\n';
+    }
+    ta.value = `PEGA ESTO EN UN CHAT CON CLAUDE (pídele el JSON de receta con: ${RECIPE_JSON_SCHEMA}) — este texto tal cual NO es JSON válido, sustitúyelo por la respuesta antes de pulsar "Añadir al banco":\n\n${text.trim()}`;
+  }catch(e){
+    alert('No se pudo leer el PDF: '+e.message);
+  }
+}
 function saveCustomRecipe(){
   const txt=document.getElementById("add-recipe-json").value.trim();
   try{
@@ -1986,7 +2145,7 @@ function renderState(){
   c.innerHTML = `<div>Miembros: <strong>${state.members.length}</strong></div><div>Días con menú escolar: <strong>${Object.keys(state.coleMenuByDate).length}</strong></div><div>Semanas planificadas: <strong>${Object.keys(state.weekMenusByMonday).length}</strong> (${totalSlots} tomas)</div><div>Recetas: <strong>${RECIPES.length}</strong> comida/cena + <strong>${BREAKFAST.length}</strong> desayuno + <strong>${state.customRecipes.length}</strong> propias</div><div>Ingredientes en nevera: <strong>${(state.fridge||[]).length}</strong></div>`;
 }
 
-function renderAll(){renderMembers();renderColeCalendar();renderWeek();renderRecipes();renderShoppingList();renderFridge();renderState();renderFamilySettings();}
+function renderAll(){renderMembers();renderColeCalendar();renderWeek();renderRecipes();renderShoppingList();renderFridge();renderState();renderFamilySettings();renderHiddenRecipes();}
 function closeModal(id){document.getElementById(id).classList.remove("active");}
 document.querySelectorAll(".modal").forEach(m=>m.addEventListener("click",e=>{if(e.target===m)m.classList.remove("active");}));
 
@@ -2147,6 +2306,7 @@ function showAccountScreen(mode){
       `<button class="acc-hue${h===createHue?' sel':''}" data-hue="${h}" style="background:linear-gradient(135deg, hsl(${h} 60% 52%), hsl(${(h+40)%360} 55% 40%));" onclick="selectHue(${h})"></button>`
     ).join('') + `</div>`;
     html += `<label style="margin-top:14px;">PIN de 4 dígitos (opcional)</label><input type="password" id="acc-pin" inputmode="numeric" maxlength="4" placeholder="····" autocomplete="off"><p class="acc-hint">Evita que otro perfil de la casa entre por error. Se puede quitar en Ajustes.</p>`;
+    html += `<label style="margin-top:14px;display:flex;align-items:center;gap:9px;cursor:pointer;" onclick="document.getElementById('acc-desayuno').click()"><input type="checkbox" id="acc-desayuno" checked style="width:18px;height:18px;flex-shrink:0;"> <span style="color:var(--ink);font-size:14px;">Incluir desayuno en el plan</span></label><p class="acc-hint">Si no, la app solo organiza comida y cena. Se puede cambiar luego en Ajustes.</p>`;
     html += `<button class="primary acc-submit" onclick="submitCreateAccount()">Crear familia</button>`;
     html += `<button class="acc-cancel" onclick="showAccountScreen('pick')">Volver</button>`;
     html += `</div>`;
@@ -2190,9 +2350,22 @@ function submitCreateAccount(){
   if(!name){ alert("Ponle nombre a la familia."); return; }
   const pinRaw = (document.getElementById('acc-pin').value||"").trim();
   if(pinRaw && !/^\d{4}$/.test(pinRaw)){ alert("El PIN debe ser de 4 dígitos (o dejarlo vacío)."); return; }
-  const a = {id:genAccountId(), name, hue:createHue, pin:pinRaw?pinHash(pinRaw):null, createdAt:isoDate(new Date())};
+  const incluyeDesayuno = document.getElementById('acc-desayuno').checked;
+  const a = {id:genAccountId(), name, hue:createHue, pin:pinRaw?pinHash(pinRaw):null, createdAt:isoDate(new Date()), mealsTracked: incluyeDesayuno?['desayuno','comida','cena']:['comida','cena']};
   accounts.list.push(a); saveAccounts();
   activateAccount(a.id);
+}
+function trackedMeals(){
+  const a = activeAccount();
+  return (a && a.mealsTracked) || ['desayuno','comida','cena'];
+}
+function toggleTrackedMeal(kind){
+  const a = activeAccount(); if(!a) return;
+  const set = new Set(trackedMeals());
+  if(set.has(kind)) set.delete(kind); else set.add(kind);
+  if(!set.size) set.add('comida'); // nunca vacío del todo
+  a.mealsTracked = ['desayuno','comida','cena'].filter(k=>set.has(k));
+  saveAccounts(); renderFamilySettings(); renderWeek();
 }
 function submitPin(){
   const val = (document.getElementById('acc-pin-entry').value||"").trim();
@@ -2232,6 +2405,7 @@ function renderFamilySettings(){
       <div class="col"><label>Renombrar</label><div style="display:flex;gap:8px;"><input type="text" id="fam-rename" value="${a.name}" maxlength="24"><button class="secondary" onclick="renameFamily()">OK</button></div></div>
       <div class="col"><label>PIN (vacío = quitar)</label><div style="display:flex;gap:8px;"><input type="password" id="fam-pin" inputmode="numeric" maxlength="4" placeholder="····"><button class="secondary" onclick="changeFamilyPin()">OK</button></div></div>
     </div>
+    <label style="margin-top:2px;display:flex;align-items:center;gap:9px;cursor:pointer;" onclick="toggleTrackedMeal('desayuno')"><input type="checkbox" ${trackedMeals().includes('desayuno')?'checked':''} style="width:18px;height:18px;flex-shrink:0;pointer-events:none;"> <span>Incluir desayuno en el plan</span></label>
     <div class="toolbar" style="margin-top:10px;margin-bottom:0;">
       <button class="secondary" onclick="showAccountScreen('pick')">Cambiar de familia</button>
       <button class="danger" onclick="deleteFamily()">Eliminar esta familia</button>

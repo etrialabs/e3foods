@@ -591,7 +591,7 @@ body.landing-open { overflow: hidden; }
     <p class="hint" style="margin-bottom:14px;">Suma automática de ingredientes de TODAS las comidas y cenas asignadas, agrupada por sección de supermercado.</p>
     <div class="toolbar">
       <div class="scope-toggle">
-        <button id="scope-week" class="active" onclick="setScope('week')">Semana activa</button>
+        <button id="scope-week" class="active" onclick="setScope('week')">Próximos 7 días</button>
         <button id="scope-month" onclick="setScope('month')">Mes completo</button>
       </div>
       <button class="primary" onclick="generateShoppingList()">Generar lista</button>
@@ -2374,27 +2374,38 @@ function setScope(s){
 }
 function getMealsForScope(){
   const out = [];
-  const collect = (week, mondayISO)=>{ const monday = parseISO(mondayISO);
-    for(let i=0;i<7;i++){ const w=week[i]; if(!w)continue;
-      const date = addDays(monday, i);
-      ['desayuno','comida','cena'].forEach(k=>{
-        // Fase 3 dúo: comida con comidaPrimero → el primero es UNA sola entrada compartida
-        // (course:'primero', pattern:null = todos los comensales) + el/los segundo(s) por
-        // patrón (course:'segundo'). Sin dúo, comportamiento idéntico a antes (course:null, share=1).
-        const isDuo = k==='comida' && w.comidaPrimero;
-        if(isDuo) out.push({id:w.comidaPrimero, slot:w, date, kind:k, pattern:null, course:'primero'});
-        if(w[k+'ByPattern']) Object.entries(w[k+'ByPattern']).forEach(([pattern,id])=>out.push({id, slot:w, date, kind:k, pattern, course:isDuo?'segundo':null}));
-        else if(w[k]) out.push({id:w[k], slot:w, date, kind:k, pattern:null, course:isDuo?'segundo':null});
-      });
-    }};
+  // Fase 3 dúo: comida con comidaPrimero → el primero es UNA sola entrada compartida
+  // (course:'primero', pattern:null = todos los comensales) + el/los segundo(s) por
+  // patrón (course:'segundo'). Sin dúo, comportamiento idéntico a antes (course:null, share=1).
+  const pushMealsForDay = (w, date)=>{
+    if(!w) return;
+    ['desayuno','comida','cena'].forEach(k=>{
+      const isDuo = k==='comida' && w.comidaPrimero;
+      if(isDuo) out.push({id:w.comidaPrimero, slot:w, date, kind:k, pattern:null, course:'primero'});
+      if(w[k+'ByPattern']) Object.entries(w[k+'ByPattern']).forEach(([pattern,id])=>out.push({id, slot:w, date, kind:k, pattern, course:isDuo?'segundo':null}));
+      else if(w[k]) out.push({id:w[k], slot:w, date, kind:k, pattern:null, course:isDuo?'segundo':null});
+    });
+  };
   if(state.scope==='week'){
-    collect(state.weekMenusByMonday[state.activeMonday] || {}, state.activeMonday);
+    // D2: la lista de la compra es SIEMPRE los próximos 7 días naturales desde HOY (rolling),
+    // no la semana ISO "activa" del planificador — evita comprar para días ya pasados y cubre
+    // el horizonte real aunque cruce a la semana siguiente. La vista del plan (qué semana ves
+    // en "Mi semana") sigue anclada a lunes ISO, sin tocar — son dos cosas independientes.
+    const today = new Date(); today.setHours(0,0,0,0);
+    for(let i=0;i<7;i++){
+      const date = addDays(today, i);
+      const week = state.weekMenusByMonday[isoDate(mondayOf(date))];
+      const dow = date.getDay();
+      pushMealsForDay(week && week[dow===0?6:dow-1], date);
+    }
   } else {
     const monday = parseISO(state.activeMonday);
     const month = monday.getMonth(), year = monday.getFullYear();
     Object.entries(state.weekMenusByMonday).forEach(([mon, week])=>{
       const d = parseISO(mon), sun = addDays(d,6);
-      if((d.getMonth()===month && d.getFullYear()===year) || (sun.getMonth()===month && sun.getFullYear()===year)) collect(week, mon);
+      if((d.getMonth()===month && d.getFullYear()===year) || (sun.getMonth()===month && sun.getFullYear()===year)){
+        for(let i=0;i<7;i++){ if(week[i]) pushMealsForDay(week[i], addDays(d,i)); }
+      }
     });
   }
   return out;
@@ -2443,8 +2454,11 @@ function renderShoppingList(){
   const list = state.shoppingList || [];
   const ids = getMealIdsForScope();
   const monday = parseISO(state.activeMonday);
-  const scopeText = state.scope==='week' ? `semana del ${fmtWeekRange(monday)}` : `mes de ${fmtMonthYear(monday)}`;
-  sum.innerHTML = `Mostrando ingredientes de <strong>${ids.length}</strong> comida(s) planificada(s) en la ${scopeText}.`;
+  // D2: en scope 'week' ya no es "la semana del [rango]" — son los próximos 7 días desde hoy.
+  // fmtWeekRange no exige que la fecha sea lunes, calcula el rango de 7 días desde la fecha dada.
+  const today7 = new Date(); today7.setHours(0,0,0,0);
+  const scopeText = state.scope==='week' ? `próximos 7 días (${fmtWeekRange(today7)})` : `mes de ${fmtMonthYear(monday)}`;
+  sum.innerHTML = `Mostrando ingredientes de <strong>${ids.length}</strong> comida(s) planificada(s) en los ${scopeText}.`;
   if(!list.length){c.innerHTML='<div class="empty-state" style="padding:20px"><p>Pulsa "Generar lista" después de planificar comidas/cenas.</p></div>';return;}
   const groups = {};
   list.forEach(it=>{const sec=it.seccion||"despensa";(groups[sec]=groups[sec]||[]).push(it);});

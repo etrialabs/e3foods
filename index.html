@@ -678,7 +678,7 @@ body.landing-open { overflow: hidden; }
     <button class="close-btn" onclick="closeModal('week-menu')">&times;</button>
     <h2>Semana</h2>
     <div class="more-rows">
-      <button class="more-row" onclick="closeModal('week-menu');generateWeek('all')"><span class="more-ico" id="ico-gen"></span><span class="more-txt"><strong>Generar / regenerar semana</strong><span>Rehace los 7 días según tu familia</span></span></button>
+      <button class="more-row" onclick="closeModal('week-menu');regenerarHorizonte()"><span class="more-ico" id="ico-gen"></span><span class="more-txt"><strong>Generar / regenerar</strong><span>Rehace desde hoy hasta el domingo que viene</span></span></button>
       <button class="more-row" onclick="closeModal('week-menu');goToday()"><span class="more-ico" id="ico-hoy"></span><span class="more-txt"><strong>Hoy</strong><span>Vuelve a la semana y el día actuales</span></span></button>
       <button class="more-row" id="menu-gen-desayuno" onclick="closeModal('week-menu');generateWeek('desayuno')"><span class="more-ico" id="ico-desayuno"></span><span class="more-txt"><strong>Generar solo desayunos</strong></span></button>
       <button class="more-row" onclick="closeModal('week-menu');generateWeek('comida')"><span class="more-ico" id="ico-comida"></span><span class="more-txt"><strong>Generar solo comidas</strong></span></button>
@@ -1783,8 +1783,11 @@ function setSlot(dayIdx, mealKind, recipeId, pattern){
 // GENERADOR — mesa mixta: hidrato compartido (base) + proteína resuelta
 // por persona según su patrón dietético. 3 tomas (desayuno/comida/cena).
 // ============================================================
-function generateWeek(mode, skipConfirm){
+function generateWeek(mode, skipConfirm, dayIndices){
   // mode: 'desayuno' | 'comida' | 'cena' | 'all'
+  // dayIndices opcional (D2 rolling): solo genera esos índices de día (0=lunes..6=domingo) de
+  // la semana activa, dejando el resto EXACTAMENTE como está — lo usa el auto-relleno diario
+  // para no repisar días ya generados de una semana parcialmente poblada.
   const recipes = getAllRecipes();
   if(!recipes.length){alert("No hay recetas");return;}
   const week = getActiveWeek();
@@ -1963,6 +1966,7 @@ function generateWeek(mode, skipConfirm){
 
   const wk = state.weekMenusByMonday[state.activeMonday] || (state.weekMenusByMonday[state.activeMonday]={});
   week.forEach(d=>{
+    if(dayIndices && !dayIndices.includes(d.index)) return;
     const coleProt = detectColeProtein(d.cole);
     const coleBase = detectColeBase(d.cole);
     if(coleBase && HIDRATOS.includes(coleBase)) dayHidratos[d.index].add(coleBase);
@@ -1993,6 +1997,66 @@ function generateWeek(mode, skipConfirm){
     }
   });
   save(); window.__justGenerated=true; renderWeek();
+}
+// ============================================================
+// D2 ROLLING (2026-07-12) — horizonte de planificación = HOY hasta el domingo de la semana
+// siguiente. El grid/navegación de "Mi semana" NO cambia (Roger: mantener 7 columnas, sigue
+// funcionando igual); lo que cambia es que el usuario ya no tiene que generar semana a semana:
+// (1) autoFillHorizon() rellena en silencio, día a día, el hueco que entra nuevo al horizonte
+//     sin tocar nada ya generado ni preguntar nada — se llama al abrir la app.
+// (2) "Generar/regenerar" (acción explícita del usuario) SIEMPRE regenera el horizonte completo
+//     hoy→domingo semana siguiente (no solo la semana ISO que se esté viendo), con la misma
+//     confirmación de siempre si ya había datos.
+// ============================================================
+function getHorizonDates(){
+  const today = new Date(); today.setHours(0,0,0,0);
+  const nextSunday = addDays(mondayOf(addDays(today,7)), 6);
+  const dates = []; let d = today;
+  while(d<=nextSunday){ dates.push(isoDate(d)); d = addDays(d,1); }
+  return dates;
+}
+function slotIsEmpty(slot){
+  return !slot || (!slot.desayuno && !slot.desayunoByPattern && !slot.comida && !slot.comidaByPattern && !slot.cena && !slot.cenaByPattern);
+}
+function dateToWeekSlot(dateISO){
+  const d = parseISO(dateISO);
+  const mondayISO = isoDate(mondayOf(d));
+  const dow = d.getDay();
+  return {mondayISO, dayIdx: dow===0?6:dow-1};
+}
+function autoFillHorizon(){
+  if(!state.members.length) return; // sin familia, nada que generar
+  const byWeek = {};
+  getHorizonDates().forEach(dateISO=>{
+    const {mondayISO, dayIdx} = dateToWeekSlot(dateISO);
+    const slot = (state.weekMenusByMonday[mondayISO]||{})[dayIdx];
+    if(slotIsEmpty(slot)) (byWeek[mondayISO]=byWeek[mondayISO]||[]).push(dayIdx);
+  });
+  if(!Object.keys(byWeek).length) return;
+  const prevMonday = state.activeMonday;
+  Object.entries(byWeek).forEach(([mondayISO, dayIdxs])=>{
+    state.activeMonday = mondayISO;
+    generateWeek('all', true, dayIdxs);
+  });
+  state.activeMonday = prevMonday;
+  save();
+}
+function regenerarHorizonte(){
+  const dates = getHorizonDates();
+  const hasExisting = dates.some(dateISO=>{
+    const {mondayISO, dayIdx} = dateToWeekSlot(dateISO);
+    return !slotIsEmpty((state.weekMenusByMonday[mondayISO]||{})[dayIdx]);
+  });
+  if(hasExisting && !confirm("Regenerar reemplaza las comidas ya asignadas de hoy al domingo de la semana que viene. ¿Continuar?")) return;
+  const byWeek = {};
+  dates.forEach(dateISO=>{ const {mondayISO, dayIdx} = dateToWeekSlot(dateISO); (byWeek[mondayISO]=byWeek[mondayISO]||[]).push(dayIdx); });
+  const todayMonday = isoDate(mondayOf(new Date()));
+  Object.entries(byWeek).forEach(([mondayISO, dayIdxs])=>{
+    state.activeMonday = mondayISO;
+    generateWeek('all', true, dayIdxs);
+  });
+  state.activeMonday = todayMonday;
+  save(); renderWeek();
 }
 function clearWeek(){
   if(!confirm("¿Vaciar todas las comidas y cenas de la semana activa?"))return;
@@ -2827,7 +2891,7 @@ function pickAccount(id){
 function activateAccount(id){
   buzz();
   accounts.activeId = id; saveAccounts();
-  load(); renderAll(); renderFamilyChip(); hideAccountScreen();
+  load(); autoFillHorizon(); renderAll(); renderFamilyChip(); hideAccountScreen();
 }
 function submitCreateAccount(){
   const name = (document.getElementById('acc-name').value||"").trim();
@@ -2906,7 +2970,7 @@ function renderFamilySettings(){
 // INIT
 loadAccounts();
 if(activeAccount()){
-  load(); renderAll(); renderFamilyChip();
+  load(); autoFillHorizon(); renderAll(); renderFamilyChip();
 } else {
   state = defaultState(); renderAll(); renderFamilyChip();
   showAccountScreen('pick');

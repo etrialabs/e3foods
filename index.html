@@ -132,6 +132,19 @@ nav button.active .nav-lbl { color: var(--gold); font-weight: 600; }
 /* indicador que desliza al cambiar de pestaña — continuidad espacial, no un salto */
 .nav-indicator { position: absolute; top: -1px; height: 2px; background: linear-gradient(90deg, transparent, var(--gold) 25%, var(--gold) 75%, transparent); border-radius: 2px; transition: left var(--dur-base) var(--ease-spring), width var(--dur-base) var(--ease-spring); pointer-events: none; box-shadow: 0 0 10px rgba(201,169,110,.5); }
 
+/* ---------- barra fija "ingredientes de hoy" — checklist rápido mientras cocinas, sin salir de la vista ---------- */
+:root { --today-bar-h: 42px; }
+body.has-today-bar { padding-bottom: calc(var(--nav-h) + var(--safe-b) + var(--today-bar-h)); }
+.today-bar { display: none; position: fixed; left: 0; right: 0; bottom: calc(var(--nav-h) + var(--safe-b)); z-index: 45; background: var(--panel); border-top: 1px solid var(--line); box-shadow: 0 -6px 20px rgba(8,18,34,.14); }
+body.has-today-bar .today-bar { display: block; }
+.today-bar-header { display: flex; align-items: center; justify-content: space-between; height: var(--today-bar-h); padding: 0 16px; cursor: pointer; font-size: 13px; font-weight: 600; color: var(--ink); }
+#today-bar-caret { transition: transform var(--dur-fast) var(--ease-out); color: var(--muted); }
+.today-bar.expanded #today-bar-caret { transform: rotate(180deg); }
+.today-bar-list { max-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; transition: max-height var(--dur-base) var(--ease-out); }
+.today-bar.expanded .today-bar-list { max-height: 38vh; padding-bottom: 8px; }
+.today-bar-list label { display: flex; align-items: center; gap: 9px; padding: 7px 16px; font-size: 13.5px; border-top: 1px solid var(--line); }
+.today-bar-list label.checked span { text-decoration: line-through; color: var(--muted); }
+
 /* las pestañas entran desde la dirección de la que vienen — no un corte plano */
 .tab { display: none; }
 .tab.active { display: block; }
@@ -217,6 +230,10 @@ label { display: block; font-size: 12.5px; color: var(--soft); margin-bottom: 5p
 .day-sheet .swap-link, .day-sheet .meal-slot button.swap { color: var(--ink); }
 .day-sheet .swap-link:hover { color: var(--soft); }
 #day-cards .meal-period { margin-bottom: 12px; }
+/* Roger 2026-07-12: la franja que toca por horario (comida hasta 17h, cena de 17h a 00h) se
+   centra y destaca; la otra queda atenuada — arriba si ya pasó, abajo si aún no toca. */
+.horario-slot { transition: opacity var(--dur-base) var(--ease-out); }
+.horario-slot.faded-above, .horario-slot.faded-below { opacity: .4; }
 .shopping-teaser { display: flex; align-items: center; gap: 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 14px; margin-top: 4px; cursor: pointer; }
 .shopping-teaser .st-ico { width: 40px; height: 40px; border-radius: 12px; background: var(--elev3); display: flex; align-items: center; justify-content: center; color: var(--emerald); flex-shrink: 0; }
 .shopping-teaser .st-ico svg { width: 19px; height: 19px; stroke: currentColor; }
@@ -431,6 +448,8 @@ body.landing-open { overflow: hidden; }
    ============================================================ */
 @media (min-width: 880px) {
   body { padding-bottom: 0; }
+  body.has-today-bar { padding-bottom: 0; }
+  .today-bar { display: none !important; }
   .container { padding: 24px; }
   header { align-items: center; padding-bottom: 20px; margin-bottom: 20px; }
   h1 { font-size: 27px; }
@@ -475,6 +494,14 @@ body.landing-open { overflow: hidden; }
   </div>
   <button class="family-chip" id="family-chip" onclick="showAccountScreen('pick')" aria-label="Cambiar de familia"></button>
 </header>
+
+<div class="today-bar" id="today-bar">
+  <div class="today-bar-header" onclick="toggleTodayBar()">
+    <span>🧾 Ingredientes de hoy (<span id="today-bar-count">0</span>)</span>
+    <span id="today-bar-caret">▾</span>
+  </div>
+  <div class="today-bar-list" id="today-bar-list"></div>
+</div>
 
 <nav>
   <button class="tab-btn active" data-tab="semana"><span class="nav-ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 9.5h17"/><path d="M8 3v3.3"/><path d="M16 3v3.3"/></svg></span><span class="nav-lbl">Semana</span></button>
@@ -600,8 +627,8 @@ body.landing-open { overflow: hidden; }
     <p class="hint" style="margin-bottom:14px;">Suma automática de ingredientes de TODAS las comidas y cenas asignadas, agrupada por sección de supermercado.</p>
     <div class="toolbar">
       <div class="scope-toggle">
+        <button id="scope-today" onclick="setScope('today')">Hoy</button>
         <button id="scope-week" class="active" onclick="setScope('week')">Próximos 7 días</button>
-        <button id="scope-month" onclick="setScope('month')">Mes completo</button>
       </div>
       <button class="primary" onclick="generateShoppingList()">Generar lista</button>
       <button class="secondary" onclick="copyShoppingList()">Copiar</button>
@@ -2240,8 +2267,16 @@ function renderDayView(){
   strip.innerHTML = week.map((d,i)=>`<button class="day-pill${i===state.activeDayIndex?' active':''}" onclick="selectDay(${i})"><span class="dp-dow">${DAY_NAMES[i]}</span><span class="dp-num">${d.date.getDate()}</span></button>`).join('');
   const d = week[state.activeDayIndex];
   const parts = buildDayMealHTML(d);
-  document.getElementById('day-cards').innerHTML = parts.desayunoHTML + parts.comidaHTML + parts.cenaHTML;
+  // Roger 2026-07-12: hasta las 17h toca comida, de 17h a medianoche toca cena — esa franja se
+  // centra en pantalla, la otra queda atenuada (arriba = ya pasó, abajo = aún no toca). El
+  // desayuno no entra en este reparto (se oculta vía trackedMeals, ver buildDayMealHTML).
+  const cenaActiva = new Date().getHours() >= 17;
+  document.getElementById('day-cards').innerHTML = parts.desayunoHTML +
+    `<div class="horario-slot${cenaActiva?' faded-above':''}" id="slot-comida">${parts.comidaHTML}</div>` +
+    `<div class="horario-slot${cenaActiva?'':' faded-below'}" id="slot-cena">${parts.cenaHTML}</div>`;
   renderShoppingTeaser();
+  const activeEl = document.getElementById(cenaActiva ? 'slot-cena' : 'slot-comida');
+  if(activeEl) requestAnimationFrame(()=>activeEl.scrollIntoView({block:'center'}));
 }
 function selectDay(i){ buzz(); state.activeDayIndex = i; save(); renderDayView(); }
 // Roger 2026-07-12: el swipe no debe parar en el borde de la semana — seguir deslizando en
@@ -2292,6 +2327,7 @@ function renderWeek(){
     document.getElementById("day-strip").innerHTML = "";
     document.getElementById("day-cards").innerHTML = emptyHTML;
     document.getElementById("shopping-teaser").style.display = "none";
+    renderTodayBar();
     return;
   }
   grid.innerHTML = week.map(d=>{
@@ -2307,6 +2343,7 @@ function renderWeek(){
   }).join("");
   window.__justGenerated = false;
   renderDayView();
+  renderTodayBar();
 }
 
 // ============================================================
@@ -2520,45 +2557,40 @@ function saveCustomRecipe(){
 const SECCION_LABELS = {verdura:"Frutas y verduras",carne:"Carnicería",pescado:"Pescadería",lacteos:"Lácteos y huevos",despensa:"Despensa",congelados:"Congelados"};
 function setScope(s){
   state.scope = s; save();
+  document.getElementById("scope-today").classList.toggle("active", s==='today');
   document.getElementById("scope-week").classList.toggle("active", s==='week');
-  document.getElementById("scope-month").classList.toggle("active", s==='month');
   generateShoppingList();
 }
-function getMealsForScope(){
+// Fase 3 dúo: comida con comidaPrimero → el primero es UNA sola entrada compartida
+// (course:'primero', pattern:null = todos los comensales) + el/los segundo(s) por
+// patrón (course:'segundo'). Sin dúo, comportamiento idéntico a antes (course:null, share=1).
+function pushMealsForDay(out, w, date){
+  if(!w) return;
+  ['desayuno','comida','cena'].forEach(k=>{
+    const isDuo = k==='comida' && w.comidaPrimero;
+    if(isDuo) out.push({id:w.comidaPrimero, slot:w, date, kind:k, pattern:null, course:'primero'});
+    if(w[k+'ByPattern']) Object.entries(w[k+'ByPattern']).forEach(([pattern,id])=>out.push({id, slot:w, date, kind:k, pattern, course:isDuo?'segundo':null}));
+    else if(w[k]) out.push({id:w[k], slot:w, date, kind:k, pattern:null, course:isDuo?'segundo':null});
+  });
+}
+function getMealsForDate(date){
   const out = [];
-  // Fase 3 dúo: comida con comidaPrimero → el primero es UNA sola entrada compartida
-  // (course:'primero', pattern:null = todos los comensales) + el/los segundo(s) por
-  // patrón (course:'segundo'). Sin dúo, comportamiento idéntico a antes (course:null, share=1).
-  const pushMealsForDay = (w, date)=>{
-    if(!w) return;
-    ['desayuno','comida','cena'].forEach(k=>{
-      const isDuo = k==='comida' && w.comidaPrimero;
-      if(isDuo) out.push({id:w.comidaPrimero, slot:w, date, kind:k, pattern:null, course:'primero'});
-      if(w[k+'ByPattern']) Object.entries(w[k+'ByPattern']).forEach(([pattern,id])=>out.push({id, slot:w, date, kind:k, pattern, course:isDuo?'segundo':null}));
-      else if(w[k]) out.push({id:w[k], slot:w, date, kind:k, pattern:null, course:isDuo?'segundo':null});
-    });
-  };
-  if(state.scope==='week'){
-    // D2: la lista de la compra es SIEMPRE los próximos 7 días naturales desde HOY (rolling),
-    // no la semana ISO "activa" del planificador — evita comprar para días ya pasados y cubre
-    // el horizonte real aunque cruce a la semana siguiente. La vista del plan (qué semana ves
-    // en "Mi semana") sigue anclada a lunes ISO, sin tocar — son dos cosas independientes.
-    const today = new Date(); today.setHours(0,0,0,0);
-    for(let i=0;i<7;i++){
-      const date = addDays(today, i);
-      const week = state.weekMenusByMonday[isoDate(mondayOf(date))];
-      const dow = date.getDay();
-      pushMealsForDay(week && week[dow===0?6:dow-1], date);
-    }
+  const week = state.weekMenusByMonday[isoDate(mondayOf(date))];
+  const dow = date.getDay();
+  pushMealsForDay(out, week && week[dow===0?6:dow-1], date);
+  return out;
+}
+function getMealsForScope(){
+  // D2: la lista de la compra es SIEMPRE relativa a HOY (rolling), no a la semana ISO "activa"
+  // del planificador — evita comprar para días ya pasados y cubre el horizonte real aunque
+  // cruce a la semana siguiente. La vista del plan (qué semana ves en "Mi semana") sigue
+  // anclada a lunes ISO, sin tocar — son dos cosas independientes.
+  const out = [];
+  const today = new Date(); today.setHours(0,0,0,0);
+  if(state.scope==='today'){
+    out.push(...getMealsForDate(today));
   } else {
-    const monday = parseISO(state.activeMonday);
-    const month = monday.getMonth(), year = monday.getFullYear();
-    Object.entries(state.weekMenusByMonday).forEach(([mon, week])=>{
-      const d = parseISO(mon), sun = addDays(d,6);
-      if((d.getMonth()===month && d.getFullYear()===year) || (sun.getMonth()===month && sun.getFullYear()===year)){
-        for(let i=0;i<7;i++){ if(week[i]) pushMealsForDay(week[i], addDays(d,i)); }
-      }
-    });
+    for(let i=0;i<7;i++) out.push(...getMealsForDate(addDays(today, i)));
   }
   return out;
 }
@@ -2577,8 +2609,11 @@ function mealEaters(slot, date, kind, pattern){
   return eaters;
 }
 function getMealIdsForScope(){ return getMealsForScope().map(m=>m.id); }
-function generateShoppingList(){
-  const meals = getMealsForScope();
+// unidades que se compran/cuentan como enteros — nadie compra "2.3 cebollas". El resto (g, ml,
+// cdita, cda, pizca) son medibles, un decimal ahí sí tiene sentido de compra.
+const UNIDADES_DISCRETAS = new Set(["ud","diente","rebanada","ramita","rama","hoja"]);
+function roundQty(cant, u){ return UNIDADES_DISCRETAS.has(u) ? Math.ceil(cant) : Math.round(cant*10)/10; }
+function aggregateIngredients(meals){
   const agg = {};
   const add = (n,u,cant,seccion)=>{ const key=n+"|"+u; if(agg[key]) agg[key].cant+=cant; else agg[key]={n,u,cant,seccion:seccion||"despensa",key}; };
   meals.forEach(({id, slot, date, kind, pattern, course})=>{
@@ -2591,26 +2626,31 @@ function generateShoppingList(){
     const portions = portionsFor(r, eaters, kind, course?CURSO_SHARE[course]:1);
     r.ingredientes.forEach((ing, idx)=>{
       const total = portions.reduce((s,p)=>s + (p.ingredientes[idx]?.cantPersona || 0), 0);
-      add(ing.n, ing.u, Math.round(total*10)/10, ing.seccion);
+      add(ing.n, ing.u, total, ing.seccion);
     });
   });
-  state.shoppingList = Object.values(agg).map(it=>({...it, cant: Math.round(it.cant*10)/10}));
+  return Object.values(agg).map(it=>({...it, cant: roundQty(it.cant, it.u)}));
+}
+function generateShoppingList(){
+  state.shoppingList = aggregateIngredients(getMealsForScope());
   save();renderShoppingList();
+}
+function getTodayIngredients(){
+  return aggregateIngredients(getMealsForDate(new Date()));
 }
 function renderShoppingList(){
   renderShoppingTeaser();
-  document.getElementById("scope-week").classList.toggle("active", state.scope==='week');
-  document.getElementById("scope-month").classList.toggle("active", state.scope==='month');
+  document.getElementById("scope-today").classList.toggle("active", state.scope==='today');
+  document.getElementById("scope-week").classList.toggle("active", state.scope!=='today');
   const c = document.getElementById("shopping-list");
   const sum = document.getElementById("shopping-summary");
   const list = state.shoppingList || [];
   const ids = getMealIdsForScope();
-  const monday = parseISO(state.activeMonday);
   // D2: en scope 'week' ya no es "la semana del [rango]" — son los próximos 7 días desde hoy.
   // fmtWeekRange no exige que la fecha sea lunes, calcula el rango de 7 días desde la fecha dada.
   const today7 = new Date(); today7.setHours(0,0,0,0);
-  const scopeText = state.scope==='week' ? `próximos 7 días (${fmtWeekRange(today7)})` : `mes de ${fmtMonthYear(monday)}`;
-  sum.innerHTML = `Mostrando ingredientes de <strong>${ids.length}</strong> comida(s) planificada(s) en los ${scopeText}.`;
+  const scopeText = state.scope==='today' ? `hoy (${today7.getDate()} ${MONTHS[today7.getMonth()]})` : `próximos 7 días (${fmtWeekRange(today7)})`;
+  sum.innerHTML = `Mostrando ingredientes de <strong>${ids.length}</strong> comida(s) planificada(s) ${state.scope==='today'?'':'en los'} ${scopeText}.`;
   if(!list.length){c.innerHTML='<div class="empty-state" style="padding:20px"><p>Pulsa "Generar lista" después de planificar comidas/cenas.</p></div>';return;}
   const groups = {};
   list.forEach(it=>{const sec=it.seccion||"despensa";(groups[sec]=groups[sec]||[]).push(it);});
@@ -2627,8 +2667,24 @@ function renderShoppingList(){
   });
   c.innerHTML = html;
 }
-function toggleCheck(key){state.shoppingChecks[key]=!state.shoppingChecks[key];save();renderShoppingList();}
-function resetShoppingChecks(){state.shoppingChecks={};save();renderShoppingList();}
+function toggleCheck(key){state.shoppingChecks[key]=!state.shoppingChecks[key];save();renderShoppingList();renderTodayBar();}
+function resetShoppingChecks(){state.shoppingChecks={};save();renderShoppingList();renderTodayBar();}
+// barra fija "ingredientes de hoy" — checklist rápido para cocinar sin salir de la vista de
+// Semana. Comparte state.shoppingChecks con la lista de compra: marcar aquí o allí es lo mismo.
+function renderTodayBar(){
+  const bar = document.getElementById('today-bar');
+  if(!bar) return;
+  const items = getTodayIngredients();
+  document.body.classList.toggle('has-today-bar', items.length>0);
+  document.getElementById('today-bar-count').textContent = items.length;
+  document.getElementById('today-bar-list').innerHTML = items.map(it=>{
+    const checked = state.shoppingChecks[it.key] ? 'checked' : '';
+    const cls = state.shoppingChecks[it.key] ? 'checked' : '';
+    return `<label class="${cls}"><input type="checkbox" ${checked} onchange="toggleCheck('${it.key.replace(/'/g,"\\'")}')"><span>${it.cant} ${it.u} ${it.n}</span></label>`;
+  }).join('');
+  if(!items.length) bar.classList.remove('expanded');
+}
+function toggleTodayBar(){ document.getElementById('today-bar').classList.toggle('expanded'); }
 function copyShoppingList(){
   const list = state.shoppingList || [];
   const groups = {};

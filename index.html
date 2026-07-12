@@ -722,8 +722,19 @@ body.landing-open { overflow: hidden; }
   <div class="modal-content">
     <button class="close-btn" onclick="closeModal('member-modal')">&times;</button>
     <h2 id="member-modal-title">Nuevo miembro</h2>
+    <div class="row" style="align-items:center;gap:14px;margin-bottom:6px;">
+      <div class="col" style="flex:0 0 auto;"><div id="m-photo-preview" class="member-avatar" style="width:56px;height:56px;font-size:20px;"></div></div>
+      <div class="col">
+        <label>Foto (opcional)</label>
+        <div class="row" style="gap:8px;">
+          <button type="button" class="secondary" onclick="document.getElementById('m-photo-upload').click()">Subir foto</button>
+          <button type="button" class="secondary" id="m-photo-remove" style="display:none;" onclick="removeMemberPhoto()">Quitar</button>
+          <input type="file" id="m-photo-upload" accept="image/*" style="display:none" onchange="handleMemberPhotoUpload(event)">
+        </div>
+      </div>
+    </div>
     <div class="row">
-      <div class="col"><label>Nombre</label><input type="text" id="m-name"></div>
+      <div class="col"><label>Nombre</label><input type="text" id="m-name" oninput="updateMemberPhotoPreview()"></div>
       <div class="col"><label>Año de nacimiento</label><input type="number" id="m-birthYear" min="1920" max="2025" placeholder="Ej: 1985"></div>
     </div>
     <div class="row">
@@ -1509,6 +1520,55 @@ let editingMemberId = null;
 // D3: ausencia recurrente por miembro (patrón semanal, no puntual). Editado en el modal de
 // miembro sobre esta variable temporal; se persiste en member.ausenciaPatron al Guardar.
 let editingAusenciaPatron = [];
+// Roger 2026-07-14: foto de perfil que sustituye el avatar de letra. Data URL temporal mientras
+// se edita el modal (null = sin foto, usa iniciales); se persiste en member.foto al Guardar.
+let editingMemberFoto = null;
+// recorta al cuadrado centrado + redimensiona — evita que una foto de móvil (varios MB) reviente
+// localStorage; a este tamaño cada foto ronda 10-20KB en JPEG.
+function resizeImageToDataURL(file, maxSize=200, quality=0.85){
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onerror = ()=>reject(new Error('No se pudo leer el archivo.'));
+    reader.onload = ()=>{
+      const img = new Image();
+      img.onerror = ()=>reject(new Error('El archivo no es una imagen válida.'));
+      img.onload = ()=>{
+        const side = Math.min(img.width, img.height);
+        const sx = (img.width-side)/2, sy = (img.height-side)/2;
+        const canvas = document.createElement('canvas');
+        canvas.width = maxSize; canvas.height = maxSize;
+        canvas.getContext('2d').drawImage(img, sx, sy, side, side, 0, 0, maxSize, maxSize);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+function handleMemberPhotoUpload(event){
+  const file = event.target.files[0];
+  event.target.value = '';
+  if(!file) return;
+  resizeImageToDataURL(file).then(dataUrl=>{
+    editingMemberFoto = dataUrl;
+    updateMemberPhotoPreview();
+  }).catch(e=>alert('No se pudo procesar la imagen: '+e.message));
+}
+function removeMemberPhoto(){ editingMemberFoto = null; updateMemberPhotoPreview(); }
+function updateMemberPhotoPreview(){
+  const el = document.getElementById('m-photo-preview');
+  if(!el) return;
+  document.getElementById('m-photo-remove').style.display = editingMemberFoto ? '' : 'none';
+  if(editingMemberFoto){
+    el.style.backgroundImage = `url(${editingMemberFoto})`;
+    el.style.background = `center/cover no-repeat url(${editingMemberFoto})`;
+    el.textContent = '';
+  } else {
+    el.style.background = 'linear-gradient(135deg, hsl(200 60% 52%), hsl(240 55% 40%))';
+    const name = document.getElementById('m-name').value;
+    el.textContent = name ? name.charAt(0).toUpperCase() : '?';
+  }
+}
 function ausenciaHas(dow, kind){ return editingAusenciaPatron.some(a=>a.dow===dow && a.kind===kind); }
 function toggleAusenciaCell(dow, kind){
   const idx = editingAusenciaPatron.findIndex(a=>a.dow===dow && a.kind===kind);
@@ -1528,6 +1588,11 @@ function renderAusenciaGrid(){
   document.getElementById('ausencia-grid').innerHTML = html;
 }
 function memberHue(m){ const i = state.members.findIndex(x=>x.id===m.id); return ACCOUNT_HUES[(i<0?0:i) % ACCOUNT_HUES.length]; }
+// Roger 2026-07-14: avatar de letra → foto si el miembro tiene una subida. mismo helper para
+// la ficha de Familia (member-avatar) y los puntos de "quién come" en cada comida (comensal-dot).
+function avatarBg(m){
+  return m.foto ? `center/cover no-repeat url(${m.foto})` : `linear-gradient(135deg, hsl(${memberHue(m)} 60% 52%), hsl(${(memberHue(m)+40)%360} 55% 40%))`;
+}
 function renderMembers(){
   const c = document.getElementById("members-list");
   if(!state.members.length){c.innerHTML='<div class="empty-state"><h3>Aún no hay miembros</h3><p>Añade a tu familia.</p></div>';return;}
@@ -1550,8 +1615,7 @@ function renderMembers(){
       Hidratos <strong>${n.carbs}g</strong> &nbsp;·&nbsp;
       Grasa <strong>${n.fat}g</strong>${estFallback}
     </div>`;
-    const hue = memberHue(m);
-    return `<div class="member"><div class="member-avatar" style="background:linear-gradient(135deg, hsl(${hue} 60% 52%), hsl(${(hue+40)%360} 55% 40%));">${ini}</div><div class="member-info"><div class="member-name">${m.name}</div><div class="member-meta">${meta}</div>${patronTag}${objTag}${ayunoTag}${restr}${dis}${needs}</div><button class="tiny" onclick="editMember('${m.id}')">Editar</button> <button class="tiny" onclick="deleteMember('${m.id}')">Eliminar</button></div>`;
+    return `<div class="member"><div class="member-avatar" style="background:${avatarBg(m)};">${m.foto?'':ini}</div><div class="member-info"><div class="member-name">${m.name}</div><div class="member-meta">${meta}</div>${patronTag}${objTag}${ayunoTag}${restr}${dis}${needs}</div><button class="tiny" onclick="editMember('${m.id}')">Editar</button> <button class="tiny" onclick="deleteMember('${m.id}')">Eliminar</button></div>`;
   }).join("");
 }
 // Onboarding progresivo: solo nombre+nacimiento+sexo son obligatorios. El resto
@@ -1568,6 +1632,8 @@ function openMemberModal(){
   document.getElementById("m-patron").value="omnivoro";
   editingAusenciaPatron = [];
   renderAusenciaGrid();
+  editingMemberFoto = null;
+  updateMemberPhotoPreview();
   document.getElementById("member-advanced").classList.remove("open");
   document.getElementById("member-modal").classList.add("active");
 }
@@ -1588,6 +1654,8 @@ function editMember(id){
   document.getElementById("m-dislikes").value=(m.dislikes||[]).join(", ");
   editingAusenciaPatron = JSON.parse(JSON.stringify(m.ausenciaPatron||[]));
   renderAusenciaGrid();
+  editingMemberFoto = m.foto || null;
+  updateMemberPhotoPreview();
   const hasAdvanced = m.altura||m.peso||(m.objetivo&&m.objetivo!=='mantenimiento')||(m.ayuno&&m.ayuno.salta)||(m.patronDietetico&&m.patronDietetico!=='omnivoro')||(m.restrictions&&m.restrictions.length)||(m.ausenciaPatron&&m.ausenciaPatron.length);
   document.getElementById("member-advanced").classList.toggle("open", !!hasAdvanced);
   document.getElementById("member-modal").classList.add("active");
@@ -1611,10 +1679,11 @@ function saveMember(){
     dislikes:document.getElementById("m-dislikes").value.split(",").map(s=>s.trim()).filter(Boolean),
     ausenciaPatron: editingAusenciaPatron.slice()
   };
+  if(editingMemberFoto) data.foto = editingMemberFoto;
   if(!data.name){alert("Pon un nombre");return;}
   if(editingMemberId)state.members=state.members.map(m=>m.id===editingMemberId?data:m);
   else state.members.push(data);
-  save();renderMembers();closeModal("member-modal");
+  save();renderMembers();renderWeek();closeModal("member-modal");
 }
 function deleteMember(id){if(!confirm("¿Eliminar?"))return;state.members=state.members.filter(m=>m.id!==id);save();renderMembers();}
 
@@ -2152,7 +2221,7 @@ function comensalRow(d, kind){
   const relevant = state.members.filter(m=>!coleExcluded(m));
   const avatars = relevant.map(m=>{
     const isAbsent = absent.includes(m.id);
-    return `<button class="comensal-dot${isAbsent?' absent':''}" style="--hue:${memberHue(m)}" onclick="toggleAbsent(${dayIdx},'${kind}','${m.id}')" title="${m.name}${isAbsent?' — no come':''}">${m.name.charAt(0).toUpperCase()}</button>`;
+    return `<button class="comensal-dot${isAbsent?' absent':''}" style="--hue:${memberHue(m)};background:${avatarBg(m)};" onclick="toggleAbsent(${dayIdx},'${kind}','${m.id}')" title="${m.name}${isAbsent?' — no come':''}">${m.foto?'':m.name.charAt(0).toUpperCase()}</button>`;
   }).join('');
   const ausentes = relevant.filter(m=>absent.includes(m.id));
   let txt = 'Todos comen';

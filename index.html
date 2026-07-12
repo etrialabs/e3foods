@@ -234,13 +234,7 @@ label { display: block; font-size: 12.5px; color: var(--soft); margin-bottom: 5p
    centra y destaca; la otra queda atenuada — arriba si ya pasó, abajo si aún no toca. */
 .horario-slot { transition: opacity var(--dur-base) var(--ease-out); }
 .horario-slot.faded-above, .horario-slot.faded-below { opacity: .4; }
-.shopping-teaser { display: flex; align-items: center; gap: 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 14px; margin-top: 4px; cursor: pointer; }
-.shopping-teaser .st-ico { width: 40px; height: 40px; border-radius: 12px; background: var(--elev3); display: flex; align-items: center; justify-content: center; color: var(--emerald); flex-shrink: 0; }
-.shopping-teaser .st-ico svg { width: 19px; height: 19px; stroke: currentColor; }
-.shopping-teaser .st-txt { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
-.shopping-teaser .st-txt strong { font-size: 14px; }
-.shopping-teaser .st-txt span { font-size: 12px; color: var(--muted); }
-.shopping-teaser .st-chev { color: var(--muted); font-size: 18px; }
+.today-bar-footlink { display: block; text-align: center; padding: 10px 16px 4px; font-size: 12.5px; color: var(--emerald); cursor: pointer; font-weight: 500; }
 /* hueco reservado para foto del plato — sin banco de imágenes todavía, placeholder a propósito */
 .dish-photo { width: 72px; height: 72px; border-radius: 14px; flex-shrink: 0; background: linear-gradient(135deg, var(--elev3), var(--elev2)); border: 1px dashed var(--line-solid); overflow: hidden; }
 .dish-photo.empty { opacity: .5; }
@@ -295,13 +289,20 @@ label { display: block; font-size: 12.5px; color: var(--soft); margin-bottom: 5p
 .swap-link svg { width: 13px; height: 13px; stroke: currentColor; }
 
 .recipe-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
-.recipe-card { background: var(--elev2); border: 1px solid var(--line); border-radius: 14px; padding: 13px; cursor: pointer; transition: all 0.15s; }
+.recipe-card { position: relative; background: var(--elev2); border: 1px solid var(--line); border-radius: 14px; padding: 13px; cursor: pointer; transition: all 0.15s; }
+.fav-star { position: absolute; top: 8px; right: 8px; width: 26px; height: 26px; border: none; background: none; font-size: 17px; line-height: 1; color: var(--muted); cursor: pointer; }
+.fav-star.active { color: var(--accent); }
 .recipe-card:active { border-color: var(--accent); }
 .recipe-card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: 0 8px 22px rgba(8,18,34,.10), 0 0 24px rgba(201,169,110,.12); }
 .recipe-card .name { font-weight: 500; margin-bottom: 6px; }
 .recipe-card .meta { font-size: 11.5px; color: var(--muted); display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 
 .tag { display: inline-block; padding: 3px 9px; background: var(--elev3); color: var(--soft); border-radius: 999px; font-size: 11px; font-weight: 500; }
+/* filtros múltiples del banco de recetas — chips toggleables, varios activos a la vez */
+.filter-chips { display: flex; gap: 6px; flex-wrap: wrap; margin: -6px 0 14px; }
+.filter-chip { padding: 5px 12px; background: var(--elev2); border: 1px solid var(--line-solid); color: var(--soft); border-radius: 999px; font-size: 12px; font-weight: 500; cursor: pointer; user-select: none; }
+.filter-chip.active { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.filter-chip.clear { color: var(--muted); background: none; border-style: dashed; }
 /* Proteína: texto simple con icono, no píldora — no compite en color con el hidrato (lo único que SÍ debe saltar a la vista para detectar repetición) */
 .plato-proteina { font-size: 12.5px; color: var(--ink); font-weight: 500; display: inline-flex; align-items: center; gap: 5px; }
 .plato-proteina .ico { display: inline-flex; line-height: 1; }
@@ -577,11 +578,6 @@ body.landing-open { overflow: hidden; }
     <div class="day-view">
       <div class="day-sheet" id="day-cards-wrap">
         <div id="day-cards"></div>
-        <div class="shopping-teaser" id="shopping-teaser" onclick="activateTab('compra')" style="display:none;">
-          <span class="st-ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 4h2l1.2 11.5h10.8L19 7.5H7"/><circle cx="9.5" cy="19" r="1.2" fill="currentColor" stroke="none"/><circle cx="16" cy="19" r="1.2" fill="currentColor" stroke="none"/></svg></span>
-          <span class="st-txt"><strong>Lista de la compra</strong><span class="st-count"></span></span>
-          <span class="st-chev">›</span>
-        </div>
       </div>
     </div>
   </div>
@@ -604,18 +600,9 @@ body.landing-open { overflow: hidden; }
     <h2>Banco de recetas</h2>
     <div class="toolbar">
       <input type="text" id="recipe-search" placeholder="Buscar receta..." style="max-width:300px;" oninput="renderRecipes()">
-      <select id="recipe-filter" style="max-width:220px;" onchange="renderRecipes()">
-        <option value="">Todas</option>
-        <optgroup label="Proteína">
-          <option value="pescado">Pescado</option><option value="pollo">Pollo</option><option value="carne">Carne</option>
-          <option value="legumbre">Legumbre</option><option value="huevo">Huevo</option><option value="vegetal">Vegetal</option>
-        </optgroup>
-        <optgroup label="Acompañamiento">
-          <option value="arroz">Arroz</option><option value="pasta">Pasta</option><option value="patata">Patata</option><option value="pan">Pan</option><option value="cuscus">Cuscús</option>
-        </optgroup>
-      </select>
       <button class="secondary" onclick="openAddRecipeModal()">+ Añadir receta</button>
     </div>
+    <div class="filter-chips" id="recipe-filter-chips"></div>
     <div id="recipe-grid" class="recipe-grid"></div>
   </div>
 </div>
@@ -793,17 +780,17 @@ body.landing-open { overflow: hidden; }
   <div class="modal-content">
     <button class="close-btn" onclick="closeModal('add-recipe-modal')">&times;</button>
     <h2>Nueva receta</h2>
-    <p class="hint" style="font-size:12px;margin-bottom:12px;">Usa el botón <em>"Pedir ideas a Claude"</em> (pestaña Mi semana) para copiar el prompt con el esquema correcto, o pega aquí un JSON con <em>proteina</em>, <em>verdura</em> (array, siempre presente) e <em>hidrato</em>. Si faltan, la app los deduce automáticamente.</p>
-    <label>¿La receta es un vídeo de YouTube o un PDF?</label>
-    <div class="row" style="margin-bottom:4px;">
+    <p class="hint" style="font-size:12px;margin-bottom:12px;">Dos formas de dar de alta: pega un link de YouTube, o pega/escribe la receta en texto libre (de un blog, un mensaje, de memoria). La app no puede estructurar la receta sola (necesita IA) — el botón copia un prompt listo para pegar en un chat con Claude; recibes un JSON → lo pegas en la caja de abajo → "Añadir al banco".</p>
+    <label>Link de YouTube</label>
+    <div class="row" style="margin-bottom:12px;">
       <div class="col" style="flex:2"><input type="text" id="yt-link" placeholder="Pega aquí el link de YouTube..."></div>
       <button class="secondary" onclick="copyYoutubePrompt()">Copiar prompt</button>
     </div>
-    <div class="row" style="margin-bottom:12px;">
-      <button class="secondary" style="flex:1;" onclick="document.getElementById('recipe-pdf-upload').click()">Subir PDF de receta</button>
-      <input type="file" id="recipe-pdf-upload" accept=".pdf" style="display:none" onchange="processRecipePDF(event)">
+    <label>O texto libre de la receta</label>
+    <div class="row" style="margin-bottom:12px;align-items:flex-start;">
+      <div class="col" style="flex:2"><textarea id="recipe-text-input" rows="4" placeholder="Pega o escribe aquí la receta: ingredientes, cantidades, pasos..."></textarea></div>
+      <button class="secondary" onclick="copyTextRecipePrompt()">Copiar prompt</button>
     </div>
-    <p class="hint" style="font-size:11.5px;margin:-6px 0 12px;">Ambos casos: la app no puede estructurar la receta sola (necesita IA) — el botón copia un prompt listo para pegar en un chat con Claude; el PDF vuelca su texto abajo para pegarlo tú mismo en ese chat. Recibes un JSON → lo pegas en la caja de debajo.</p>
     <label>JSON de la receta (objeto o array)</label>
     <textarea id="add-recipe-json" rows="10" placeholder='{"id":"abc","nombre":"Pollo al horno con patata y judías","proteina":"pollo","verdura":["judía verde"],"hidrato":"patata","proteina_separable":true,"kcal":450,"ingredientes":[{"n":"pollo","cant":600,"u":"g","seccion":"carne"}],"pasos":["..."],"kid_friendly":true}'></textarea>
     <div style="margin-top:12px;display:flex;gap:8px;justify-content:flex-end;">
@@ -2205,7 +2192,7 @@ function buildDayMealHTML(d){
   // withSwap=false cuando el "Cambiar" se sube a la cabecera (plato único) → la fila no repite el botón.
   // course ('primero'|'segundo') solo se usa en comida dúo — pinta un eyebrow "Primero"/"Segundo" y
   // viaja en el onclick para que el picker/modal sepan a qué pool y reparto de kcal (30/70) atenerse.
-  const renderRow = (r, kind, pattern, withSwap=true, course) => {
+  const renderRow = (r, kind, pattern, withSwap=true, course, extraKcal=0) => {
     const {proteinaHTML, verduraHTML, hidratoTag} = platoTags(r);
     const cursoTxt = course==='primero' ? 'Primero' : course==='segundo' ? 'Segundo' : '';
     const labelParts = [cursoTxt, pattern].filter(Boolean);
@@ -2217,7 +2204,11 @@ function buildDayMealHTML(d){
     const swap = withSwap ? `<button class="swap-link" onclick="openPickModal(${d.index},'${kind}',${patternArg}${courseArg})">${ICO_SWAP}Cambiar</button>` : '';
     const photo = RECIPE_PHOTOS[r.id];
     const photoHTML = `<div class="dish-photo${photo?' has-img':''}">${photo?`<img src="${photo}" alt="">`:''}</div>`;
-    return `<div class="dish-row">${photoHTML}<div class="dish-content">${patternLabel}<div class="dish-name clickable" onclick="openRecipeModal('${r.id}',${d.index},'${kind}',${patternArg}${courseArg})">${r.nombre}</div><div class="dish-meta-row">${proteinaHTML}${verduraHTML}${hidratoTag}</div>${infoRow}${swap}</div></div>`;
+    // Roger 2026-07-13: en comida dúo (primero+segundo) quiere ver el total agregado de los 2
+    // platos, no solo cada uno por separado — se muestra en la fila del segundo (la que cierra
+    // el par), sumando el kcal/ración base del primero compartido.
+    const totalTag = (course==='segundo' && extraKcal) ? `<span class="tag">${r.kcal+extraKcal} kcal (comida completa)</span>` : '';
+    return `<div class="dish-row">${photoHTML}<div class="dish-content">${patternLabel}<div class="dish-name clickable" onclick="openRecipeModal('${r.id}',${d.index},'${kind}',${patternArg}${courseArg})">${r.nombre}</div><div class="dish-meta-row">${proteinaHTML}${verduraHTML}${hidratoTag}${totalTag}</div>${infoRow}${swap}</div></div>`;
   };
   // "Cambiar"/"Elegir" en la cabecera, alineado a la derecha en la misma línea que el eyebrow → ahorra una línea por comida.
   const headOf = (kind, action='') => `<div class="meal-head"><span class="meal-ico">${ICO_MEAL[kind]}</span><span class="label l-${kind}">${MEAL_LABELS[kind]}</span>${action}</div>`;
@@ -2228,10 +2219,11 @@ function buildDayMealHTML(d){
     if(kind==='comida' && d.slot.comidaPrimero){
       const primero = getRecipe(d.slot.comidaPrimero);
       const primeroRow = primero ? renderRow(primero, kind, null, true, 'primero') : '';
+      const primeroKcal = primero ? primero.kcal : 0;
       const byPatternDuo = d.slot.comidaByPattern;
       const segundoRows = (byPatternDuo && Object.keys(byPatternDuo).length)
-        ? Object.entries(byPatternDuo).map(([pattern,id])=>{ const r=getRecipe(id); return r?renderRow(r,kind,pattern,true,'segundo'):''; }).join('')
-        : (d.slot.comida && getRecipe(d.slot.comida) ? renderRow(getRecipe(d.slot.comida),kind,null,true,'segundo') : '');
+        ? Object.entries(byPatternDuo).map(([pattern,id])=>{ const r=getRecipe(id); return r?renderRow(r,kind,pattern,true,'segundo',primeroKcal):''; }).join('')
+        : (d.slot.comida && getRecipe(d.slot.comida) ? renderRow(getRecipe(d.slot.comida),kind,null,true,'segundo',primeroKcal) : '');
       return `<div class="meal-slot">${headOf(kind)}${comensalRow(d,kind)}${primeroRow}${segundoRows}</div>`;
     }
     const byPattern = d.slot[kind+'ByPattern'];
@@ -2274,7 +2266,7 @@ function renderDayView(){
   document.getElementById('day-cards').innerHTML = parts.desayunoHTML +
     `<div class="horario-slot${cenaActiva?' faded-above':''}" id="slot-comida">${parts.comidaHTML}</div>` +
     `<div class="horario-slot${cenaActiva?'':' faded-below'}" id="slot-cena">${parts.cenaHTML}</div>`;
-  renderShoppingTeaser();
+  renderTodayBar();
   const activeEl = document.getElementById(cenaActiva ? 'slot-cena' : 'slot-comida');
   if(activeEl) requestAnimationFrame(()=>activeEl.scrollIntoView({block:'center'}));
 }
@@ -2288,14 +2280,6 @@ function selectDayRelative(delta){
   buzz();
   state.activeDayIndex = idx;
   save(); renderWeek();
-}
-function renderShoppingTeaser(){
-  const el = document.getElementById('shopping-teaser'); if(!el) return;
-  const list = state.shoppingList||[];
-  if(!list.length){ el.style.display='none'; return; }
-  const pending = list.filter(it=>!state.shoppingChecks[it.key]).length;
-  el.style.display='flex';
-  el.querySelector('.st-count').textContent = pending+' ingrediente'+(pending===1?'':'s')+' pendiente'+(pending===1?'':'s');
 }
 // D3: aplica el patrón recurrente de ausencia de cada miembro a la semana activa — solo la
 // PRIMERA vez que se visita esa semana (flag _absencePatternApplied), para no pisar ediciones
@@ -2413,6 +2397,28 @@ function pickRecipe(id){
 // ============================================================
 // AI PROMPT
 // ============================================================
+// Roger 2026-07-13: "el link de YouTube no funciona" — navigator.clipboard.writeText() sin
+// .catch() fallaba en silencio (típico en Safari/PWA cuando el permiso de portapapeles no está
+// concedido): el usuario pulsaba el botón y no pasaba nada, ni éxito ni error. Con fallback a
+// execCommand y, si eso también falla, un prompt() con el texto para copiar a mano — eso último
+// siempre funciona, no depende de permisos.
+function copyToClipboard(text, okMsg){
+  const fallback = () => {
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    let ok = false;
+    try { ok = document.execCommand('copy'); } catch(e){}
+    document.body.removeChild(ta);
+    if(ok) alert(okMsg);
+    else prompt('No se pudo copiar automáticamente — copia el texto de aquí abajo:', text);
+  };
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(()=>alert(okMsg)).catch(fallback);
+  } else {
+    fallback();
+  }
+}
 function copyAIPrompt(){
   const week = getActiveWeek();
   const monday = parseISO(state.activeMonday);
@@ -2431,21 +2437,61 @@ RECETAS QUE YA TENGO:
 ${recipes}
 
 Devuelve cada una como JSON con: id, nombre (el plato completo, incl. su hidrato), kcal, proteina (pescado|pollo|carne|legumbre|huevo|vegetal), verdura (array de verduras reales del plato, SIEMPRE al menos 1), hidrato (arroz|pasta|patata|pan|cuscus|avena|ninguno), proteina_separable (true si la proteína se sirve aparte y se puede cambiar por otra sin rehacer el plato), ingredientes [{n,cant,u,seccion (verdura|carne|pescado|lacteos|despensa|congelados)}], pasos[], kid_friendly. Lo importaré en el banco directamente.`;
-  navigator.clipboard.writeText(txt).then(()=>alert("Prompt copiado. Pégalo en el chat → recibe JSON → pestaña Recetas → Añadir receta."));
+  copyToClipboard(txt, "Prompt copiado. Pégalo en el chat → recibe JSON → pestaña Recetas → Añadir receta.");
 }
 
 // ============================================================
 // RECETAS
 // ============================================================
+// filtros múltiples del banco de recetas (Roger 2026-07-13: el select único era "UX horrible").
+// proteína e hidrato son grupos independientes: varios chips activos dentro del mismo grupo = OR
+// (ver Pescado o Pollo a la vez); grupos distintos activos a la vez = AND (Pescado Y Arroz).
+const RECIPE_FILTER_GROUPS = {
+  proteina: [["pescado","Pescado"],["pollo","Pollo"],["carne","Carne"],["legumbre","Legumbre"],["huevo","Huevo"],["vegetal","Vegetal"]],
+  hidrato: [["arroz","Arroz"],["pasta","Pasta"],["patata","Patata"],["pan","Pan"],["cuscus","Cuscús"]]
+};
+let activeRecipeFilters = { proteina: new Set(), hidrato: new Set(), favoritas: false };
+function toggleRecipeFilter(group, value){
+  if(group==='favoritas') activeRecipeFilters.favoritas = !activeRecipeFilters.favoritas;
+  else { const s=activeRecipeFilters[group]; s.has(value)?s.delete(value):s.add(value); }
+  renderRecipes();
+}
+function clearRecipeFilters(){ activeRecipeFilters = { proteina: new Set(), hidrato: new Set(), favoritas: false }; renderRecipes(); }
+function isFavoriteRecipe(id){ return (state.favoriteRecipeIds||[]).includes(id); }
+function toggleFavoriteRecipe(id, ev){
+  if(ev) ev.stopPropagation();
+  const cur = state.favoriteRecipeIds||[];
+  state.favoriteRecipeIds = cur.includes(id) ? cur.filter(x=>x!==id) : [...cur, id];
+  save(); renderRecipes();
+}
+function renderFilterChips(){
+  const c = document.getElementById('recipe-filter-chips'); if(!c) return;
+  const anyActive = activeRecipeFilters.proteina.size || activeRecipeFilters.hidrato.size || activeRecipeFilters.favoritas;
+  let html = `<div class="filter-chip${activeRecipeFilters.favoritas?' active':''}" onclick="toggleRecipeFilter('favoritas')">★ Favoritas</div>`;
+  Object.entries(RECIPE_FILTER_GROUPS).forEach(([group, opts])=>{
+    opts.forEach(([value,label])=>{
+      html += `<div class="filter-chip${activeRecipeFilters[group].has(value)?' active':''}" onclick="toggleRecipeFilter('${group}','${value}')">${label}</div>`;
+    });
+  });
+  if(anyActive) html += `<div class="filter-chip clear" onclick="clearRecipeFilters()">Limpiar ×</div>`;
+  c.innerHTML = html;
+}
 function renderRecipes(){
+  renderFilterChips();
   const q = (document.getElementById("recipe-search")?.value||"").toLowerCase();
-  const cat = document.getElementById("recipe-filter")?.value||"";
-  const list = getAllRecipes().filter(r=>(!cat||r.proteina===cat||r.hidrato===cat)&&(!q||r.nombre.toLowerCase().includes(q)));
+  const { proteina, hidrato, favoritas } = activeRecipeFilters;
+  const list = getAllRecipes().filter(r=>
+    (!proteina.size || proteina.has(r.proteina)) &&
+    (!hidrato.size || hidrato.has(r.hidrato)) &&
+    (!favoritas || isFavoriteRecipe(r.id)) &&
+    (!q || r.nombre.toLowerCase().includes(q))
+  );
   const c = document.getElementById("recipe-grid");
   if(!list.length){c.innerHTML='<div class="empty-state" style="grid-column:1/-1">Ninguna receta coincide.</div>';return;}
   c.innerHTML = list.map(r=>{
     const {proteinaHTML, verduraHTML, hidratoTag, tiempoTag} = platoTags(r);
-    return `<div class="recipe-card" onclick="openRecipeModal('${r.id}')"><div class="name">${r.nombre}</div><div class="meta">${proteinaHTML}${verduraHTML}${hidratoTag}${tiempoTag}<span>${r.kcal} kcal</span>${r.kid_friendly?'<span class="tag">kid</span>':''}</div></div>`;
+    const fav = isFavoriteRecipe(r.id);
+    return `<div class="recipe-card" onclick="openRecipeModal('${r.id}')"><button class="fav-star${fav?' active':''}" onclick="toggleFavoriteRecipe('${r.id}',event)" aria-label="Favorita">${fav?'★':'☆'}</button><div class="name">${r.nombre}</div><div class="meta">${proteinaHTML}${verduraHTML}${hidratoTag}${tiempoTag}<span>${r.kcal} kcal</span>${r.kid_friendly?'<span class="tag">kid</span>':''}</div></div>`;
   }).join("");
 }
 // Raciones para las que están escritas las cantidades de ingredientes del banco
@@ -2517,28 +2563,13 @@ function copyYoutubePrompt(){
   const link = (document.getElementById('yt-link').value||'').trim();
   if(!link){ alert('Pega primero el link del vídeo de YouTube.'); return; }
   const txt = `Hola Claude. Este vídeo de YouTube tiene una receta: ${link}\n\nSaca la transcripción/descripción del vídeo y devuélveme la receta estructurada como JSON con: ${RECIPE_JSON_SCHEMA}. Lo voy a pegar directamente en mi app de menús familiares.`;
-  navigator.clipboard.writeText(txt).then(()=>alert('Prompt copiado. Pégalo en un chat con Claude → recibe el JSON → pégalo aquí abajo → "Añadir al banco".'));
+  copyToClipboard(txt, 'Prompt copiado. Pégalo en un chat con Claude → recibe el JSON → pégalo aquí abajo → "Añadir al banco".');
 }
-async function processRecipePDF(event){
-  const file = event.target.files[0];
-  if(!file) return;
-  event.target.value = '';
-  const ta = document.getElementById('add-recipe-json');
-  if(typeof pdfjsLib === 'undefined'){ alert('PDF.js no cargó. Comprueba tu conexión a internet.'); return; }
-  ta.value = 'Extrayendo texto del PDF…';
-  try{
-    const buf = await file.arrayBuffer();
-    const pdf = await pdfjsLib.getDocument({data:buf}).promise;
-    let text = '';
-    for(let p=1; p<=Math.min(pdf.numPages,10); p++){
-      const page = await pdf.getPage(p);
-      const tc = await page.getTextContent();
-      text += tc.items.map(i=>i.str).join(' ') + '\n\n';
-    }
-    ta.value = `PEGA ESTO EN UN CHAT CON CLAUDE (pídele el JSON de receta con: ${RECIPE_JSON_SCHEMA}) — este texto tal cual NO es JSON válido, sustitúyelo por la respuesta antes de pulsar "Añadir al banco":\n\n${text.trim()}`;
-  }catch(e){
-    alert('No se pudo leer el PDF: '+e.message);
-  }
+function copyTextRecipePrompt(){
+  const text = (document.getElementById('recipe-text-input').value||'').trim();
+  if(!text){ alert('Pega o escribe primero la receta en el cuadro de texto.'); return; }
+  const txt = `Hola Claude. Tengo esta receta:\n\n${text}\n\nDevuélvemela estructurada como JSON con: ${RECIPE_JSON_SCHEMA}. Lo voy a pegar directamente en mi app de menús familiares.`;
+  copyToClipboard(txt, 'Prompt copiado. Pégalo en un chat con Claude → recibe el JSON → pégalo aquí abajo → "Añadir al banco".');
 }
 function saveCustomRecipe(){
   const txt=document.getElementById("add-recipe-json").value.trim();
@@ -2612,7 +2643,22 @@ function getMealIdsForScope(){ return getMealsForScope().map(m=>m.id); }
 // unidades que se compran/cuentan como enteros — nadie compra "2.3 cebollas". El resto (g, ml,
 // cdita, cda, pizca) son medibles, un decimal ahí sí tiene sentido de compra.
 const UNIDADES_DISCRETAS = new Set(["ud","diente","rebanada","ramita","rama","hoja"]);
-function roundQty(cant, u){ return UNIDADES_DISCRETAS.has(u) ? Math.ceil(cant) : Math.round(cant*10)/10; }
+// especias/condimentos de fondo de despensa (pizca, cdita, cda de especia) — no se compran en
+// cantidad exacta semana a semana, se compra el bote entero. Un número aquí ("1.4 pizca") no es
+// información de compra útil. roundQty devuelve null como señal de "sin cantidad, solo nombre".
+const UNIDADES_DESPENSA = new Set(["pizca","cdita","cda"]);
+function roundQty(cant, u){
+  if(UNIDADES_DESPENSA.has(u)) return null;
+  if(UNIDADES_DISCRETAS.has(u)) return Math.ceil(cant);
+  // g/ml: redondeo a un incremento de compra real, no a decimales de laboratorio — nadie pesa
+  // 31.2g ni compra 2363g exactos; sí compra "2400g" (Roger, 2026-07-12).
+  if(cant < 20) return Math.round(cant);
+  if(cant < 200) return Math.round(cant/5)*5;
+  if(cant < 1000) return Math.round(cant/25)*25;
+  return Math.round(cant/100)*100;
+}
+// cant===null (unidad de despensa) → solo el nombre, sin cantidad ni unidad.
+function fmtQty(it){ return it.cant===null ? it.n : `${it.cant} ${it.u} ${it.n}`; }
 function aggregateIngredients(meals){
   const agg = {};
   const add = (n,u,cant,seccion)=>{ const key=n+"|"+u; if(agg[key]) agg[key].cant+=cant; else agg[key]={n,u,cant,seccion:seccion||"despensa",key}; };
@@ -2639,7 +2685,6 @@ function getTodayIngredients(){
   return aggregateIngredients(getMealsForDate(new Date()));
 }
 function renderShoppingList(){
-  renderShoppingTeaser();
   document.getElementById("scope-today").classList.toggle("active", state.scope==='today');
   document.getElementById("scope-week").classList.toggle("active", state.scope!=='today');
   const c = document.getElementById("shopping-list");
@@ -2661,7 +2706,7 @@ function renderShoppingList(){
     groups[sec].forEach(it=>{
       const checked = state.shoppingChecks[it.key]?"checked":"";
       const cls = state.shoppingChecks[it.key]?"checked":"";
-      html += `<li class="${cls}"><input type="checkbox" ${checked} onchange="toggleCheck('${it.key.replace(/'/g,"\\'")}')"><span>${it.cant} ${it.u} ${it.n}</span></li>`;
+      html += `<li class="${cls}"><input type="checkbox" ${checked} onchange="toggleCheck('${it.key.replace(/'/g,"\\'")}')"><span>${fmtQty(it)}</span></li>`;
     });
     html += "</ul>";
   });
@@ -2677,11 +2722,13 @@ function renderTodayBar(){
   const items = getTodayIngredients();
   document.body.classList.toggle('has-today-bar', items.length>0);
   document.getElementById('today-bar-count').textContent = items.length;
-  document.getElementById('today-bar-list').innerHTML = items.map(it=>{
+  const rows = items.map(it=>{
     const checked = state.shoppingChecks[it.key] ? 'checked' : '';
     const cls = state.shoppingChecks[it.key] ? 'checked' : '';
-    return `<label class="${cls}"><input type="checkbox" ${checked} onchange="toggleCheck('${it.key.replace(/'/g,"\\'")}')"><span>${it.cant} ${it.u} ${it.n}</span></label>`;
+    return `<label class="${cls}"><input type="checkbox" ${checked} onchange="toggleCheck('${it.key.replace(/'/g,"\\'")}')"><span>${fmtQty(it)}</span></label>`;
   }).join('');
+  const footLink = items.length ? `<div class="today-bar-footlink" onclick="setScope('today');activateTab('compra')">Ver lista de compra completa →</div>` : '';
+  document.getElementById('today-bar-list').innerHTML = rows + footLink;
   if(!items.length) bar.classList.remove('expanded');
 }
 function toggleTodayBar(){ document.getElementById('today-bar').classList.toggle('expanded'); }
@@ -2693,10 +2740,10 @@ function copyShoppingList(){
   Object.keys(SECCION_LABELS).forEach(sec=>{
     if(!groups[sec])return;
     txt += SECCION_LABELS[sec].toUpperCase()+"\n";
-    groups[sec].forEach(it=>txt+=`- ${it.cant} ${it.u} ${it.n}\n`);
+    groups[sec].forEach(it=>txt+=`- ${fmtQty(it)}\n`);
     txt+="\n";
   });
-  navigator.clipboard.writeText(txt).then(()=>alert("Lista copiada"));
+  copyToClipboard(txt, "Lista copiada");
 }
 
 // ============================================================

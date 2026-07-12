@@ -1438,24 +1438,36 @@ window.addEventListener("resize", positionNavIndicator);
 positionNavIndicator();
 
 // arrastrar hacia abajo para cerrar el bottom-sheet — gesto compuesto 2026 (no solo tap en la ×)
+// Roger 2026-07-12 (picker no respondía al toque, Chrome+Safari+PWA): dragging se activaba en
+// touchstart y el transform se aplicaba desde el primer px de touchmove — el jitter normal de un
+// dedo al hacer tap (unos pocos px) ya contaba como "arrastre", y eso hace que el navegador
+// cancele el click sintético del tap. Umbral de 8px antes de considerarlo arrastre real: un tap
+// normal nunca lo alcanza, el swipe genuino sigue funcionando igual.
 document.querySelectorAll(".modal-content").forEach(sheet=>{
-  let startY=0, dy=0, dragging=false;
+  let startY=0, dy=0, dragging=false, tracking=false;
+  const THRESHOLD = 8;
   sheet.addEventListener("touchstart", e=>{
     if(sheet.scrollTop>0) return; // no interferir si el usuario está leyendo contenido largo
     if(e.target.closest("input, select, textarea, button, a, label")) return; // no robar el toque a controles interactivos
-    startY=e.touches[0].clientY; dragging=true; sheet.classList.add("dragging");
+    startY=e.touches[0].clientY; tracking=true; dragging=false;
   }, {passive:true});
   sheet.addEventListener("touchmove", e=>{
-    if(!dragging) return;
-    dy = Math.max(0, e.touches[0].clientY - startY);
+    if(!tracking) return;
+    const rawDy = e.touches[0].clientY - startY;
+    if(!dragging){
+      if(rawDy<THRESHOLD) return; // jitter de tap, no es un arrastre — no tocar nada
+      dragging=true; sheet.classList.add("dragging");
+    }
+    dy = Math.max(0, rawDy);
     sheet.style.transform = `translateY(${dy}px)`;
   }, {passive:true});
   sheet.addEventListener("touchend", ()=>{
-    if(!dragging) return;
-    dragging=false; sheet.classList.remove("dragging");
-    if(dy>90){ const modal=sheet.closest(".modal"); if(modal) modal.classList.remove("active"); }
-    sheet.style.transform="";
-    dy=0;
+    if(dragging){
+      sheet.classList.remove("dragging");
+      if(dy>90){ const modal=sheet.closest(".modal"); if(modal) modal.classList.remove("active"); }
+      sheet.style.transform="";
+    }
+    tracking=false; dragging=false; dy=0;
   });
 });
 

@@ -402,21 +402,22 @@ body.wizard-open { overflow: hidden; }
 /* Integrada en la cabecera midnight (Roger 2026-07-13) — sustituye el margen
    inferior (pensado para la franja clara) por uno superior, ya que ahora es
    el último elemento antes de cerrar el <header>. */
-.fila-pildoras-dia-cabecera { margin: var(--space-3) 0 0; }
+.fila-pildoras-dia-cabecera { margin: var(--space-4) 0 0; }
+/* Sin caja (Roger 2026-07-14): la primera versión usaba píldoras rellenas y le
+   daba demasiado peso visual a lo que es un selector de día, una herramienta de
+   navegación, no contenido — referencia visual: solo texto + raya de 2px bajo
+   el día activo, como un selector de fecha discreto. */
 .pildora-dia {
-  flex: 1 1 0; min-width: 0; min-height: 44px; background: var(--panel); border: 1px solid var(--line-solid);
-  border-radius: 14px; padding: 8px 2px; cursor: pointer;
-  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  flex: 1 1 0; min-width: 0; min-height: 44px; background: none; border: none;
+  padding: 6px 2px; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
 }
-.pildora-dia-letra { font-size: var(--fs-aux); font-weight: 700; color: var(--soft); text-transform: uppercase; }
-.pildora-dia-num { font-size: var(--fs-cuerpo); font-weight: 700; color: var(--ink); }
+.pildora-dia-letra { font-size: var(--fs-aux); font-weight: 700; color: rgba(245, 240, 232, .5); text-transform: uppercase; }
+.pildora-dia-num { font-size: var(--fs-cuerpo); font-weight: 700; color: var(--navy-ink); }
 .pildora-dia-hoy .pildora-dia-letra { color: var(--gold); }
-/* Activa en dorado, no ink (Roger 2026-07-13): dentro de la cabecera midnight
-   un relleno ink se fundiría con el fondo — el dorado mantiene la píldora
-   visible aunque esté sobre navy. */
-.pildora-dia-activa { background: var(--gold); border-color: var(--gold); }
-.pildora-dia-activa .pildora-dia-num, .pildora-dia-activa .pildora-dia-letra { color: var(--ink); }
-.pildora-dia-activa.pildora-dia-hoy .pildora-dia-letra { color: var(--ink); }
+.pildora-dia::after { content: ''; width: 20px; height: 2px; border-radius: 1px; background: transparent; }
+.pildora-dia-activa::after { background: var(--navy-ink); }
+.pildora-dia-activa.pildora-dia-hoy::after { background: var(--gold); }
 
 /* ============================================================
    RECETAS — chips de filtro por categoría

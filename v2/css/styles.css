@@ -369,11 +369,19 @@ body.wizard-open { overflow: hidden; }
 /* ============================================================
    SEMANA
    ============================================================ */
-.dia-semana { margin-bottom: var(--space-4); }
-.dia-semana-titulo { font-size: var(--fs-aux); font-weight: 700; color: var(--soft); text-transform: uppercase; margin-bottom: var(--space-1); display: flex; align-items: center; }
-.dia-semana-fecha { font-weight: 500; text-transform: none; margin-left: var(--space-1); }
-.dia-semana-hoy .dia-semana-titulo { color: var(--ink); }
-.dia-semana-hoy .card { border-color: var(--gold); border-width: 1.5px; }
+.fila-pildoras-dia { display: flex; justify-content: space-between; gap: 4px; margin-bottom: var(--space-3); }
+.pildora-dia {
+  flex: 1 1 0; min-width: 0; min-height: 44px; background: var(--panel); border: 1px solid var(--line-solid);
+  border-radius: 14px; padding: 8px 2px; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+}
+.pildora-dia-letra { font-size: var(--fs-aux); font-weight: 700; color: var(--soft); text-transform: uppercase; }
+.pildora-dia-num { font-size: var(--fs-cuerpo); font-weight: 700; color: var(--ink); }
+.pildora-dia-hoy .pildora-dia-letra { color: var(--gold); }
+.pildora-dia-activa { background: var(--ink); border-color: var(--ink); }
+.pildora-dia-activa .pildora-dia-num { color: var(--navy-ink); }
+.pildora-dia-activa .pildora-dia-letra { color: rgba(245, 240, 232, .6); }
+.pildora-dia-activa.pildora-dia-hoy .pildora-dia-letra { color: var(--gold); }
 
 /* ============================================================
    RECETAS — chips de filtro por categoría
@@ -499,13 +507,20 @@ body.sheet-open { overflow: hidden; }
 }
 .nav-btn {
   flex: 1 1 0; min-width: 0; min-height: 44px;
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
   background: none; border: none; cursor: pointer;
   color: rgba(245, 240, 232, 0.6); font-size: var(--fs-aux); font-weight: 600; letter-spacing: 0.2px;
 }
 .nav-btn.active { color: var(--gold); }
 .nav-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--gold); opacity: 0; }
 .nav-btn.active .nav-dot { opacity: 1; }
+.nav-ico { line-height: 1; }
+.nav-ico svg { width: 22px; height: 22px; display: block; stroke: currentColor; transition: width var(--dur-base) var(--ease-out), height var(--dur-base) var(--ease-out); }
+.nav-label { display: block; opacity: 1; max-height: 14px; transition: opacity var(--dur-fast) var(--ease-out), max-height var(--dur-base) var(--ease-out); }
+/* nav se encoge a solo-iconos al bajar (listas largas de Recetas/Compra) y recupera al
+   subir — patrón ya validado en v1 (e3foods.html), portado tal cual (pedido Roger 2026-07-13). */
+.bottom-nav.compact .nav-ico svg { width: 20px; height: 20px; }
+.bottom-nav.compact .nav-label { opacity: 0; max-height: 0; }
 
 /* ============================================================
    Sheet "Tu familia" (avatar)

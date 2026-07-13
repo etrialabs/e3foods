@@ -188,21 +188,32 @@
   }
 
   // ---------------------------------------------------------------
-  // Vista SEMANA
+  // Vista SEMANA — selector de día (píldoras L-D) + detalle de un día a la
+  // vez, sustituye al listado de 7 días apilados (pedido Roger 2026-07-13,
+  // referencia visual del handoff externo).
   // ---------------------------------------------------------------
-  function renderSemana(estado, plan, banco) {
+  function renderSemana(estado, plan, banco, diaSeleccionado) {
     var cabecera = renderCabecera({ tituloPlain: 'La semana', tituloItalico: 'en la mesa', avatarCount: (estado.familia || []).length });
     if (!plan) return cabecera + '<div class="vista-body"><p class="card-msg">Todavía no hay semana generada.</p></div>';
     var hoyIdx = E.diaIndexDesdeFecha(plan, hoyISO());
-    var dias = plan.dias.map(function (dia, i) {
-      var esHoy = i === hoyIdx;
-      return '<div class="dia-semana ' + (esHoy ? 'dia-semana-hoy' : '') + '">' +
-        '<p class="dia-semana-titulo">' + NOMBRES_DIA_CORTO[i] + ' <span class="dia-semana-fecha">' + fechaCorta(dia.fecha) + '</span>' + (esHoy ? ' <span class="badge badge-hoy">HOY</span>' : '') + '</p>' +
-        renderSlot(estado, banco, plan, i, 'comida', true) +
-        renderSlot(estado, banco, plan, i, 'cena', true) +
-        '</div>';
+    var idx = (diaSeleccionado != null && plan.dias[diaSeleccionado]) ? diaSeleccionado : (hoyIdx === -1 ? 0 : hoyIdx);
+
+    var pildoras = plan.dias.map(function (dia, i) {
+      var d = new Date(dia.fecha + 'T00:00:00');
+      var clases = 'pildora-dia' + (i === idx ? ' pildora-dia-activa' : '') + (i === hoyIdx ? ' pildora-dia-hoy' : '');
+      return '<button type="button" class="' + clases + '" data-action="semana-elegir-dia" data-dia="' + i + '" aria-pressed="' + (i === idx) + '">' +
+        '<span class="pildora-dia-letra">' + NOMBRES_DIA_CORTO[i].charAt(0) + '</span>' +
+        '<span class="pildora-dia-num">' + d.getDate() + '</span>' +
+        '</button>';
     }).join('');
-    return cabecera + '<div class="vista-body">' + dias + '</div>';
+
+    var dia = plan.dias[idx];
+    return cabecera + '<div class="vista-body">' +
+      '<div class="fila-pildoras-dia" role="group" aria-label="Elegir día">' + pildoras + '</div>' +
+      '<p class="vista-fecha">' + NOMBRES_DIA[idx] + ' ' + fechaCorta(dia.fecha) + (idx === hoyIdx ? ' <span class="badge badge-hoy">HOY</span>' : '') + '</p>' +
+      renderSlot(estado, banco, plan, idx, 'comida', false) +
+      renderSlot(estado, banco, plan, idx, 'cena', false) +
+      '</div>';
   }
 
   // ---------------------------------------------------------------

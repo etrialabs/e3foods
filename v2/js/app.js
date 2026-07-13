@@ -117,6 +117,7 @@
   var vistaActual = 'hoy';
   var filtroRecetas = 'todas'; // estado de UI, no persistido (SPEC: filtroRecetas)
   var rangoCompra = '7d'; // '7d' | 'hoy' — estado de UI, no persistido (SPEC: rangoCompra)
+  var semanaDiaSeleccionado = null; // índice 0-6 en la vista Semana — estado de UI, no persistido; null = hoy
   var pendienteCambiar = null; // {dia, tipoComida} mientras el sheet de "cambiar" está abierto
   var pendienteRegenerar = null; // {dia, tipoComida} tras un cambio, a la espera de sí/no
 
@@ -157,7 +158,7 @@
     document.querySelectorAll('.vista').forEach(function (v) { v.hidden = (v.id !== 'vista-' + vistaActual); });
     document.querySelectorAll('.nav-btn').forEach(function (b) { b.classList.toggle('active', b.dataset.vista === vistaActual); b.setAttribute('aria-current', b.dataset.vista === vistaActual ? 'page' : 'false'); });
     if (vistaActual === 'hoy') cont.innerHTML = UI.renderHoy(estado, estado.plan, BANCO);
-    else if (vistaActual === 'semana') cont.innerHTML = UI.renderSemana(estado, estado.plan, BANCO);
+    else if (vistaActual === 'semana') cont.innerHTML = UI.renderSemana(estado, estado.plan, BANCO, semanaDiaSeleccionado);
     else if (vistaActual === 'recetas') cont.innerHTML = UI.renderRecetasVista(estado, BANCO, filtroRecetas);
     else if (vistaActual === 'compra') cont.innerHTML = UI.renderCompraVista(estado, estado.plan, BANCO, rangoCompra);
     aplicarDetallesAbiertos(cont);
@@ -570,6 +571,7 @@
     'toggle-presente': function (btn) { togglePresente(Number(btn.dataset.dia), btn.dataset.tipo, btn.dataset.miembro); },
     'toggle-compra-item': function (btn) { toggleCompraItem(btn.dataset.id); },
     'segmento-compra': function (btn) { rangoCompra = btn.dataset.rango; render(); },
+    'semana-elegir-dia': function (btn) { semanaDiaSeleccionado = parseInt(btn.dataset.dia, 10); render(); },
     'filtro-receta': function (btn) { filtroRecetas = btn.dataset.categoria; render(); },
 
     'abrir-cambiar': function (btn) { abrirCambiar(Number(btn.dataset.dia), btn.dataset.tipo); },
@@ -649,5 +651,28 @@
     asegurarPlanVigente();
     render();
     document.body.classList.add('landing-open');
+
+    // nav se encoge a solo-iconos al bajar y recupera al subir — puerto directo de
+    // e3foods.html (setupNavShrink), mismo throttle por tiempo (rAF no siempre dispara
+    // en WebViews sin compositor activo — hallazgo ya verificado ahí).
+    (function setupNavShrink() {
+      var nav = document.querySelector('.bottom-nav');
+      if (!nav) return;
+      var lastY = window.scrollY, lastRun = 0;
+      function onScroll() {
+        var y = Math.max(0, window.scrollY);
+        var dy = y - lastY;
+        if (y < 40) nav.classList.remove('compact');
+        else if (dy > 12) nav.classList.add('compact');
+        else if (dy < -12) nav.classList.remove('compact');
+        if (Math.abs(dy) > 12) lastY = y;
+      }
+      window.addEventListener('scroll', function () {
+        var now = Date.now();
+        if (now - lastRun < 32) return;
+        lastRun = now;
+        onScroll();
+      }, { passive: true });
+    })();
   });
 })();

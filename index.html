@@ -310,6 +310,10 @@ label { display: block; font-size: 12.5px; color: var(--soft); margin-bottom: 5p
 .recipe-card:active { border-color: var(--accent); }
 .recipe-card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: 0 8px 22px rgba(8,18,34,.10), 0 0 24px rgba(201,169,110,.12); }
 .recipe-card .name { font-weight: 500; margin-bottom: 6px; }
+/* con fav-star (solo la grid de Recetas, no el picker ni la búsqueda por ingredientes) el
+   nombre necesita hueco a la derecha — si no, en nombres largos el texto envuelve la
+   estrella y las dos primeras líneas quedan mordidas. right:8px + width:26px del star. */
+.recipe-card:has(.fav-star) .name { padding-right: 34px; }
 .recipe-card .meta { font-size: 11.5px; color: var(--muted); display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 
 .tag { display: inline-block; padding: 3px 9px; background: var(--elev3); color: var(--soft); border-radius: 999px; font-size: 11px; font-weight: 500; }
@@ -2306,7 +2310,10 @@ function buildDayMealHTML(d){
   const renderRow = (r, kind, pattern, withSwap=true, course, extraKcal=0) => {
     const {proteinaHTML, verduraHTML, hidratoTag} = platoTags(r);
     const cursoTxt = course==='primero' ? 'Primero' : course==='segundo' ? 'Segundo' : '';
-    const labelParts = [cursoTxt, pattern].filter(Boolean);
+    // Roger 2026-07-13: en dúo, el curso compartido por todos los patrones (pattern=null)
+    // debe decirlo explícito ("Primero · Todos"), no omitirlo — si no, parece que falta info.
+    const patternTxt = course ? (pattern || 'Todos') : pattern;
+    const labelParts = [cursoTxt, patternTxt].filter(Boolean);
     const patternLabel = labelParts.length ? `<div class="diet-label">${labelParts.join(' · ')}</div>` : '';
     const missing = missingIngredientHint(r);
     const infoRow = `<div class="dish-info-row"><span>${ICO_CLOCK}${TIEMPO_APROX[r.tiempo]||''}</span>${missing?`<span>${ICO_CART}Falta: ${missing}</span>`:''}</div>`;

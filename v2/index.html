@@ -19,13 +19,17 @@
   <button type="button" class="btn-primary landing-cta" data-action="empezar">Empezar</button>
 </div>
 
-<!-- WIZARD — hub de alta de familia (rediseño): nombre de familia + miembros uno a uno -->
+<!-- WIZARD — alta conversacional en 3 pasos, una pregunta por pantalla:
+     bienvenida (nombre de familia) -> hub (quién vive en casa) -> form (por persona) -->
 <div id="wizard-screen" class="wizard-screen" hidden>
 
-  <!-- HUB: nombre de familia, copy, lista de miembros, "+", CTA final -->
-  <div id="wizard-hub" class="wizard-hub"></div>
+  <!-- PASO 1: saludo + "¿cómo os llamáis?" (nombre de familia) -->
+  <div id="wizard-bienvenida" class="wizard-bienvenida"></div>
 
-  <!-- FORM: alta/edición de UN miembro (nombre, sexo, año, foto; detalles opcionales colapsados) -->
+  <!-- PASO 2: "¿quién vive en casa de los X?" -->
+  <div id="wizard-hub" class="wizard-hub" hidden></div>
+
+  <!-- PASO 3: ficha de UNA persona — "solo te pido tres cosas" + detalles opcionales -->
   <div id="wizard-form" class="wizard-form-pantalla" hidden></div>
 
 </div>

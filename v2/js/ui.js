@@ -367,11 +367,12 @@
     return input + '<div class="fila-chips">' + chips + '</div>';
   }
 
-  function renderFormMiembroCompleto(miembro) {
+  function renderFormMiembroCompleto(miembro, esAltaNueva) {
     miembro = miembro || {};
     var anioActual = new Date().getFullYear();
     var tieneFoto = !!miembro.foto;
     return '<div class="form-miembro-completo">' +
+      (esAltaNueva ? '<p class="wizard-mini-titular">Solo te pido tres cosas.</p>' : '') +
       '<button type="button" class="foto-tap" id="mf-foto-preview" data-action="mf-subir-foto" ' +
         'aria-label="' + (tieneFoto ? 'Cambiar foto' : 'Añadir foto') + '"' + (tieneFoto ? avatarEstilo(miembro) : '') + '>' +
         (tieneFoto ? '<span class="foto-tap-editar">Cambiar</span>' :
@@ -387,8 +388,9 @@
         '<div class="campo-corto"><span class="campo-eyebrow">Año de nacimiento</span>' +
           '<input type="number" inputmode="numeric" id="mf-anio" class="input-editorial input-corto" placeholder="p.ej. 1985" min="1920" max="' + anioActual + '" value="' + (miembro.anioNacimiento || '') + '"></div>' +
       '</div>' +
+      '<p class="wizard-incentivo">Si me cuentas un poco más, te ayudaré mejor.</p>' +
       '<details class="mas-detalles">' +
-        '<summary><span class="mas-detalles-texto">Altura, peso y tipo de dieta</span><span class="mas-detalles-icono" aria-hidden="true"></span></summary>' +
+        '<summary><span class="mas-detalles-texto">Añadir más detalles</span><span class="mas-detalles-icono" aria-hidden="true"></span></summary>' +
         '<div class="mas-detalles-cuerpo">' +
         '<div class="fila-sexo-anio">' +
           '<div class="campo-corto"><span class="campo-eyebrow">Altura (cm)</span><input type="number" id="mf-altura" class="input-editorial input-corto" min="30" max="230" value="' + (miembro.altura || '') + '"></div>' +
@@ -406,10 +408,37 @@
   }
 
   // ---------------------------------------------------------------
-  // Wizard — hub de alta de familia
+  // Wizard — alta conversacional en 3 pasos (una pregunta por pantalla)
   // ---------------------------------------------------------------
+
+  // PASO 1 — saludo + "¿cómo os llamáis?" (nombre de familia). Sin campos de
+  // miembro todavía: una sola pregunta, una sola respuesta, como pediría
+  // alguien al conoceros de verdad.
+  function renderWizardBienvenida(nombreFamilia) {
+    return '<p class="wizard-saludo">¡Bienvenidos!</p>' +
+      '<h1 class="wizard-pregunta">Quiero conoceros.<br>¿Cómo os llamáis?</h1>' +
+      '<label class="campo-nombre-familia"><span class="campo-eyebrow">Nombre de familia</span>' +
+        '<input type="text" id="wz-nombre-familia" class="input-editorial" maxlength="40" placeholder="p.ej. Los Fernández" value="' + escapeHtml(nombreFamilia || '') + '" autofocus></label>' +
+      '<button type="button" class="btn-primary wizard-cta" data-action="wizard-siguiente-bienvenida">Siguiente</button>';
+  }
+
+  // PASO 2 — "¿quién vive en casa de los X?" (usa el nombre ya dado, paso 1,
+  // para que se note que la app escuchó). Lista vacía: el "+" es el único
+  // foco posible de la pantalla, centrado, no una esquina discreta.
   function renderWizardHub(nombreFamilia, miembros) {
-    var listaHtml = miembros.length ? ('<ul class="wizard-lista-miembros">' + miembros.map(function (m) {
+    var nombreLimpio = (nombreFamilia || '').trim();
+    var titulo = nombreLimpio ? ('¿Quién vive en casa de los <em>' + escapeHtml(nombreLimpio) + '</em>?') : '¿Quién vive en tu casa?';
+
+    if (!miembros.length) {
+      return '<button type="button" class="wizard-volver" data-action="wizard-volver-bienvenida">‹ Cambiar nombre de familia</button>' +
+        '<h1 class="wizard-pregunta">' + titulo + '</h1>' +
+        '<div class="wizard-vacio-centro">' +
+          '<button type="button" class="btn-anadir-miembro btn-anadir-miembro-grande" data-action="wizard-abrir-form" aria-label="Añadir el primer miembro">+</button>' +
+          '<p class="wizard-vacio">Añade al primero para empezar.</p>' +
+        '</div>';
+    }
+
+    var listaHtml = '<ul class="wizard-lista-miembros">' + miembros.map(function (m) {
       return '<li class="wizard-miembro-card">' +
         '<span class="avatar avatar-presente"' + avatarEstilo(m) + '>' + avatarInner(m) + '</span>' +
         '<span class="wizard-miembro-info"><strong>' + escapeHtml(m.nombre) + '</strong><span>' + (m.anioNacimiento || '?') + '</span></span>' +
@@ -418,15 +447,13 @@
           '<button type="button" class="btn-texto btn-borrar" data-action="wizard-quitar-miembro" data-id="' + m.id + '">Quitar</button>' +
         '</span>' +
         '</li>';
-    }).join('') + '</ul>') : '<p class="wizard-vacio">Todavía no has añadido a nadie.</p>';
+    }).join('') + '</ul>';
 
-    return '<label class="campo-nombre-familia"><span class="campo-eyebrow">Nombre de familia</span>' +
-      '<input type="text" id="wz-nombre-familia" class="input-editorial" maxlength="40" placeholder="p.ej. Los Fernández" value="' + escapeHtml(nombreFamilia || '') + '"></label>' +
-      '<p class="wizard-intro">Para que lo nuestro funcione necesito saber algo de vosotros.</p>' +
-      '<h1 class="wizard-pregunta">¿Nos conocemos?</h1>' +
+    return '<button type="button" class="wizard-volver" data-action="wizard-volver-bienvenida">‹ Cambiar nombre de familia</button>' +
+      '<h1 class="wizard-pregunta">' + titulo + '</h1>' +
       listaHtml +
-      '<button type="button" class="btn-anadir-miembro" data-action="wizard-abrir-form" aria-label="Añadir miembro">+</button>' +
-      '<button type="button" class="btn-primary wizard-cta" id="wizard-generar" data-action="wizard-generar"' + (miembros.length ? '' : ' disabled') + '>Crear nuestro menú</button>';
+      '<button type="button" class="btn-anadir-miembro" data-action="wizard-abrir-form" aria-label="Añadir otro miembro">+</button>' +
+      '<button type="button" class="btn-primary wizard-cta" id="wizard-generar" data-action="wizard-generar">Crear nuestro menú</button>';
   }
 
   // ---------------------------------------------------------------
@@ -535,6 +562,7 @@
     renderConfirmarRegenerar: renderConfirmarRegenerar,
     renderSheetFamilia: renderSheetFamilia,
     renderFormMiembroCompleto: renderFormMiembroCompleto,
+    renderWizardBienvenida: renderWizardBienvenida,
     renderWizardHub: renderWizardHub,
     escapeHtml: escapeHtml
   };

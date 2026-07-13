@@ -199,7 +199,7 @@
       document.body.classList.add('wizard-open');
       wizardNombreFamilia = '';
       wizardMiembros = [];
-      mostrarWizardHub();
+      mostrarWizardBienvenida();
     } else {
       asegurarPlanVigente();
       render();
@@ -207,7 +207,10 @@
   }
 
   // ---------------------------------------------------------------
-  // Wizard — hub de alta de familia (rediseño)
+  // Wizard — alta conversacional en 3 pasos: bienvenida (nombre de familia)
+  // -> hub (quién vive en casa) -> form (ficha de una persona). Una pregunta
+  // por pantalla — ver DOC_FUNCIONAL_SAAS.md §4.1 y el encargo de Roger
+  // 2026-07-13 ("así quiero una app": conversacional, no formulario).
   // ---------------------------------------------------------------
   var wizardMiembros = [];
   var wizardNombreFamilia = '';
@@ -217,10 +220,30 @@
   var formEditId = null;
   var formFotoActual = null;
 
-  function mostrarWizardHub() {
-    document.getElementById('wizard-hub').hidden = false;
+  function ocultarPasosWizard() {
+    document.getElementById('wizard-bienvenida').hidden = true;
+    document.getElementById('wizard-hub').hidden = true;
     document.getElementById('wizard-form').hidden = true;
-    document.getElementById('wizard-hub').innerHTML = UI.renderWizardHub(wizardNombreFamilia, wizardMiembros);
+  }
+
+  function mostrarWizardBienvenida() {
+    ocultarPasosWizard();
+    var el = document.getElementById('wizard-bienvenida');
+    el.hidden = false;
+    el.innerHTML = UI.renderWizardBienvenida(wizardNombreFamilia);
+  }
+
+  function wizardSiguienteBienvenida() {
+    var el = document.getElementById('wz-nombre-familia');
+    wizardNombreFamilia = el ? el.value.trim() : '';
+    mostrarWizardHub();
+  }
+
+  function mostrarWizardHub() {
+    ocultarPasosWizard();
+    var el = document.getElementById('wizard-hub');
+    el.hidden = false;
+    el.innerHTML = UI.renderWizardHub(wizardNombreFamilia, wizardMiembros);
   }
 
   function mostrarWizardForm(miembroId) {
@@ -228,10 +251,11 @@
     formEditId = miembroId || null;
     var existente = miembroId ? wizardMiembros.find(function (m) { return m.id === miembroId; }) : null;
     formFotoActual = existente ? (existente.foto || null) : null;
-    document.getElementById('wizard-hub').hidden = true;
+    ocultarPasosWizard();
     var formEl = document.getElementById('wizard-form');
     formEl.hidden = false;
-    formEl.innerHTML = '<h1 class="wizard-pregunta">' + (existente ? 'Editar miembro' : 'Nuevo miembro') + '</h1>' + UI.renderFormMiembroCompleto(existente);
+    var tituloExtra = existente ? '<h1 class="wizard-pregunta">Editar a ' + UI.escapeHtml(existente.nombre) + '</h1>' : '';
+    formEl.innerHTML = tituloExtra + UI.renderFormMiembroCompleto(existente, !existente);
   }
 
   function wizardQuitarMiembro(id) {
@@ -306,7 +330,7 @@
     formFotoActual = existente ? (existente.foto || null) : null;
     abrirSheet('<div class="sheet-head"><h2>' + (existente ? 'Editar miembro' : 'Nuevo miembro') + '</h2>' +
       '<button type="button" class="btn-cerrar" data-action="cerrar-sheet" aria-label="Cerrar">&times;</button></div>' +
-      '<div class="sheet-body">' + UI.renderFormMiembroCompleto(existente) + '</div>');
+      '<div class="sheet-body">' + UI.renderFormMiembroCompleto(existente, !existente) + '</div>');
   }
 
   // #mf-foto-preview es un <button class="foto-tap"> con spans internos (iniciales +
@@ -500,6 +524,8 @@
     'ir-vista': function (btn) { irAVista(btn.dataset.vista); },
     'abrir-familia': function () { abrirSheetFamilia(); },
 
+    'wizard-siguiente-bienvenida': function () { wizardSiguienteBienvenida(); },
+    'wizard-volver-bienvenida': function () { mostrarWizardBienvenida(); },
     'wizard-abrir-form': function () { mostrarWizardForm(null); },
     'wizard-editar-miembro': function (btn) { mostrarWizardForm(btn.dataset.id); },
     'wizard-quitar-miembro': function (btn) { wizardQuitarMiembro(btn.dataset.id); },

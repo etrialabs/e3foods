@@ -121,7 +121,7 @@ body.landing-open { overflow: hidden; }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
 /* ============================================================
-   Wizard — hub de alta de familia (rediseño)
+   Wizard — alta conversacional en 3 pasos (una pregunta por pantalla)
    ============================================================ */
 .wizard-screen {
   position: fixed; inset: 0; z-index: 250;
@@ -131,7 +131,37 @@ body.landing-open { overflow: hidden; }
 }
 body.wizard-open { overflow: hidden; }
 
-.wizard-hub, .wizard-form-pantalla { display: flex; flex-direction: column; gap: var(--space-4); max-width: 480px; margin: 0 auto; }
+.wizard-bienvenida, .wizard-hub, .wizard-form-pantalla {
+  display: flex; flex-direction: column; gap: var(--space-4); max-width: 480px; margin: 0 auto;
+  min-height: calc(100dvh - var(--space-4) - var(--safe-t) - var(--space-6) - var(--safe-b));
+}
+
+/* PASO 1 — saludo cálido antes de la primera pregunta */
+.wizard-saludo { font-size: var(--fs-titulo); color: var(--soft); margin-bottom: -8px; }
+
+/* PASO 3 — mini-titular conversacional que antecede a los 3 campos obligatorios
+   ("Solo te pido tres cosas.") — sustituye al típico h1 "Nuevo miembro". */
+.wizard-mini-titular { font-family: var(--font-display); font-style: italic; font-size: 22px; color: var(--ink); }
+/* frase de incentivo antes del reveal de opcionales: explica el porqué en vez
+   de un "(opcional)" seco. */
+.wizard-incentivo { font-size: var(--fs-cuerpo); color: var(--soft); font-style: italic; margin: 0; }
+
+/* enlace "‹ volver" del paso 2 al paso 1 — discreto, arriba a la izquierda */
+.wizard-volver {
+  align-self: flex-start; background: none; border: none; cursor: pointer;
+  color: var(--soft); font-size: var(--fs-aux); font-weight: 700; padding: var(--space-1) 0; margin-bottom: -8px;
+}
+
+/* Lista vacía en el paso 2: el "+" es el único foco posible de la pantalla —
+   centrado, grande, con aire alrededor en vez de una esquina discreta. */
+.wizard-vacio-centro {
+  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: var(--space-3); padding: var(--space-6) 0;
+}
+.btn-anadir-miembro-grande {
+  width: 96px; height: 96px; font-size: 42px;
+  box-shadow: 0 8px 24px rgba(201, 169, 110, .4);
+}
 
 /* Campo eyebrow reutilizado en TODO campo de formulario editorial (nombre de
    familia, nombre de miembro, sexo/año, altura/peso...) — uppercase pequeño y
@@ -154,6 +184,7 @@ body.wizard-open { overflow: hidden; }
 
 .wizard-intro { color: var(--soft); font-size: var(--fs-cuerpo); }
 .wizard-pregunta { font-family: var(--font-display); font-size: var(--fs-hero); font-weight: 400; line-height: 1.1; color: var(--ink); margin-bottom: var(--space-1); }
+.wizard-pregunta em { font-style: italic; color: var(--gold); }
 
 /* fila de 2 campos cortos lado a lado (sexo+año, altura+peso) */
 .fila-sexo-anio { display: flex; gap: var(--space-3); }
@@ -219,6 +250,7 @@ body.wizard-open { overflow: hidden; }
 .foto-tap-pequena .foto-tap-icono { width: 24px; height: 24px; }
 .foto-tap-pequena .foto-tap-icono svg { width: 13px; height: 13px; }
 .foto-quitar-link { display: block; margin: 0 auto var(--space-2); text-decoration: none; }
+.form-miembro-completo { display: flex; flex-direction: column; gap: var(--space-3); }
 .form-miembro-completo .foto-tap, .form-miembro-completo .foto-quitar-link { display: flex; }
 .form-miembro-completo .foto-quitar-link { display: block; width: fit-content; margin-left: auto; margin-right: auto; }
 

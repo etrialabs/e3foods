@@ -158,8 +158,13 @@ body.wizard-open { overflow: hidden; }
   flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: var(--space-3); padding: var(--space-6) 0;
 }
-.btn-anadir-miembro-grande {
-  width: 96px; height: 96px; font-size: 42px;
+/* especificidad 0,2,0 a propósito: .btn-anadir-miembro (definida más abajo, con
+   align-self:flex-start para el caso "+" junto a la lista) tiene la misma
+   especificidad que un simple ".btn-anadir-miembro-grande" y gana por orden de
+   cascada — igual bug que ya se dio en .landing-cta. Selector compuesto para
+   no depender del orden de las reglas. */
+.btn-anadir-miembro.btn-anadir-miembro-grande {
+  width: 96px; height: 96px; font-size: 42px; align-self: center;
   box-shadow: 0 8px 24px rgba(201, 169, 110, .4);
 }
 
@@ -245,7 +250,9 @@ body.wizard-open { overflow: hidden; }
   position: absolute; left: 0; right: 0; bottom: 0; padding: 5px 0 6px; text-align: center;
   font-size: 11px; font-weight: 700; color: #fff; background: linear-gradient(transparent, rgba(8, 18, 34, .72));
 }
-.foto-tap-pequena { width: 64px; height: 64px; margin: 0 0 var(--space-1); }
+/* especificidad 0,2,0 a propósito, mismo motivo que .btn-anadir-miembro-grande
+   arriba: no depender de que esta regla siga viniendo después de .foto-tap. */
+.foto-tap.foto-tap-pequena { width: 64px; height: 64px; margin: 0 0 var(--space-1); }
 .foto-tap-pequena .foto-tap-inicial { font-size: 24px; }
 .foto-tap-pequena .foto-tap-icono { width: 24px; height: 24px; }
 .foto-tap-pequena .foto-tap-icono svg { width: 13px; height: 13px; }

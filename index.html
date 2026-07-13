@@ -1480,7 +1480,7 @@ positionNavIndicator();
 // principio de la página (y<40) para que el arranque de cada pestaña se vea siempre completo.
 (function setupNavShrink(){
   const nav = document.querySelector("nav");
-  let lastY = window.scrollY, ticking = false;
+  let lastY = window.scrollY, lastRun = 0;
   function onScroll(){
     const y = Math.max(0, window.scrollY);
     const dy = y - lastY;
@@ -1489,10 +1489,14 @@ positionNavIndicator();
     else if(dy < -12) nav.classList.remove("compact");
     if(Math.abs(dy) > 12) lastY = y;
     positionNavIndicator();
-    ticking = false;
   }
+  // throttle por tiempo, no requestAnimationFrame — rAF puede quedarse sin disparar del todo en
+  // ciertos estados de WebView sin compositor activo (verificado en e3foods.html, ver setupDaySlotObserver).
   window.addEventListener("scroll", ()=>{
-    if(!ticking){ requestAnimationFrame(onScroll); ticking = true; }
+    const now = Date.now();
+    if(now - lastRun < 32) return;
+    lastRun = now;
+    onScroll();
   }, {passive:true});
 })();
 
@@ -2354,6 +2358,48 @@ function buildDayMealHTML(d){
   };
 }
 // vista de un solo día (móvil) — tira de días arriba + las 3 comidas de ese día debajo
+// Roger 2026-07-14: la atenuación sigue lo que hay CENTRADO en pantalla en cada momento, no la
+// hora fija — si el usuario baja manualmente a la otra comida, esa pasa a activa. La hora solo
+// decide qué franja se centra al ENTRAR (comida hasta las 17h, cena de 17h a medianoche).
+// IntersectionObserver descartado: sus thresholds miden % de área visible respecto al viewport,
+// no posición respecto al centro — si una franja cabe entera en pantalla, moverse dentro de ella
+// no cruza ningún threshold y el observer deja de disparar aunque la posición central cambie.
+// Listener de scroll continuo (mismo patrón que el shrink-on-scroll del nav): recalcula en cada
+// frame de scroll cuál de las 2 franjas está realmente más cerca del centro del viewport.
+let daySlotScrollHandler = null;
+function setActiveSlot(which){
+  const comida = document.getElementById('slot-comida');
+  const cena = document.getElementById('slot-cena');
+  if(!comida || !cena) return;
+  comida.classList.remove('faded-above','faded-below');
+  cena.classList.remove('faded-above','faded-below');
+  if(which==='comida') cena.classList.add('faded-below');
+  else if(which==='cena') comida.classList.add('faded-above');
+}
+function setupDaySlotObserver(){
+  const comida = document.getElementById('slot-comida');
+  const cena = document.getElementById('slot-cena');
+  if(!comida || !cena) return;
+  function pickCloser(){
+    const c = document.getElementById('slot-comida'), z = document.getElementById('slot-cena');
+    if(!c || !z) return;
+    const centerY = window.innerHeight/2;
+    const distTo = el=>{ const r=el.getBoundingClientRect(); return Math.abs((r.top+r.bottom)/2 - centerY); };
+    setActiveSlot(distTo(c) <= distTo(z) ? 'comida' : 'cena');
+  }
+  if(daySlotScrollHandler) window.removeEventListener('scroll', daySlotScrollHandler);
+  // throttle por tiempo, no requestAnimationFrame — rAF se pausa del todo en pestañas sin
+  // compositor activo (algunos WebViews/PWA en ciertos estados), y el cálculo es barato de sobra
+  // para correr a ritmo de scroll real sin necesitar la vuelta de rAF.
+  let lastRun = 0;
+  daySlotScrollHandler = ()=>{
+    const now = Date.now();
+    if(now - lastRun < 32) return;
+    lastRun = now;
+    pickCloser();
+  };
+  window.addEventListener('scroll', daySlotScrollHandler, {passive:true});
+}
 function renderDayView(){
   const week = getActiveWeek();
   const strip = document.getElementById('day-strip');
@@ -2362,16 +2408,19 @@ function renderDayView(){
   strip.innerHTML = week.map((d,i)=>`<button class="day-pill${i===state.activeDayIndex?' active':''}" onclick="selectDay(${i})"><span class="dp-dow">${DAY_NAMES[i]}</span><span class="dp-num">${d.date.getDate()}</span></button>`).join('');
   const d = week[state.activeDayIndex];
   const parts = buildDayMealHTML(d);
-  // Roger 2026-07-12: hasta las 17h toca comida, de 17h a medianoche toca cena — esa franja se
-  // centra en pantalla, la otra queda atenuada (arriba = ya pasó, abajo = aún no toca). El
-  // desayuno no entra en este reparto (se oculta vía trackedMeals, ver buildDayMealHTML).
-  const cenaActiva = new Date().getHours() >= 17;
+  const cenaAlEntrar = new Date().getHours() >= 17;
   document.getElementById('day-cards').innerHTML = parts.desayunoHTML +
-    `<div class="horario-slot${cenaActiva?' faded-above':''}" id="slot-comida">${parts.comidaHTML}</div>` +
-    `<div class="horario-slot${cenaActiva?'':' faded-below'}" id="slot-cena">${parts.cenaHTML}</div>`;
+    `<div class="horario-slot" id="slot-comida">${parts.comidaHTML}</div>` +
+    `<div class="horario-slot" id="slot-cena">${parts.cenaHTML}</div>`;
   renderTodayBar();
-  const activeEl = document.getElementById(cenaActiva ? 'slot-cena' : 'slot-comida');
-  if(activeEl) requestAnimationFrame(()=>activeEl.scrollIntoView({block:'center'}));
+  setActiveSlot(cenaAlEntrar ? 'cena' : 'comida');
+  // leer geometría (scrollIntoView) funciona de forma síncrona justo tras cambiar innerHTML — no
+  // hace falta esperar un frame, y requestAnimationFrame puede quedarse colgado indefinidamente
+  // en ciertos estados de WebView (nunca dispara sin compositor activo), lo que se llevaría por
+  // delante en silencio el registro del listener de scroll de abajo.
+  const activeEl = document.getElementById(cenaAlEntrar ? 'slot-cena' : 'slot-comida');
+  if(activeEl) activeEl.scrollIntoView({block:'center'});
+  setupDaySlotObserver();
 }
 function selectDay(i){ buzz(); state.activeDayIndex = i; save(); renderDayView(); }
 // Roger 2026-07-12: el swipe no debe parar en el borde de la semana — seguir deslizando en
@@ -3099,7 +3148,7 @@ function showAccountScreen(mode){
       `<button class="acc-hue${h===createHue?' sel':''}" data-hue="${h}" style="background:linear-gradient(135deg, hsl(${h} 60% 52%), hsl(${(h+40)%360} 55% 40%));" onclick="selectHue(${h})"></button>`
     ).join('') + `</div>`;
     html += `<label style="margin-top:14px;">PIN de 4 dígitos (opcional)</label><input type="password" id="acc-pin" inputmode="numeric" maxlength="4" placeholder="····" autocomplete="off"><p class="acc-hint">Evita que otro perfil de la casa entre por error. Se puede quitar en Ajustes.</p>`;
-    html += `<label style="margin-top:14px;display:flex;align-items:center;gap:9px;cursor:pointer;" onclick="document.getElementById('acc-desayuno').click()"><input type="checkbox" id="acc-desayuno" checked style="width:18px;height:18px;flex-shrink:0;"> <span style="color:var(--ink);font-size:14px;">Incluir desayuno en el plan</span></label><p class="acc-hint">Si no, la app solo organiza comida y cena. Se puede cambiar luego en Ajustes.</p>`;
+    html += `<label style="margin-top:14px;display:flex;align-items:center;gap:9px;cursor:pointer;"><input type="checkbox" id="acc-desayuno" checked style="width:18px;height:18px;flex-shrink:0;"> <span style="color:var(--ink);font-size:14px;">Incluir desayuno en el plan</span></label><p class="acc-hint">Si no, la app solo organiza comida y cena. Se puede cambiar luego en Ajustes.</p>`;
     html += `<button class="primary acc-submit" onclick="submitCreateAccount()">Crear familia</button>`;
     html += `<button class="acc-cancel" onclick="showAccountScreen('pick')">Volver</button>`;
     html += `</div>`;
@@ -3203,7 +3252,7 @@ function renderFamilySettings(){
       <div class="col"><label>Renombrar</label><div style="display:flex;gap:8px;"><input type="text" id="fam-rename" value="${a.name}" maxlength="24"><button class="secondary" onclick="renameFamily()">OK</button></div></div>
       <div class="col"><label>PIN (vacío = quitar)</label><div style="display:flex;gap:8px;"><input type="password" id="fam-pin" inputmode="numeric" maxlength="4" placeholder="····"><button class="secondary" onclick="changeFamilyPin()">OK</button></div></div>
     </div>
-    <label style="margin-top:2px;display:flex;align-items:center;gap:9px;cursor:pointer;" onclick="toggleTrackedMeal('desayuno')"><input type="checkbox" ${trackedMeals().includes('desayuno')?'checked':''} style="width:18px;height:18px;flex-shrink:0;pointer-events:none;"> <span>Incluir desayuno en el plan</span></label>
+    <label style="margin-top:2px;display:flex;align-items:center;gap:9px;cursor:pointer;"><input type="checkbox" ${trackedMeals().includes('desayuno')?'checked':''} style="width:18px;height:18px;flex-shrink:0;" onchange="toggleTrackedMeal('desayuno')"> <span>Incluir desayuno en el plan</span></label>
     <div class="toolbar" style="margin-top:10px;margin-bottom:0;">
       <button class="secondary" onclick="showAccountScreen('pick')">Cambiar de familia</button>
       <button class="danger" onclick="deleteFamily()">Eliminar esta familia</button>

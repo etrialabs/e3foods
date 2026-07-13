@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="e3Foods — planificador de comidas familiares. Menús que piensan por ti, familias que comen mejor.">
+<meta name="theme-color" content="#081222">
+<title>e3Foods</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..600&family=Inter:wght@400..700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<!-- LANDING — cada carga. Tap "Empezar" -> wizard (si no hay familia) o HOY. -->
+<div id="landing-screen" class="landing-screen">
+  <img class="landing-hero" src="assets/portada.png" alt="e3Foods — menús que piensan por ti. Familias que comen mejor.">
+  <button type="button" class="btn-primary landing-cta" data-action="empezar">Empezar</button>
+</div>
+
+<!-- WIZARD — setup único de familia, miembros uno a uno -->
+<div id="wizard-screen" class="wizard-screen" hidden>
+  <h1 class="wizard-titulo">Define tu familia</h1>
+  <p class="wizard-subtitulo">Añade a cada miembro (mínimo uno). Peso, altura, vetos y patrón semanal se pueden afinar luego en Mi familia.</p>
+  <div class="form-miembro">
+    <label>Nombre<input type="text" id="nm-nombre" maxlength="30" placeholder="Nombre"></label>
+    <label>Sexo<select id="nm-sexo">
+      <option value="mujer">Mujer</option>
+      <option value="hombre">Hombre</option>
+    </select></label>
+    <label>Fecha de nacimiento<input type="date" id="nm-nacimiento"></label>
+    <label>Actividad<select id="nm-actividad">
+      <option value="baja">Baja</option>
+      <option value="media" selected>Media</option>
+      <option value="alta">Alta</option>
+    </select></label>
+    <label>Dieta<select id="nm-dieta">
+      <option value="omnivora">De todo</option>
+      <option value="vegetariana">Vegetariana</option>
+      <option value="sin-pescado">Sin pescado</option>
+      <option value="sin-cerdo">Sin cerdo</option>
+    </select></label>
+  </div>
+  <button type="button" class="btn-secondary" data-action="wizard-anadir-miembro">Añadir a la familia</button>
+  <ul class="wizard-lista" id="wizard-lista"></ul>
+  <button type="button" class="btn-primary" id="wizard-generar" data-action="wizard-generar" disabled>Generar mi semana</button>
+</div>
+
+<header class="app-header">
+  <h1>e<span class="mk">3</span>Foods</h1>
+</header>
+
+<main id="vista-hoy" class="vista" aria-label="Hoy"></main>
+<main id="vista-semana" class="vista" hidden aria-label="Semana"></main>
+<main id="vista-familia" class="vista" hidden aria-label="Mi familia"></main>
+
+<!-- Bottom sheet genérico: compra / cambiar plato / elegir otro / nevera / confirmar regenerar -->
+<div id="sheet-overlay" class="sheet-overlay" hidden>
+  <div class="sheet-panel" role="dialog" aria-modal="true">
+    <div id="sheet-contenido"></div>
+  </div>
+</div>
+
+<nav class="bottom-nav" aria-label="Navegación principal">
+  <button type="button" class="nav-btn active" data-action="ir-vista" data-vista="hoy" aria-current="page">Hoy</button>
+  <button type="button" class="nav-btn" data-action="ir-vista" data-vista="semana" aria-current="false">Semana</button>
+  <button type="button" class="nav-btn" data-action="ir-vista" data-vista="familia" aria-current="false">Mi familia</button>
+</nav>
+
+<!-- data/recetas.js lo genera otro agente en paralelo. Si no existe (404), app.js usa un
+     mini-banco DEV interno como fallback — ver comentario "DEV FALLBACK" en js/app.js. -->
+<script src="data/recetas.js"></script>
+<script src="js/engine.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

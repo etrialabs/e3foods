@@ -1,0 +1,380 @@
+/* ============================================================
+   e3Foods — styles.css
+   Mobile-first. Paleta "Etria Brand" copiada tal cual del :root de
+   e3foods.html (líneas ~41-72) — colores NO alterados por decisión
+   cerrada (ver SPEC.md). Grid de 8px, máx. 4 tamaños de fuente por
+   vista, regla 60/30/10, zona del pulgar, safe-areas.
+   ============================================================ */
+
+:root {
+  color-scheme: light;
+  /* --- paleta "Etria Brand" — copiada literal de e3foods.html, NO cambiar --- */
+  --bg: #EEF1F5;
+  --panel: #FFFFFF;
+  --elev2: #F1F3F7;
+  --elev3: #E8ECF2;
+  --ink: #081222;
+  --soft: #45526A;
+  --muted: #8A93A5;
+  --line: rgba(8, 18, 34, 0.10);
+  --line-solid: #E2E6EC;
+  --accent: #C9A96E;
+  --accent-ink: #081222;
+  --navy-ink: #F5F0E8;
+  --emerald: #C9A96E;
+  --gold: #C9A96E;
+  --gold-soft: #E0C896;
+  --lime: #E0C896;
+  --danger: #C0392B;
+  --font-display: 'Fraunces', Georgia, serif;
+  --font-ui: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --nav-h: 64px;
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --safe-t: env(safe-area-inset-top, 0px);
+  --dur-fast: 150ms;
+  --dur-base: 250ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* --- grid de 8px (4px como único intermedio) --- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 16px;
+  --space-4: 24px;
+  --space-5: 32px;
+  --space-6: 48px;
+
+  /* --- escala tipográfica: máx. 4 roles, reutilizados en toda la app --- */
+  --fs-display: 22px;  /* Fraunces — solo el wordmark de cabecera */
+  --fs-titulo: 20px;   /* títulos de sección, nombre de plato, h2 de sheet */
+  --fs-cuerpo: 15px;   /* texto de card, botones, listas, formularios */
+  --fs-aux: 12.5px;    /* eyebrows, badges, metadatos, chips, nav */
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { -webkit-text-size-adjust: 100%; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+body {
+  font-family: var(--font-ui);
+  background: var(--bg);
+  color: var(--ink);
+  line-height: 1.5;
+  font-size: var(--fs-cuerpo);
+  -webkit-font-smoothing: antialiased;
+  padding-bottom: calc(var(--nav-h) + var(--safe-b));
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+button { touch-action: manipulation; -webkit-tap-highlight-color: transparent; font-family: inherit; }
+input, select { font-family: inherit; font-size: var(--fs-cuerpo); }
+
+:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+.oculto { display: none !important; }
+
+/* ============================================================
+   Landing — cantera de e3foods.html (.landing-screen/.landing-hero),
+   adaptada a assets/portada.png y a un CTA anclado por safe-area en
+   vez del top:93.5% original (más robusto ante distintas alturas de
+   pantalla; ver 00_Skills/e3foods-mobile-design/references/safe-areas-viewport.md).
+   ============================================================ */
+.landing-screen {
+  position: fixed; inset: 0; z-index: 300;
+  background: var(--ink);
+  height: 100vh; height: 100dvh;
+}
+body.landing-open { overflow: hidden; }
+.landing-hero {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: cover; object-position: center top;
+}
+.landing-cta {
+  position: absolute; left: var(--space-4); right: var(--space-4);
+  bottom: calc(var(--space-4) + var(--safe-b));
+  width: auto;
+  box-shadow: 0 10px 32px rgba(8, 18, 34, .4);
+  animation: fadeIn var(--dur-base) var(--ease-out);
+}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+/* ============================================================
+   Wizard (setup único de familia)
+   ============================================================ */
+.wizard-screen {
+  position: fixed; inset: 0; z-index: 250;
+  background: var(--bg);
+  overflow-y: auto;
+  padding: calc(var(--space-4) + var(--safe-t)) var(--space-3) calc(var(--space-6) + var(--safe-b));
+}
+body.wizard-open { overflow: hidden; }
+.wizard-titulo { font-family: var(--font-display); font-size: var(--fs-display); font-weight: 600; margin-bottom: var(--space-1); }
+.wizard-subtitulo { color: var(--soft); font-size: var(--fs-cuerpo); margin-bottom: var(--space-4); }
+.wizard-lista { list-style: none; margin: var(--space-3) 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.wizard-lista li {
+  background: var(--panel); border: 1px solid var(--line-solid); border-radius: 12px;
+  padding: var(--space-2) var(--space-3); display: flex; justify-content: space-between; align-items: center;
+  min-height: 44px;
+}
+
+/* ============================================================
+   Cabecera
+   ============================================================ */
+.app-header {
+  position: sticky; top: 0; z-index: 45;
+  background: var(--bg);
+  padding: calc(var(--space-3) + var(--safe-t)) var(--space-3) var(--space-2);
+}
+.app-header h1 {
+  font-family: var(--font-display); font-weight: 600; font-size: var(--fs-display);
+  letter-spacing: -0.3px; color: var(--ink);
+}
+/* --gold como texto directo sobre --bg falla contraste AA (1.98:1, ver
+   00_Skills/e3foods-mobile-design/references/contrast-accessibility.md) —
+   el acento va en el fondo (pill), nunca como color de texto sobre claro. */
+.app-header h1 .mk { color: var(--ink); background: var(--gold-soft); padding: 0 3px; border-radius: 4px; }
+
+/* ============================================================
+   Vistas
+   ============================================================ */
+.vista { padding: 0 var(--space-3) var(--space-5); max-width: 640px; margin: 0 auto; }
+.vista-fecha { color: var(--soft); font-size: var(--fs-aux); text-transform: capitalize; margin-bottom: var(--space-3); font-weight: 600; }
+.seccion-titulo { font-size: var(--fs-titulo); font-weight: 700; margin: var(--space-5) 0 var(--space-3); }
+.seccion-titulo:first-of-type { margin-top: var(--space-3); }
+
+/* ============================================================
+   Cards de comida/cena
+   ============================================================ */
+.card {
+  background: var(--panel); border: 1px solid var(--line-solid); border-radius: 16px;
+  padding: var(--space-3); margin-bottom: var(--space-3);
+}
+.card-head { display: flex; justify-content: space-between; align-items: center; gap: var(--space-2); margin-bottom: var(--space-2); }
+.card-eyebrow { font-size: var(--fs-aux); font-weight: 700; letter-spacing: 0.6px; color: var(--soft); text-transform: uppercase; }
+.card-title { font-size: var(--fs-titulo); font-weight: 700; line-height: 1.25; margin-bottom: var(--space-1); }
+.card-adaptaciones { font-size: var(--fs-aux); color: var(--soft); margin-bottom: var(--space-2); }
+.card-msg { font-size: var(--fs-cuerpo); color: var(--soft); margin: var(--space-1) 0 var(--space-2); }
+.card-vacia { background: var(--elev2); border-style: dashed; }
+
+.badge {
+  display: inline-flex; align-items: center; font-size: var(--fs-aux); font-weight: 700;
+  padding: var(--space-1) var(--space-2); border-radius: 999px; line-height: 1.4;
+}
+.badge-kcal { background: var(--gold-soft); color: var(--ink); }
+.badge-hoy { background: var(--ink); color: var(--gold); margin-left: var(--space-1); }
+
+.avatares { display: flex; flex-wrap: wrap; gap: var(--space-2); margin: var(--space-2) 0; }
+.avatar {
+  width: 48px; height: 48px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: var(--fs-cuerpo); font-weight: 700; cursor: pointer;
+  border: none; transition: background var(--dur-fast), opacity var(--dur-fast);
+}
+.avatar-presente { background: var(--ink); color: var(--navy-ink); }
+.avatar-ausente { background: var(--elev3); color: var(--soft); border: 1.5px dashed var(--line-solid); opacity: 0.75; }
+
+.card-slot-compacta { padding: var(--space-2) var(--space-3); }
+.card-slot-compacta .card-title { font-size: var(--fs-cuerpo); }
+/* 44px, no menos — sigue siendo tocable (toggle-presente), ver
+   00_Skills/e3foods-mobile-design/references/touch-targets-thumb-zone.md */
+.card-slot-compacta .avatar { width: 44px; height: 44px; font-size: var(--fs-aux); }
+
+/* ============================================================
+   Franja "¿Qué me falta hoy?" y listas de compra
+   ============================================================ */
+.franja-compra { margin-top: var(--space-4); }
+.franja-titulo { font-size: var(--fs-cuerpo); font-weight: 700; margin-bottom: var(--space-2); }
+
+.lista-check { list-style: none; display: flex; flex-direction: column; gap: var(--space-1); }
+.check-item {
+  background: var(--panel); border: 1px solid var(--line-solid); border-radius: 12px;
+  min-height: 48px;
+}
+.check-item label {
+  display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3);
+  min-height: 48px; cursor: pointer;
+}
+.check-item input[type="checkbox"] { width: 22px; height: 22px; flex-shrink: 0; accent-color: var(--ink); }
+.check-texto { flex: 1; font-size: var(--fs-cuerpo); }
+.check-cantidad { font-size: var(--fs-aux); color: var(--soft); }
+.check-marcado .check-texto { text-decoration: line-through; color: var(--soft); }
+.compra-resumen { font-size: var(--fs-aux); color: var(--soft); margin-top: var(--space-2); text-align: center; }
+
+/* ============================================================
+   SEMANA
+   ============================================================ */
+.dia-semana { margin-bottom: var(--space-4); }
+.dia-semana-titulo { font-size: var(--fs-aux); font-weight: 700; color: var(--soft); text-transform: uppercase; margin-bottom: var(--space-1); display: flex; align-items: center; }
+.dia-semana-fecha { font-weight: 500; text-transform: none; margin-left: var(--space-1); }
+.dia-semana-hoy .dia-semana-titulo { color: var(--ink); }
+.dia-semana-hoy .card { border-color: var(--gold); border-width: 1.5px; }
+.btn-compra-semana { width: 100%; margin-bottom: var(--space-4); }
+
+/* ============================================================
+   Botones
+   ============================================================ */
+.btn-primary, .btn-secondary {
+  min-height: 48px; padding: var(--space-2) var(--space-4);
+  border-radius: 12px; font-size: var(--fs-cuerpo); font-weight: 700; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--space-1);
+  border: none; width: 100%;
+}
+.btn-primary { background: var(--gold); color: var(--accent-ink); box-shadow: 0 4px 14px rgba(201, 169, 110, .35); }
+.btn-primary:active { background: var(--gold-soft); }
+.btn-primary:disabled { opacity: 0.45; box-shadow: none; cursor: not-allowed; }
+.btn-secondary { background: var(--panel); color: var(--ink); border: 1.5px solid var(--line-solid); }
+.btn-secondary:active { background: var(--elev2); }
+.btn-cambiar { margin-top: var(--space-2); }
+.btn-texto {
+  background: none; border: none; color: var(--soft); font-size: var(--fs-aux); font-weight: 700;
+  min-height: 44px; padding: var(--space-1) var(--space-2); cursor: pointer; text-decoration: underline;
+}
+.btn-borrar { color: var(--danger); }
+.fila-botones { display: flex; gap: var(--space-2); }
+.fila-botones .btn-primary, .fila-botones .btn-secondary { width: auto; flex: 1; }
+
+/* ============================================================
+   Bottom sheet (compra / cambiar plato / confirmar / nevera)
+   ============================================================ */
+.sheet-overlay {
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(8, 18, 34, 0.45);
+  display: flex; align-items: flex-end;
+}
+body.sheet-open { overflow: hidden; }
+.sheet-panel {
+  background: var(--panel); width: 100%; max-height: 82vh;
+  border-radius: 20px 20px 0 0;
+  display: flex; flex-direction: column;
+  animation: slideUp var(--dur-base) var(--ease-out);
+}
+@keyframes slideUp { from { transform: translateY(24px); opacity: 0.6; } to { transform: translateY(0); opacity: 1; } }
+.sheet-head {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: var(--space-3) var(--space-3) var(--space-2); border-bottom: 1px solid var(--line-solid); flex-shrink: 0;
+}
+.sheet-head h2 { font-size: var(--fs-titulo); font-weight: 700; }
+.btn-cerrar {
+  width: 44px; height: 44px; border-radius: 50%; border: none; background: var(--elev2);
+  color: var(--ink); font-size: 22px; line-height: 1; cursor: pointer; flex-shrink: 0;
+}
+#sheet-contenido { display: contents; }
+.sheet-body {
+  padding: var(--space-3); overflow-y: auto; overscroll-behavior: contain;
+  padding-bottom: calc(var(--space-4) + var(--safe-b));
+  flex: 1 1 auto; min-height: 0;
+}
+.sheet-body > *:not(:last-child) { margin-bottom: var(--space-3); }
+
+.btn-sheet-opcion { text-align: center; }
+
+.lista-plantillas, .lista-nevera, .lista-recetas { list-style: none; display: flex; flex-direction: column; gap: var(--space-2); }
+.fila-plantilla {
+  width: 100%; text-align: left; background: var(--panel); border: 1px solid var(--line-solid);
+  border-radius: 12px; padding: var(--space-2) var(--space-3); min-height: 48px; cursor: pointer;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.fila-plantilla:active { background: var(--elev2); }
+.fila-plantilla-nombre { font-size: var(--fs-cuerpo); font-weight: 600; }
+.fila-plantilla-meta { display: block; font-size: var(--fs-aux); color: var(--soft); font-weight: 500; }
+
+.fila-nevera { display: flex; align-items: center; gap: var(--space-2); min-height: 44px; font-size: var(--fs-cuerpo); cursor: pointer; }
+.fila-nevera input { width: 22px; height: 22px; accent-color: var(--ink); }
+
+.fila-receta { display: flex; justify-content: space-between; align-items: center; gap: var(--space-2); min-height: 48px; padding: var(--space-2) 0; border-bottom: 1px solid var(--line-solid); }
+.fila-receta-nombre { font-size: var(--fs-cuerpo); font-weight: 600; display: flex; flex-direction: column; gap: 2px; }
+.receta-oculta { opacity: 0.5; }
+.receta-oculta .fila-receta-nombre { text-decoration: line-through; }
+
+/* ============================================================
+   Bottom nav — 3 pestañas, zona del pulgar, texto (sin depender de iconos)
+   ============================================================ */
+.bottom-nav {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 100;
+  display: flex; background: var(--ink);
+  border-top: 1px solid rgba(201, 169, 110, .18);
+  padding-bottom: var(--safe-b);
+  height: calc(var(--nav-h) + var(--safe-b));
+}
+.nav-btn {
+  flex: 1 1 0; min-width: 0; min-height: 44px;
+  display: flex; align-items: center; justify-content: center;
+  background: none; border: none; border-top: 2px solid transparent; cursor: pointer;
+  color: rgba(245, 240, 232, 0.6); font-size: var(--fs-aux); font-weight: 600; letter-spacing: 0.2px;
+}
+.nav-btn.active { color: var(--gold); border-top-color: var(--gold); }
+
+/* ============================================================
+   MI FAMILIA
+   ============================================================ */
+.lista-miembros { display: flex; flex-direction: column; gap: var(--space-2); }
+.miembro-card { background: var(--panel); border: 1px solid var(--line-solid); border-radius: 16px; padding: var(--space-2) var(--space-3); }
+.miembro-card summary {
+  display: flex; align-items: center; gap: var(--space-2); cursor: pointer;
+  min-height: 48px; list-style: none;
+}
+.miembro-card summary::-webkit-details-marker { display: none; }
+.miembro-resumen { display: flex; flex-direction: column; gap: 1px; }
+.miembro-resumen strong { font-size: var(--fs-cuerpo); font-weight: 700; }
+.miembro-resumen span { font-size: var(--fs-aux); color: var(--soft); }
+.miembro-detalle { display: flex; flex-direction: column; gap: var(--space-2); padding-top: var(--space-3); }
+.detalle-subtitulo { font-size: var(--fs-aux); font-weight: 700; color: var(--soft); text-transform: uppercase; margin-top: var(--space-2); }
+
+.form-miembro { display: flex; flex-direction: column; gap: var(--space-2); padding-top: var(--space-2); }
+.form-miembro label, .miembro-detalle label {
+  display: flex; flex-direction: column; gap: 4px; font-size: var(--fs-aux); font-weight: 600; color: var(--soft);
+}
+.form-miembro input, .form-miembro select, .miembro-detalle input, .miembro-detalle select {
+  min-height: 44px; border: 1.5px solid var(--line-solid); border-radius: 10px; padding: var(--space-2);
+  color: var(--ink); background: var(--panel); font-size: var(--fs-cuerpo); font-weight: 400;
+}
+
+.nuevo-miembro-form, .receta-propia-form { background: var(--panel); border: 1px dashed var(--line-solid); border-radius: 16px; padding: var(--space-2) var(--space-3); margin-top: var(--space-3); }
+.nuevo-miembro-form summary, .receta-propia-form summary { min-height: 44px; display: flex; align-items: center; font-weight: 700; font-size: var(--fs-cuerpo); cursor: pointer; }
+.nuevo-miembro-form summary::-webkit-details-marker, .receta-propia-form summary::-webkit-details-marker { display: none; }
+.nuevo-miembro-form button, .receta-propia-form button { margin-top: var(--space-2); }
+
+/* separacion >=8px entre objetivos tocables contiguos (evita mis-tap por jitter del
+   dedo) — con 7 columnas la celda queda ~40-42px de ancho en un iPhone SE-class,
+   por debajo del ideal 44px; se acepta como control secundario/infrecuente (setup
+   de familia), no una acción primaria diaria. Alto siempre >=44px (ver .patron-celda). */
+.patron-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: var(--space-2); margin-bottom: var(--space-2); }
+.patron-celda {
+  min-height: 44px; border-radius: 8px; border: 1.5px solid var(--line-solid); background: var(--elev2);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+  cursor: pointer; color: var(--ink); font-size: var(--fs-aux);
+}
+.patron-dia { font-size: 10px; font-weight: 600; color: var(--soft); }
+.patron-valor { font-size: var(--fs-aux); font-weight: 700; }
+.patron-celda.patron-casa { background: var(--gold-soft); border-color: var(--gold); }
+.patron-celda.patron-fuera { background: var(--elev3); }
+.patron-celda.patron-cole { background: var(--panel); border-style: dashed; }
+
+.vetos-grid { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.veto-chip {
+  display: inline-flex; align-items: center; gap: var(--space-1); min-height: 44px;
+  padding: var(--space-1) var(--space-2); border-radius: 999px; border: 1.5px solid var(--line-solid);
+  font-size: var(--fs-aux); font-weight: 600; cursor: pointer; background: var(--panel);
+}
+.veto-chip:has(input:checked) { background: var(--ink); color: var(--navy-ink); border-color: var(--ink); }
+.veto-chip input { width: 18px; height: 18px; accent-color: var(--gold); }
+
+.lista-recetas { margin-bottom: var(--space-3); }
+
+.como-funciona { display: flex; flex-direction: column; gap: var(--space-2); background: var(--panel); border: 1px solid var(--line-solid); border-radius: 16px; padding: var(--space-3); }
+.como-funciona p { font-size: var(--fs-cuerpo); color: var(--soft); }
+
+/* ============================================================
+   Responsive — a partir de tablet, contenido centrado con más aire
+   ============================================================ */
+@media (min-width: 720px) {
+  .vista { padding-left: var(--space-5); padding-right: var(--space-5); }
+  .sheet-panel { max-width: 480px; margin: 0 auto; border-radius: 20px 20px 0 0; }
+}

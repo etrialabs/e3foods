@@ -114,7 +114,7 @@
   }
 
   var estado = cargarEstado();
-  var vistaActual = 'hoy';
+  var vistaActual = 'semana';
   var filtroRecetas = 'todas'; // estado de UI, no persistido (SPEC: filtroRecetas)
   var rangoCompra = '7d'; // '7d' | 'hoy' — estado de UI, no persistido (SPEC: rangoCompra)
   var semanaDiaSeleccionado = null; // índice 0-6 en la vista Semana — estado de UI, no persistido; null = hoy
@@ -157,8 +157,7 @@
     var cont = document.getElementById('vista-' + vistaActual);
     document.querySelectorAll('.vista').forEach(function (v) { v.hidden = (v.id !== 'vista-' + vistaActual); });
     document.querySelectorAll('.nav-btn').forEach(function (b) { b.classList.toggle('active', b.dataset.vista === vistaActual); b.setAttribute('aria-current', b.dataset.vista === vistaActual ? 'page' : 'false'); });
-    if (vistaActual === 'hoy') cont.innerHTML = UI.renderHoy(estado, estado.plan, BANCO);
-    else if (vistaActual === 'semana') cont.innerHTML = UI.renderSemana(estado, estado.plan, BANCO, semanaDiaSeleccionado);
+    if (vistaActual === 'semana') cont.innerHTML = UI.renderSemana(estado, estado.plan, BANCO, semanaDiaSeleccionado);
     else if (vistaActual === 'recetas') cont.innerHTML = UI.renderRecetasVista(estado, BANCO, filtroRecetas);
     else if (vistaActual === 'compra') cont.innerHTML = UI.renderCompraVista(estado, estado.plan, BANCO, rangoCompra);
     aplicarDetallesAbiertos(cont);
@@ -273,7 +272,7 @@
     document.getElementById('wizard-screen').hidden = true;
     document.body.classList.remove('wizard-open');
     wizardMiembros = [];
-    irAVista('hoy');
+    irAVista('semana');
   }
 
   // ---------------------------------------------------------------

@@ -66,7 +66,7 @@
   function renderCabecera(opts) {
     opts = opts || {};
     var titulo = '<h1 class="cabecera-titulo">' + escapeHtml(opts.tituloPlain || '') +
-      (opts.tituloItalico ? '<br><em>' + escapeHtml(opts.tituloItalico) + '</em>' : '') + '</h1>';
+      (opts.tituloItalico ? ' <em>' + escapeHtml(opts.tituloItalico) + '</em>' : '') + '</h1>';
     var derecha = '';
     if (opts.avatarCount != null) {
       var etiqueta = opts.avatarCount + (opts.avatarCount === 1 ? ' miembro' : ' miembros');
@@ -129,16 +129,18 @@
       return '· ' + escapeHtml(m ? m.nombre : '?') + ': ' + escapeHtml(ing ? ing.nombre : a.valor);
     }).join(' &nbsp; ');
 
+    var kcalMedio = presentes.length ? Math.round(resuelto.kcalTotal / presentes.length) : 0;
+
     return '<section class="card card-slot' + claseCompacta + '" data-dia="' + diaIndex + '" data-tipo="' + tipoComida + '">' +
       '<header class="card-head">' +
         '<span class="card-eyebrow">' + etiqueta + '</span>' +
-        (presentes.length ? '<span class="badge badge-kcal">~' + resuelto.kcalTotal + ' kcal</span>' : '') +
+        (presentes.length ? '<span class="badge badge-kcal">~' + kcalMedio + ' kcal/persona</span>' : '') +
       '</header>' +
       '<h2 class="card-title">' + escapeHtml(resuelto.nombre) + '</h2>' +
       (adaptacionesVisibles ? '<p class="card-adaptaciones">' + adaptacionesVisibles + '</p>' : '') +
       (!presentes.length ? '<p class="card-msg">Nadie confirmado para esta comida.</p>' : '') +
       '<div class="avatares" role="group" aria-label="Quién come">' + avataresHtml + '</div>' +
-      '<button type="button" class="btn-secondary btn-cambiar" data-action="abrir-cambiar" data-dia="' + diaIndex + '" data-tipo="' + tipoComida + '">Cambiar</button>' +
+      '<button type="button" class="btn-cambiar-texto" data-action="abrir-cambiar" data-dia="' + diaIndex + '" data-tipo="' + tipoComida + '">Quiero otra cosa</button>' +
       '</section>';
   }
 

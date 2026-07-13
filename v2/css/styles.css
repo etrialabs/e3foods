@@ -286,7 +286,7 @@ body.wizard-open { overflow: hidden; }
   padding: calc(var(--space-6) + var(--safe-t)) var(--space-3) var(--space-4);
 }
 .cabecera-fila { display: flex; justify-content: space-between; align-items: flex-end; gap: var(--space-2); }
-.cabecera-titulo { font-family: var(--font-display); font-weight: 400; font-size: var(--fs-hero); line-height: 1.08; }
+.cabecera-titulo { font-family: var(--font-display); font-weight: 400; font-size: 26px; line-height: 1.15; }
 .cabecera-titulo em { font-style: italic; color: var(--gold); }
 .cabecera-avatar {
   width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0;
@@ -418,6 +418,14 @@ body.wizard-open { overflow: hidden; }
 .btn-secondary { background: var(--panel); color: var(--ink); border: 1.5px solid var(--line-solid); }
 .btn-secondary:active { background: var(--elev2); }
 .btn-cambiar { margin-top: var(--space-2); }
+/* "Quiero otra cosa" — acción principal de la card, pero sin caja (pedido Roger 2026-07-13):
+   frameless, tono dorado para mantener peso visual pese a perder el marco. */
+.btn-cambiar-texto {
+  background: none; border: none; cursor: pointer; margin-top: var(--space-2);
+  padding: 10px 4px 10px 0; min-height: 44px;
+  color: var(--gold); font-size: var(--fs-cuerpo); font-weight: 700;
+}
+.btn-cambiar-texto:active { color: var(--ink); }
 .btn-texto {
   background: none; border: none; color: var(--soft); font-size: var(--fs-aux); font-weight: 700;
   min-height: 44px; padding: var(--space-1) var(--space-2); cursor: pointer; text-decoration: underline;

@@ -82,13 +82,11 @@ input, select { font-family: inherit; font-size: var(--fs-cuerpo); }
 
 /* ============================================================
    Landing — cantera de e3foods.html (.landing-screen/.landing-hero),
-   adaptada a assets/portada.png y a un CTA anclado por safe-area en
-   vez del top:93.5% original (más robusto ante distintas alturas de
-   pantalla; ver 00_Skills/e3foods-mobile-design/references/safe-areas-viewport.md).
+   con la geometría v1 del CTA validada en el móvil real.
    ============================================================ */
 .landing-screen {
   position: fixed; inset: 0; z-index: 300;
-  background: var(--ink);
+  background: #F7F3EC; /* crema de la portada — sin flash oscuro ni franja superior */
   height: 100vh; height: 100dvh;
 }
 body.landing-open { overflow: hidden; }
@@ -96,12 +94,15 @@ body.landing-open { overflow: hidden; }
   position: absolute; inset: 0; width: 100%; height: 100%;
   object-fit: cover; object-position: center top;
 }
+/* top:93.5% = centro del hueco blanco de la portada (87%→100% de la imagen) — con
+   object-fit:cover en retrato el recorte cae en los lados, así que el % coincide con
+   el hueco real y el CTA respira bajo el claim en vez de pegarse a él. */
 .landing-cta {
-  position: absolute; left: var(--space-4); right: var(--space-4);
-  bottom: calc(var(--space-4) + var(--safe-b));
+  position: absolute; left: 24px; right: 24px;
+  top: 93.5%; transform: translateY(-50%);
   width: auto;
   box-shadow: 0 10px 32px rgba(8, 18, 34, .4);
-  animation: fadeIn var(--dur-base) var(--ease-out);
+  animation: fadeIn var(--dur-slow) var(--ease-out);
 }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 

@@ -127,7 +127,8 @@ window.E3_RECETAS = {
         "Hacer {proteina} a la plancha vuelta y vuelta hasta que esté hecho por dentro.",
         "Emplatar {proteina} con {hidrato} y {verdura} al lado."
       ],
-      notas: ""
+      notas: "",
+      foto: "assets/recetas/plancha-guarnicion.jpg" // piloto 2026-07-13 (Roger) — foto real de salmón; genérica para el resto de proteínas del eje, no coincide ingrediente a ingrediente
     },
     {
       id: "horno-bandeja",
@@ -1106,7 +1107,8 @@ window.E3_RECETAS = {
         "Añadir {verdura} y saltear 3-4 minutos sin dejar que se ablanden del todo.",
         "Incorporar {hidrato}, un chorrito de salsa de soja y saltear todo junto 1-2 minutos."
       ],
-      notas: ""
+      notas: "",
+      foto: "assets/recetas/salteado-wok.jpg" // piloto 2026-07-13 (Roger) — foto real de edamame+zanahoria+fideos; genérica para el resto de combinaciones del eje
     },
     {
       id: "hamburguesa-casera",

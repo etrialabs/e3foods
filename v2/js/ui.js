@@ -149,9 +149,9 @@
     var kcalMedio = presentes.length ? Math.round(resuelto.kcalTotal / presentes.length) : 0;
     // proteína/comensal: sin dato todavía (no existe en el banco, ver STATUS_E3FOODS.md)
     // — se omite del meta en vez de inventar una cifra.
-    var meta = (presentes.length ? '~' + kcalMedio + ' kcal' : '') +
+    var meta = (presentes.length ? '🔥 ~' + kcalMedio + ' kcal' : '') +
       (presentes.length && plantilla.tiempo_min ? ' · ' : '') +
-      (plantilla.tiempo_min ? plantilla.tiempo_min + ' min' : '');
+      (plantilla.tiempo_min ? '🕐 ' + plantilla.tiempo_min + ' min' : '');
 
     var nombreSplit = splitNombrePlato(resuelto.nombre);
     var fotoHtml = plantilla.foto ? '<div class="card-comida-foto" style="background-image:url(\'' + escapeHtml(plantilla.foto) + '\')"></div>' : '';
@@ -164,11 +164,11 @@
           '<h2 class="card-comida-titulo">' + escapeHtml(nombreSplit.titulo) + '</h2>' +
           (nombreSplit.subtitulo ? '<p class="card-comida-subtitulo">' + escapeHtml(nombreSplit.subtitulo) + '</p>' : '') +
           (meta ? '<p class="card-comida-meta">' + meta + '</p>' : '') +
+          (adaptacionesVisibles ? '<p class="card-adaptaciones">' + adaptacionesVisibles + '</p>' : '') +
+          (!presentes.length ? '<p class="card-msg">Nadie confirmado para esta comida.</p>' : '') +
+          '<div class="avatares" role="group" aria-label="Quién come">' + avataresHtml + '</div>' +
         '</div>' +
       '</div>' +
-      (adaptacionesVisibles ? '<p class="card-adaptaciones">' + adaptacionesVisibles + '</p>' : '') +
-      (!presentes.length ? '<p class="card-msg">Nadie confirmado para esta comida.</p>' : '') +
-      '<div class="avatares" role="group" aria-label="Quién come">' + avataresHtml + '</div>' +
       '<button type="button" class="btn-sorprendeme" data-action="abrir-cambiar" data-dia="' + diaIndex + '" data-tipo="' + tipoComida + '">✨ Quiero otra cosa</button>' +
       '</section>';
   }

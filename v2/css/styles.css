@@ -82,7 +82,11 @@ body {
   min-height: 100dvh;
 }
 
-button { touch-action: manipulation; -webkit-tap-highlight-color: transparent; font-family: inherit; }
+/* appearance:none (Roger 2026-07-14): sin esto, iOS Safari dibuja su propio
+   marco/relleno nativo sobre los botones por encima de nuestro CSS — invisible
+   en Chrome/desktop (por eso no se veía en las verificaciones), visible en el
+   móvil real. Afecta a todos los botones, no solo a "Quiero otra cosa". */
+button { touch-action: manipulation; -webkit-tap-highlight-color: transparent; font-family: inherit; appearance: none; -webkit-appearance: none; }
 input, select { font-family: inherit; font-size: var(--fs-cuerpo); }
 
 :focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
@@ -361,12 +365,15 @@ body.wizard-open { overflow: hidden; }
   flex-shrink: 0;
 }
 .card-comida-info { flex: 1; min-width: 0; }
-/* -Roger 2026-07-14: texto de receta iba más grande que la referencia, y con
-   3 líneas (título+subtítulo+meta) se salía por debajo de los 92px de la foto,
-   leyéndose como si el badge de foto quedara "debajo" en vez de al lado. */
-.card-comida-titulo { font-family: var(--font-display); font-size: 17px; font-weight: 400; line-height: 1.2; }
-.card-comida-subtitulo { color: var(--soft); font-size: 13px; margin-top: 2px; }
+/* Texto más pequeño (Roger 2026-07-14, 2 rondas — la primera bajada no fue
+   suficiente). */
+.card-comida-titulo { font-family: var(--font-display); font-size: 15px; font-weight: 600; line-height: 1.2; }
+.card-comida-subtitulo { color: var(--soft); font-size: var(--fs-aux); margin-top: 1px; }
 .card-comida-meta { color: var(--soft); font-size: var(--fs-aux); font-weight: 600; margin-top: var(--space-1); }
+/* Avatares dentro de la columna de info (Roger 2026-07-14): iban en su propia
+   fila a todo lo ancho, debajo de la foto+texto — los quiere "al lado" de la
+   foto, así que ahora son la última línea de esta misma columna. */
+.card-comida-info .avatares { margin: var(--space-2) 0 0; }
 
 /* Avatar con badge de estado superpuesto (check/menos) — Roger 2026-07-13,
    referencia visual externa. Clúster ligeramente superpuesto. */

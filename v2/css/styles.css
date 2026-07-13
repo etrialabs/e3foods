@@ -335,10 +335,12 @@ body.wizard-open { overflow: hidden; }
   display: flex; align-items: center; justify-content: center;
   font-size: var(--fs-cuerpo); font-weight: 700; cursor: pointer;
   border: none; background-size: cover; background-position: center;
-  transition: background var(--dur-fast), opacity var(--dur-fast);
+  transition: background var(--dur-fast), opacity var(--dur-fast), filter var(--dur-fast);
 }
 .avatar-presente { background-color: var(--ink); color: var(--navy-ink); }
-.avatar-ausente { background-color: var(--elev3); color: var(--soft); border: 1.5px dashed var(--line-solid); opacity: 0.75; }
+/* Ausente (Roger 2026-07-13): sin punteado, más translúcido y foto difuminada
+   en vez de un borde — la propia card ya lo dice ("Toca para marcar..."). */
+.avatar-ausente { background-color: var(--elev3); color: var(--soft); opacity: 0.45; filter: blur(2px); }
 
 /* Fila inferior de la card (avatares + CTA) — misma fila, avatares en clúster
    superpuesto (Roger 2026-07-13, referencia visual externa). */

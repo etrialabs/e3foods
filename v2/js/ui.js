@@ -80,8 +80,7 @@
   // ---------------------------------------------------------------
   // Bloque de comida/cena reutilizado en HOY y SEMANA
   // ---------------------------------------------------------------
-  function renderSlot(estado, banco, plan, diaIndex, tipoComida, compacto) {
-    var claseCompacta = compacto ? ' card-slot-compacta' : '';
+  function renderSlot(estado, banco, plan, diaIndex, tipoComida) {
     var dia = plan.dias[diaIndex];
     var slot = dia ? dia[tipoComida] : null;
     var miembrosDelSlot = (estado.familia || []).filter(function (m) {
@@ -100,14 +99,14 @@
     }).join('');
 
     if (!miembrosDelSlot.length) {
-      return '<section class="card card-slot card-vacia' + claseCompacta + '">' +
+      return '<section class="card card-slot card-vacia">' +
         '<header class="card-head"><span class="card-eyebrow">' + etiqueta + '</span></header>' +
         '<p class="card-msg">Nadie come en casa (' + (tipoComida === 'comida' ? 'mediodía' : 'noche') + ').</p>' +
         '</section>';
     }
 
     if (!slot) {
-      return '<section class="card card-slot card-vacia' + claseCompacta + '" data-dia="' + diaIndex + '" data-tipo="' + tipoComida + '">' +
+      return '<section class="card card-slot card-vacia" data-dia="' + diaIndex + '" data-tipo="' + tipoComida + '">' +
         '<header class="card-head"><span class="card-eyebrow">' + etiqueta + '</span></header>' +
         '<p class="card-msg">No encontramos un plato que encaje con los gustos/vetos actuales.</p>' +
         '<div class="avatares" role="group" aria-label="Quién come">' + avataresHtml + '</div>' +
@@ -117,7 +116,7 @@
 
     var plantilla = E.plantillaPorId(banco, estado, slot.plantillaId);
     if (!plantilla) {
-      return '<section class="card card-slot card-vacia' + claseCompacta + '"><p class="card-msg">Receta no disponible.</p></section>';
+      return '<section class="card card-slot card-vacia"><p class="card-msg">Receta no disponible.</p></section>';
     }
 
     var resuelto = presentes.length ? E.resolverPlato(plantilla, slot.seleccion, presentes, banco) : E.resolverPlato(plantilla, slot.seleccion, miembrosDelSlot.slice(0, 1), banco);
@@ -130,17 +129,32 @@
     }).join(' &nbsp; ');
 
     var kcalMedio = presentes.length ? Math.round(resuelto.kcalTotal / presentes.length) : 0;
-
-    return '<section class="card card-slot' + claseCompacta + '" data-dia="' + diaIndex + '" data-tipo="' + tipoComida + '">' +
-      '<header class="card-head">' +
-        '<span class="card-eyebrow">' + etiqueta + '</span>' +
-        (presentes.length ? '<span class="badge badge-kcal">~' + kcalMedio + ' kcal/persona</span>' : '') +
-      '</header>' +
-      '<h2 class="card-title">' + escapeHtml(resuelto.nombre) + '</h2>' +
-      (adaptacionesVisibles ? '<p class="card-adaptaciones">' + adaptacionesVisibles + '</p>' : '') +
+    var kcalBadge = presentes.length ? '<span class="badge badge-kcal">~' + kcalMedio + ' kcal/persona</span>' : '';
+    var cuerpo = (adaptacionesVisibles ? '<p class="card-adaptaciones">' + adaptacionesVisibles + '</p>' : '') +
       (!presentes.length ? '<p class="card-msg">Nadie confirmado para esta comida.</p>' : '') +
       '<div class="avatares" role="group" aria-label="Quién come">' + avataresHtml + '</div>' +
-      '<button type="button" class="btn-cambiar-texto" data-action="abrir-cambiar" data-dia="' + diaIndex + '" data-tipo="' + tipoComida + '">Quiero otra cosa</button>' +
+      '<button type="button" class="btn-cambiar-texto" data-action="abrir-cambiar" data-dia="' + diaIndex + '" data-tipo="' + tipoComida + '">Quiero otra cosa</button>';
+
+    // Card con foto de plato (plantilla.foto) — cabecera a toda anchura con degradado
+    // para legibilidad del título; sin foto, cae en la card plana de siempre. Roger
+    // 2026-07-13, referencia visual de dos fotos de ejemplo (aún sin banco de fotos real,
+    // ver STATUS_E3FOODS.md "Fotos de plato").
+    if (plantilla.foto) {
+      return '<section class="card card-slot card-slot-foto" data-dia="' + diaIndex + '" data-tipo="' + tipoComida + '">' +
+        '<div class="card-foto" style="background-image:url(\'' + escapeHtml(plantilla.foto) + '\')">' +
+          '<div class="card-foto-top"><span class="card-eyebrow-pill">' + etiqueta + '</span>' + kcalBadge + '</div>' +
+          '<h2 class="card-title card-title-foto">' + escapeHtml(resuelto.nombre) + '</h2>' +
+        '</div>' +
+        '<div class="card-cuerpo-foto">' + cuerpo + '</div>' +
+        '</section>';
+    }
+
+    return '<section class="card card-slot" data-dia="' + diaIndex + '" data-tipo="' + tipoComida + '">' +
+      '<header class="card-head">' +
+        '<span class="card-eyebrow">' + etiqueta + '</span>' + kcalBadge +
+      '</header>' +
+      '<h2 class="card-title">' + escapeHtml(resuelto.nombre) + '</h2>' +
+      cuerpo +
       '</section>';
   }
 
@@ -181,8 +195,8 @@
     if (idx === -1) idx = 0; // fuera de la semana generada -> mostrar el primer día como referencia
     return cabecera + '<div class="vista-body">' +
       '<p class="vista-fecha">' + NOMBRES_DIA[idx] + ' ' + fechaCorta(plan.dias[idx].fecha) + '</p>' +
-      renderSlot(estado, banco, plan, idx, 'comida', false) +
-      renderSlot(estado, banco, plan, idx, 'cena', false) +
+      renderSlot(estado, banco, plan, idx, 'comida') +
+      renderSlot(estado, banco, plan, idx, 'cena') +
       renderFranjaHoy(estado, plan, banco) +
       '</div>';
   }
@@ -211,8 +225,8 @@
     return cabecera + '<div class="vista-body">' +
       '<div class="fila-pildoras-dia" role="group" aria-label="Elegir día">' + pildoras + '</div>' +
       '<p class="vista-fecha">' + NOMBRES_DIA[idx] + ' ' + fechaCorta(dia.fecha) + (idx === hoyIdx ? ' <span class="badge badge-hoy">HOY</span>' : '') + '</p>' +
-      renderSlot(estado, banco, plan, idx, 'comida', false) +
-      renderSlot(estado, banco, plan, idx, 'cena', false) +
+      renderSlot(estado, banco, plan, idx, 'comida') +
+      renderSlot(estado, banco, plan, idx, 'cena') +
       '</div>';
   }
 

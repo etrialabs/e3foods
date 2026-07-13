@@ -169,7 +169,7 @@
       (adaptacionesVisibles ? '<p class="card-adaptaciones">' + adaptacionesVisibles + '</p>' : '') +
       (!presentes.length ? '<p class="card-msg">Nadie confirmado para esta comida.</p>' : '') +
       '<div class="avatares" role="group" aria-label="Quién come">' + avataresHtml + '</div>' +
-      '<button type="button" class="btn-sorprendeme" data-action="abrir-cambiar" data-dia="' + diaIndex + '" data-tipo="' + tipoComida + '">✨ Sorpréndeme con otra opción</button>' +
+      '<button type="button" class="btn-sorprendeme" data-action="abrir-cambiar" data-dia="' + diaIndex + '" data-tipo="' + tipoComida + '">✨ Quiero otra cosa</button>' +
       '</section>';
   }
 

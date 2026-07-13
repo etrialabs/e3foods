@@ -62,6 +62,7 @@
   --font-display: 'Fraunces', Georgia, serif;
   --font-ui: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   --nav-h: 62px;
+  --nav-h-compact: 42px;
   --safe-b: env(safe-area-inset-bottom, 0px);
   --safe-t: env(safe-area-inset-top, 0px);
   /* motion tokens — el movimiento explica estado, no decora (2026: calm interfaces) */
@@ -117,20 +118,30 @@ nav {
   padding-bottom: var(--safe-b);
 }
 nav button {
+  position: relative;
   flex: 1 1 0; min-width: 0;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
   background: none; border: none; cursor: pointer; font-family: inherit;
   color: rgba(245,240,232,0.55); padding: 7px 2px; height: var(--nav-h);
-  border-top: 2px solid transparent; transition: color 0.15s;
+  border-top: 2px solid transparent; transition: color 0.15s, height var(--dur-base) var(--ease-out), padding var(--dur-base) var(--ease-out);
 }
 nav button .nav-ico { line-height: 1; transition: transform var(--dur-fast) var(--ease-out); }
-nav button .nav-ico svg { width: 22px; height: 22px; display: block; stroke: currentColor; }
-nav button .nav-lbl { font-size: 10px; line-height: 1; letter-spacing: 0.2px; white-space: nowrap; font-weight: 500; }
+nav button .nav-ico svg { width: 22px; height: 22px; display: block; stroke: currentColor; transition: width var(--dur-base) var(--ease-out), height var(--dur-base) var(--ease-out); }
+nav button .nav-lbl { font-size: 10px; line-height: 1; letter-spacing: 0.2px; white-space: nowrap; font-weight: 500; max-height: 12px; opacity: 1; transition: opacity var(--dur-fast) var(--ease-out), max-height var(--dur-base) var(--ease-out); }
 nav button.active { color: var(--gold); }
 nav button.active .nav-ico { transform: translateY(-1px); color: var(--gold); filter: drop-shadow(0 0 8px rgba(201,169,110,.5)); }
 nav button.active .nav-lbl { color: var(--gold); font-weight: 600; }
+/* Roger 2026-07-14: se encoge a solo-iconos al bajar en una pantalla larga (recetas, compra) —
+   libera sitio de contenido; recupera el tamaño normal en cuanto el usuario sube. */
+nav.compact button { height: var(--nav-h-compact); padding: 5px 2px; }
+nav.compact button .nav-ico svg { width: 20px; height: 20px; }
+nav.compact button .nav-lbl { opacity: 0; max-height: 0; }
 /* indicador que desliza al cambiar de pestaña — continuidad espacial, no un salto */
 .nav-indicator { position: absolute; top: -1px; height: 2px; background: linear-gradient(90deg, transparent, var(--gold) 25%, var(--gold) 75%, transparent); border-radius: 2px; transition: left var(--dur-base) var(--ease-spring), width var(--dur-base) var(--ease-spring); pointer-events: none; box-shadow: 0 0 10px rgba(201,169,110,.5); }
+/* aviso de pendientes en el icono de un tab (hoy: Compra) */
+.nav-badge { position: absolute; top: 4px; right: calc(50% - 17px); background: var(--danger); color: #fff; font-size: 9px; font-weight: 600; min-width: 14px; height: 14px; border-radius: 7px; display: none; align-items: center; justify-content: center; padding: 0 3px; line-height: 1; }
+.nav-badge.show { display: flex; }
+nav.compact .nav-badge { top: 2px; }
 
 /* ---------- barra fija "ingredientes de hoy" — checklist rápido mientras cocinas, sin salir de la vista ---------- */
 :root { --today-bar-h: 42px; }
@@ -507,7 +518,7 @@ body.landing-open { overflow: hidden; }
 <nav>
   <button class="tab-btn active" data-tab="semana"><span class="nav-ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 9.5h17"/><path d="M8 3v3.3"/><path d="M16 3v3.3"/></svg></span><span class="nav-lbl">Semana</span></button>
   <button class="tab-btn" data-tab="recetas"><span class="nav-ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5.2c-2.3-1.1-5.2-1.4-8-.7v13.6c2.8-.7 5.7-.4 8 .7 2.3-1.1 5.2-1.4 8-.7V4.5c-2.8-.7-5.7-.4-8 .7z"/><path d="M12 5.2v13.6"/></svg></span><span class="nav-lbl">Recetas</span></button>
-  <button class="tab-btn" data-tab="compra"><span class="nav-ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 8h11l-1 11.5h-9L6.5 8z"/><path d="M9 8V6.3a3 3 0 016 0V8"/></svg></span><span class="nav-lbl">Compra</span></button>
+  <button class="tab-btn" data-tab="compra"><span class="nav-ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 8h11l-1 11.5h-9L6.5 8z"/><path d="M9 8V6.3a3 3 0 016 0V8"/></svg></span><span class="nav-lbl">Compra</span><span class="nav-badge" id="nav-badge-compra"></span></button>
   <button class="tab-btn" data-tab="familia"><span class="nav-ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="7.5" r="3.2"/><path d="M5.5 20c0-3.7 3-6.3 6.5-6.3s6.5 2.6 6.5 6.3"/></svg></span><span class="nav-lbl">Familia</span></button>
   <button class="tab-btn" id="tab-btn-more"><span class="nav-ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="12" r="1.7" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.7" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.7" fill="currentColor" stroke="none"/></svg></span><span class="nav-lbl">Más</span></button>
 </nav>
@@ -1444,6 +1455,7 @@ function activateTab(name){
   if(name==="ajustes"){renderState();renderFamilySettings();renderHiddenRecipes();}
   if(name==="cole")renderColeCalendar();
   if(name==="semana"){renderWeek();maybeShowEmptyWeekPopup();}
+  renderTodayBar();
   window.scrollTo({top:0});
 }
 TAB_BTNS.forEach(b=>{
@@ -1461,6 +1473,28 @@ function openMoreSheet(){
 function goMore(name){ closeModal('more-sheet'); activateTab(name); }
 window.addEventListener("resize", positionNavIndicator);
 positionNavIndicator();
+
+// Roger 2026-07-14: el nav se encoge a solo-iconos al bajar en una pantalla larga (recetas,
+// compra) y recupera el tamaño normal al subir — libera sitio de contenido sin perder el acceso.
+// Umbral de intención (12px) para no reaccionar al primer pixel; nunca se encoge cerca del
+// principio de la página (y<40) para que el arranque de cada pestaña se vea siempre completo.
+(function setupNavShrink(){
+  const nav = document.querySelector("nav");
+  let lastY = window.scrollY, ticking = false;
+  function onScroll(){
+    const y = Math.max(0, window.scrollY);
+    const dy = y - lastY;
+    if(y < 40) nav.classList.remove("compact");
+    else if(dy > 12) nav.classList.add("compact");
+    else if(dy < -12) nav.classList.remove("compact");
+    if(Math.abs(dy) > 12) lastY = y;
+    positionNavIndicator();
+    ticking = false;
+  }
+  window.addEventListener("scroll", ()=>{
+    if(!ticking){ requestAnimationFrame(onScroll); ticking = true; }
+  }, {passive:true});
+})();
 
 // arrastrar hacia abajo para cerrar el bottom-sheet — gesto compuesto 2026 (no solo tap en la ×)
 // Roger 2026-07-12 (picker no respondía al toque, Chrome+Safari+PWA): dragging se activaba en
@@ -2781,15 +2815,28 @@ function renderShoppingList(){
   });
   c.innerHTML = html;
 }
-function toggleCheck(key){state.shoppingChecks[key]=!state.shoppingChecks[key];save();renderShoppingList();renderTodayBar();}
-function resetShoppingChecks(){state.shoppingChecks={};save();renderShoppingList();renderTodayBar();}
+function toggleCheck(key){state.shoppingChecks[key]=!state.shoppingChecks[key];save();renderShoppingList();renderTodayBar();renderNavBadge();}
+function resetShoppingChecks(){state.shoppingChecks={};save();renderShoppingList();renderTodayBar();renderNavBadge();}
+// aviso persistente en el icono de Compra — a diferencia de la today-bar (contextual), este se
+// ve en cualquier pestaña: su trabajo es avisar de que hay algo esperando, no mostrarlo aquí.
+function renderNavBadge(){
+  const badge = document.getElementById('nav-badge-compra');
+  if(!badge) return;
+  const pending = getTodayIngredients().filter(it=>!state.shoppingChecks[it.key]).length;
+  badge.textContent = pending>9 ? '9+' : pending;
+  badge.classList.toggle('show', pending>0);
+}
 // barra fija "ingredientes de hoy" — checklist rápido para cocinar sin salir de la vista de
 // Semana. Comparte state.shoppingChecks con la lista de compra: marcar aquí o allí es lo mismo.
+// Roger 2026-07-14: solo se muestra en Semana/Compra — en el resto de pestañas es ruido fuera
+// de contexto (estás en Recetas, no cocinando).
 function renderTodayBar(){
   const bar = document.getElementById('today-bar');
   if(!bar) return;
+  renderNavBadge();
   const items = getTodayIngredients();
-  document.body.classList.toggle('has-today-bar', items.length>0);
+  const relevant = currentTab==='semana' || currentTab==='compra';
+  document.body.classList.toggle('has-today-bar', items.length>0 && relevant);
   document.getElementById('today-bar-count').textContent = items.length;
   const rows = items.map(it=>{
     const checked = state.shoppingChecks[it.key] ? 'checked' : '';

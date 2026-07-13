@@ -316,6 +316,23 @@ label { display: block; font-size: 12.5px; color: var(--soft); margin-bottom: 5p
 .recipe-card:has(.fav-star) .name { padding-right: 34px; }
 .recipe-card .meta { font-size: 11.5px; color: var(--muted); display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 
+/* Recetas (2026-07-13): lista de una columna seccionada por proteína, no grid de cards —
+   con nombres largos (habituales en el banco) un grid de 2 columnas siempre queda
+   irregular al comparar alturas entre vecinas; una lista de 1 columna no tiene ese
+   problema, y la sección ya dice la proteína, así que la fila no necesita repetirla.
+   Solo se usa en #recipe-grid (Recetas) — el picker y la búsqueda por nevera siguen con
+   .recipe-card/.recipe-grid tal cual estaban. */
+.recipe-sections { display: flex; flex-direction: column; }
+.recipe-section-header { display: flex; align-items: center; gap: 6px; padding: 14px 0 8px; font-size: 11px; text-transform: uppercase; letter-spacing: .6px; font-weight: 600; color: var(--muted); }
+.recipe-section-header:first-child { padding-top: 0; }
+.recipe-section-header svg { width: 14px; height: 14px; stroke: currentColor; flex-shrink: 0; }
+.recipe-row { display: flex; align-items: center; gap: 10px; padding: 11px 0; cursor: pointer; }
+.recipe-row + .recipe-row { border-top: 1px solid var(--line); }
+.recipe-row-star { flex-shrink: 0; background: none; border: none; cursor: pointer; font-size: 16px; line-height: 1; color: var(--muted); padding: 13px 8px 13px 0; margin: -13px 0 -13px -8px; }
+.recipe-row-star.active { color: var(--accent); }
+.recipe-row-name { flex: 1 1 auto; min-width: 0; font-size: 14.5px; color: var(--ink); line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.recipe-row-kcal { flex-shrink: 0; font-size: 11.5px; color: var(--muted); min-width: 44px; text-align: right; }
+
 .tag { display: inline-block; padding: 3px 9px; background: var(--elev3); color: var(--soft); border-radius: 999px; font-size: 11px; font-weight: 500; }
 /* filtros múltiples del banco de recetas — chips toggleables, varios activos a la vez */
 .filter-chips { display: flex; gap: 6px; flex-wrap: wrap; margin: -6px 0 14px; }
@@ -622,7 +639,7 @@ body.landing-open { overflow: hidden; }
       <button class="secondary" onclick="openAddRecipeModal()">+ Añadir receta</button>
     </div>
     <div class="filter-chips" id="recipe-filter-chips"></div>
-    <div id="recipe-grid" class="recipe-grid"></div>
+    <div id="recipe-grid" class="recipe-sections"></div>
   </div>
 </div>
 
@@ -2610,7 +2627,10 @@ Devuelve cada una como JSON con: id, nombre (el plato completo, incl. su hidrato
 // proteína e hidrato son grupos independientes: varios chips activos dentro del mismo grupo = OR
 // (ver Pescado o Pollo a la vez); grupos distintos activos a la vez = AND (Pescado Y Arroz).
 const RECIPE_FILTER_GROUPS = {
-  proteina: [["pescado","Pescado"],["pollo","Pollo"],["carne","Carne"],["legumbre","Legumbre"],["huevo","Huevo"],["vegetal","Vegetal"]],
+  // "lacteos" añadido 2026-07-13: el banco ya tenía 7 recetas con esa proteína (verificado
+  // con grep) pero no estaba en este grupo — no se podían filtrar, y con la lista seccionada
+  // por proteína (renderRecipes) habrían desaparecido de Recetas al no tener sección.
+  proteina: [["pescado","Pescado"],["pollo","Pollo"],["carne","Carne"],["legumbre","Legumbre"],["huevo","Huevo"],["vegetal","Vegetal"],["lacteos","Lácteos"]],
   hidrato: [["arroz","Arroz"],["pasta","Pasta"],["patata","Patata"],["pan","Pan"],["cuscus","Cuscús"]]
 };
 let activeRecipeFilters = { proteina: new Set(), hidrato: new Set(), favoritas: false };
@@ -2650,11 +2670,18 @@ function renderRecipes(){
     (!q || r.nombre.toLowerCase().includes(q))
   );
   const c = document.getElementById("recipe-grid");
-  if(!list.length){c.innerHTML='<div class="empty-state" style="grid-column:1/-1">Ninguna receta coincide.</div>';return;}
-  c.innerHTML = list.map(r=>{
-    const {proteinaHTML, verduraHTML, hidratoTag, tiempoTag} = platoTags(r);
-    const fav = isFavoriteRecipe(r.id);
-    return `<div class="recipe-card" onclick="openRecipeModal('${r.id}')"><button class="fav-star${fav?' active':''}" onclick="toggleFavoriteRecipe('${r.id}',event)" aria-label="Favorita">${fav?'★':'☆'}</button><div class="name">${r.nombre}</div><div class="meta">${proteinaHTML}${verduraHTML}${hidratoTag}${tiempoTag}<span>${r.kcal} kcal</span>${r.kid_friendly?'<span class="tag">kid</span>':''}</div></div>`;
+  if(!list.length){c.innerHTML='<div class="empty-state">Ninguna receta coincide.</div>';return;}
+  // sección = proteína (la fila ya no la repite) · fila de 1 línea de alto uniforme, sin
+  // comparar contra una vecina — arregla de raíz la irregularidad del grid de 2 columnas.
+  c.innerHTML = RECIPE_FILTER_GROUPS.proteina.map(([value,label])=>{
+    const items = list.filter(r=>r.proteina===value);
+    if(!items.length) return '';
+    const header = `<div class="recipe-section-header">${PROTEIN_ICO[value]||''}${label} · ${items.length}</div>`;
+    const rows = items.map(r=>{
+      const fav = isFavoriteRecipe(r.id);
+      return `<div class="recipe-row" onclick="openRecipeModal('${r.id}')"><button class="recipe-row-star${fav?' active':''}" onclick="toggleFavoriteRecipe('${r.id}',event)" aria-label="Favorita">${fav?'★':'☆'}</button><div class="recipe-row-name">${r.nombre}</div><span class="tag tiempo-${r.tiempo}">${r.tiempo==='rapido'?'rápido':'elaborado'}</span><span class="recipe-row-kcal">${r.kcal} kcal</span></div>`;
+    }).join('');
+    return header + rows;
   }).join("");
 }
 // Raciones para las que están escritas las cantidades de ingredientes del banco

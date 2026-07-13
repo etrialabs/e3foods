@@ -81,6 +81,9 @@
   // iconos de sol/luna — mismo estilo de línea que el nav (24x24, stroke)
   var ICONO_SOL = '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.6M12 18.9v2.6M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M2.5 12h2.6M18.9 12h2.6M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8"/></svg>';
   var ICONO_LUNA = '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 14.8A8.5 8.5 0 1 1 9.2 3.5a6.8 6.8 0 0 0 11.3 11.3z"/></svg>';
+  // meta de la card (kcal/tiempo) — silueta gris, no emoji a color (Roger 2026-07-14)
+  var ICONO_FUEGO = '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c1 3-3 4-3 7.5a3 3 0 0 0 6 0c0-1.5-1-2-1-3.5 1.5 1 3 3 3 5.5a5 5 0 0 1-10 0C7 8 10 6 12 3z"/></svg>';
+  var ICONO_RELOJ = '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>';
 
   // "Salmón a la plancha con Patata y Calabacín" -> título + subtítulo ("con..."),
   // heurística simple sobre el patrón de nombres del banco (todos siguen "X con Y").
@@ -149,9 +152,9 @@
     var kcalMedio = presentes.length ? Math.round(resuelto.kcalTotal / presentes.length) : 0;
     // proteína/comensal: sin dato todavía (no existe en el banco, ver STATUS_E3FOODS.md)
     // — se omite del meta en vez de inventar una cifra.
-    var meta = (presentes.length ? '🔥 ~' + kcalMedio + ' kcal' : '') +
-      (presentes.length && plantilla.tiempo_min ? ' · ' : '') +
-      (plantilla.tiempo_min ? '🕐 ' + plantilla.tiempo_min + ' min' : '');
+    var metaKcal = presentes.length ? '<span class="card-comida-meta-icono">' + ICONO_FUEGO + '</span>~' + kcalMedio + ' kcal' : '';
+    var metaTiempo = plantilla.tiempo_min ? '<span class="card-comida-meta-icono">' + ICONO_RELOJ + '</span>' + plantilla.tiempo_min + ' min' : '';
+    var meta = metaKcal + (presentes.length && plantilla.tiempo_min ? ' · ' : '') + metaTiempo;
 
     var nombreSplit = splitNombrePlato(resuelto.nombre);
     var fotoHtml = plantilla.foto ? '<div class="card-comida-foto" style="background-image:url(\'' + escapeHtml(plantilla.foto) + '\')"></div>' : '';

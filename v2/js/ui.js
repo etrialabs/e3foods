@@ -132,10 +132,12 @@
     var kcalBadge = presentes.length ? '<span class="badge badge-kcal">~' + kcalMedio + ' kcal/persona</span>' : '';
     var cuerpo = (adaptacionesVisibles ? '<p class="card-adaptaciones">' + adaptacionesVisibles + '</p>' : '') +
       (!presentes.length ? '<p class="card-msg">Nadie confirmado para esta comida.</p>' : '') +
-      '<div class="avatares" role="group" aria-label="Quién come">' + avataresHtml + '</div>' +
-      '<button type="button" class="btn-quiero-otra" data-action="abrir-cambiar" data-dia="' + diaIndex + '" data-tipo="' + tipoComida + '">' +
-        '<span>Quiero otra cosa</span><span class="btn-quiero-otra-flecha">↗</span>' +
-      '</button>';
+      '<div class="card-pie">' +
+        '<div class="avatares" role="group" aria-label="Quién come">' + avataresHtml + '</div>' +
+        '<button type="button" class="btn-quiero-otra" data-action="abrir-cambiar" data-dia="' + diaIndex + '" data-tipo="' + tipoComida + '">' +
+          '<span>Quiero otra cosa</span><span class="btn-quiero-otra-flecha">↗</span>' +
+        '</button>' +
+      '</div>';
 
     // Card con foto de plato (plantilla.foto) — cabecera a toda anchura con degradado
     // para legibilidad del título; sin foto, cae en la card plana de siempre. Roger

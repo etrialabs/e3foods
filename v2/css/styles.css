@@ -339,6 +339,14 @@ body.wizard-open { overflow: hidden; }
 .avatar-presente { background-color: var(--ink); color: var(--navy-ink); }
 .avatar-ausente { background-color: var(--elev3); color: var(--soft); border: 1.5px dashed var(--line-solid); opacity: 0.75; }
 
+/* Fila inferior de la card (avatares + CTA) — misma fila, avatares en clúster
+   superpuesto (Roger 2026-07-13, referencia visual externa). */
+.card-pie { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); margin-top: var(--space-2); }
+.card-pie .avatares { flex-wrap: nowrap; margin: 0; }
+.card-pie .avatares .avatar { margin-left: -10px; box-shadow: 0 0 0 2px var(--panel); }
+.card-pie .avatares .avatar:first-child { margin-left: 0; }
+.card-pie .btn-quiero-otra { margin-top: 0; flex-shrink: 0; }
+
 /* Card con foto de plato (plantilla.foto) — cabecera a toda anchura, degradado inferior
    para legibilidad del título. Sin foto (caso de hoy: banco sin fotos aún) cae en la
    card plana de siempre, ver renderSlot(). Roger 2026-07-13, referencia visual externa. */

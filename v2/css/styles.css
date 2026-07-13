@@ -2,8 +2,11 @@
    e3Foods — styles.css
    Mobile-first. Paleta "Etria Brand" copiada tal cual del :root de
    e3foods.html (líneas ~41-72) — colores NO alterados por decisión
-   cerrada (ver SPEC.md). Grid de 8px, máx. 4 tamaños de fuente por
-   vista, regla 60/30/10, zona del pulgar, safe-areas.
+   cerrada (ver SPEC.md). Tipografía v2: Manrope + Instrument Serif
+   (Roger 2026-07-13), clonada del handoff de diseño externo, con los
+   colores del handoff sustituidos por estas custom properties.
+   Grid de 8px, máx. 4 tamaños de fuente por vista, regla 60/30/10,
+   zona del pulgar, safe-areas.
    ============================================================ */
 
 :root {
@@ -26,13 +29,14 @@
   --gold-soft: #E0C896;
   --lime: #E0C896;
   --danger: #C0392B;
-  --font-display: 'Fraunces', Georgia, serif;
-  --font-ui: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-display: 'Instrument Serif', Georgia, serif;
+  --font-ui: 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;
   --nav-h: 64px;
   --safe-b: env(safe-area-inset-bottom, 0px);
   --safe-t: env(safe-area-inset-top, 0px);
   --dur-fast: 150ms;
   --dur-base: 250ms;
+  --dur-slow: 400ms;
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
 
   /* --- grid de 8px (4px como único intermedio) --- */
@@ -43,8 +47,9 @@
   --space-5: 32px;
   --space-6: 48px;
 
-  /* --- escala tipográfica: máx. 4 roles, reutilizados en toda la app --- */
-  --fs-display: 22px;  /* Fraunces — solo el wordmark de cabecera */
+  /* --- escala tipográfica: máx. 4 roles reutilizados en toda vista, + 1 display
+     para las cabeceras midnight (su propia región, no compite con los 4 de abajo) --- */
+  --fs-hero: 32px;    /* Instrument Serif — título de cabecera midnight (HOY/SEMANA/RECETAS/COMPRA) */
   --fs-titulo: 20px;   /* títulos de sección, nombre de plato, h2 de sheet */
   --fs-cuerpo: 15px;   /* texto de card, botones, listas, formularios */
   --fs-aux: 12.5px;    /* eyebrows, badges, metadatos, chips, nav */
@@ -52,6 +57,10 @@
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html { -webkit-text-size-adjust: 100%; }
+/* blindaje: cualquier regla de "display" puesta sobre un elemento (p.ej. .wizard-hub{display:flex})
+   tiene la misma especificidad que [hidden] del UA stylesheet y gana por origen — sin esto, marcar
+   hidden=true en JS no lo ocultaría visualmente. */
+[hidden] { display: none !important; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
@@ -82,7 +91,7 @@ input, select { font-family: inherit; font-size: var(--fs-cuerpo); }
 
 /* ============================================================
    Landing — cantera de e3foods.html (.landing-screen/.landing-hero),
-   con la geometría v1 del CTA validada en el móvil real.
+   con la geometría v1 del CTA validada en el móvil real. No tocar.
    ============================================================ */
 .landing-screen {
   position: fixed; inset: 0; z-index: 300;
@@ -97,7 +106,12 @@ body.landing-open { overflow: hidden; }
 /* top:93.5% = centro del hueco blanco de la portada (87%→100% de la imagen) — con
    object-fit:cover en retrato el recorte cae en los lados, así que el % coincide con
    el hueco real y el CTA respira bajo el claim en vez de pegarse a él. */
-.landing-cta {
+/* especificidad 0,2,0 a propósito: .btn-primary (0,1,0, definida más abajo en el
+   archivo) fija width:100% y gana por orden de cascada a un simple ".landing-cta"
+   — con left+right+width los tres a la vez, el navegador ignora "right" y el botón
+   se sale por el borde derecho. Selector compuesto para que esto no vuelva a pasar
+   pase lo que pase el orden de las reglas. */
+.btn-primary.landing-cta {
   position: absolute; left: 24px; right: 24px;
   top: 93.5%; transform: translateY(-50%);
   width: auto;
@@ -107,7 +121,7 @@ body.landing-open { overflow: hidden; }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
 /* ============================================================
-   Wizard (setup único de familia)
+   Wizard — hub de alta de familia (rediseño)
    ============================================================ */
 .wizard-screen {
   position: fixed; inset: 0; z-index: 250;
@@ -116,39 +130,143 @@ body.landing-open { overflow: hidden; }
   padding: calc(var(--space-4) + var(--safe-t)) var(--space-3) calc(var(--space-6) + var(--safe-b));
 }
 body.wizard-open { overflow: hidden; }
-.wizard-titulo { font-family: var(--font-display); font-size: var(--fs-display); font-weight: 600; margin-bottom: var(--space-1); }
-.wizard-subtitulo { color: var(--soft); font-size: var(--fs-cuerpo); margin-bottom: var(--space-4); }
-.wizard-lista { list-style: none; margin: var(--space-3) 0; display: flex; flex-direction: column; gap: var(--space-2); }
-.wizard-lista li {
-  background: var(--panel); border: 1px solid var(--line-solid); border-radius: 12px;
-  padding: var(--space-2) var(--space-3); display: flex; justify-content: space-between; align-items: center;
-  min-height: 44px;
+
+.wizard-hub, .wizard-form-pantalla { display: flex; flex-direction: column; gap: var(--space-4); max-width: 480px; margin: 0 auto; }
+
+/* Campo eyebrow reutilizado en TODO campo de formulario editorial (nombre de
+   familia, nombre de miembro, sexo/año, altura/peso...) — uppercase pequeño y
+   discreto, el input hace el trabajo visual, no la label. */
+.campo-eyebrow { display: block; font-size: 11px; font-weight: 700; color: var(--soft); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 6px; }
+
+/* Input "editorial": sin caja, solo línea inferior — se siente como rellenar un
+   titular, no como un formulario de sistema. Foco: la línea pasa a dorado. */
+.input-editorial {
+  width: 100%; min-height: 40px; border: none; border-bottom: 1.5px solid var(--line-solid);
+  border-radius: 0; padding: 4px 2px; background: transparent; color: var(--ink);
+  font-size: var(--fs-titulo); font-weight: 600; font-family: inherit;
 }
+.input-editorial::placeholder { color: var(--muted); font-weight: 400; }
+.input-editorial:focus { outline: none; border-bottom-color: var(--gold); border-bottom-width: 2px; }
+.input-corto { font-size: var(--fs-cuerpo); font-weight: 500; }
+
+.campo-nombre-familia, .campo-nombre-miembro { display: block; margin-bottom: var(--space-1); }
+.campo-nombre-familia .input-editorial { font-family: var(--font-display); font-size: 28px; font-weight: 400; }
+
+.wizard-intro { color: var(--soft); font-size: var(--fs-cuerpo); }
+.wizard-pregunta { font-family: var(--font-display); font-size: var(--fs-hero); font-weight: 400; line-height: 1.1; color: var(--ink); margin-bottom: var(--space-1); }
+
+/* fila de 2 campos cortos lado a lado (sexo+año, altura+peso) */
+.fila-sexo-anio { display: flex; gap: var(--space-3); }
+.campo-corto { flex: 1; min-width: 0; }
+
+/* chips de elección excluyente — mismo lenguaje que .chip-filtro/.segmento (coherencia
+   visual con Recetas/Compra), nombre propio para no acoplar la semántica del CSS. */
+.fila-chips { display: flex; flex-wrap: wrap; gap: var(--space-1); }
+.chip-toggle {
+  min-height: 40px; font-size: var(--fs-aux); font-weight: 700; border-radius: 999px; padding: 8px 16px;
+  cursor: pointer; background: var(--panel); color: var(--soft); border: 1px solid var(--line-solid);
+}
+.chip-toggle-activo { background: var(--ink); color: var(--navy-ink); border-color: var(--ink); }
+
+.wizard-lista-miembros { list-style: none; display: flex; flex-direction: column; gap: var(--space-2); }
+.wizard-miembro-card {
+  background: var(--panel); border: 1px solid var(--line-solid); border-radius: 14px;
+  padding: var(--space-2) var(--space-3); min-height: 56px;
+  display: flex; align-items: center; gap: var(--space-2);
+}
+.wizard-miembro-info { flex: 1; display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.wizard-miembro-info strong { font-size: var(--fs-cuerpo); font-weight: 700; }
+.wizard-miembro-info span { font-size: var(--fs-aux); color: var(--soft); }
+.wizard-miembro-acciones { display: flex; gap: var(--space-1); flex-shrink: 0; }
+
+.btn-anadir-miembro {
+  width: 56px; height: 56px; border-radius: 50%; flex-shrink: 0;
+  background: var(--gold); color: var(--accent-ink); border: none;
+  font-size: 28px; font-weight: 700; line-height: 1; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; align-self: flex-start;
+  box-shadow: 0 4px 14px rgba(201, 169, 110, .35);
+}
+.btn-anadir-miembro:active { background: var(--gold-soft); }
+
+.wizard-vacio { color: var(--soft); font-size: var(--fs-cuerpo); text-align: center; padding: var(--space-3) 0; }
 
 /* ============================================================
-   Cabecera
+   Formulario de miembro (compartido: alta en wizard y en sheet Familia)
    ============================================================ */
-.app-header {
-  position: sticky; top: 0; z-index: 45;
-  background: var(--bg);
-  padding: calc(var(--space-3) + var(--safe-t)) var(--space-3) var(--space-2);
+/* Foto: el círculo ES el botón — tap directo, sin botón "Subir foto" al lado.
+   Vacío: iniciales grandes + badge-cámara dorado en la esquina. Con foto: la
+   imagen cubre el círculo y un overlay inferior con "Cambiar" queda siempre
+   visible (en móvil no hay hover que lo revele). */
+.foto-tap {
+  position: relative; width: 96px; height: 96px; border-radius: 50%; flex-shrink: 0;
+  background: var(--elev3) center/cover no-repeat; border: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; overflow: hidden;
+  margin: 0 auto var(--space-1);
 }
-.app-header h1 {
-  font-family: var(--font-display); font-weight: 600; font-size: var(--fs-display);
-  letter-spacing: -0.3px; color: var(--ink);
+.foto-tap-inicial { font-family: var(--font-display); font-size: 34px; font-weight: 400; color: var(--soft); }
+.foto-tap-icono {
+  position: absolute; right: 2px; bottom: 2px; width: 30px; height: 30px; border-radius: 50%;
+  background: var(--gold); color: var(--accent-ink); display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 2px 6px rgba(8, 18, 34, .25);
 }
-/* --gold como texto directo sobre --bg falla contraste AA (1.98:1, ver
-   00_Skills/e3foods-mobile-design/references/contrast-accessibility.md) —
-   el acento va en el fondo (pill), nunca como color de texto sobre claro. */
-.app-header h1 .mk { color: var(--ink); background: var(--gold-soft); padding: 0 3px; border-radius: 4px; }
+.foto-tap-icono svg { width: 16px; height: 16px; }
+.foto-tap-editar {
+  position: absolute; left: 0; right: 0; bottom: 0; padding: 5px 0 6px; text-align: center;
+  font-size: 11px; font-weight: 700; color: #fff; background: linear-gradient(transparent, rgba(8, 18, 34, .72));
+}
+.foto-tap-pequena { width: 64px; height: 64px; margin: 0 0 var(--space-1); }
+.foto-tap-pequena .foto-tap-inicial { font-size: 24px; }
+.foto-tap-pequena .foto-tap-icono { width: 24px; height: 24px; }
+.foto-tap-pequena .foto-tap-icono svg { width: 13px; height: 13px; }
+.foto-quitar-link { display: block; margin: 0 auto var(--space-2); text-decoration: none; }
+.form-miembro-completo .foto-tap, .form-miembro-completo .foto-quitar-link { display: flex; }
+.form-miembro-completo .foto-quitar-link { display: block; width: fit-content; margin-left: auto; margin-right: auto; }
+
+/* "Más detalles": enlace de texto con +/− animado, no acordeón con borde dashed */
+.mas-detalles { border: none; padding: 0; }
+.mas-detalles summary {
+  min-height: 44px; display: flex; align-items: center; gap: 6px; list-style: none; cursor: pointer;
+  font-weight: 700; font-size: var(--fs-aux); color: var(--soft); text-transform: uppercase; letter-spacing: .04em;
+}
+.mas-detalles summary::-webkit-details-marker { display: none; }
+.mas-detalles-icono { width: 16px; height: 16px; position: relative; flex-shrink: 0; }
+.mas-detalles-icono::before, .mas-detalles-icono::after {
+  content: ''; position: absolute; left: 50%; top: 50%; background: var(--soft);
+  transform: translate(-50%, -50%); transition: transform var(--dur-fast) var(--ease-out);
+}
+.mas-detalles-icono::before { width: 12px; height: 1.5px; }
+.mas-detalles-icono::after { width: 1.5px; height: 12px; }
+.mas-detalles[open] .mas-detalles-icono::after { transform: translate(-50%, -50%) rotate(90deg); opacity: 0; }
+.mas-detalles-cuerpo { display: flex; flex-direction: column; gap: var(--space-3); padding-top: var(--space-3); }
+
+/* ============================================================
+   Cabecera midnight (HOY / SEMANA / RECETAS / COMPRA)
+   ============================================================ */
+.cabecera-midnight {
+  background: var(--ink); color: var(--navy-ink);
+  padding: calc(var(--space-6) + var(--safe-t)) var(--space-3) var(--space-4);
+}
+.cabecera-fila { display: flex; justify-content: space-between; align-items: flex-end; gap: var(--space-2); }
+.cabecera-titulo { font-family: var(--font-display); font-weight: 400; font-size: var(--fs-hero); line-height: 1.08; }
+.cabecera-titulo em { font-style: italic; color: var(--gold); }
+.cabecera-avatar {
+  width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0;
+  border: 1.5px solid rgba(245, 240, 232, .3); background: var(--ink) center/cover no-repeat;
+  color: var(--navy-ink); font-size: var(--fs-aux); font-weight: 700;
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+  margin-bottom: 2px;
+}
+.cabecera-contador { font-size: var(--fs-aux); font-weight: 700; color: rgba(245, 240, 232, .55); margin-bottom: 4px; }
+
+.vista-body { max-width: 640px; margin: 0 auto; padding: var(--space-3) var(--space-3) var(--space-5); }
 
 /* ============================================================
    Vistas
    ============================================================ */
-.vista { padding: 0 var(--space-3) var(--space-5); max-width: 640px; margin: 0 auto; }
+.vista { padding: 0; }
 .vista-fecha { color: var(--soft); font-size: var(--fs-aux); text-transform: capitalize; margin-bottom: var(--space-3); font-weight: 600; }
 .seccion-titulo { font-size: var(--fs-titulo); font-weight: 700; margin: var(--space-5) 0 var(--space-3); }
-.seccion-titulo:first-of-type { margin-top: var(--space-3); }
+.seccion-titulo:first-of-type { margin-top: 0; }
 
 /* ============================================================
    Cards de comida/cena
@@ -176,10 +294,11 @@ body.wizard-open { overflow: hidden; }
   width: 48px; height: 48px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   font-size: var(--fs-cuerpo); font-weight: 700; cursor: pointer;
-  border: none; transition: background var(--dur-fast), opacity var(--dur-fast);
+  border: none; background-size: cover; background-position: center;
+  transition: background var(--dur-fast), opacity var(--dur-fast);
 }
-.avatar-presente { background: var(--ink); color: var(--navy-ink); }
-.avatar-ausente { background: var(--elev3); color: var(--soft); border: 1.5px dashed var(--line-solid); opacity: 0.75; }
+.avatar-presente { background-color: var(--ink); color: var(--navy-ink); }
+.avatar-ausente { background-color: var(--elev3); color: var(--soft); border: 1.5px dashed var(--line-solid); opacity: 0.75; }
 
 .card-slot-compacta { padding: var(--space-2) var(--space-3); }
 .card-slot-compacta .card-title { font-size: var(--fs-cuerpo); }
@@ -216,7 +335,34 @@ body.wizard-open { overflow: hidden; }
 .dia-semana-fecha { font-weight: 500; text-transform: none; margin-left: var(--space-1); }
 .dia-semana-hoy .dia-semana-titulo { color: var(--ink); }
 .dia-semana-hoy .card { border-color: var(--gold); border-width: 1.5px; }
-.btn-compra-semana { width: 100%; margin-bottom: var(--space-4); }
+
+/* ============================================================
+   RECETAS — chips de filtro por categoría
+   ============================================================ */
+.chips-filtro { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-bottom: var(--space-3); }
+.chip-filtro {
+  font-size: var(--fs-aux); font-weight: 700; border-radius: 999px; padding: 7px 14px;
+  cursor: pointer; background: var(--panel); color: var(--soft); border: 1px solid var(--line-solid);
+}
+.chip-filtro-activo { background: var(--ink); color: var(--navy-ink); border-color: var(--ink); }
+
+/* ============================================================
+   COMPRA — segmented control + secciones agrupadas por categoría
+   ============================================================ */
+.segmentado { display: flex; gap: var(--space-2); margin-bottom: var(--space-4); }
+.segmento {
+  flex: 1; text-align: center; font-size: var(--fs-aux); font-weight: 700; border-radius: 999px;
+  padding: var(--space-2) 0; cursor: pointer; background: var(--panel); color: var(--soft); border: 1px solid var(--line-solid);
+}
+.segmento-activo { background: var(--ink); color: var(--navy-ink); border-color: var(--ink); }
+
+.seccion-compra { margin-bottom: var(--space-3); }
+.seccion-compra-titulo { font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--soft); margin-bottom: var(--space-1); }
+.seccion-compra .card { padding: 0; }
+.seccion-compra .lista-check { gap: 0; }
+.seccion-compra .check-item { border-radius: 0; border-left: none; border-right: none; border-top: none; }
+.seccion-compra .check-item:first-child { border-top: none; border-radius: 16px 16px 0 0; }
+.seccion-compra .check-item:last-child { border-radius: 0 0 16px 16px; }
 
 /* ============================================================
    Botones
@@ -242,7 +388,7 @@ body.wizard-open { overflow: hidden; }
 .fila-botones .btn-primary, .fila-botones .btn-secondary { width: auto; flex: 1; }
 
 /* ============================================================
-   Bottom sheet (compra / cambiar plato / confirmar / nevera)
+   Bottom sheet (familia / compra / cambiar plato / confirmar / nevera)
    ============================================================ */
 .sheet-overlay {
   position: fixed; inset: 0; z-index: 200;
@@ -261,7 +407,7 @@ body.sheet-open { overflow: hidden; }
   display: flex; justify-content: space-between; align-items: center;
   padding: var(--space-3) var(--space-3) var(--space-2); border-bottom: 1px solid var(--line-solid); flex-shrink: 0;
 }
-.sheet-head h2 { font-size: var(--fs-titulo); font-weight: 700; }
+.sheet-head h2 { font-family: var(--font-display); font-size: 24px; font-weight: 400; }
 .btn-cerrar {
   width: 44px; height: 44px; border-radius: 50%; border: none; background: var(--elev2);
   color: var(--ink); font-size: 22px; line-height: 1; cursor: pointer; flex-shrink: 0;
@@ -295,7 +441,7 @@ body.sheet-open { overflow: hidden; }
 .receta-oculta .fila-receta-nombre { text-decoration: line-through; }
 
 /* ============================================================
-   Bottom nav — 3 pestañas, zona del pulgar, texto (sin depender de iconos)
+   Bottom nav — 4 pestañas de texto, zona del pulgar, punto dorado activo
    ============================================================ */
 .bottom-nav {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 100;
@@ -306,14 +452,44 @@ body.sheet-open { overflow: hidden; }
 }
 .nav-btn {
   flex: 1 1 0; min-width: 0; min-height: 44px;
-  display: flex; align-items: center; justify-content: center;
-  background: none; border: none; border-top: 2px solid transparent; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px;
+  background: none; border: none; cursor: pointer;
   color: rgba(245, 240, 232, 0.6); font-size: var(--fs-aux); font-weight: 600; letter-spacing: 0.2px;
 }
-.nav-btn.active { color: var(--gold); border-top-color: var(--gold); }
+.nav-btn.active { color: var(--gold); }
+.nav-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--gold); opacity: 0; }
+.nav-btn.active .nav-dot { opacity: 1; }
 
 /* ============================================================
-   MI FAMILIA
+   Sheet "Tu familia" (avatar)
+   ============================================================ */
+.familia-nombre-campo { display: flex; flex-direction: column; gap: 4px; }
+.familia-nombre-campo span { font-size: var(--fs-aux); font-weight: 700; color: var(--soft); text-transform: uppercase; letter-spacing: .04em; }
+.familia-nombre-campo input {
+  min-height: 44px; border: 1.5px solid var(--line-solid); border-radius: 10px; padding: var(--space-2);
+  color: var(--ink); background: var(--panel); font-size: var(--fs-cuerpo); font-weight: 600;
+}
+
+.pills-familia { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.pill-miembro {
+  font-size: var(--fs-aux); font-weight: 700; background: var(--ink); color: var(--navy-ink);
+  border-radius: 999px; padding: 8px 14px; display: inline-flex; align-items: center; gap: 6px;
+}
+.pill-anadir-miembro {
+  font-size: var(--fs-aux); font-weight: 600; border: 1.5px dashed var(--line-solid); border-radius: 999px;
+  padding: 8px 14px; color: var(--soft); background: none; cursor: pointer;
+}
+
+.fila-enlace {
+  display: flex; align-items: center; padding: 14px 16px; min-height: 48px; cursor: pointer;
+  background: var(--panel); border: none; width: 100%; text-align: left; font-size: var(--fs-cuerpo); font-weight: 700; color: var(--ink);
+}
+.fila-enlace-valor { margin-left: auto; font-size: var(--fs-aux); color: var(--soft); font-weight: 500; }
+.lista-enlaces { background: var(--panel); border: 1px solid var(--line-solid); border-radius: 14px; overflow: hidden; display: flex; flex-direction: column; }
+.lista-enlaces .fila-enlace:not(:last-child) { border-bottom: 1px solid var(--line-solid); }
+
+/* ============================================================
+   MI FAMILIA — miembros existentes (CRUD inline dentro del sheet)
    ============================================================ */
 .lista-miembros { display: flex; flex-direction: column; gap: var(--space-2); }
 .miembro-card { background: var(--panel); border: 1px solid var(--line-solid); border-radius: 16px; padding: var(--space-2) var(--space-3); }
@@ -328,19 +504,22 @@ body.sheet-open { overflow: hidden; }
 .miembro-detalle { display: flex; flex-direction: column; gap: var(--space-2); padding-top: var(--space-3); }
 .detalle-subtitulo { font-size: var(--fs-aux); font-weight: 700; color: var(--soft); text-transform: uppercase; margin-top: var(--space-2); }
 
+/* .form-miembro: solo lo usa ya el form de "+ Añadir receta propia" (ui.js
+   renderFormRecetaPropia) — los campos de miembro (wizard, sheet Familia) usan
+   .input-editorial/.campo-eyebrow, ver más arriba. */
 .form-miembro { display: flex; flex-direction: column; gap: var(--space-2); padding-top: var(--space-2); }
-.form-miembro label, .miembro-detalle label {
+.form-miembro label {
   display: flex; flex-direction: column; gap: 4px; font-size: var(--fs-aux); font-weight: 600; color: var(--soft);
 }
-.form-miembro input, .form-miembro select, .miembro-detalle input, .miembro-detalle select {
+.form-miembro input, .form-miembro select {
   min-height: 44px; border: 1.5px solid var(--line-solid); border-radius: 10px; padding: var(--space-2);
   color: var(--ink); background: var(--panel); font-size: var(--fs-cuerpo); font-weight: 400;
 }
 
-.nuevo-miembro-form, .receta-propia-form { background: var(--panel); border: 1px dashed var(--line-solid); border-radius: 16px; padding: var(--space-2) var(--space-3); margin-top: var(--space-3); }
-.nuevo-miembro-form summary, .receta-propia-form summary { min-height: 44px; display: flex; align-items: center; font-weight: 700; font-size: var(--fs-cuerpo); cursor: pointer; }
-.nuevo-miembro-form summary::-webkit-details-marker, .receta-propia-form summary::-webkit-details-marker { display: none; }
-.nuevo-miembro-form button, .receta-propia-form button { margin-top: var(--space-2); }
+.receta-propia-form { background: var(--panel); border: 1.5px dashed var(--line-solid); border-radius: 14px; padding: var(--space-2) var(--space-3); margin-top: var(--space-3); }
+.receta-propia-form summary { min-height: 44px; display: flex; align-items: center; font-weight: 700; font-size: var(--fs-cuerpo); cursor: pointer; }
+.receta-propia-form summary::-webkit-details-marker { display: none; }
+.receta-propia-form button { margin-top: var(--space-2); }
 
 /* separacion >=8px entre objetivos tocables contiguos (evita mis-tap por jitter del
    dedo) — con 7 columnas la celda queda ~40-42px de ancho en un iPhone SE-class,
@@ -367,15 +546,11 @@ body.sheet-open { overflow: hidden; }
 .veto-chip:has(input:checked) { background: var(--ink); color: var(--navy-ink); border-color: var(--ink); }
 .veto-chip input { width: 18px; height: 18px; accent-color: var(--gold); }
 
-.lista-recetas { margin-bottom: var(--space-3); }
-
-.como-funciona { display: flex; flex-direction: column; gap: var(--space-2); background: var(--panel); border: 1px solid var(--line-solid); border-radius: 16px; padding: var(--space-3); }
-.como-funciona p { font-size: var(--fs-cuerpo); color: var(--soft); }
-
 /* ============================================================
    Responsive — a partir de tablet, contenido centrado con más aire
    ============================================================ */
 @media (min-width: 720px) {
-  .vista { padding-left: var(--space-5); padding-right: var(--space-5); }
+  .vista-body { padding-left: var(--space-5); padding-right: var(--space-5); }
+  .cabecera-midnight { padding-left: var(--space-5); padding-right: var(--space-5); }
   .sheet-panel { max-width: 480px; margin: 0 auto; border-radius: 20px 20px 0 0; }
 }

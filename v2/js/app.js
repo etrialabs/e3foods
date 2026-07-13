@@ -10,6 +10,7 @@
   var E = window.E3Engine;
   var UI = window.E3UI;
   var STORAGE_KEY = 'e3foods_v2';
+  var PATRON_DEFAULT = ['casa', 'casa', 'casa', 'casa', 'casa', 'casa', 'casa'];
 
   /* ============================================================
      DEV FALLBACK — se elimina cuando exista data/recetas.js
@@ -86,7 +87,7 @@
   // Estado
   // ---------------------------------------------------------------
   function estadoVacio() {
-    return { familia: [], ausenciasPuntuales: {}, plan: null, ocultas: [], propias: [], compra: { marcados: [] } };
+    return { nombreFamilia: '', familia: [], ausenciasPuntuales: {}, plan: null, ocultas: [], propias: [], compra: { marcados: [] } };
   }
 
   function cargarEstado() {
@@ -108,14 +109,19 @@
     return prefijo + '-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
   }
 
+  function patronPorDefecto() {
+    return { comida: PATRON_DEFAULT.slice(), cena: PATRON_DEFAULT.slice() };
+  }
+
   var estado = cargarEstado();
   var vistaActual = 'hoy';
+  var filtroRecetas = 'todas'; // estado de UI, no persistido (SPEC: filtroRecetas)
+  var rangoCompra = '7d'; // '7d' | 'hoy' — estado de UI, no persistido (SPEC: rangoCompra)
   var pendienteCambiar = null; // {dia, tipoComida} mientras el sheet de "cambiar" está abierto
   var pendienteRegenerar = null; // {dia, tipoComida} tras un cambio, a la espera de sí/no
 
-  // qué <details> de MI FAMILIA están abiertos — un re-render (patrón, vetos, ocultar
-  // receta) reconstruye el HTML entero; sin esto, cada toque colapsaría el panel del
-  // miembro que se está editando.
+  // qué <details> están abiertos (miembros del sheet Familia, receta propia) — un
+  // re-render reconstruye el HTML entero; sin esto, cada toque colapsaría el panel abierto.
   var detallesAbiertos = {};
   document.addEventListener('toggle', function (e) {
     var el = e.target;
@@ -123,6 +129,13 @@
     var key = el.dataset.detalleKey;
     if (el.open) detallesAbiertos[key] = true; else delete detallesAbiertos[key];
   }, true);
+
+  function aplicarDetallesAbiertos(root) {
+    if (!root) return;
+    root.querySelectorAll('[data-detalle-key]').forEach(function (el) {
+      if (detallesAbiertos[el.dataset.detalleKey]) el.open = true;
+    });
+  }
 
   // ---------------------------------------------------------------
   // Asegura que hay un plan fresco para la semana en curso
@@ -137,7 +150,7 @@
   }
 
   // ---------------------------------------------------------------
-  // Render
+  // Render de las 4 vistas de primer nivel
   // ---------------------------------------------------------------
   function render() {
     var cont = document.getElementById('vista-' + vistaActual);
@@ -145,18 +158,15 @@
     document.querySelectorAll('.nav-btn').forEach(function (b) { b.classList.toggle('active', b.dataset.vista === vistaActual); b.setAttribute('aria-current', b.dataset.vista === vistaActual ? 'page' : 'false'); });
     if (vistaActual === 'hoy') cont.innerHTML = UI.renderHoy(estado, estado.plan, BANCO);
     else if (vistaActual === 'semana') cont.innerHTML = UI.renderSemana(estado, estado.plan, BANCO);
-    else if (vistaActual === 'familia') {
-      cont.innerHTML = UI.renderFamilia(estado, BANCO);
-      cont.querySelectorAll('[data-detalle-key]').forEach(function (el) {
-        if (detallesAbiertos[el.dataset.detalleKey]) el.open = true;
-      });
-    }
+    else if (vistaActual === 'recetas') cont.innerHTML = UI.renderRecetasVista(estado, BANCO, filtroRecetas);
+    else if (vistaActual === 'compra') cont.innerHTML = UI.renderCompraVista(estado, estado.plan, BANCO, rangoCompra);
+    aplicarDetallesAbiertos(cont);
   }
 
   function irAVista(nombre) { vistaActual = nombre; render(); }
 
   // ---------------------------------------------------------------
-  // Sheet genérico (bottom sheet reutilizado para compra/cambiar/confirmar)
+  // Sheet genérico (bottom sheet reutilizado para familia/compra/cambiar/confirmar)
   // ---------------------------------------------------------------
   function abrirSheet(html) {
     document.getElementById('sheet-contenido').innerHTML = html;
@@ -173,8 +183,13 @@
     render(); // por si se marcó compra o se cambió algo mientras el sheet estaba abierto
   }
 
+  function abrirSheetFamilia() {
+    abrirSheet(UI.renderSheetFamilia(estado, BANCO));
+    aplicarDetallesAbiertos(document.getElementById('sheet-contenido'));
+  }
+
   // ---------------------------------------------------------------
-  // Landing → wizard/HOY
+  // Landing → wizard (hub de alta) / HOY
   // ---------------------------------------------------------------
   function cerrarLanding() {
     document.getElementById('landing-screen').hidden = true;
@@ -182,7 +197,9 @@
     if (!estado.familia.length) {
       document.getElementById('wizard-screen').hidden = false;
       document.body.classList.add('wizard-open');
-      renderWizardLista();
+      wizardNombreFamilia = '';
+      wizardMiembros = [];
+      mostrarWizardHub();
     } else {
       asegurarPlanVigente();
       render();
@@ -190,51 +207,41 @@
   }
 
   // ---------------------------------------------------------------
-  // Wizard
+  // Wizard — hub de alta de familia (rediseño)
   // ---------------------------------------------------------------
   var wizardMiembros = [];
+  var wizardNombreFamilia = '';
 
-  function leerFormMiembro(prefijo) {
-    var val = function (id) { var el = document.getElementById(id); return el ? el.value : ''; };
-    var nombre = val(prefijo + '-nombre').trim();
-    var nacimiento = val(prefijo + '-nacimiento');
-    if (!nombre || !nacimiento) return null;
-    return {
-      id: generarId('m'),
-      nombre: nombre,
-      sexo: val(prefijo + '-sexo') || 'mujer',
-      nacimiento: nacimiento,
-      actividad: val(prefijo + '-actividad') || 'media',
-      dieta: val(prefijo + '-dieta') || 'omnivora',
-      vetos: [],
-      patron: { comida: ['casa', 'casa', 'casa', 'casa', 'casa', 'casa', 'casa'], cena: ['casa', 'casa', 'casa', 'casa', 'casa', 'casa', 'casa'] }
-    };
+  // contexto compartido del formulario de miembro (wizard hub vs sheet Familia)
+  var formContexto = 'wizard'; // 'wizard' | 'familia'
+  var formEditId = null;
+  var formFotoActual = null;
+
+  function mostrarWizardHub() {
+    document.getElementById('wizard-hub').hidden = false;
+    document.getElementById('wizard-form').hidden = true;
+    document.getElementById('wizard-hub').innerHTML = UI.renderWizardHub(wizardNombreFamilia, wizardMiembros);
   }
 
-  function renderWizardLista() {
-    var cont = document.getElementById('wizard-lista');
-    if (!cont) return;
-    cont.innerHTML = wizardMiembros.map(function (m, i) {
-      return '<li>' + UI.escapeHtml(m.nombre) + ' <button type="button" class="btn-texto" data-action="wizard-quitar-miembro" data-idx="' + i + '">Quitar</button></li>';
-    }).join('');
-    document.getElementById('wizard-generar').disabled = wizardMiembros.length === 0;
+  function mostrarWizardForm(miembroId) {
+    formContexto = 'wizard';
+    formEditId = miembroId || null;
+    var existente = miembroId ? wizardMiembros.find(function (m) { return m.id === miembroId; }) : null;
+    formFotoActual = existente ? (existente.foto || null) : null;
+    document.getElementById('wizard-hub').hidden = true;
+    var formEl = document.getElementById('wizard-form');
+    formEl.hidden = false;
+    formEl.innerHTML = '<h1 class="wizard-pregunta">' + (existente ? 'Editar miembro' : 'Nuevo miembro') + '</h1>' + UI.renderFormMiembroCompleto(existente);
   }
 
-  function wizardAnadirMiembro() {
-    var m = leerFormMiembro('nm');
-    if (!m) { alert('Al menos el nombre y la fecha de nacimiento son necesarios.'); return; }
-    wizardMiembros.push(m);
-    ['nm-nombre', 'nm-nacimiento'].forEach(function (id) { document.getElementById(id).value = ''; });
-    renderWizardLista();
-  }
-
-  function wizardQuitarMiembro(idx) {
-    wizardMiembros.splice(idx, 1);
-    renderWizardLista();
+  function wizardQuitarMiembro(id) {
+    wizardMiembros = wizardMiembros.filter(function (m) { return m.id !== id; });
+    mostrarWizardHub();
   }
 
   function wizardGenerar() {
     if (!wizardMiembros.length) return;
+    estado.nombreFamilia = wizardNombreFamilia.trim();
     estado.familia = wizardMiembros.slice();
     estado.plan = E.generarSemana(estado, BANCO);
     guardarEstado();
@@ -242,6 +249,125 @@
     document.body.classList.remove('wizard-open');
     wizardMiembros = [];
     irAVista('hoy');
+  }
+
+  // ---------------------------------------------------------------
+  // Formulario de miembro compartido — leer/guardar/cancelar (wizard y sheet Familia)
+  // ---------------------------------------------------------------
+  function leerFormMiembroCompleto() {
+    var val = function (id) { var el = document.getElementById(id); return el ? el.value : ''; };
+    var nombre = val('mf-nombre').trim();
+    var sexo = val('mf-sexo') || 'mujer';
+    var anioActual = new Date().getFullYear();
+    var anio = parseInt(val('mf-anio'), 10);
+    if (!nombre || !anio || isNaN(anio) || anio < 1920 || anio > anioActual) return null;
+    var datos = {
+      nombre: nombre, sexo: sexo, anioNacimiento: anio,
+      actividad: val('mf-actividad') || 'media', dieta: val('mf-dieta') || 'omnivora',
+      foto: formFotoActual || null
+    };
+    var altura = val('mf-altura'); if (altura) datos.altura = Number(altura);
+    var peso = val('mf-peso'); if (peso) datos.peso = Number(peso);
+    return datos;
+  }
+
+  function guardarFormMiembro() {
+    var datos = leerFormMiembroCompleto();
+    if (!datos) { alert('Nombre, sexo y año de nacimiento son obligatorios.'); return; }
+    if (formContexto === 'wizard') {
+      if (formEditId) {
+        var m = wizardMiembros.find(function (x) { return x.id === formEditId; });
+        if (m) Object.assign(m, datos);
+      } else {
+        wizardMiembros.push(Object.assign({ id: generarId('m'), vetos: [], patron: patronPorDefecto() }, datos));
+      }
+      mostrarWizardHub();
+    } else {
+      if (formEditId) {
+        var m2 = estado.familia.find(function (x) { return x.id === formEditId; });
+        if (m2) Object.assign(m2, datos);
+      } else {
+        estado.familia.push(Object.assign({ id: generarId('m'), vetos: [], patron: patronPorDefecto() }, datos));
+      }
+      guardarEstado();
+      abrirSheetFamilia();
+    }
+  }
+
+  function cancelarFormMiembro() {
+    if (formContexto === 'wizard') mostrarWizardHub();
+    else abrirSheetFamilia();
+  }
+
+  function abrirFormMiembroEnSheet(miembroId) {
+    formContexto = 'familia';
+    formEditId = miembroId || null;
+    var existente = miembroId ? estado.familia.find(function (m) { return m.id === miembroId; }) : null;
+    formFotoActual = existente ? (existente.foto || null) : null;
+    abrirSheet('<div class="sheet-head"><h2>' + (existente ? 'Editar miembro' : 'Nuevo miembro') + '</h2>' +
+      '<button type="button" class="btn-cerrar" data-action="cerrar-sheet" aria-label="Cerrar">&times;</button></div>' +
+      '<div class="sheet-body">' + UI.renderFormMiembroCompleto(existente) + '</div>');
+  }
+
+  // #mf-foto-preview es un <button class="foto-tap"> con spans internos (iniciales +
+  // icono cámara en vacío, o "Cambiar" superpuesto sobre la foto) — reconstruye ese
+  // contenido interno en vez de tocar textContent/backgroundImage sueltos, que
+  // borrarían los spans. El botón "Quitar foto" es un hermano fuera del círculo,
+  // por eso se maneja aparte (mostrar/ocultar todo el nodo, no solo un flag).
+  var ICONO_CAMARA_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8.5A1.5 1.5 0 0 1 5.5 7h1.6l.9-1.5A1.5 1.5 0 0 1 9.29 4.75h5.42A1.5 1.5 0 0 1 16 5.5L16.9 7h1.6A1.5 1.5 0 0 1 20 8.5v9A1.5 1.5 0 0 1 18.5 19h-13A1.5 1.5 0 0 1 4 17.5z"/><circle cx="12" cy="12.5" r="3.4"/></svg>';
+
+  function actualizarPreviewFotoForm() {
+    var el = document.getElementById('mf-foto-preview');
+    if (!el) return;
+    var btnQuitar = document.getElementById('mf-foto-quitar');
+    if (formFotoActual) {
+      el.style.backgroundImage = "url('" + formFotoActual + "')";
+      el.innerHTML = '<span class="foto-tap-editar">Cambiar</span>';
+      el.setAttribute('aria-label', 'Cambiar foto');
+      if (btnQuitar) btnQuitar.hidden = false;
+    } else {
+      el.style.backgroundImage = 'none';
+      var nombreEl = document.getElementById('mf-nombre');
+      var nombre = nombreEl ? nombreEl.value : '';
+      var inicial = nombre ? nombre.trim().charAt(0).toUpperCase() : '?';
+      el.innerHTML = '<span class="foto-tap-inicial">' + inicial + '</span><span class="foto-tap-icono" aria-hidden="true">' + ICONO_CAMARA_SVG + '</span>';
+      el.setAttribute('aria-label', 'Añadir foto');
+      if (btnQuitar) btnQuitar.hidden = true;
+    }
+  }
+
+  function quitarFotoMiembro(id) {
+    var m = estado.familia.find(function (x) { return x.id === id; });
+    if (!m) return;
+    delete m.foto;
+    guardarEstado();
+    abrirSheetFamilia();
+  }
+
+  // ---------------------------------------------------------------
+  // Foto de miembro — recorte cuadrado centrado + resize + JPEG comprimido
+  // (canibalizado de e3foods.html líneas ~1591-1610, adaptado a ES5 sin dependencias)
+  // ============================================================
+  function resizeImageToDataURL(file, maxSize, quality) {
+    maxSize = maxSize || 200; quality = quality || 0.7;
+    return new Promise(function (resolve, reject) {
+      var reader = new FileReader();
+      reader.onerror = function () { reject(new Error('No se pudo leer el archivo.')); };
+      reader.onload = function () {
+        var img = new Image();
+        img.onerror = function () { reject(new Error('El archivo no es una imagen válida.')); };
+        img.onload = function () {
+          var side = Math.min(img.width, img.height);
+          var sx = (img.width - side) / 2, sy = (img.height - side) / 2;
+          var canvas = document.createElement('canvas');
+          canvas.width = maxSize; canvas.height = maxSize;
+          canvas.getContext('2d').drawImage(img, sx, sy, side, side, 0, 0, maxSize, maxSize);
+          resolve(canvas.toDataURL('image/jpeg', quality));
+        };
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    });
   }
 
   // ---------------------------------------------------------------
@@ -258,17 +384,13 @@
     render();
   }
 
-  function toggleCompraItem(rango, ingredienteId) {
+  function toggleCompraItem(ingredienteId) {
     var marcados = estado.compra.marcados || [];
     var idx = marcados.indexOf(ingredienteId);
     if (idx === -1) marcados.push(ingredienteId); else marcados.splice(idx, 1);
     estado.compra.marcados = marcados;
     guardarEstado();
-    if (!document.getElementById('sheet-overlay').hidden) {
-      abrirSheet(UI.renderSheetCompra(estado, estado.plan, BANCO, rango));
-    } else {
-      render();
-    }
+    render();
   }
 
   function abrirCambiar(dia, tipoComida) {
@@ -307,12 +429,12 @@
   }
 
   // ---------------------------------------------------------------
-  // MI FAMILIA — CRUD miembros, patrón, vetos, recetas
+  // MI FAMILIA (sheet) — CRUD miembros existentes, patrón, vetos, recetas
   // ---------------------------------------------------------------
   function actualizarCampoMiembro(id, campo, valor) {
     var m = estado.familia.find(function (x) { return x.id === id; });
     if (!m) return;
-    if (campo === 'peso' || campo === 'altura') m[campo] = valor ? Number(valor) : undefined;
+    if (campo === 'peso' || campo === 'altura' || campo === 'anioNacimiento') m[campo] = valor ? Number(valor) : undefined;
     else m[campo] = valor;
     guardarEstado();
   }
@@ -321,7 +443,7 @@
     if (!confirm('¿Eliminar a este miembro de la familia?')) return;
     estado.familia = estado.familia.filter(function (m) { return m.id !== id; });
     guardarEstado();
-    render();
+    abrirSheetFamilia();
   }
 
   function togglePatron(id, tipo, diaIdx) {
@@ -331,7 +453,7 @@
     var actual = m.patron[tipo][diaIdx];
     m.patron[tipo][diaIdx] = ciclo[(ciclo.indexOf(actual) + 1) % ciclo.length];
     guardarEstado();
-    render();
+    abrirSheetFamilia();
   }
 
   function toggleVeto(miembroId, ingredienteId) {
@@ -370,27 +492,61 @@
     render();
   }
 
-  function familiaAnadirMiembro() {
-    var m = leerFormMiembro('fm');
-    if (!m) { alert('Al menos el nombre y la fecha de nacimiento son necesarios.'); return; }
-    estado.familia.push(m);
-    guardarEstado();
-    render();
-  }
-
   // ---------------------------------------------------------------
   // Delegación de eventos
   // ---------------------------------------------------------------
   var ACCIONES = {
     'empezar': function () { cerrarLanding(); },
     'ir-vista': function (btn) { irAVista(btn.dataset.vista); },
-    'wizard-anadir-miembro': function () { wizardAnadirMiembro(); },
-    'wizard-quitar-miembro': function (btn) { wizardQuitarMiembro(Number(btn.dataset.idx)); },
+    'abrir-familia': function () { abrirSheetFamilia(); },
+
+    'wizard-abrir-form': function () { mostrarWizardForm(null); },
+    'wizard-editar-miembro': function (btn) { mostrarWizardForm(btn.dataset.id); },
+    'wizard-quitar-miembro': function (btn) { wizardQuitarMiembro(btn.dataset.id); },
     'wizard-generar': function () { wizardGenerar(); },
+
+    'mf-guardar': function () { guardarFormMiembro(); },
+    'mf-cancelar': function () { cancelarFormMiembro(); },
+    'mf-subir-foto': function () { var el = document.getElementById('mf-foto-input'); if (el) el.click(); },
+    'mf-quitar-foto': function () { formFotoActual = null; actualizarPreviewFotoForm(); },
+    // chip de sexo/actividad/dieta en el form modal (alta/edición): sin re-render —
+    // solo escribe el input hidden y refresca las clases activas del propio grupo
+    // (mismo data-campo-id), así el usuario no pierde el resto del form a medio rellenar.
+    'mf-set-campo': function (btn) {
+      var campoId = btn.dataset.campoId;
+      var hidden = document.getElementById(campoId);
+      if (hidden) hidden.value = btn.dataset.valor;
+      var grupo = btn.parentElement;
+      if (grupo) {
+        grupo.querySelectorAll('[data-campo-id="' + campoId + '"]').forEach(function (b) {
+          var activo = b === btn;
+          b.classList.toggle('chip-toggle-activo', activo);
+          b.setAttribute('aria-pressed', activo);
+        });
+      }
+    },
+
+    'familia-abrir-form-miembro': function () { abrirFormMiembroEnSheet(null); },
+    'miembro-subir-foto': function (btn) {
+      var input = btn.parentElement.querySelector('[data-foto-input="' + btn.dataset.id + '"]');
+      if (input) input.click();
+    },
+    'miembro-quitar-foto': function (btn) { quitarFotoMiembro(btn.dataset.id); },
+    // chip de sexo/actividad/dieta en la card de edición del sheet Familia — mismo
+    // patrón que togglePatron: guarda y re-renderiza el sheet completo (los <details>
+    // abiertos se conservan vía el registro detallesAbiertos).
+    'miembro-set-campo': function (btn) {
+      actualizarCampoMiembro(btn.dataset.id, btn.dataset.campo, btn.dataset.valor);
+      abrirSheetFamilia();
+    },
+    'ir-recetas-ocultas': function () { vistaActual = 'recetas'; cerrarSheet(); },
+
     'toggle-presente': function (btn) { togglePresente(Number(btn.dataset.dia), btn.dataset.tipo, btn.dataset.miembro); },
-    'toggle-compra-item': function (btn) { toggleCompraItem(btn.dataset.rango, btn.dataset.id); },
+    'toggle-compra-item': function (btn) { toggleCompraItem(btn.dataset.id); },
+    'segmento-compra': function (btn) { rangoCompra = btn.dataset.rango; render(); },
+    'filtro-receta': function (btn) { filtroRecetas = btn.dataset.categoria; render(); },
+
     'abrir-cambiar': function (btn) { abrirCambiar(Number(btn.dataset.dia), btn.dataset.tipo); },
-    'abrir-compra-semana': function () { abrirSheet(UI.renderSheetCompra(estado, estado.plan, BANCO, 'semana')); },
     'cerrar-sheet': function () { cerrarSheet(); },
     'modo-elegir-otro': function (btn) { abrirSheet(UI.renderListaElegirOtro(estado, BANCO, Number(btn.dataset.dia), btn.dataset.tipo)); },
     'modo-nevera': function (btn) { abrirSheet(UI.renderNevera(estado, BANCO, Number(btn.dataset.dia), btn.dataset.tipo)); },
@@ -398,12 +554,12 @@
     'confirmar-nevera': function (btn) { confirmarNevera(Number(btn.dataset.dia), btn.dataset.tipo); },
     'regenerar-si': function () { regenerarSiguientes(true); },
     'regenerar-no': function () { regenerarSiguientes(false); },
+
     'borrar-miembro': function (btn) { borrarMiembro(btn.dataset.id); },
     'toggle-patron': function (btn) { togglePatron(btn.dataset.id, btn.dataset.tipo, Number(btn.dataset.dia)); },
     'toggle-veto': function (btn) { toggleVeto(btn.dataset.id, btn.dataset.ingrediente); },
     'toggle-oculta-receta': function (btn) { toggleOcultaReceta(btn.dataset.plantilla); },
-    'anadir-receta-propia': function () { anadirRecetaPropia(); },
-    'familia-anadir-miembro': function () { familiaAnadirMiembro(); }
+    'anadir-receta-propia': function () { anadirRecetaPropia(); }
   };
 
   document.addEventListener('click', function (e) {
@@ -414,11 +570,43 @@
   });
 
   document.addEventListener('change', function (e) {
-    var campo = e.target.dataset && e.target.dataset.campo;
-    if (campo && e.target.dataset.id) {
-      actualizarCampoMiembro(e.target.dataset.id, campo, e.target.value);
-      render();
+    var t = e.target;
+    if (!t) return;
+
+    // foto de un miembro YA existente (sheet Familia, input por-miembro con data-foto-input)
+    if (t.dataset && t.dataset.fotoInput) {
+      var miembroId = t.dataset.fotoInput;
+      var file = t.files[0]; t.value = '';
+      if (!file) return;
+      resizeImageToDataURL(file).then(function (dataUrl) {
+        var m = estado.familia.find(function (x) { return x.id === miembroId; });
+        if (m) { m.foto = dataUrl; guardarEstado(); abrirSheetFamilia(); }
+      }).catch(function (err) { alert('No se pudo procesar la imagen: ' + err.message); });
+      return;
     }
+
+    // foto en el formulario compartido de alta/edición (wizard o sheet Familia)
+    if (t.id === 'mf-foto-input') {
+      var file2 = t.files[0]; t.value = '';
+      if (!file2) return;
+      resizeImageToDataURL(file2).then(function (dataUrl) {
+        formFotoActual = dataUrl;
+        actualizarPreviewFotoForm();
+      }).catch(function (err) { alert('No se pudo procesar la imagen: ' + err.message); });
+      return;
+    }
+
+    var campo = t.dataset && t.dataset.campo;
+    if (!campo) return;
+    if (campo === 'nombreFamilia') { estado.nombreFamilia = t.value.trim(); guardarEstado(); return; }
+    if (t.dataset.id) { actualizarCampoMiembro(t.dataset.id, campo, t.value); render(); }
+  });
+
+  document.addEventListener('input', function (e) {
+    var t = e.target;
+    if (!t) return;
+    if (t.id === 'wz-nombre-familia') wizardNombreFamilia = t.value;
+    else if (t.id === 'mf-nombre' && !formFotoActual) actualizarPreviewFotoForm();
   });
 
   // ---------------------------------------------------------------

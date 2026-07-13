@@ -48,14 +48,12 @@
   // Utilidades
   // ---------------------------------------------------------------
 
-  function edadEnAnios(nacimientoISO, hoy) {
-    if (!nacimientoISO) return 30; // defensivo — nacimiento es obligatorio en el alta de miembro
-    var d = hoy ? new Date(hoy) : new Date();
-    var nac = new Date(nacimientoISO);
-    var edad = d.getFullYear() - nac.getFullYear();
-    var m = d.getMonth() - nac.getMonth();
-    if (m < 0 || (m === 0 && d.getDate() < nac.getDate())) edad--;
-    return edad;
+  // anioNacimiento sustituye a la fecha completa (Roger 2026-07-13, alta más ágil) — edad
+  // aproximada anioActual - anioNacimiento, orientativo (ver SPEC.md § Estado).
+  function edadEnAnios(anioNacimiento, hoy) {
+    if (!anioNacimiento) return 30; // defensivo — año de nacimiento es obligatorio en el alta de miembro
+    var anioActual = (hoy ? new Date(hoy) : new Date()).getFullYear();
+    return anioActual - anioNacimiento;
   }
 
   function capitaliza(s) {
@@ -120,7 +118,7 @@
   //    banda orientativa por edad/sexo para menores / sin peso+altura.
   // ---------------------------------------------------------------
   function necesidadKcalDia(miembro) {
-    var edad = edadEnAnios(miembro.nacimiento);
+    var edad = edadEnAnios(miembro.anioNacimiento);
     var sexo = miembro.sexo || 'mujer';
     var actividad = miembro.actividad || 'media';
     var esMenor = edad < EDAD_MENOR;
@@ -176,7 +174,7 @@
     var idsUnicos = idsUnicosDeSeleccion(seleccion);
 
     (presentes || []).forEach(function (miembro) {
-      var esNino = edadEnAnios(miembro.nacimiento) < EDAD_MENOR;
+      var esNino = edadEnAnios(miembro.anioNacimiento) < EDAD_MENOR;
       var kcalMiembro = plantilla.kcal_extra || 0;
       idsUnicos.forEach(function (id) {
         var ing = banco.ingredientes[id];

@@ -14,6 +14,15 @@
   var ETIQUETAS_DIETA = { omnivora: 'De todo', vegetariana: 'Vegetariana', 'sin-pescado': 'Sin pescado', 'sin-cerdo': 'Sin cerdo' };
   var ETIQUETAS_PATRON = { casa: 'Casa', fuera: 'Fuera', cole: 'Cole' };
 
+  // categoría de ingrediente -> etiqueta ES, para chips de RECETAS y secciones de COMPRA
+  var ETIQUETAS_CATEGORIA = {
+    'pescado-blanco': 'Pescado blanco', 'pescado-azul': 'Pescado azul', 'marisco': 'Marisco',
+    'carne-blanca': 'Carne blanca', 'carne-roja': 'Carne roja', 'legumbre': 'Legumbre',
+    'huevo': 'Huevo', 'lacteo': 'Lácteo', 'cereal': 'Cereal', 'tuberculo': 'Tubérculo',
+    'verdura': 'Vegetal', 'fruta': 'Fruta', 'otro': 'Otro'
+  };
+  var ORDEN_CATEGORIA = ['pescado-blanco', 'pescado-azul', 'marisco', 'carne-blanca', 'carne-roja', 'legumbre', 'huevo', 'lacteo', 'cereal', 'tuberculo', 'verdura', 'fruta', 'otro'];
+
   function escapeHtml(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
       return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
@@ -25,7 +34,7 @@
   var NOMBRES_EJE = { proteina: 'proteína', hidrato: 'hidrato', verdura: 'verdura' };
 
   // nombre de plantilla sin comprometer ingrediente concreto — para listas de elección
-  // ("Elegir otro plato", Recetas de Mi Familia) donde aún no hay una selección de ejes.
+  // ("Elegir otro plato", banco de Recetas) donde aún no hay una selección de ejes.
   function nombreGenerico(nombrePatron) {
     return nombrePatron.replace(/\{([a-z]+)\}/g, function (_, eje) { return NOMBRES_EJE[eje] || eje; });
   }
@@ -35,12 +44,38 @@
     return nombre.trim().charAt(0).toUpperCase();
   }
 
+  // avatar con foto (dataURL) si existe, con fallback a iniciales — mismo patrón que el
+  // motor viejo (e3foods.html): la foto sustituye el avatar de letra cuando hay una subida.
+  function avatarInner(miembro) {
+    return miembro.foto ? '' : escapeHtml(iniciales(miembro.nombre));
+  }
+  function avatarEstilo(miembro) {
+    return miembro.foto ? " style=\"background-image:url('" + miembro.foto + "')\"" : '';
+  }
+
   function fechaCorta(fechaISO) {
     var d = new Date(fechaISO + 'T00:00:00');
     return d.getDate() + ' ' + ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'][d.getMonth()];
   }
 
   function hoyISO() { return E.fechaLocalISO(new Date()); }
+
+  // ---------------------------------------------------------------
+  // Cabecera midnight compartida por HOY / SEMANA / RECETAS / COMPRA
+  // ---------------------------------------------------------------
+  function renderCabecera(opts) {
+    opts = opts || {};
+    var titulo = '<h1 class="cabecera-titulo">' + escapeHtml(opts.tituloPlain || '') +
+      (opts.tituloItalico ? '<br><em>' + escapeHtml(opts.tituloItalico) + '</em>' : '') + '</h1>';
+    var derecha = '';
+    if (opts.avatarCount != null) {
+      var etiqueta = opts.avatarCount + (opts.avatarCount === 1 ? ' miembro' : ' miembros');
+      derecha = '<button type="button" class="cabecera-avatar" data-action="abrir-familia" aria-label="Tu familia, ' + etiqueta + '">' + opts.avatarCount + '</button>';
+    } else if (opts.contador) {
+      derecha = '<span class="cabecera-contador">' + escapeHtml(opts.contador) + '</span>';
+    }
+    return '<header class="cabecera-midnight"><div class="cabecera-fila">' + titulo + derecha + '</div></header>';
+  }
 
   // ---------------------------------------------------------------
   // Bloque de comida/cena reutilizado en HOY y SEMANA
@@ -58,10 +93,10 @@
 
     var avataresHtml = miembrosDelSlot.map(function (m) {
       var estaPresente = presentes.some(function (p) { return p.id === m.id; });
-      return '<button type="button" class="avatar ' + (estaPresente ? 'avatar-presente' : 'avatar-ausente') + '" ' +
+      return '<button type="button" class="avatar ' + (estaPresente ? 'avatar-presente' : 'avatar-ausente') + '"' + avatarEstilo(m) + ' ' +
         'data-action="toggle-presente" data-dia="' + diaIndex + '" data-tipo="' + tipoComida + '" data-miembro="' + m.id + '" ' +
         'aria-pressed="' + estaPresente + '" aria-label="' + escapeHtml(m.nombre) + (estaPresente ? ', en casa. Toca para marcar que hoy no come.' : ', fuera hoy. Toca para marcar que sí come.') + '">' +
-        escapeHtml(iniciales(m.nombre)) + '</button>';
+        avatarInner(m) + '</button>';
     }).join('');
 
     if (!miembrosDelSlot.length) {
@@ -108,27 +143,29 @@
   }
 
   // ---------------------------------------------------------------
-  // Franja "¿Qué me falta hoy?"
+  // Listas de compra (filas de check) — reutilizadas en franja HOY y tab COMPRA
   // ---------------------------------------------------------------
-  function renderListaCompra(items, rango) {
+  function filaCompraHtml(item) {
+    return '<li class="check-item ' + (item.marcado ? 'check-marcado' : '') + '">' +
+      '<label>' +
+      '<input type="checkbox" data-action="toggle-compra-item" data-id="' + item.id + '" ' + (item.marcado ? 'checked' : '') + '>' +
+      '<span class="check-texto">' + escapeHtml(item.nombre) + '</span>' +
+      '<span class="check-cantidad">' + item.gramos + ' g</span>' +
+      '</label></li>';
+  }
+
+  function renderListaCompra(items) {
     if (!items.length) return '<p class="card-msg">Nada pendiente de comprar.</p>';
     var porMarcar = items.filter(function (i) { return !i.marcado; }).length;
-    return '<ul class="lista-check">' + items.map(function (item) {
-      return '<li class="check-item ' + (item.marcado ? 'check-marcado' : '') + '">' +
-        '<label>' +
-        '<input type="checkbox" data-action="toggle-compra-item" data-rango="' + rango + '" data-id="' + item.id + '" ' + (item.marcado ? 'checked' : '') + '>' +
-        '<span class="check-texto">' + escapeHtml(item.nombre) + '</span>' +
-        '<span class="check-cantidad">' + item.gramos + ' g</span>' +
-        '</label></li>';
-    }).join('') + '</ul>' +
-    '<p class="compra-resumen">' + (porMarcar ? porMarcar + ' pendientes' : 'Todo listo') + '</p>';
+    return '<ul class="lista-check">' + items.map(filaCompraHtml).join('') + '</ul>' +
+      '<p class="compra-resumen">' + (porMarcar ? porMarcar + ' pendientes' : 'Todo listo') + '</p>';
   }
 
   function renderFranjaHoy(estado, plan, banco) {
     var items = E.listaCompra(estado, plan, 'hoy', banco);
     return '<section class="franja-compra">' +
       '<h3 class="franja-titulo">¿Qué me falta hoy?</h3>' +
-      renderListaCompra(items, 'hoy') +
+      renderListaCompra(items) +
       '</section>';
   }
 
@@ -136,10 +173,11 @@
   // Vista HOY
   // ---------------------------------------------------------------
   function renderHoy(estado, plan, banco) {
-    if (!plan) return '<p class="card-msg">Todavía no hay semana generada.</p>';
+    var cabecera = renderCabecera({ tituloPlain: 'Hoy', tituloItalico: 'en la mesa', avatarCount: (estado.familia || []).length });
+    if (!plan) return cabecera + '<div class="vista-body"><p class="card-msg">Todavía no hay semana generada.</p></div>';
     var idx = E.diaIndexDesdeFecha(plan, hoyISO());
-    if (idx === -1) idx = 0; // fuera de la semana generada (p.ej. domingo pasada la semana) -> mostrar el primer día como referencia
-    return '<div class="vista-hoy">' +
+    if (idx === -1) idx = 0; // fuera de la semana generada -> mostrar el primer día como referencia
+    return cabecera + '<div class="vista-body">' +
       '<p class="vista-fecha">' + NOMBRES_DIA[idx] + ' ' + fechaCorta(plan.dias[idx].fecha) + '</p>' +
       renderSlot(estado, banco, plan, idx, 'comida', false) +
       renderSlot(estado, banco, plan, idx, 'cena', false) +
@@ -151,7 +189,8 @@
   // Vista SEMANA
   // ---------------------------------------------------------------
   function renderSemana(estado, plan, banco) {
-    if (!plan) return '<p class="card-msg">Todavía no hay semana generada.</p>';
+    var cabecera = renderCabecera({ tituloPlain: 'La semana', tituloItalico: 'en la mesa', avatarCount: (estado.familia || []).length });
+    if (!plan) return cabecera + '<div class="vista-body"><p class="card-msg">Todavía no hay semana generada.</p></div>';
     var hoyIdx = E.diaIndexDesdeFecha(plan, hoyISO());
     var dias = plan.dias.map(function (dia, i) {
       var esHoy = i === hoyIdx;
@@ -161,20 +200,109 @@
         renderSlot(estado, banco, plan, i, 'cena', true) +
         '</div>';
     }).join('');
-    return '<div class="vista-semana">' +
-      '<button type="button" class="btn-primary btn-compra-semana" data-action="abrir-compra-semana">Compra de la semana</button>' +
-      dias +
+    return cabecera + '<div class="vista-body">' + dias + '</div>';
+  }
+
+  // ---------------------------------------------------------------
+  // RECETAS — banco con chips de filtro por categoría
+  // ---------------------------------------------------------------
+  function categoriasDePlantilla(p, banco) {
+    var set = {};
+    Object.keys(p.ejes || {}).forEach(function (eje) {
+      (p.ejes[eje] || []).forEach(function (id) {
+        var ing = banco.ingredientes[id];
+        if (ing) set[ing.categoria] = 1;
+      });
+    });
+    return set;
+  }
+
+  function renderFormRecetaPropia(banco) {
+    var opcionesIng = Object.keys(banco.ingredientes).sort(function (a, b) { return banco.ingredientes[a].nombre.localeCompare(banco.ingredientes[b].nombre); })
+      .map(function (id) { return '<option value="' + id + '">' + escapeHtml(banco.ingredientes[id].nombre) + '</option>'; }).join('');
+    return '<details class="receta-propia-form" data-detalle-key="receta-propia">' +
+      '<summary>+ Añadir receta propia</summary>' +
+      '<div class="form-miembro">' +
+      '<label>Nombre del plato<input type="text" id="rp-nombre" maxlength="60" placeholder="p.ej. Salmón con puré"></label>' +
+      '<label>Proteína<select id="rp-proteina"><option value="">(sin proteína)</option>' + opcionesIng + '</select></label>' +
+      '<label>Hidrato<select id="rp-hidrato"><option value="">(sin hidrato)</option>' + opcionesIng + '</select></label>' +
+      '<label>Verdura<select id="rp-verdura"><option value="">(sin verdura)</option>' + opcionesIng + '</select></label>' +
+      '<label>Apta para<select id="rp-apta"><option value="comida,cena">Comida y cena</option><option value="comida">Solo comida</option><option value="cena">Solo cena</option></select></label>' +
+      '<label>Esfuerzo<select id="rp-esfuerzo"><option value="rapido">Rápido (≤25 min)</option><option value="medio">Medio (≤45 min)</option><option value="elaborado">Elaborado (findes)</option></select></label>' +
+      '<button type="button" class="btn-primary" data-action="anadir-receta-propia">Guardar receta</button>' +
+      '</div></details>';
+  }
+
+  function renderRecetasVista(estado, banco, filtro) {
+    filtro = filtro || 'todas';
+    var todas = (banco.plantillas || []).concat(estado.propias || []);
+    var ocultas = estado.ocultas || [];
+
+    var categoriasPresentes = {};
+    todas.forEach(function (p) { Object.keys(categoriasDePlantilla(p, banco)).forEach(function (c) { categoriasPresentes[c] = 1; }); });
+    var categorias = ORDEN_CATEGORIA.filter(function (c) { return categoriasPresentes[c]; });
+    var chips = ['todas'].concat(categorias);
+
+    var chipsHtml = chips.map(function (c) {
+      var activo = c === filtro;
+      var nombre = c === 'todas' ? 'Todas' : (ETIQUETAS_CATEGORIA[c] || capitaliza(c));
+      return '<button type="button" class="chip-filtro' + (activo ? ' chip-filtro-activo' : '') + '" data-action="filtro-receta" data-categoria="' + c + '">' + escapeHtml(nombre) + '</button>';
+    }).join('');
+
+    var listaFiltrada = filtro === 'todas' ? todas : todas.filter(function (p) { return categoriasDePlantilla(p, banco)[filtro]; });
+
+    var filasHtml = listaFiltrada.map(function (p) {
+      var oculta = ocultas.indexOf(p.id) !== -1;
+      return '<li class="fila-receta ' + (oculta ? 'receta-oculta' : '') + '">' +
+        '<span class="fila-receta-nombre">' + escapeHtml(capitaliza(nombreGenerico(p.nombre_patron))) + '<span class="fila-plantilla-meta">' + (p.tiempo_min || '?') + ' min · ' + escapeHtml(p.esfuerzo || '') + '</span></span>' +
+        '<button type="button" class="btn-texto" data-action="toggle-oculta-receta" data-plantilla="' + p.id + '">' + (oculta ? 'Mostrar' : 'Ocultar') + '</button>' +
+        '</li>';
+    }).join('');
+
+    var cabecera = renderCabecera({ tituloPlain: 'Banco de', tituloItalico: 'recetas', contador: todas.length + ' platos' });
+
+    return cabecera + '<div class="vista-body">' +
+      '<div class="chips-filtro">' + chipsHtml + '</div>' +
+      '<ul class="lista-recetas">' + (filasHtml || '<p class="card-msg">No hay recetas en esta categoría.</p>') + '</ul>' +
+      renderFormRecetaPropia(banco) +
       '</div>';
   }
 
   // ---------------------------------------------------------------
-  // Sheet: compra (hoy o semana), reutilizado desde HOY/SEMANA
+  // COMPRA — segmented control (7 días / hoy) + secciones por categoría
   // ---------------------------------------------------------------
-  function renderSheetCompra(estado, plan, banco, rango) {
-    var items = E.listaCompra(estado, plan, rango, banco);
-    return '<div class="sheet-head"><h2>Compra de ' + (rango === 'hoy' ? 'hoy' : 'la semana') + '</h2>' +
-      '<button type="button" class="btn-cerrar" data-action="cerrar-sheet" aria-label="Cerrar">&times;</button></div>' +
-      '<div class="sheet-body">' + renderListaCompra(items, rango) + '</div>';
+  function renderCompraVista(estado, plan, banco, rango) {
+    rango = rango || '7d';
+    if (!plan) {
+      return renderCabecera({ tituloPlain: 'Lista de', tituloItalico: 'compra', contador: '0/0 en el carro' }) +
+        '<div class="vista-body"><p class="card-msg">Todavía no hay semana generada.</p></div>';
+    }
+    var items = E.listaCompra(estado, plan, rango === '7d' ? 'semana' : 'hoy', banco);
+    var marcadosN = items.filter(function (i) { return i.marcado; }).length;
+    var cabecera = renderCabecera({ tituloPlain: 'Lista de', tituloItalico: 'compra', contador: marcadosN + '/' + items.length + ' en el carro' });
+
+    var porCategoria = {};
+    var ordenCategorias = [];
+    items.forEach(function (item) {
+      if (!porCategoria[item.categoria]) { porCategoria[item.categoria] = []; ordenCategorias.push(item.categoria); }
+      porCategoria[item.categoria].push(item);
+    });
+
+    var seccionesHtml = ordenCategorias.map(function (cat) {
+      var nombreCat = ETIQUETAS_CATEGORIA[cat] || capitaliza(cat);
+      return '<div class="seccion-compra">' +
+        '<p class="seccion-compra-titulo">' + escapeHtml(nombreCat) + '</p>' +
+        '<div class="card"><ul class="lista-check">' + porCategoria[cat].map(filaCompraHtml).join('') + '</ul></div>' +
+        '</div>';
+    }).join('');
+
+    return cabecera + '<div class="vista-body">' +
+      '<div class="segmentado">' +
+        '<span class="segmento' + (rango === '7d' ? ' segmento-activo' : '') + '" data-action="segmento-compra" data-rango="7d">Próximos 7 días</span>' +
+        '<span class="segmento' + (rango === 'hoy' ? ' segmento-activo' : '') + '" data-action="segmento-compra" data-rango="hoy">Solo hoy</span>' +
+      '</div>' +
+      (items.length ? seccionesHtml : '<p class="card-msg">Nada pendiente de comprar.</p>') +
+      '</div>';
   }
 
   // ---------------------------------------------------------------
@@ -223,7 +351,86 @@
   }
 
   // ---------------------------------------------------------------
-  // Vista MI FAMILIA
+  // Formulario de miembro — compartido entre wizard (alta) y sheet Familia (+miembro)
+  // ---------------------------------------------------------------
+  // chip-toggle genérico: fila de opciones excluyentes que sincronizan un input
+  // hidden (mismo id que antes leía un <select>, para no tocar el guardado en app.js)
+  function chipToggle(idHidden, opciones, valorActual, valorDefecto) {
+    var actual = valorActual || valorDefecto;
+    var input = '<input type="hidden" id="' + idHidden + '" value="' + actual + '">';
+    var chips = opciones.map(function (o) {
+      var activo = o.valor === actual;
+      return '<button type="button" class="chip-toggle' + (activo ? ' chip-toggle-activo' : '') + '" ' +
+        'data-action="mf-set-campo" data-campo-id="' + idHidden + '" data-valor="' + o.valor + '" ' +
+        'aria-pressed="' + activo + '">' + escapeHtml(o.etiqueta) + '</button>';
+    }).join('');
+    return input + '<div class="fila-chips">' + chips + '</div>';
+  }
+
+  function renderFormMiembroCompleto(miembro) {
+    miembro = miembro || {};
+    var anioActual = new Date().getFullYear();
+    var tieneFoto = !!miembro.foto;
+    return '<div class="form-miembro-completo">' +
+      '<button type="button" class="foto-tap" id="mf-foto-preview" data-action="mf-subir-foto" ' +
+        'aria-label="' + (tieneFoto ? 'Cambiar foto' : 'Añadir foto') + '"' + (tieneFoto ? avatarEstilo(miembro) : '') + '>' +
+        (tieneFoto ? '<span class="foto-tap-editar">Cambiar</span>' :
+          '<span class="foto-tap-inicial">' + escapeHtml(iniciales(miembro.nombre)) + '</span>' +
+          '<span class="foto-tap-icono" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8.5A1.5 1.5 0 0 1 5.5 7h1.6l.9-1.5A1.5 1.5 0 0 1 9.29 4.75h5.42A1.5 1.5 0 0 1 16 5.5L16.9 7h1.6A1.5 1.5 0 0 1 20 8.5v9A1.5 1.5 0 0 1 18.5 19h-13A1.5 1.5 0 0 1 4 17.5z"/><circle cx="12" cy="12.5" r="3.4"/></svg></span>') +
+      '</button>' +
+      '<button type="button" class="btn-texto foto-quitar-link" id="mf-foto-quitar" data-action="mf-quitar-foto"' + (tieneFoto ? '' : ' hidden') + '>Quitar foto</button>' +
+      '<input type="file" id="mf-foto-input" accept="image/*" hidden>' +
+      '<label class="campo-nombre-miembro"><span class="campo-eyebrow">¿Cómo se llama?</span>' +
+        '<input type="text" id="mf-nombre" class="input-editorial" maxlength="30" placeholder="Nombre" value="' + escapeHtml(miembro.nombre || '') + '" autocomplete="off"></label>' +
+      '<div class="fila-sexo-anio">' +
+        '<div class="campo-corto"><span class="campo-eyebrow">Sexo</span>' + chipToggle('mf-sexo', [{ valor: 'mujer', etiqueta: 'Mujer' }, { valor: 'hombre', etiqueta: 'Hombre' }], miembro.sexo, 'mujer') + '</div>' +
+        '<div class="campo-corto"><span class="campo-eyebrow">Año de nacimiento</span>' +
+          '<input type="number" inputmode="numeric" id="mf-anio" class="input-editorial input-corto" placeholder="p.ej. 1985" min="1920" max="' + anioActual + '" value="' + (miembro.anioNacimiento || '') + '"></div>' +
+      '</div>' +
+      '<details class="mas-detalles">' +
+        '<summary><span class="mas-detalles-texto">Altura, peso y tipo de dieta</span><span class="mas-detalles-icono" aria-hidden="true"></span></summary>' +
+        '<div class="mas-detalles-cuerpo">' +
+        '<div class="fila-sexo-anio">' +
+          '<div class="campo-corto"><span class="campo-eyebrow">Altura (cm)</span><input type="number" id="mf-altura" class="input-editorial input-corto" min="30" max="230" value="' + (miembro.altura || '') + '"></div>' +
+          '<div class="campo-corto"><span class="campo-eyebrow">Peso (kg)</span><input type="number" id="mf-peso" class="input-editorial input-corto" min="1" max="200" value="' + (miembro.peso || '') + '"></div>' +
+        '</div>' +
+        '<span class="campo-eyebrow">Actividad</span>' + chipToggle('mf-actividad', [{ valor: 'baja', etiqueta: 'Baja' }, { valor: 'media', etiqueta: 'Media' }, { valor: 'alta', etiqueta: 'Alta' }], miembro.actividad, 'media') +
+        '<span class="campo-eyebrow">Tipo de dieta</span>' + chipToggle('mf-dieta', Object.keys(ETIQUETAS_DIETA).map(function (k) { return { valor: k, etiqueta: ETIQUETAS_DIETA[k] }; }), miembro.dieta, 'omnivora') +
+        '</div>' +
+      '</details>' +
+      '<div class="fila-botones">' +
+        '<button type="button" class="btn-secondary" data-action="mf-cancelar">Cancelar</button>' +
+        '<button type="button" class="btn-primary" data-action="mf-guardar">Guardar</button>' +
+      '</div>' +
+      '</div>';
+  }
+
+  // ---------------------------------------------------------------
+  // Wizard — hub de alta de familia
+  // ---------------------------------------------------------------
+  function renderWizardHub(nombreFamilia, miembros) {
+    var listaHtml = miembros.length ? ('<ul class="wizard-lista-miembros">' + miembros.map(function (m) {
+      return '<li class="wizard-miembro-card">' +
+        '<span class="avatar avatar-presente"' + avatarEstilo(m) + '>' + avatarInner(m) + '</span>' +
+        '<span class="wizard-miembro-info"><strong>' + escapeHtml(m.nombre) + '</strong><span>' + (m.anioNacimiento || '?') + '</span></span>' +
+        '<span class="wizard-miembro-acciones">' +
+          '<button type="button" class="btn-texto" data-action="wizard-editar-miembro" data-id="' + m.id + '">Editar</button>' +
+          '<button type="button" class="btn-texto btn-borrar" data-action="wizard-quitar-miembro" data-id="' + m.id + '">Quitar</button>' +
+        '</span>' +
+        '</li>';
+    }).join('') + '</ul>') : '<p class="wizard-vacio">Todavía no has añadido a nadie.</p>';
+
+    return '<label class="campo-nombre-familia"><span class="campo-eyebrow">Nombre de familia</span>' +
+      '<input type="text" id="wz-nombre-familia" class="input-editorial" maxlength="40" placeholder="p.ej. Los Fernández" value="' + escapeHtml(nombreFamilia || '') + '"></label>' +
+      '<p class="wizard-intro">Para que lo nuestro funcione necesito saber algo de vosotros.</p>' +
+      '<h1 class="wizard-pregunta">¿Nos conocemos?</h1>' +
+      listaHtml +
+      '<button type="button" class="btn-anadir-miembro" data-action="wizard-abrir-form" aria-label="Añadir miembro">+</button>' +
+      '<button type="button" class="btn-primary wizard-cta" id="wizard-generar" data-action="wizard-generar"' + (miembros.length ? '' : ' disabled') + '>Crear nuestro menú</button>';
+  }
+
+  // ---------------------------------------------------------------
+  // Sheet "Tu familia" (vía avatar en cabecera de HOY/SEMANA)
   // ---------------------------------------------------------------
   var ABREV_PATRON = { casa: 'Cas', fuera: 'Fue', cole: 'Col' };
 
@@ -247,30 +454,45 @@
     }).join('') + '</div>';
   }
 
+  // chip-toggle ligado a data-campo/data-id (edición in-place de un miembro ya
+  // existente) — mismo look que chipToggle(), distinta fontanería de guardado.
+  function chipToggleMiembro(campo, opciones, valorActual, id) {
+    return '<div class="fila-chips">' + opciones.map(function (o) {
+      var activo = o.valor === valorActual;
+      return '<button type="button" class="chip-toggle' + (activo ? ' chip-toggle-activo' : '') + '" ' +
+        'data-action="miembro-set-campo" data-campo="' + campo + '" data-id="' + id + '" data-valor="' + o.valor + '" ' +
+        'aria-pressed="' + activo + '">' + escapeHtml(o.etiqueta) + '</button>';
+    }).join('') + '</div>';
+  }
+
   function renderMiembro(miembro, banco) {
-    var edad = E.edadEnAnios(miembro.nacimiento);
+    var edad = E.edadEnAnios(miembro.anioNacimiento);
+    var tieneFoto = !!miembro.foto;
     return '<details class="miembro-card" data-detalle-key="miembro-' + miembro.id + '">' +
       '<summary>' +
-        '<span class="avatar avatar-presente">' + escapeHtml(iniciales(miembro.nombre)) + '</span>' +
+        '<span class="avatar avatar-presente"' + avatarEstilo(miembro) + '>' + avatarInner(miembro) + '</span>' +
         '<span class="miembro-resumen"><strong>' + escapeHtml(miembro.nombre) + '</strong><span>' + edad + ' años · ' + (ETIQUETAS_DIETA[miembro.dieta] || 'De todo') + '</span></span>' +
       '</summary>' +
       '<div class="miembro-detalle">' +
-        '<label>Nombre<input type="text" data-campo="nombre" data-id="' + miembro.id + '" value="' + escapeHtml(miembro.nombre) + '" maxlength="30"></label>' +
-        '<label>Sexo<select data-campo="sexo" data-id="' + miembro.id + '">' +
-          '<option value="mujer" ' + (miembro.sexo === 'mujer' ? 'selected' : '') + '>Mujer</option>' +
-          '<option value="hombre" ' + (miembro.sexo === 'hombre' ? 'selected' : '') + '>Hombre</option>' +
-        '</select></label>' +
-        '<label>Fecha de nacimiento<input type="date" data-campo="nacimiento" data-id="' + miembro.id + '" value="' + (miembro.nacimiento || '') + '"></label>' +
-        '<label>Peso (kg, opcional)<input type="number" data-campo="peso" data-id="' + miembro.id + '" value="' + (miembro.peso || '') + '" min="1" max="200"></label>' +
-        '<label>Altura (cm, opcional)<input type="number" data-campo="altura" data-id="' + miembro.id + '" value="' + (miembro.altura || '') + '" min="30" max="230"></label>' +
-        '<label>Actividad<select data-campo="actividad" data-id="' + miembro.id + '">' +
-          '<option value="baja" ' + (miembro.actividad === 'baja' ? 'selected' : '') + '>Baja</option>' +
-          '<option value="media" ' + (miembro.actividad === 'media' ? 'selected' : '') + '>Media</option>' +
-          '<option value="alta" ' + (miembro.actividad === 'alta' ? 'selected' : '') + '>Alta</option>' +
-        '</select></label>' +
-        '<label>Dieta<select data-campo="dieta" data-id="' + miembro.id + '">' +
-          Object.keys(ETIQUETAS_DIETA).map(function (k) { return '<option value="' + k + '" ' + (miembro.dieta === k ? 'selected' : '') + '>' + ETIQUETAS_DIETA[k] + '</option>'; }).join('') +
-        '</select></label>' +
+        '<button type="button" class="foto-tap foto-tap-pequena" data-action="miembro-subir-foto" data-id="' + miembro.id + '" ' +
+          'aria-label="' + (tieneFoto ? 'Cambiar foto' : 'Añadir foto') + '"' + (tieneFoto ? avatarEstilo(miembro) : '') + '>' +
+          (tieneFoto ? '<span class="foto-tap-editar">Cambiar</span>' :
+            '<span class="foto-tap-inicial">' + escapeHtml(iniciales(miembro.nombre)) + '</span>' +
+            '<span class="foto-tap-icono" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8.5A1.5 1.5 0 0 1 5.5 7h1.6l.9-1.5A1.5 1.5 0 0 1 9.29 4.75h5.42A1.5 1.5 0 0 1 16 5.5L16.9 7h1.6A1.5 1.5 0 0 1 20 8.5v9A1.5 1.5 0 0 1 18.5 19h-13A1.5 1.5 0 0 1 4 17.5z"/><circle cx="12" cy="12.5" r="3.4"/></svg></span>') +
+        '</button>' +
+        (tieneFoto ? '<button type="button" class="btn-texto foto-quitar-link" data-action="miembro-quitar-foto" data-id="' + miembro.id + '">Quitar foto</button>' : '') +
+        '<input type="file" accept="image/*" hidden data-foto-input="' + miembro.id + '">' +
+        '<label class="campo-nombre-miembro"><span class="campo-eyebrow">Nombre</span><input type="text" class="input-editorial" data-campo="nombre" data-id="' + miembro.id + '" value="' + escapeHtml(miembro.nombre) + '" maxlength="30"></label>' +
+        '<div class="fila-sexo-anio">' +
+          '<div class="campo-corto"><span class="campo-eyebrow">Sexo</span>' + chipToggleMiembro('sexo', [{ valor: 'mujer', etiqueta: 'Mujer' }, { valor: 'hombre', etiqueta: 'Hombre' }], miembro.sexo || 'mujer', miembro.id) + '</div>' +
+          '<div class="campo-corto"><span class="campo-eyebrow">Año de nacimiento</span><input type="number" inputmode="numeric" class="input-editorial input-corto" data-campo="anioNacimiento" data-id="' + miembro.id + '" value="' + (miembro.anioNacimiento || '') + '" min="1920" max="' + new Date().getFullYear() + '"></div>' +
+        '</div>' +
+        '<div class="fila-sexo-anio">' +
+          '<div class="campo-corto"><span class="campo-eyebrow">Altura (cm, opcional)</span><input type="number" class="input-editorial input-corto" data-campo="altura" data-id="' + miembro.id + '" value="' + (miembro.altura || '') + '" min="30" max="230"></div>' +
+          '<div class="campo-corto"><span class="campo-eyebrow">Peso (kg, opcional)</span><input type="number" class="input-editorial input-corto" data-campo="peso" data-id="' + miembro.id + '" value="' + (miembro.peso || '') + '" min="1" max="200"></div>' +
+        '</div>' +
+        '<span class="campo-eyebrow">Actividad</span>' + chipToggleMiembro('actividad', [{ valor: 'baja', etiqueta: 'Baja' }, { valor: 'media', etiqueta: 'Media' }, { valor: 'alta', etiqueta: 'Alta' }], miembro.actividad || 'media', miembro.id) +
+        '<span class="campo-eyebrow">Tipo de dieta</span>' + chipToggleMiembro('dieta', Object.keys(ETIQUETAS_DIETA).map(function (k) { return { valor: k, etiqueta: ETIQUETAS_DIETA[k] }; }), miembro.dieta || 'omnivora', miembro.id) +
         '<p class="detalle-subtitulo">Patrón — comida</p>' + renderPatronGrid(miembro, 'comida') +
         '<p class="detalle-subtitulo">Patrón — cena</p>' + renderPatronGrid(miembro, 'cena') +
         '<p class="detalle-subtitulo">Vetos (no le gusta / alergia)</p>' + renderVetos(miembro, banco) +
@@ -278,62 +500,26 @@
       '</div></details>';
   }
 
-  function renderFormNuevoMiembro(idContenedor, prefijo) {
-    prefijo = prefijo || 'nm';
-    return '<div class="form-miembro" id="' + idContenedor + '">' +
-      '<label>Nombre<input type="text" id="' + prefijo + '-nombre" maxlength="30" placeholder="Nombre"></label>' +
-      '<label>Sexo<select id="' + prefijo + '-sexo"><option value="mujer">Mujer</option><option value="hombre">Hombre</option></select></label>' +
-      '<label>Fecha de nacimiento<input type="date" id="' + prefijo + '-nacimiento"></label>' +
-      '<label>Actividad<select id="' + prefijo + '-actividad"><option value="baja">Baja</option><option value="media" selected>Media</option><option value="alta">Alta</option></select></label>' +
-      '<label>Dieta<select id="' + prefijo + '-dieta">' + Object.keys(ETIQUETAS_DIETA).map(function (k) { return '<option value="' + k + '">' + ETIQUETAS_DIETA[k] + '</option>'; }).join('') + '</select></label>' +
-      '</div>';
-  }
+  function renderSheetFamilia(estado, banco) {
+    var miembros = estado.familia || [];
+    var pills = miembros.map(function (m) {
+      var extra = (m.dieta && m.dieta !== 'omnivora') ? (' · ' + (ETIQUETAS_DIETA[m.dieta] || '')) : '';
+      return '<span class="pill-miembro">' + escapeHtml(m.nombre) + ' · ' + (m.anioNacimiento || '?') + extra + '</span>';
+    }).join('');
+    var ocultasN = (estado.ocultas || []).length;
+    var miembrosCards = miembros.map(function (m) { return renderMiembro(m, banco); }).join('');
 
-  function renderRecetas(estado, banco) {
-    var todas = (banco.plantillas || []).concat(estado.propias || []);
-    var ocultas = estado.ocultas || [];
-    return '<ul class="lista-recetas">' + todas.map(function (p) {
-      var oculta = ocultas.indexOf(p.id) !== -1;
-      return '<li class="fila-receta ' + (oculta ? 'receta-oculta' : '') + '">' +
-        '<span class="fila-receta-nombre">' + escapeHtml(capitaliza(nombreGenerico(p.nombre_patron))) + '<span class="fila-plantilla-meta">' + (p.tiempo_min || '?') + ' min · ' + escapeHtml(p.esfuerzo || '') + '</span></span>' +
-        '<button type="button" class="btn-texto" data-action="toggle-oculta-receta" data-plantilla="' + p.id + '">' + (oculta ? 'Mostrar' : 'Ocultar') + '</button>' +
-        '</li>';
-    }).join('') + '</ul>';
-  }
-
-  function renderFormRecetaPropia(banco) {
-    var opcionesIng = Object.keys(banco.ingredientes).sort(function (a, b) { return banco.ingredientes[a].nombre.localeCompare(banco.ingredientes[b].nombre); })
-      .map(function (id) { return '<option value="' + id + '">' + escapeHtml(banco.ingredientes[id].nombre) + '</option>'; }).join('');
-    return '<details class="receta-propia-form" data-detalle-key="receta-propia">' +
-      '<summary>Añadir receta propia</summary>' +
-      '<div class="form-miembro">' +
-      '<label>Nombre del plato<input type="text" id="rp-nombre" maxlength="60" placeholder="p.ej. Salmón con puré"></label>' +
-      '<label>Proteína<select id="rp-proteina"><option value="">(sin proteína)</option>' + opcionesIng + '</select></label>' +
-      '<label>Hidrato<select id="rp-hidrato"><option value="">(sin hidrato)</option>' + opcionesIng + '</select></label>' +
-      '<label>Verdura<select id="rp-verdura"><option value="">(sin verdura)</option>' + opcionesIng + '</select></label>' +
-      '<label>Apta para<select id="rp-apta"><option value="comida,cena">Comida y cena</option><option value="comida">Solo comida</option><option value="cena">Solo cena</option></select></label>' +
-      '<label>Esfuerzo<select id="rp-esfuerzo"><option value="rapido">Rápido (≤25 min)</option><option value="medio">Medio (≤45 min)</option><option value="elaborado">Elaborado (findes)</option></select></label>' +
-      '<button type="button" class="btn-primary" data-action="anadir-receta-propia">Guardar receta</button>' +
-      '</div></details>';
-  }
-
-  function renderFamilia(estado, banco) {
-    var miembros = (estado.familia || []).map(function (m) { return renderMiembro(m, banco); }).join('');
-    return '<div class="vista-familia">' +
-      '<h2 class="seccion-titulo">Miembros</h2>' +
-      '<div class="lista-miembros">' + miembros + '</div>' +
-      '<details class="nuevo-miembro-form" data-detalle-key="nuevo-miembro"><summary>Añadir miembro</summary>' +
-        renderFormNuevoMiembro('familia-nuevo-miembro', 'fm') +
-        '<button type="button" class="btn-primary" data-action="familia-anadir-miembro">Añadir</button>' +
-      '</details>' +
-      '<h2 class="seccion-titulo">Recetas</h2>' +
-      renderRecetas(estado, banco) +
-      renderFormRecetaPropia(banco) +
-      '<h2 class="seccion-titulo">Cómo funciona</h2>' +
-      '<div class="como-funciona">' +
-        '<p>1. Defines tu familia una vez: edades, gustos y quién come en casa cada día.</p>' +
-        '<p>2. El motor genera la semana solo, cuidando el equilibrio y sin repetir de más.</p>' +
-        '<p>3. Cambias un plato cuando quieras y decides si el resto de la semana se reajusta.</p>' +
+    return '<div class="sheet-head"><h2>Tu familia</h2>' +
+      '<button type="button" class="btn-cerrar" data-action="cerrar-sheet" aria-label="Cerrar">&times;</button></div>' +
+      '<div class="sheet-body">' +
+      '<label class="campo-nombre-familia"><span class="campo-eyebrow">Nombre de familia</span>' +
+        '<input type="text" id="familia-nombre-input" class="input-editorial" data-campo="nombreFamilia" maxlength="40" value="' + escapeHtml(estado.nombreFamilia || '') + '"></label>' +
+      '<div class="pills-familia">' + pills +
+        '<button type="button" class="pill-anadir-miembro" data-action="familia-abrir-form-miembro">+ miembro</button>' +
+      '</div>' +
+      '<div class="lista-miembros">' + miembrosCards + '</div>' +
+      '<div class="lista-enlaces">' +
+        '<button type="button" class="fila-enlace" data-action="ir-recetas-ocultas"><span>Recetas ocultas</span><span class="fila-enlace-valor">' + ocultasN + ' ›</span></button>' +
       '</div>' +
       '</div>';
   }
@@ -341,13 +527,15 @@
   global.E3UI = {
     renderHoy: renderHoy,
     renderSemana: renderSemana,
-    renderFamilia: renderFamilia,
-    renderSheetCompra: renderSheetCompra,
+    renderRecetasVista: renderRecetasVista,
+    renderCompraVista: renderCompraVista,
     renderSheetCambiarInicio: renderSheetCambiarInicio,
     renderListaElegirOtro: renderListaElegirOtro,
     renderNevera: renderNevera,
     renderConfirmarRegenerar: renderConfirmarRegenerar,
-    renderFormNuevoMiembro: renderFormNuevoMiembro,
+    renderSheetFamilia: renderSheetFamilia,
+    renderFormMiembroCompleto: renderFormMiembroCompleto,
+    renderWizardHub: renderWizardHub,
     escapeHtml: escapeHtml
   };
 })(typeof window !== 'undefined' ? window : this);

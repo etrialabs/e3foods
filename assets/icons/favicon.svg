@@ -8,8 +8,14 @@
        primer intento, de ahí su forma asimétrica) + máscaras por componentes
        conexas en vez de umbral de color puro + suavizado antes de trazar (quita
        el ruido de bordes del upscaling) + conjunto centrado en el cuadrado por
-       el bounding box real, no a ojo. -->
-  <rect width="100" height="100" rx="22" fill="#132446"/>
+       el bounding box real, no a ojo.
+       Ronda 3: fondo SIN esquinas redondeadas propias (antes rx=22) — con rx, las
+       4 esquinas quedan transparentes, y iOS rellena esa transparencia con un
+       color propio dependiente del tema (gris oscuro en dark mode, Roger 2026-07-14)
+       antes de aplicar su recorte de esquinas. Cuadrado opaco de borde a borde =
+       0 transparencia = 0 relleno del sistema; iOS/Android igual recortan
+       esquinas redondeadas por su cuenta al mostrarlo. -->
+  <rect width="100" height="100" fill="#132446"/>
   <g transform="translate(50,50) scale(0.095385) translate(-400.50,-440.00)">
     <g transform="translate(0,775) scale(0.1,-0.1)">
       <path d="M2701 6578 c-68 -25 -430 -379 -592 -578 -315 -388 -621 -949 -715

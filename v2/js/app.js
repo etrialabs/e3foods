@@ -566,6 +566,7 @@
       abrirSheetFamilia();
     },
     'ir-recetas-ocultas': function () { vistaActual = 'recetas'; cerrarSheet(); },
+    'ir-compra-hoy': function () { rangoCompra = 'hoy'; irAVista('compra'); },
 
     'toggle-presente': function (btn) { togglePresente(Number(btn.dataset.dia), btn.dataset.tipo, btn.dataset.miembro); },
     'toggle-compra-item': function (btn) { toggleCompraItem(btn.dataset.id); },
@@ -671,6 +672,35 @@
         if (now - lastRun < 32) return;
         lastRun = now;
         onScroll();
+      }, { passive: true });
+    })();
+
+    // Swipe horizontal entre días en SEMANA (Roger 2026-07-14: v2 nunca lo
+    // tuvo — codebase nueva, sin relación con el swipe de e3foods.html v1).
+    // Delegado a nivel documento porque .vista-body se reconstruye entera en
+    // cada render(). Cambia de semana queda fuera (pendiente diseño motor).
+    (function setupSwipeDias() {
+      var startX = 0, startY = 0, activo = false;
+      document.addEventListener('touchstart', function (e) {
+        activo = !!e.target.closest('#vista-semana .vista-body') && e.touches.length === 1;
+        if (!activo) return;
+        startX = e.touches[0].clientX;
+        startY = e.touches[0].clientY;
+      }, { passive: true });
+      document.addEventListener('touchend', function (e) {
+        if (!activo) return;
+        activo = false;
+        var zona = document.querySelector('#vista-semana .vista-body');
+        if (!zona || !e.changedTouches.length) return;
+        var dx = e.changedTouches[0].clientX - startX;
+        var dy = e.changedTouches[0].clientY - startY;
+        if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+        var idx = parseInt(zona.dataset.diaIdx, 10);
+        if (isNaN(idx)) return;
+        var siguiente = dx < 0 ? idx + 1 : idx - 1;
+        if (siguiente < 0 || siguiente > 6 || !estado.plan || !estado.plan.dias[siguiente]) return;
+        semanaDiaSeleccionado = siguiente;
+        render();
       }, { passive: true });
     })();
   });

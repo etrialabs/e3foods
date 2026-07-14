@@ -311,7 +311,11 @@ body.wizard-open { overflow: hidden; }
    Vistas
    ============================================================ */
 .vista { padding: 0; }
-.vista-fecha { color: var(--soft); font-size: var(--fs-aux); text-transform: capitalize; margin-bottom: var(--space-3); font-weight: 600; }
+.vista-fecha-fila { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); margin-bottom: var(--space-3); }
+.vista-fecha { color: var(--soft); font-size: var(--fs-aux); text-transform: capitalize; font-weight: 600; }
+/* span, no botón (Roger 2026-07-14): visual del mockup replicado, sin sheet
+   de resumen semanal construido todavía — no finge ser tocable. */
+.pill-resumen { font-size: var(--fs-aux); font-weight: 700; color: var(--soft); background: var(--panel); border: 1px solid var(--line-solid); border-radius: 999px; padding: 6px 12px; flex-shrink: 0; }
 .seccion-titulo { font-size: var(--fs-titulo); font-weight: 700; margin: var(--space-5) 0 var(--space-3); }
 .seccion-titulo:first-of-type { margin-top: 0; }
 
@@ -336,7 +340,6 @@ body.wizard-open { overflow: hidden; }
 .badge-hoy { background: var(--ink); color: var(--gold); margin-left: var(--space-1); }
 
 .avatares { display: flex; flex-wrap: wrap; gap: var(--space-2); margin: var(--space-2) 0; }
-.card-comida-pie-fila .avatares { margin: 0; }
 /* -Roger 2026-07-14: los avatares tenían demasiado protagonismo frente al
    plato — círculo más pequeño en 2 rondas (48px→40px→32px, -20% la segunda),
    además del badge ya reducido -30%. */
@@ -361,43 +364,22 @@ body.wizard-open { overflow: hidden; }
 .card-comida-icono svg { width: 100%; height: 100%; stroke: currentColor; display: block; }
 .card-comida-etiqueta { font-size: var(--fs-aux); font-weight: 700; letter-spacing: 0.6px; color: var(--soft); text-transform: uppercase; }
 
-/* Foto lateral (Roger 2026-07-14) — sustituye la foto a toda la card: ahora
-   solo el 40% derecho, con un degradado blanco encima que va transparente
-   (borde izquierdo) a 65% opaco (borde derecho), fundiendo la foto con la
-   card en vez de un corte duro. Contenido siempre alineado a la izquierda,
-   sobre la parte más transparente del degradado. */
-/* padding:0 en la card — la foto y el degradado deben llegar al borde real
-   (esquinas redondeadas incluidas); el padding se aplica solo al contenido. */
-.card-foto-lateral { position: relative; overflow: hidden; padding: 0; }
-/* mask-image (Roger 2026-07-14): antes la foto tenía un corte recto a los 0px;
-   ahora se funde ella misma con el blanco (además del overlay de encima), un
-   segundo degradado en la propia capa de la foto. */
-.card-foto-lateral-img {
-  position: absolute; top: 0; right: 0; bottom: 0; width: 40%; background-size: cover; background-position: center;
-  -webkit-mask-image: linear-gradient(to right, transparent 0%, black 55%); mask-image: linear-gradient(to right, transparent 0%, black 55%);
-}
-.card-foto-lateral-degradado { position: absolute; inset: 0; background: linear-gradient(to right, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, .65) 100%); }
-.card-foto-lateral-contenido { position: relative; z-index: 1; padding: var(--space-3); }
-/* CTA centrado sobre la mitad inferior de la foto, no junto a los avatares
-   (Roger 2026-07-14). */
-.card-foto-lateral-cta { position: absolute; z-index: 1; right: 0; bottom: 0; width: 40%; display: flex; align-items: center; justify-content: center; padding: var(--space-2); }
+/* Foto en miniatura a la izquierda, contenido a la derecha (Roger 2026-07-14,
+   2ª corrección — ni lateral-40% ni foto-arriba: la referencia visual externa
+   lleva la foto como thumbnail a la izquierda). Miniatura inset dentro del
+   padding normal de la card — sin trucos de padding:0/overflow. */
+.card-comida-fila { display: flex; gap: var(--space-3); align-items: flex-start; }
+.card-foto-izq { width: 96px; height: 96px; border-radius: 12px; background-size: cover; background-position: center; flex-shrink: 0; }
+.card-comida-contenido { flex: 1; min-width: 0; }
 
 /* Título como protagonista de la card (Roger 2026-07-14: antes competía en
    tamaño con avatares/CTA, ahora es lo primero que se lee). */
 .card-comida-titulo { font-family: var(--font-display); font-size: var(--fs-titulo); font-weight: 400; line-height: 1.2; }
 .card-comida-subtitulo { color: var(--soft); font-size: var(--fs-cuerpo); margin-top: 2px; }
-.card-comida-meta { color: var(--soft); font-size: var(--fs-aux); font-weight: 600; }
+.card-comida-meta { color: var(--soft); font-size: var(--fs-aux); font-weight: 600; margin-top: var(--space-2); }
 /* silueta gris, no emoji a color (Roger 2026-07-14) */
 .card-comida-meta-icono { display: inline-flex; width: 12px; height: 12px; vertical-align: -1px; margin-right: 2px; }
 .card-comida-meta-icono svg { width: 100%; height: 100%; stroke: currentColor; display: block; }
-
-/* Pie de card: meta arriba, avatares+CTA en una fila ligera debajo — nada de
-   esto debe pesar más que el título (Roger 2026-07-14). */
-.card-comida-pie { margin-top: var(--space-2); }
-/* justify-content:flex-start (no space-between): con la foto ahora a la
-   derecha, el botón no debe estirarse hasta el borde — todo agrupado a la
-   izquierda, igual que el resto del contenido (Roger 2026-07-14). */
-.card-comida-pie-fila { display: flex; align-items: center; justify-content: flex-start; gap: var(--space-3); margin-top: var(--space-1); }
 
 /* Avatar con badge de estado superpuesto (check/menos) — Roger 2026-07-13,
    referencia visual externa. Clúster ligeramente superpuesto. */
@@ -432,28 +414,66 @@ body.wizard-open { overflow: hidden; }
 .compra-resumen { font-size: var(--fs-aux); color: var(--soft); margin-top: var(--space-2); text-align: center; }
 
 /* ============================================================
-   SEMANA
+   Cabecera clara SEMANA — app-bar + saludo + card IA (Roger 2026-07-14,
+   referencia visual externa ~/Downloads/design_handoff_e3foods_redesign/).
+   Sustituye a cabecera-midnight (oscura) SOLO en SEMANA — RECETAS/COMPRA
+   siguen usando renderCabecera() sin cambios, ver más arriba.
    ============================================================ */
-.fila-pildoras-dia { display: flex; justify-content: space-between; gap: 4px; margin-bottom: var(--space-3); }
-/* Integrada en la cabecera midnight (Roger 2026-07-13) — sustituye el margen
-   inferior (pensado para la franja clara) por uno superior, ya que ahora es
-   el último elemento antes de cerrar el <header>. */
-.fila-pildoras-dia-cabecera { margin: var(--space-4) 0 0; }
-/* Sin caja (Roger 2026-07-14): la primera versión usaba píldoras rellenas y le
-   daba demasiado peso visual a lo que es un selector de día, una herramienta de
-   navegación, no contenido — referencia visual: solo texto + raya de 2px bajo
-   el día activo, como un selector de fecha discreto. */
+.app-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: calc(var(--space-3) + var(--safe-t)) var(--space-3) var(--space-2);
+}
+.app-bar-btn {
+  width: 40px; height: 40px; border-radius: 50%; border: none; background: none;
+  color: var(--ink); display: flex; align-items: center; justify-content: center; cursor: pointer; position: relative;
+}
+.app-bar-btn svg { width: 22px; height: 22px; stroke: currentColor; display: block; }
+/* sin sistema de notificaciones construido todavía — decorativa a propósito */
+.app-bar-campana { color: var(--soft); cursor: default; }
+.app-bar-campana-dot { position: absolute; top: 8px; right: 9px; width: 7px; height: 7px; border-radius: 50%; background: var(--gold); border: 1.5px solid var(--bg); }
+.app-bar-logo { font-family: var(--font-display); font-size: 21px; line-height: 1; }
+.app-bar-logo-e3 { color: var(--ink); font-weight: 400; }
+.app-bar-logo-foods { color: var(--gold); font-style: italic; }
+
+.saludo-semana { padding: var(--space-2) var(--space-3) var(--space-3); }
+.saludo-titulo { font-family: var(--font-display); font-weight: 400; font-size: 26px; line-height: 1.15; color: var(--ink); margin-bottom: var(--space-3); }
+
+.card-ia {
+  display: flex; align-items: center; gap: var(--space-2);
+  background: var(--panel); border: 1px solid var(--line-solid); border-radius: 16px; padding: var(--space-3);
+}
+.card-ia-chispa { font-size: 18px; flex-shrink: 0; align-self: flex-start; }
+.card-ia-texto { flex: 1; font-size: var(--fs-cuerpo); color: var(--soft); }
+/* ingrediente clicable dentro del texto (Roger 2026-07-14) → COMPRA/hoy.
+   --ink, no --gold: dorado como texto sobre blanco da 2.24:1, falla AA —
+   mismo hallazgo ya corregido antes en e3foods.html v1 (ver STATUS_E3FOODS.md). */
+.ingrediente-link { background: none; border: none; padding: 0; font: inherit; color: var(--ink); font-weight: 700; text-decoration: underline; cursor: pointer; }
+
+/* ============================================================
+   SEMANA — selector de día (píldoras), sobre fondo claro y sticky por sí
+   solo (Roger 2026-07-14: ya no vive dentro de cabecera-midnight).
+   ============================================================ */
+.fila-pildoras-dia { display: flex; justify-content: space-between; gap: 4px; }
+.fila-pildoras-dia-sticky {
+  position: sticky; top: 0; z-index: 40; background: var(--bg);
+  padding: var(--space-2) var(--space-3) var(--space-3);
+}
 .pildora-dia {
   flex: 1 1 0; min-width: 0; min-height: 44px; background: none; border: none;
-  padding: 6px 2px; cursor: pointer;
+  padding: 6px 2px; cursor: pointer; border-radius: 10px;
   display: flex; flex-direction: column; align-items: center; gap: 4px;
 }
-.pildora-dia-letra { font-size: var(--fs-aux); font-weight: 700; color: rgba(245, 240, 232, .5); text-transform: uppercase; }
-.pildora-dia-num { font-size: var(--fs-cuerpo); font-weight: 700; color: var(--navy-ink); }
-.pildora-dia-hoy .pildora-dia-letra { color: var(--gold); }
-.pildora-dia::after { content: ''; width: 20px; height: 2px; border-radius: 1px; background: transparent; }
-.pildora-dia-activa::after { background: var(--navy-ink); }
-.pildora-dia-activa.pildora-dia-hoy::after { background: var(--gold); }
+/* --soft, no --muted (Roger 2026-07-14): --muted sobre --bg da 2.73:1, falla
+   AA — mismo hallazgo de contraste que ya se corrigió en e3foods.html v1. */
+.pildora-dia-letra { font-size: var(--fs-aux); font-weight: 700; color: var(--soft); text-transform: uppercase; }
+.pildora-dia-num { font-size: var(--fs-cuerpo); font-weight: 700; color: var(--ink); }
+/* Día activo (referencia visual externa): píldora rellena ink, ya no se
+   apoya en el navy de una cabecera — necesita su propio contraste sobre
+   fondo claro. */
+.pildora-dia-activa { background: var(--ink); }
+.pildora-dia-activa .pildora-dia-letra { color: rgba(245, 240, 232, .6); }
+.pildora-dia-activa .pildora-dia-num { color: var(--navy-ink); }
+.pildora-dia-activa.pildora-dia-hoy .pildora-dia-letra { color: var(--gold); }
 
 /* ============================================================
    RECETAS — chips de filtro por categoría
@@ -498,17 +518,19 @@ body.wizard-open { overflow: hidden; }
 .btn-secondary { background: var(--panel); color: var(--ink); border: 1.5px solid var(--line-solid); }
 .btn-secondary:active { background: var(--elev2); }
 .btn-cambiar { margin-top: var(--space-2); }
-/* "Quiero otra cosa" (Roger 2026-07-14): la barra ancha tintada tenía demasiado
-   protagonismo — texto discreto, sin caja, alineado con los avatares en la
-   misma fila (ver .card-comida-pie-fila). El toque táctil de 44px se consigue
-   con padding, no con tamaño visual. */
+/* "Me apetece otra cosa" (Roger 2026-07-14, 3ª pasada): franja propia a todo
+   el ancho bajo la fila foto+contenido, pero discreta — nada de bloque
+   tintado, solo una línea separadora fina + texto pequeño. El toque de 44px
+   se consigue con padding/min-height, no con tamaño visual (mismo truco que
+   ya usa el nav — "el toque táctil no depende del tamaño visual"). */
 .btn-sorprendeme {
-  display: inline-flex; align-items: center; flex-shrink: 0;
-  background: none; border: none; padding: var(--space-2) 0 var(--space-2) var(--space-2); min-height: 44px; cursor: pointer;
-  color: var(--ink); font-size: var(--fs-aux); font-weight: 700;
+  display: flex; align-items: center; justify-content: center; width: 100%;
+  margin-top: var(--space-1);
+  background: none; color: var(--soft); border: none; border-top: 1px solid var(--line-solid);
+  min-height: 44px; padding: 6px var(--space-2); cursor: pointer;
+  font-size: var(--fs-aux); font-weight: 700;
 }
-.btn-sorprendeme:active { opacity: .6; }
-.card-foto-lateral-cta .btn-sorprendeme { padding: var(--space-2); }
+.btn-sorprendeme:active { background: var(--elev2); }
 .btn-texto {
   background: none; border: none; color: var(--soft); font-size: var(--fs-aux); font-weight: 700;
   min-height: 44px; padding: var(--space-1) var(--space-2); cursor: pointer; text-decoration: underline;

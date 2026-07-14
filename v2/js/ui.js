@@ -60,6 +60,13 @@
 
   function hoyISO() { return E.fechaLocalISO(new Date()); }
 
+  function saludoHora() {
+    var h = new Date().getHours();
+    if (h < 12) return 'Buenos días';
+    if (h < 20) return 'Buenas tardes';
+    return 'Buenas noches';
+  }
+
   // ---------------------------------------------------------------
   // Cabecera midnight compartida por HOY / SEMANA / RECETAS / COMPRA
   // ---------------------------------------------------------------
@@ -84,6 +91,12 @@
   // meta de la card (kcal/tiempo) — silueta gris, no emoji a color (Roger 2026-07-14)
   var ICONO_FUEGO = '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c1 3-3 4-3 7.5a3 3 0 0 0 6 0c0-1.5-1-2-1-3.5 1.5 1 3 3 3 5.5a5 5 0 0 1-10 0C7 8 10 6 12 3z"/></svg>';
   var ICONO_RELOJ = '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>';
+
+  // app-bar de SEMANA (Roger 2026-07-14, referencia visual externa): el menú
+  // reutiliza abrir-familia (única acción real ya existente), la campana
+  // queda decorativa — no hay sistema de notificaciones construido todavía.
+  var ICONO_MENU = '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6.5h16M4 12h16M4 17.5h16"/></svg>';
+  var ICONO_CAMPANA = '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 10.5a6 6 0 0 1 12 0c0 4 1.4 5.3 2 6H4c.6-.7 2-2 2-6z"/><path d="M10 19a2.2 2.2 0 0 0 4 0"/></svg>';
 
   // "Salmón a la plancha con Patata y Calabacín" -> título + subtítulo ("con..."),
   // heurística simple sobre el patrón de nombres del banco (todos siguen "X con Y").
@@ -157,39 +170,32 @@
     var meta = metaKcal + (presentes.length && plantilla.tiempo_min ? ' · ' : '') + metaTiempo;
 
     var nombreSplit = splitNombrePlato(resuelto.nombre);
-    var btnSorprendeme = '<button type="button" class="btn-sorprendeme" data-action="abrir-cambiar" data-dia="' + diaIndex + '" data-tipo="' + tipoComida + '">✨ Quiero otra cosa</button>';
+    var btnSorprendeme = '<button type="button" class="btn-sorprendeme" data-action="abrir-cambiar" data-dia="' + diaIndex + '" data-tipo="' + tipoComida + '">✨ Me apetece otra cosa</button>';
 
-    // Redistribución (Roger 2026-07-14): título como protagonista, meta+avatares
-    // en una fila ligera — ya no compiten en peso visual con el plato. Todo el
-    // contenido alineado a la izquierda.
-    var infoPrincipal = cabeceraTipo +
+    // Foto a la izquierda + contenido a la derecha en fila (Roger 2026-07-14,
+    // 2ª corrección: ni lateral-40% ni foto-arriba, la referencia visual
+    // externa lleva la foto como miniatura a la izquierda). Botón como franja
+    // propia, discreta, debajo de toda la fila — no flota sobre la foto ni
+    // compite en peso visual con el plato.
+    var fotoHtml = plantilla.foto ? '<div class="card-foto-izq" style="background-image:url(\'' + escapeHtml(plantilla.foto) + '\')"></div>' : '';
+
+    // Header COMIDA/CENA siempre arriba-izquierda de la card entera, no
+    // dentro de la columna de contenido (Roger 2026-07-14, 3ª corrección) —
+    // así el título del plato es lo primero de esa columna y queda alineado
+    // con el borde superior de la foto, no debajo del eyebrow.
+    var contenido = '<div class="card-comida-contenido">' +
       '<h2 class="card-comida-titulo">' + escapeHtml(nombreSplit.titulo) + '</h2>' +
       (nombreSplit.subtitulo ? '<p class="card-comida-subtitulo">' + escapeHtml(nombreSplit.subtitulo) + '</p>' : '') +
       (adaptacionesVisibles ? '<p class="card-adaptaciones">' + adaptacionesVisibles + '</p>' : '') +
       (!presentes.length ? '<p class="card-msg">Nadie confirmado para esta comida.</p>' : '') +
-      '<div class="card-comida-pie">' +
-        (meta ? '<p class="card-comida-meta">' + meta + '</p>' : '') +
-        '<div class="card-comida-pie-fila">' +
-          '<div class="avatares" role="group" aria-label="Quién come">' + avataresHtml + '</div>';
-
-    // Foto lateral (Roger 2026-07-14): la foto ocupa solo el 40% derecho de la
-    // card, degradada (mask-image) donde se funde con el blanco, más un overlay
-    // blanco encima (transparente→65%) para legibilidad. "Quiero otra cosa"
-    // centrado sobre la propia foto, no junto a los avatares — sin foto, cae en
-    // la card plana de siempre con el botón junto a los avatares.
-    if (plantilla.foto) {
-      return '<section class="card card-slot card-foto-lateral" data-dia="' + diaIndex + '" data-tipo="' + tipoComida + '">' +
-        '<div class="card-foto-lateral-img" style="background-image:url(\'' + escapeHtml(plantilla.foto) + '\')"></div>' +
-        '<div class="card-foto-lateral-degradado"></div>' +
-        '<div class="card-foto-lateral-contenido">' + infoPrincipal + '</div></div></div>' +
-        '<div class="card-foto-lateral-cta">' + btnSorprendeme + '</div>' +
-        '</section>';
-    }
-
-    var contenido = infoPrincipal + btnSorprendeme + '</div></div>';
+      (meta ? '<p class="card-comida-meta">' + meta + '</p>' : '') +
+      '<div class="avatares" role="group" aria-label="Quién come">' + avataresHtml + '</div>' +
+      '</div>';
 
     return '<section class="card card-slot" data-dia="' + diaIndex + '" data-tipo="' + tipoComida + '">' +
-      contenido +
+      cabeceraTipo +
+      '<div class="card-comida-fila">' + fotoHtml + contenido + '</div>' +
+      btnSorprendeme +
       '</section>';
   }
 
@@ -213,16 +219,53 @@
   }
 
   // ---------------------------------------------------------------
+  // Cabecera clara de SEMANA — app-bar + saludo + card IA (Roger 2026-07-14,
+  // referencia visual externa ~/Downloads/design_handoff_e3foods_redesign/).
+  // Sustituye a renderCabecera() (oscura) SOLO en SEMANA; RECETAS/COMPRA
+  // siguen con la cabecera-midnight sin cambios.
+  // ---------------------------------------------------------------
+  function renderAppBar() {
+    return '<header class="app-bar">' +
+      '<button type="button" class="app-bar-btn" data-action="abrir-familia" aria-label="Menú, tu familia">' + ICONO_MENU + '</button>' +
+      '<p class="app-bar-logo"><span class="app-bar-logo-e3">e3</span><span class="app-bar-logo-foods">foods</span></p>' +
+      '<button type="button" class="app-bar-btn app-bar-campana" aria-label="Notificaciones" disabled>' + ICONO_CAMPANA + '<span class="app-bar-campana-dot" aria-hidden="true"></span></button>' +
+      '</header>';
+  }
+
+  // Saludo + card IA: siempre sobre HOY, independiente del día que esté
+  // seleccionado en las píldoras (esas son para ojear la semana, no para
+  // redefinir qué es "hoy"). Ingrediente que falta = clicable → COMPRA/hoy
+  // (Roger 2026-07-14: reutiliza la vista existente, sin pieza nueva de estado).
+  function renderSaludoSemana(estado, plan, banco) {
+    var nombre = (estado.familia && estado.familia[0] && estado.familia[0].nombre) || '';
+    var titulo = '<h1 class="saludo-titulo">' + saludoHora() + (nombre ? ', ' + escapeHtml(nombre) : '') + '.</h1>';
+
+    // Roger 2026-07-14: solo 2 frases fijas, sin listar el detalle de lo que
+    // falta aquí (eso vive en Compra) — "algunos ingredientes" es el link,
+    // no cada nombre suelto.
+    var items = E.listaCompra(estado, plan, 'hoy', banco);
+    var faltan = items.filter(function (i) { return !i.marcado; });
+    var fraseIngredientes = faltan.length
+      ? 'Te faltan <button type="button" class="ingrediente-link" data-action="ir-compra-hoy">algunos ingredientes</button>.'
+      : 'Tienes todos los ingredientes que necesitas.';
+
+    var card = '<div class="card-ia">' +
+      '<span class="card-ia-chispa" aria-hidden="true">✨</span>' +
+      '<p class="card-ia-texto">Te he preparado las comidas de hoy. ' + fraseIngredientes + '</p>' +
+      '</div>';
+
+    return '<section class="saludo-semana">' + titulo + card + '</section>';
+  }
+
+  // ---------------------------------------------------------------
   // Vista SEMANA (única vista de primer nivel para el día a día — Hoy se
   // retiró como tab aparte, Roger 2026-07-13: el selector de día hace lo
-  // mismo en una sola pantalla). Selector de día (píldoras L-D) integrado
-  // en la cabecera midnight, fija arriba; debajo, el día seleccionado a
-  // pantalla completa — referencia visual del handoff externo.
+  // mismo en una sola pantalla). Selector de día (píldoras L-D) sticky por
+  // sí solo sobre fondo claro — referencia visual del handoff externo.
   // ---------------------------------------------------------------
   function renderSemana(estado, plan, banco, diaSeleccionado) {
     if (!plan) {
-      var cabeceraVacia = renderCabecera({ tituloPlain: 'La semana', tituloItalico: 'en la mesa', avatarCount: (estado.familia || []).length, fija: true });
-      return cabeceraVacia + '<div class="vista-body"><p class="card-msg">Todavía no hay semana generada.</p></div>';
+      return renderAppBar() + '<div class="vista-body"><p class="card-msg">Todavía no hay semana generada.</p></div>';
     }
     var hoyIdx = E.diaIndexDesdeFecha(plan, hoyISO());
     var idx = (diaSeleccionado != null && plan.dias[diaSeleccionado]) ? diaSeleccionado : (hoyIdx === -1 ? 0 : hoyIdx);
@@ -235,13 +278,15 @@
         '<span class="pildora-dia-num">' + d.getDate() + '</span>' +
         '</button>';
     }).join('');
-    var filaPildoras = '<div class="fila-pildoras-dia fila-pildoras-dia-cabecera" role="group" aria-label="Elegir día">' + pildoras + '</div>';
-
-    var cabecera = renderCabecera({ tituloPlain: 'La semana', tituloItalico: 'en la mesa', avatarCount: (estado.familia || []).length, fija: true, extra: filaPildoras });
+    var filaPildoras = '<div class="fila-pildoras-dia fila-pildoras-dia-sticky" role="group" aria-label="Elegir día">' + pildoras + '</div>';
 
     var dia = plan.dias[idx];
-    return cabecera + '<div class="vista-body">' +
-      '<p class="vista-fecha">' + NOMBRES_DIA[idx] + ' ' + fechaCorta(dia.fecha) + (idx === hoyIdx ? ' <span class="badge badge-hoy">HOY</span>' : '') + '</p>' +
+    return renderAppBar() + renderSaludoSemana(estado, plan, banco) + filaPildoras +
+      '<div class="vista-body" data-dia-idx="' + idx + '">' +
+      '<p class="vista-fecha-fila">' +
+        '<span class="vista-fecha">' + NOMBRES_DIA[idx] + ' ' + fechaCorta(dia.fecha) + (idx === hoyIdx ? ' <span class="badge badge-hoy">HOY</span>' : '') + '</span>' +
+        '<span class="pill-resumen">Ver resumen semanal</span>' +
+      '</p>' +
       renderSlot(estado, banco, plan, idx, 'comida') +
       renderSlot(estado, banco, plan, idx, 'cena') +
       '</div>';

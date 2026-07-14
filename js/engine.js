@@ -564,6 +564,13 @@
           (p.ejes[eje] || []).forEach(function (id) { if (!disponiblesSet[id]) vetosUnion[id] = 1; });
         });
       });
+      // la variedad (restricción 4) es una preferencia de "no comer lo mismo" — cuando el
+      // usuario dice explícitamente qué tiene disponible ahora mismo, esa realidad manda:
+      // si lo único disponible ya se usó hoy o ayer, bloquear en vez de proponerlo deja la
+      // función sin poder resolver nada (bug real, Roger 2026-07-15). Cuotas máximas y
+      // mesa mixta/dieta sí se mantienen — esas protegen salud, no varidad.
+      usadosHoy = {};
+      usadosAyer = {};
     }
 
     if (!candidatas.length) return null;

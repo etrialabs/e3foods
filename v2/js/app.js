@@ -190,9 +190,30 @@
     aplicarDetallesAbiertos(document.getElementById('sheet-contenido'));
   }
 
-  // Menú hamburguesa (Roger 2026-07-14): Familia + Regenerar menús
-  function abrirMenuHamburguesa() {
-    abrirSheet(UI.renderSheetMenu());
+  // Menú hamburguesa (Roger 2026-07-14, rehecho igual día): dropdown pequeño
+  // anclado al botón (arriba izquierda) en vez del sheet grande de abajo —
+  // el sheet queda para pantallas con contenido real, no para 3 líneas de
+  // acciones. Posición calculada en el momento del tap (getBoundingClientRect),
+  // no CSS fijo, porque el app-bar no es sticky y el botón se desplaza con el scroll.
+  function abrirMenuHamburguesa(btn) {
+    var dropdown = document.getElementById('menu-dropdown');
+    var overlay = document.getElementById('menu-dropdown-overlay');
+    if (!dropdown || !overlay || !btn) return;
+    dropdown.innerHTML = UI.renderMenuHamburguesa();
+    var r = btn.getBoundingClientRect();
+    dropdown.style.top = Math.round(r.bottom + 6) + 'px';
+    dropdown.style.left = Math.round(r.left) + 'px';
+    dropdown.hidden = false;
+    overlay.hidden = false;
+  }
+
+  function cerrarMenuHamburguesa() {
+    document.getElementById('menu-dropdown').hidden = true;
+    document.getElementById('menu-dropdown-overlay').hidden = true;
+  }
+
+  function abrirImportarCole() {
+    abrirSheet(UI.renderSheetImportarCole());
   }
 
   function regenerarSemanaCompleta() {
@@ -595,9 +616,10 @@
     'empezar': function () { cerrarLanding(); },
     'ir-vista': function (btn) { irAVista(btn.dataset.vista); },
     'abrir-familia': function () { abrirSheetFamilia(); },
-    'abrir-menu-hamburguesa': function () { abrirMenuHamburguesa(); },
+    'abrir-menu-hamburguesa': function (btn) { abrirMenuHamburguesa(btn); },
     'menu-ir-familia': function () { abrirSheetFamilia(); },
     'menu-regenerar-semana': function () { regenerarSemanaCompleta(); },
+    'menu-importar-cole': function () { abrirImportarCole(); },
 
     'wizard-siguiente-bienvenida': function () { wizardSiguienteBienvenida(); },
     'wizard-volver-bienvenida': function () { mostrarWizardBienvenida(); },
@@ -681,6 +703,8 @@
     if (!btn) return;
     var accion = ACCIONES[btn.dataset.action];
     if (accion) accion(btn, e);
+    // cualquier ítem del dropdown del hamburguesa cierra el dropdown al elegirlo
+    if (btn.closest('#menu-dropdown')) cerrarMenuHamburguesa();
   });
 
   // Enter/espacio activan [role="button"] (p.ej. .card-comida-fila, un <div>
@@ -765,6 +789,10 @@
         if (e.target === e.currentTarget) cerrarSheet();
       });
     }
+    // catcher transparente a pantalla completa: tocar fuera del dropdown del
+    // hamburguesa lo cierra (el propio dropdown no es hijo suyo, es hermano)
+    var menuDropdownOverlayEl = document.getElementById('menu-dropdown-overlay');
+    if (menuDropdownOverlayEl) menuDropdownOverlayEl.addEventListener('click', cerrarMenuHamburguesa);
     asegurarPlanVigente();
     render();
     document.body.classList.add('landing-open');

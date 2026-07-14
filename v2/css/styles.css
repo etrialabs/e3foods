@@ -445,6 +445,25 @@ body.wizard-open { overflow: hidden; }
 .app-bar-logo-e3 { color: var(--ink); font-weight: 400; }
 .app-bar-logo-foods { color: var(--gold); font-style: italic; }
 
+/* Menú hamburguesa — dropdown pequeño anclado al botón (top calculado en JS
+   vía getBoundingClientRect, el app-bar no es sticky). Distinto a propósito
+   del sheet de abajo: listas de acciones cortas, no pantallas con contenido. */
+.menu-dropdown-overlay { position: fixed; inset: 0; z-index: 210; background: transparent; }
+.menu-dropdown {
+  position: fixed; z-index: 211; min-width: 220px; background: var(--panel);
+  border: 1px solid var(--line-solid); border-radius: 14px;
+  box-shadow: 0 8px 24px rgba(8, 18, 34, 0.18);
+  padding: 6px; display: flex; flex-direction: column; gap: 2px;
+  animation: menuDropdownIn var(--dur-fast) var(--ease-out);
+}
+@keyframes menuDropdownIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+.menu-dropdown-item {
+  display: block; width: 100%; text-align: left; background: none; border: none;
+  min-height: 44px; padding: 0 14px; border-radius: 10px;
+  font-size: var(--fs-cuerpo); font-family: inherit; color: var(--ink); cursor: pointer;
+}
+.menu-dropdown-item:active { background: var(--elev2); }
+
 .saludo-semana { padding: var(--space-2) var(--space-3) var(--space-3); }
 .saludo-titulo { font-family: var(--font-display); font-weight: 400; font-size: 26px; line-height: 1.15; color: var(--ink); margin-bottom: var(--space-3); }
 

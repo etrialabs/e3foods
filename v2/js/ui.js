@@ -765,16 +765,24 @@
       '</div>';
   }
 
-  // Menú hamburguesa (Roger 2026-07-14): antes abría "Tu familia" directo,
-  // ahora es un menú con 2 destinos — reutiliza el sheet genérico.
-  function renderSheetMenu() {
-    return '<div class="sheet-head"><h2>Menú</h2>' +
+  // Menú hamburguesa (Roger 2026-07-14): dropdown pequeño anclado al botón
+  // (arriba izquierda, donde se toca) — no el sheet grande de abajo. Reservado
+  // para listas cortas de acciones; el sheet de abajo sigue siendo para
+  // pantallas con contenido real (Familia, nevera, receta...).
+  function renderMenuHamburguesa() {
+    return '<button type="button" class="menu-dropdown-item" role="menuitem" data-action="menu-ir-familia">Familia</button>' +
+      '<button type="button" class="menu-dropdown-item" role="menuitem" data-action="menu-regenerar-semana">Regenerar menús</button>' +
+      '<button type="button" class="menu-dropdown-item" role="menuitem" data-action="menu-importar-cole">Importar menú del cole</button>';
+  }
+
+  // Placeholder honesto — el parser de PDF real (heurística de columnas por
+  // posición de texto, ~180 líneas) vive en v1 (e3foods.html) sin portar
+  // todavía; no simular que funciona aquí.
+  function renderSheetImportarCole() {
+    return '<div class="sheet-head"><h2>Menú del cole</h2>' +
       '<button type="button" class="btn-cerrar" data-action="cerrar-sheet" aria-label="Cerrar">&times;</button></div>' +
       '<div class="sheet-body">' +
-      '<div class="lista-enlaces">' +
-        '<button type="button" class="fila-enlace" data-action="menu-ir-familia"><span>Familia</span></button>' +
-        '<button type="button" class="fila-enlace" data-action="menu-regenerar-semana"><span>Regenerar menús</span></button>' +
-      '</div>' +
+      '<p class="card-msg">Próximamente: sube el PDF del menú del cole y detectamos qué proteína/hidrato evitar repetir en la cena de casa esos días. Todavía no está construido en esta versión.</p>' +
       '</div>';
   }
 
@@ -788,7 +796,8 @@
     renderNevera: renderNevera,
     renderConfirmarRegenerar: renderConfirmarRegenerar,
     renderSheetFamilia: renderSheetFamilia,
-    renderSheetMenu: renderSheetMenu,
+    renderMenuHamburguesa: renderMenuHamburguesa,
+    renderSheetImportarCole: renderSheetImportarCole,
     renderFormMiembroCompleto: renderFormMiembroCompleto,
     renderWizardBienvenida: renderWizardBienvenida,
     renderWizardHub: renderWizardHub,

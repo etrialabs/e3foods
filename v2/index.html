@@ -22,7 +22,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/styles.css?v=28">
+<link rel="stylesheet" href="css/styles.css?v=29">
 </head>
 <body>
 
@@ -58,6 +58,11 @@
   </div>
 </div>
 
+<!-- Menú del hamburguesa: dropdown pequeño anclado al botón, no el sheet de
+     abajo — reservado para listas de acciones cortas (Roger 2026-07-14) -->
+<div id="menu-dropdown-overlay" class="menu-dropdown-overlay" hidden></div>
+<div id="menu-dropdown" class="menu-dropdown" role="menu" hidden></div>
+
 <nav class="bottom-nav" aria-label="Navegación principal">
   <button type="button" class="nav-btn active" data-action="ir-vista" data-vista="semana" aria-current="page"><span class="nav-ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 9.5h17"/><path d="M8 3v3.3"/><path d="M16 3v3.3"/></svg></span><span class="nav-label">Semana</span><span class="nav-dot"></span></button>
   <button type="button" class="nav-btn" data-action="ir-vista" data-vista="recetas" aria-current="false"><span class="nav-ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5.2c-2.3-1.1-5.2-1.4-8-.7v13.6c2.8-.7 5.7-.4 8 .7 2.3-1.1 5.2-1.4 8-.7V4.5c-2.8-.7-5.7-.4-8 .7z"/><path d="M12 5.2v13.6"/></svg></span><span class="nav-label">Recetas</span><span class="nav-dot"></span></button>
@@ -66,9 +71,9 @@
 
 <!-- data/recetas.js lo genera otro agente en paralelo. Si no existe (404), app.js usa un
      mini-banco DEV interno como fallback — ver comentario "DEV FALLBACK" en js/app.js. -->
-<script src="data/recetas.js?v=28"></script>
-<script src="js/engine.js?v=28"></script>
-<script src="js/ui.js?v=28"></script>
-<script src="js/app.js?v=28"></script>
+<script src="data/recetas.js?v=29"></script>
+<script src="js/engine.js?v=29"></script>
+<script src="js/ui.js?v=29"></script>
+<script src="js/app.js?v=29"></script>
 </body>
 </html>

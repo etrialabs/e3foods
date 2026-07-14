@@ -520,17 +520,20 @@ body.wizard-open { overflow: hidden; }
 .btn-cambiar { margin-top: var(--space-2); }
 /* "Me apetece otra cosa" (Roger 2026-07-14, 3ª pasada): franja propia a todo
    el ancho bajo la fila foto+contenido, pero discreta — nada de bloque
-   tintado, solo una línea separadora fina + texto pequeño. El toque de 44px
-   se consigue con padding/min-height, no con tamaño visual (mismo truco que
-   ya usa el nav — "el toque táctil no depende del tamaño visual"). */
+   tintado, solo una línea separadora fina + texto pequeño. */
 .btn-sorprendeme {
   display: flex; align-items: center; justify-content: center; width: 100%;
   margin-top: var(--space-1);
   background: none; color: var(--soft); border: none; border-top: 1px solid var(--line-solid);
-  min-height: 44px; padding: 6px var(--space-2); cursor: pointer;
+  min-height: 36px; padding: var(--space-2) var(--space-2) 0; cursor: pointer;
   font-size: var(--fs-aux); font-weight: 700;
 }
 .btn-sorprendeme:active { background: var(--elev2); }
+/* card-slot recorta su propio padding inferior (Roger 2026-07-14, 4ª pasada:
+   "demasiado espacio" entre el botón y el borde de la card) — el botón ya
+   aporta su franja de separación arriba, no hace falta el padding completo
+   de .card debajo también. */
+.card-slot { padding-bottom: var(--space-2); }
 .btn-texto {
   background: none; border: none; color: var(--soft); font-size: var(--fs-aux); font-weight: 700;
   min-height: 44px; padding: var(--space-1) var(--space-2); cursor: pointer; text-decoration: underline;

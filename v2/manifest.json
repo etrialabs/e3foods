@@ -1,0 +1,14 @@
+{
+  "name": "e3Foods",
+  "short_name": "e3Foods",
+  "description": "Menús que piensan por ti. Familias que comen mejor.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "background_color": "#F7F3EC",
+  "theme_color": "#F5F0E8",
+  "icons": [
+    { "src": "assets/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "assets/icons/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

@@ -112,6 +112,11 @@
   var ICONO_OJO_TACHADO = '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 3.5l17 17M10.6 10.7a3 3 0 0 0 4.2 4.2M7 7.4C4.7 8.9 2.5 12 2.5 12S6 18.5 12 18.5c1.8 0 3.4-.4 4.8-1.1M17.9 16c2.3-1.6 3.6-4 3.6-4S18 5.5 12 5.5c-.9 0-1.8.1-2.6.4"/></svg>';
   var ICONO_ESTRELLA = '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5l2.6 5.4 5.9.7-4.3 4.1 1.1 5.9L12 16.8l-5.3 2.8 1.1-5.9-4.3-4.1 5.9-.7z"/></svg>';
   var ICONO_ESTRELLA_LLENA = '<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 3.5l2.6 5.4 5.9.7-4.3 4.1 1.1 5.9L12 16.8l-5.3 2.8 1.1-5.9-4.3-4.1 5.9-.7z"/></svg>';
+  var ICONO_MIC = '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2.5" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0"/><path d="M12 17.5v3.5M9 21h6"/></svg>';
+
+  // soporte de reconocimiento de voz del navegador (nevera) — si no existe, el
+  // botón de micro ni se pinta (degradación silenciosa, cero rotura)
+  var TIENE_VOZ = !!(global.SpeechRecognition || global.webkitSpeechRecognition);
 
   // quita acentos para que "salmon" encuentre "Salmón" en el buscador
   function normalizarTexto(s) {
@@ -507,24 +512,45 @@
 
   function renderListaElegirOtro(estado, banco, dia, tipoComida) {
     var candidatas = E.plantillasDisponibles(banco, estado).filter(function (p) { return (p.apta || []).indexOf(tipoComida) !== -1; });
-    if (!candidatas.length) return '<p class="card-msg">No hay recetas disponibles para esta comida.</p>';
-    return '<ul class="lista-plantillas">' + candidatas.map(function (p) {
-      return '<li><button type="button" class="fila-plantilla" data-action="elegir-plantilla" data-dia="' + dia + '" data-tipo="' + tipoComida + '" data-plantilla="' + p.id + '">' +
-        '<span class="fila-plantilla-nombre">' + escapeHtml(capitaliza(nombreGenerico(p.nombre_patron))) + '</span>' +
-        '<span class="fila-plantilla-meta">' + (p.tiempo_min || '?') + ' min · ' + escapeHtml(p.esfuerzo || '') + '</span>' +
-        '</button></li>';
-    }).join('') + '</ul>';
+    var listaHtml = candidatas.length
+      ? '<ul class="lista-plantillas">' + candidatas.map(function (p) {
+          return '<li><button type="button" class="fila-plantilla" data-action="elegir-plantilla" data-dia="' + dia + '" data-tipo="' + tipoComida + '" data-plantilla="' + p.id + '">' +
+            '<span class="fila-plantilla-nombre">' + escapeHtml(capitaliza(nombreGenerico(p.nombre_patron))) + '</span>' +
+            '<span class="fila-plantilla-meta">' + (p.tiempo_min || '?') + ' min · ' + escapeHtml(p.esfuerzo || '') + '</span>' +
+            '</button></li>';
+        }).join('') + '</ul>'
+      : '<p class="card-msg">No hay recetas disponibles para esta comida.</p>';
+    return '<div class="sheet-head"><h2>Elegir otro plato</h2>' +
+      '<button type="button" class="btn-cerrar" data-action="cerrar-sheet" aria-label="Cerrar">&times;</button></div>' +
+      '<div class="sheet-body">' + listaHtml + '</div>';
   }
 
   function renderNevera(estado, banco, dia, tipoComida) {
     var ids = Object.keys(banco.ingredientes).sort(function (a, b) { return banco.ingredientes[a].nombre.localeCompare(banco.ingredientes[b].nombre); });
     var filas = ids.map(function (id) {
       var ing = banco.ingredientes[id];
-      return '<li><label class="fila-nevera"><input type="checkbox" value="' + id + '"> ' + escapeHtml(ing.nombre) + '</label></li>';
+      return '<li data-buscar="' + escapeHtml(normalizarTexto(ing.nombre)) + '"><label class="fila-nevera"><input type="checkbox" value="' + id + '" data-nombre="' + escapeHtml(ing.nombre) + '"> ' + escapeHtml(ing.nombre) + '</label></li>';
     }).join('');
-    return '<p class="card-msg">Marca lo que tienes en casa y buscamos un plato que se pueda montar con eso.</p>' +
+    var micHtml = TIENE_VOZ
+      ? '<button type="button" class="btn-filtro-icono btn-mic" data-action="nevera-voz" aria-label="Buscar por voz">' + ICONO_MIC + '</button>'
+      : '';
+    return '<div class="sheet-head"><h2>Con lo que hay en la nevera</h2>' +
+      '<button type="button" class="btn-cerrar" data-action="cerrar-sheet" aria-label="Cerrar">&times;</button></div>' +
+      '<div class="sheet-body">' +
+      '<p class="card-msg">Marca lo que tienes en casa y buscamos un plato que se pueda montar con eso.</p>' +
+      '<div class="nevera-top">' +
+      '<div class="nevera-buscador-fila">' +
+      '<div class="buscador-wrap">' +
+      '<span class="input-buscador-icono" aria-hidden="true">' + ICONO_BUSCAR + '</span>' +
+      '<input type="search" id="nevera-buscador" class="input-buscador" placeholder="Buscar ingrediente" autocomplete="off">' +
+      '</div>' +
+      micHtml +
+      '</div>' +
+      '<div class="nevera-seleccion" id="nevera-seleccion" hidden></div>' +
+      '<button type="button" class="btn-primary" id="nevera-confirmar" data-action="confirmar-nevera" data-dia="' + dia + '" data-tipo="' + tipoComida + '">Buscar plato</button>' +
+      '</div>' +
       '<ul class="lista-nevera" id="lista-nevera-checks">' + filas + '</ul>' +
-      '<button type="button" class="btn-primary" data-action="confirmar-nevera" data-dia="' + dia + '" data-tipo="' + tipoComida + '">Buscar plato</button>';
+      '</div>';
   }
 
   function renderConfirmarRegenerar(nombrePlato) {
@@ -766,6 +792,7 @@
     renderFormMiembroCompleto: renderFormMiembroCompleto,
     renderWizardBienvenida: renderWizardBienvenida,
     renderWizardHub: renderWizardHub,
-    escapeHtml: escapeHtml
+    escapeHtml: escapeHtml,
+    normalizarTexto: normalizarTexto
   };
 })(typeof window !== 'undefined' ? window : this);

@@ -462,6 +462,53 @@
     trasCambiarPlato(resultado);
   }
 
+  // chips de seleccionados + contador en el botón, arriba del todo (sheet nevera)
+  function actualizarNeveraSeleccion() {
+    var caja = document.getElementById('nevera-seleccion');
+    var boton = document.getElementById('nevera-confirmar');
+    if (!caja || !boton) return;
+    var checks = document.querySelectorAll('#lista-nevera-checks input:checked');
+    if (!checks.length) {
+      caja.hidden = true;
+      caja.innerHTML = '';
+      boton.textContent = 'Buscar plato';
+      return;
+    }
+    caja.hidden = false;
+    caja.innerHTML = Array.prototype.map.call(checks, function (c) {
+      return '<button type="button" class="nevera-chip" data-action="nevera-quitar" data-id="' + c.value + '">' +
+        UI.escapeHtml(c.dataset.nombre) + '<span class="nevera-chip-x" aria-hidden="true">&times;</span></button>';
+    }).join('');
+    boton.textContent = 'Buscar plato (' + checks.length + ')';
+  }
+
+  function quitarIngredienteNevera(id) {
+    var check = document.querySelector('#lista-nevera-checks input[value="' + id + '"]');
+    if (!check) return;
+    check.checked = false;
+    actualizarNeveraSeleccion();
+  }
+
+  // dictado por voz del navegador (Web Speech API) — sin coste, sin servidor;
+  // si el navegador no lo soporta el botón de micro ni se pinta (ver TIENE_VOZ en ui.js)
+  function activarVozNevera(btn) {
+    var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    var input = document.getElementById('nevera-buscador');
+    if (!SR || !input) return;
+    var reconocedor = new SR();
+    reconocedor.lang = 'es-ES';
+    reconocedor.interimResults = false;
+    reconocedor.maxAlternatives = 1;
+    btn.classList.add('btn-mic-activo');
+    reconocedor.onresult = function (e) {
+      input.value = e.results[0][0].transcript;
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    };
+    reconocedor.onerror = function () { btn.classList.remove('btn-mic-activo'); };
+    reconocedor.onend = function () { btn.classList.remove('btn-mic-activo'); };
+    reconocedor.start();
+  }
+
   function regenerarSiguientes(si) {
     if (si && pendienteRegenerar) {
       estado.plan = E.regenerarDesde(estado, estado.plan, pendienteRegenerar.dia + 1, BANCO);
@@ -616,6 +663,8 @@
     'modo-nevera': function (btn) { abrirSheet(UI.renderNevera(estado, BANCO, Number(btn.dataset.dia), btn.dataset.tipo)); },
     'elegir-plantilla': function (btn) { elegirPlantilla(Number(btn.dataset.dia), btn.dataset.tipo, btn.dataset.plantilla); },
     'confirmar-nevera': function (btn) { confirmarNevera(Number(btn.dataset.dia), btn.dataset.tipo); },
+    'nevera-quitar': function (btn) { quitarIngredienteNevera(btn.dataset.id); },
+    'nevera-voz': function (btn) { activarVozNevera(btn); },
     'regenerar-si': function () { regenerarSiguientes(true); },
     'regenerar-no': function () { regenerarSiguientes(false); },
 
@@ -672,6 +721,9 @@
       return;
     }
 
+    // checkbox de un ingrediente en el sheet "con lo que hay en la nevera"
+    if (t.type === 'checkbox' && t.closest('#lista-nevera-checks')) { actualizarNeveraSeleccion(); return; }
+
     var campo = t.dataset && t.dataset.campo;
     if (!campo) return;
     if (campo === 'nombreFamilia') { estado.nombreFamilia = t.value.trim(); guardarEstado(); return; }
@@ -691,6 +743,14 @@
       render();
       var nuevo = document.getElementById('recetas-buscador');
       if (nuevo) { nuevo.focus(); nuevo.setSelectionRange(cursor, cursor); }
+    } else if (t.id === 'nevera-buscador') {
+      // filtro directo sobre el DOM del sheet (no pasa por render()) — el
+      // sheet vive fuera de las 3 vistas principales y así el input nunca
+      // pierde el foco al teclear.
+      var q = UI.normalizarTexto(t.value);
+      document.querySelectorAll('#lista-nevera-checks li').forEach(function (li) {
+        li.hidden = !!q && li.dataset.buscar.indexOf(q) === -1;
+      });
     }
   });
 

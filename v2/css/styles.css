@@ -488,7 +488,7 @@ body.wizard-open { overflow: hidden; }
 /* ============================================================
    RECETAS — buscador + filtros colapsables + chips por categoría
    ============================================================ */
-.recetas-buscador-fila { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-3); }
+.recetas-buscador-fila, .nevera-buscador-fila { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-3); }
 .buscador-wrap { position: relative; flex: 1; min-width: 0; }
 .input-buscador-icono {
   position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
@@ -509,6 +509,23 @@ body.wizard-open { overflow: hidden; }
 }
 .btn-filtro-icono svg { width: 20px; height: 20px; stroke: currentColor; display: block; }
 .btn-filtro-icono-activo { background: var(--ink); border-color: var(--ink); color: var(--gold); }
+
+/* ============================================================
+   NEVERA — buscador + micro + seleccionados, fijos arriba del sheet
+   (bug 2026-07-14: la lista vivía suelta en .sheet-panel sin .sheet-body,
+   por eso no hacía scroll y el botón de confirmar quedaba inalcanzable)
+   ============================================================ */
+.nevera-top { position: sticky; top: 0; z-index: 1; background: var(--panel); display: flex; flex-direction: column; gap: var(--space-2); }
+.btn-mic-activo { background: var(--ink); border-color: var(--ink); color: var(--gold); }
+.nevera-seleccion { display: flex; flex-wrap: wrap; gap: 6px; }
+.nevera-chip {
+  display: inline-flex; align-items: center; gap: 6px; background: var(--elev2); color: var(--ink);
+  border: none; border-radius: 999px; padding: 6px 8px 6px 14px; font-size: var(--fs-aux); font-weight: 600; cursor: pointer;
+}
+.nevera-chip-x {
+  width: 18px; height: 18px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+  border-radius: 50%; background: rgba(8, 18, 34, 0.12); font-size: 13px; line-height: 1;
+}
 .chips-filtro { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-bottom: var(--space-3); }
 .chip-filtro {
   font-size: var(--fs-aux); font-weight: 700; border-radius: 999px; padding: 7px 14px;

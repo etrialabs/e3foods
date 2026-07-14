@@ -151,7 +151,8 @@ window.E3_RECETAS = {
         "Hornear 30-35 minutos hasta que {proteina} esté hecho y {hidrato} tierno.",
         "Dejar reposar 5 minutos antes de servir."
       ],
-      notas: ""
+      notas: "",
+      foto: "assets/banco-fotos/crema-zanahoria.jpg" // asignación random 2026-07-14 (Roger, cobertura total del banco) — no coincide ingrediente a ingrediente
     },
     {
       id: "lentejas-guiso",
@@ -174,7 +175,8 @@ window.E3_RECETAS = {
         "Cocer a fuego medio 20-25 minutos removiendo de vez en cuando.",
         "Rectificar de sal y dejar reposar antes de servir."
       ],
-      notas: ""
+      notas: "",
+      foto: "assets/banco-fotos/crema-zanahoria.jpg" // asignación random 2026-07-14 (Roger, cobertura total del banco) — no coincide ingrediente a ingrediente
     },
     {
       id: "garbanzos-guiso",
@@ -197,7 +199,8 @@ window.E3_RECETAS = {
         "Cocer 15-20 minutos a fuego suave para que se integren los sabores.",
         "Servir bien caliente."
       ],
-      notas: ""
+      notas: "",
+      foto: "assets/banco-fotos/ensalada-lentejas.jpg" // asignación random 2026-07-14 (Roger, cobertura total del banco) — no coincide ingrediente a ingrediente
     },
     {
       id: "cocido-simplificado",
@@ -220,7 +223,8 @@ window.E3_RECETAS = {
         "Añadir los garbanzos (previamente en remojo o de bote) y cocer 20 minutos más.",
         "Servir el caldo aparte como sopa y el resto como plato único."
       ],
-      notas: "Versión simplificada de un solo vuelco, sin fideos ni pelota."
+      notas: "Versión simplificada de un solo vuelco, sin fideos ni pelota.",
+      foto: "assets/banco-fotos/crema-zanahoria.jpg" // asignación random 2026-07-14 (Roger, cobertura total del banco) — no coincide ingrediente a ingrediente
     },
     {
       id: "alubias-guiso",
@@ -243,7 +247,8 @@ window.E3_RECETAS = {
         "Cocer 15 minutos a fuego suave, moviendo la cazuela (no remover con cuchara) para que ligue.",
         "Dejar reposar unos minutos antes de servir."
       ],
-      notas: ""
+      notas: "",
+      foto: "assets/banco-fotos/ensalada-lentejas.jpg" // asignación random 2026-07-14 (Roger, cobertura total del banco) — no coincide ingrediente a ingrediente
     },
     {
       id: "paella-sencilla",
@@ -266,7 +271,8 @@ window.E3_RECETAS = {
         "Añadir el caldo caliente con azafrán o colorante y cocer 18-20 minutos sin remover.",
         "Dejar reposar 5 minutos tapada con un paño antes de servir."
       ],
-      notas: ""
+      notas: "",
+      foto: "assets/banco-fotos/crema-zanahoria.jpg" // asignación random 2026-07-14 (Roger, cobertura total del banco) — no coincide ingrediente a ingrediente
     },
     {
       id: "arroz-horno",
@@ -289,7 +295,8 @@ window.E3_RECETAS = {
         "Hornear a 200°C durante 20-25 minutos hasta que el arroz esté hecho y dorado por arriba.",
         "Dejar reposar 5 minutos antes de servir."
       ],
-      notas: ""
+      notas: "",
+      foto: "assets/banco-fotos/ensalada-lentejas.jpg" // asignación random 2026-07-14 (Roger, cobertura total del banco) — no coincide ingrediente a ingrediente
     },
     {
       id: "arroz-caldoso",
@@ -312,7 +319,8 @@ window.E3_RECETAS = {
         "Cocer 18-20 minutos a fuego medio removiendo de vez en cuando, debe quedar caldoso.",
         "Servir inmediatamente en plato hondo."
       ],
-      notas: ""
+      notas: "",
+      foto: "assets/banco-fotos/crema-zanahoria.jpg" // asignación random 2026-07-14 (Roger, cobertura total del banco) — no coincide ingrediente a ingrediente
     },
     {
       id: "arroz-verduras",
@@ -335,7 +343,8 @@ window.E3_RECETAS = {
         "Incorporar el arroz cocido y saltear todo junto 2-3 minutos.",
         "Rectificar de sal y servir caliente."
       ],
-      notas: ""
+      notas: "",
+      foto: "assets/banco-fotos/salteado-wok.jpg" // asignación random 2026-07-14 (Roger, cobertura total del banco) — no coincide ingrediente a ingrediente
     },
     {
       id: "arroz-cubana",
@@ -357,7 +366,8 @@ window.E3_RECETAS = {
         "Freír {proteina} con la yema jugosa.",
         "Emplatar el arroz en molde, la salsa de tomate al lado y el huevo por encima."
       ],
-      notas: "Clásico infantil: plátano frito opcional de acompañamiento (no incluido en el cálculo)."
+      notas: "Clásico infantil: plátano frito opcional de acompañamiento (no incluido en el cálculo).",
+      foto: "assets/banco-fotos/salteado-wok.jpg" // asignación random 2026-07-14 (Roger, cobertura total del banco) — no coincide ingrediente a ingrediente
     },
     {
       id: "pasta-bolonesa",
@@ -380,7 +390,8 @@ window.E3_RECETAS = {
         "Cocer {hidrato} al dente en agua con sal.",
         "Mezclar o servir la boloñesa sobre {hidrato}."
       ],
-      notas: ""
+      notas: "",
+      foto: "assets/banco-fotos/ensalada-lentejas.jpg" // asignación random 2026-07-14 (Roger, cobertura total del banco) — no coincide ingrediente a ingrediente
     },
     {
       id: "pasta-verduras-salteadas",
@@ -403,7 +414,8 @@ window.E3_RECETAS = {
         "Incorporar {hidrato} escurrida y saltear todo junto 2 minutos.",
         "Añadir un chorrito de aceite en crudo y servir."
       ],
-      notas: ""
+      notas: "",
+      foto: "assets/banco-fotos/ensalada-lentejas.jpg" // asignación random 2026-07-14 (Roger, cobertura total del banco) — no coincide ingrediente a ingrediente
     },
     {
       id: "pasta-atun",
@@ -425,7 +437,8 @@ window.E3_RECETAS = {
         "Añadir el atún desmenuzado y calentar 2-3 minutos.",
         "Mezclar con la pasta escurrida y servir."
       ],
-      notas: ""
+      notas: "",
+      foto: "assets/banco-fotos/salteado-wok.jpg" // asignación random 2026-07-14 (Roger, cobertura total del banco) — no coincide ingrediente a ingrediente
     },
     {
       id: "lasana-verduras",
@@ -448,7 +461,8 @@ window.E3_RECETAS = {
         "Montar capas alternando {hidrato}, el relleno y bechamel en una fuente.",
         "Cubrir con queso rallado y hornear a 200°C 20-25 minutos hasta gratinar."
       ],
-      notas: ""
+      notas: "",
+      foto: "assets/banco-fotos/plancha-guarnicion.jpg" // asignación random 2026-07-14 (Roger, cobertura total del banco) — no coincide ingrediente a ingrediente
     },
     {
       id: "pollo-asado-horno",
@@ -471,7 +485,8 @@ window.E3_RECETAS = {
         "Hornear 50-55 minutos, dando la vuelta a media cocción, hasta dorar.",
         "Dejar reposar 10 minutos antes de trinchar y servir."
       ],
-      notas: ""
+      notas: "",
+      foto: "assets/banco-fotos/salteado-wok.jpg" // asignación random 2026-07-14 (Roger, cobertura total del banco) — no coincide ingrediente a ingrediente
     },
     {
       id: "pescado-horno-limon",
@@ -494,7 +509,8 @@ window.E3_RECETAS = {
         "Colocar {proteina} encima, salpimentar, rociar con limón y aceite.",
         "Hornear 15-18 minutos más hasta que el pescado esté hecho."
       ],
-      notas: ""
+      notas: "",
+      foto: "assets/banco-fotos/plancha-guarnicion.jpg" // asignación random 2026-07-14 (Roger, cobertura total del banco) — no coincide ingrediente a ingrediente
     },
     {
       id: "verduras-horno-huevo",
@@ -517,7 +533,8 @@ window.E3_RECETAS = {
         "Hacer un hueco y cascar {proteina} encima, u hornear los huevos aparte al gusto.",
         "Hornear 5-8 minutos más hasta cuajar la clara y servir."
       ],
-      notas: ""
+      notas: "",
+      foto: "assets/banco-fotos/ensalada-lentejas.jpg" // asignación random 2026-07-14 (Roger, cobertura total del banco) — no coincide ingrediente a ingrediente
     },
     {
       id: "tortilla-patata",
@@ -539,7 +556,8 @@ window.E3_RECETAS = {
         "Cuajar en sartén antiadherente por ambos lados al punto deseado.",
         "Dejar reposar unos minutos antes de cortar."
       ],
-      notas: ""
+      notas: "",
+      foto: "assets/banco-fotos/plancha-guarnicion.jpg" // asignación random 2026-07-14 (Roger, cobertura total del banco) — no coincide ingrediente a ingrediente
     },
     {
       id: "tortilla-francesa-verdura",
@@ -560,7 +578,8 @@ window.E3_RECETAS = {
         "Añadir {verdura} salteada al huevo batido y mezclar.",
         "Cuajar en la sartén por ambos lados y servir caliente."
       ],
-      notas: ""
+      notas: "",
+      foto: "assets/banco-fotos/crema-zanahoria.jpg" // asignación random 2026-07-14 (Roger, cobertura total del banco) — no coincide ingrediente a ingrediente
     },
     {
       id: "revuelto-champinones",
@@ -581,7 +600,8 @@ window.E3_RECETAS = {
         "Remover a fuego suave hasta que cuaje cremoso, sin dejar secar.",
         "Servir enseguida con pan si se desea."
       ],
-      notas: ""
+      notas: "",
+      foto: "assets/banco-fotos/salteado-wok.jpg" // asignación random 2026-07-14 (Roger, cobertura total del banco) — no coincide ingrediente a ingrediente
     },
     {
       id: "crema-calabacin",
@@ -604,7 +624,8 @@ window.E3_RECETAS = {
         "Triturar hasta obtener una crema fina y rectificar de sal.",
         "Servir con {proteina} picado o rallado por encima."
       ],
-      notas: ""
+      notas: "",
+      foto: "assets/banco-fotos/plancha-guarnicion.jpg" // asignación random 2026-07-14 (Roger, cobertura total del banco) — no coincide ingrediente a ingrediente
     },
     {
       id: "crema-zanahoria",
@@ -651,7 +672,8 @@ window.E3_RECETAS = {
         "Triturar hasta obtener una crema homogénea, ajustando de líquido si hace falta.",
         "Servir con {proteina} por encima."
       ],
-      notas: ""
+      notas: "",
+      foto: "assets/banco-fotos/crema-zanahoria.jpg" // asignación random 2026-07-14 (Roger, cobertura total del banco) — no coincide ingrediente a ingrediente
     },
     {
       id: "crema-calabaza-boniato",
@@ -674,7 +696,8 @@ window.E3_RECETAS = {
         "Triturar hasta obtener una crema fina y rectificar de sal.",
         "Servir con {proteina} picado por encima si se desea."
       ],
-      notas: ""
+      notas: "",
+      foto: "assets/banco-fotos/salteado-wok.jpg" // asignación random 2026-07-14 (Roger, cobertura total del banco) — no coincide ingrediente a ingrediente
     },
     {
       id: "ensalada-completa",
@@ -697,7 +720,8 @@ window.E3_RECETAS = {
         "Mezclar todo en una fuente grande y aliñar con aceite, vinagre y sal.",
         "Servir templado o frío."
       ],
-      notas: ""
+      notas: "",
+      foto: "assets/banco-fotos/salteado-wok.jpg" // asignación random 2026-07-14 (Roger, cobertura total del banco) — no coincide ingrediente a ingrediente
     },
     {
       id: "ensalada-pasta",
@@ -720,7 +744,8 @@ window.E3_RECETAS = {
         "Mezclar todo con {verdura} y aliñar con aceite de oliva y sal.",
         "Dejar reposar en la nevera 10 minutos antes de servir."
       ],
-      notas: ""
+      notas: "",
+      foto: "assets/banco-fotos/plancha-guarnicion.jpg" // asignación random 2026-07-14 (Roger, cobertura total del banco) — no coincide ingrediente a ingrediente
     },
     {
       id: "ensalada-garbanzos",
@@ -743,7 +768,8 @@ window.E3_RECETAS = {
         "Aliñar con aceite de oliva, vinagre y sal.",
         "Dejar reposar 10 minutos para que se integren los sabores."
       ],
-      notas: ""
+      notas: "",
+      foto: "assets/banco-fotos/ensalada-lentejas.jpg" // asignación random 2026-07-14 (Roger, cobertura total del banco) — no coincide ingrediente a ingrediente
     },
     {
       id: "ensalada-lentejas",
@@ -790,7 +816,8 @@ window.E3_RECETAS = {
         "Mezclar {verdura}, {proteina} y los picatostes.",
         "Aliñar con una salsa ligera de yogur o mostaza y aceite, y queso rallado por encima."
       ],
-      notas: ""
+      notas: "",
+      foto: "assets/banco-fotos/crema-zanahoria.jpg" // asignación random 2026-07-14 (Roger, cobertura total del banco) — no coincide ingrediente a ingrediente
     },
     {
       id: "quinoa-ensalada",
@@ -813,7 +840,8 @@ window.E3_RECETAS = {
         "Mezclar todo en una fuente y aliñar con aceite de oliva, limón y sal.",
         "Servir fría o templada."
       ],
-      notas: ""
+      notas: "",
+      foto: "assets/banco-fotos/plancha-guarnicion.jpg" // asignación random 2026-07-14 (Roger, cobertura total del banco) — no coincide ingrediente a ingrediente
     },
     {
       id: "merluza-salsa-verde",
@@ -836,7 +864,8 @@ window.E3_RECETAS = {
         "Añadir {proteina} y {verdura}, cocinar 8-10 minutos moviendo la cazuela suavemente.",
         "Servir bien caliente con la salsa verde."
       ],
-      notas: ""
+      notas: "",
+      foto: "assets/banco-fotos/crema-zanahoria.jpg" // asignación random 2026-07-14 (Roger, cobertura total del banco) — no coincide ingrediente a ingrediente
     },
     {
       id: "salmon-salsa",
@@ -859,7 +888,8 @@ window.E3_RECETAS = {
         "Preparar una salsa ligera con un poco de nata o caldo y hierbas.",
         "Servir el salmón napado con la salsa junto a {hidrato} y {verdura}."
       ],
-      notas: ""
+      notas: "",
+      foto: "assets/banco-fotos/plancha-guarnicion.jpg" // asignación random 2026-07-14 (Roger, cobertura total del banco) — no coincide ingrediente a ingrediente
     },
     {
       id: "bacalao-tomate",
@@ -882,7 +912,8 @@ window.E3_RECETAS = {
         "Añadir {proteina} a la salsa y cocinar 6-8 minutos hasta que esté hecho.",
         "Servir con {hidrato} de acompañamiento."
       ],
-      notas: ""
+      notas: "",
+      foto: "assets/banco-fotos/salteado-wok.jpg" // asignación random 2026-07-14 (Roger, cobertura total del banco) — no coincide ingrediente a ingrediente
     },
     {
       id: "marmitako-atun",
@@ -905,7 +936,8 @@ window.E3_RECETAS = {
         "Añadir {proteina} en dados y cocinar 4-5 minutos, apagando el fuego para que se haga con el calor residual.",
         "Dejar reposar unos minutos antes de servir."
       ],
-      notas: ""
+      notas: "",
+      foto: "assets/banco-fotos/ensalada-lentejas.jpg" // asignación random 2026-07-14 (Roger, cobertura total del banco) — no coincide ingrediente a ingrediente
     },
     {
       id: "pescaditos-plancha",
@@ -928,7 +960,8 @@ window.E3_RECETAS = {
         "Hacer {proteina} a la plancha con un poco de aceite y sal, vuelta y vuelta.",
         "Servir con {hidrato} y {verdura} de acompañamiento."
       ],
-      notas: "Espinas pequeñas: revisar bien si lo va a comer un niño pequeño."
+      notas: "Espinas pequeñas: revisar bien si lo va a comer un niño pequeño.",
+      foto: "assets/banco-fotos/plancha-guarnicion.jpg" // asignación random 2026-07-14 (Roger, cobertura total del banco) — no coincide ingrediente a ingrediente
     },
     {
       id: "gallo-plancha",
@@ -951,7 +984,8 @@ window.E3_RECETAS = {
         "Hacer a la plancha 1-2 minutos por lado, son filetes finos y se hacen rápido.",
         "Servir enseguida con {hidrato} y {verdura}."
       ],
-      notas: ""
+      notas: "",
+      foto: "assets/banco-fotos/ensalada-lentejas.jpg" // asignación random 2026-07-14 (Roger, cobertura total del banco) — no coincide ingrediente a ingrediente
     },
     {
       id: "gambas-ajillo",
@@ -973,7 +1007,8 @@ window.E3_RECETAS = {
         "Saltear 2-3 minutos hasta que las gambas cambien de color, sin pasarse de fuego.",
         "Servir muy caliente con {hidrato}."
       ],
-      notas: "Omitir la guindilla para que sea apto para niños."
+      notas: "Omitir la guindilla para que sea apto para niños.",
+      foto: "assets/banco-fotos/crema-zanahoria.jpg" // asignación random 2026-07-14 (Roger, cobertura total del banco) — no coincide ingrediente a ingrediente
     },
     {
       id: "mejillones-marinera",
@@ -996,7 +1031,8 @@ window.E3_RECETAS = {
         "Incorporar los mejillones y tapar hasta que se abran, unos 5-6 minutos.",
         "Servir con {hidrato} para mojar en la salsa."
       ],
-      notas: "Descartar los mejillones que no se abran al cocinar."
+      notas: "Descartar los mejillones que no se abran al cocinar.",
+      foto: "assets/banco-fotos/plancha-guarnicion.jpg" // asignación random 2026-07-14 (Roger, cobertura total del banco) — no coincide ingrediente a ingrediente
     },
     {
       id: "empanadillas-caseras",
@@ -1018,7 +1054,8 @@ window.E3_RECETAS = {
         "Pintar con huevo batido si se van a hornear.",
         "Hornear a 200°C 15-18 minutos hasta dorar, u freír en aceite caliente."
       ],
-      notas: ""
+      notas: "",
+      foto: "assets/banco-fotos/crema-zanahoria.jpg" // asignación random 2026-07-14 (Roger, cobertura total del banco) — no coincide ingrediente a ingrediente
     },
     {
       id: "wrap-casero",
@@ -1041,7 +1078,8 @@ window.E3_RECETAS = {
         "Rellenar con {proteina} y {verdura}.",
         "Enrollar apretando bien y cortar por la mitad para servir."
       ],
-      notas: ""
+      notas: "",
+      foto: "assets/banco-fotos/salteado-wok.jpg" // asignación random 2026-07-14 (Roger, cobertura total del banco) — no coincide ingrediente a ingrediente
     },
     {
       id: "hummus-plato",
@@ -1063,7 +1101,8 @@ window.E3_RECETAS = {
         "Servir el hummus en un plato con un chorrito de aceite de oliva por encima.",
         "Acompañar con {hidrato} y {verdura} en bastones."
       ],
-      notas: ""
+      notas: "",
+      foto: "assets/banco-fotos/plancha-guarnicion.jpg" // asignación random 2026-07-14 (Roger, cobertura total del banco) — no coincide ingrediente a ingrediente
     },
     {
       id: "tofu-plancha-verduras",
@@ -1086,7 +1125,8 @@ window.E3_RECETAS = {
         "Marcar el tofu a la plancha hasta que quede dorado por fuera.",
         "Servir todo junto con un chorrito de salsa de soja."
       ],
-      notas: "Sazonar suave (poca salsa de soja) para que resulte más amable a los niños."
+      notas: "Sazonar suave (poca salsa de soja) para que resulte más amable a los niños.",
+      foto: "assets/banco-fotos/salteado-wok.jpg" // asignación random 2026-07-14 (Roger, cobertura total del banco) — no coincide ingrediente a ingrediente
     },
     {
       id: "salteado-wok",
@@ -1133,7 +1173,8 @@ window.E3_RECETAS = {
         "Lavar y cortar {verdura}.",
         "Montar la hamburguesa con {hidrato}, {verdura} y la carne."
       ],
-      notas: ""
+      notas: "",
+      foto: "assets/banco-fotos/ensalada-lentejas.jpg" // asignación random 2026-07-14 (Roger, cobertura total del banco) — no coincide ingrediente a ingrediente
     },
     {
       id: "pizza-casera",
@@ -1156,7 +1197,8 @@ window.E3_RECETAS = {
         "Añadir queso rallado por encima.",
         "Hornear 10-12 minutos hasta que el borde esté dorado y el queso fundido."
       ],
-      notas: ""
+      notas: "",
+      foto: "assets/banco-fotos/crema-zanahoria.jpg" // asignación random 2026-07-14 (Roger, cobertura total del banco) — no coincide ingrediente a ingrediente
     },
     {
       id: "sopa-fideos",
@@ -1179,7 +1221,8 @@ window.E3_RECETAS = {
         "Añadir {proteina} batido en forma de hilos removiendo el caldo (huevo hilado), opcional.",
         "Servir bien caliente."
       ],
-      notas: ""
+      notas: "",
+      foto: "assets/banco-fotos/salteado-wok.jpg" // asignación random 2026-07-14 (Roger, cobertura total del banco) — no coincide ingrediente a ingrediente
     },
     {
       id: "menestra-verduras",
@@ -1201,7 +1244,8 @@ window.E3_RECETAS = {
         "Preparar {proteina} (huevo duro cortado o pollo a la plancha) como acompañamiento.",
         "Servir la menestra con {proteina} por encima o al lado."
       ],
-      notas: "Combinación de sabores variados: algunos niños la resisten mejor si las verduras se sirven por separado."
+      notas: "Combinación de sabores variados: algunos niños la resisten mejor si las verduras se sirven por separado.",
+      foto: "assets/banco-fotos/salteado-wok.jpg" // asignación random 2026-07-14 (Roger, cobertura total del banco) — no coincide ingrediente a ingrediente
     },
     {
       id: "garbanzos-espinacas",
@@ -1224,7 +1268,8 @@ window.E3_RECETAS = {
         "Añadir {proteina} (huevo escalfado o bacalao en trozos) y cocinar unos minutos más.",
         "Servir bien caliente."
       ],
-      notas: ""
+      notas: "",
+      foto: "assets/banco-fotos/plancha-guarnicion.jpg" // asignación random 2026-07-14 (Roger, cobertura total del banco) — no coincide ingrediente a ingrediente
     },
     {
       id: "albondigas-salsa",
@@ -1247,7 +1292,8 @@ window.E3_RECETAS = {
         "Cocer las albóndigas en la salsa 15-20 minutos a fuego suave.",
         "Servir con {hidrato} de acompañamiento."
       ],
-      notas: ""
+      notas: "",
+      foto: "assets/banco-fotos/ensalada-lentejas.jpg" // asignación random 2026-07-14 (Roger, cobertura total del banco) — no coincide ingrediente a ingrediente
     },
     {
       id: "patatas-guisadas",
@@ -1270,7 +1316,8 @@ window.E3_RECETAS = {
         "Cubrir con caldo y cocer a fuego medio 25-30 minutos hasta que todo esté tierno.",
         "Rectificar de sal y dejar reposar antes de servir."
       ],
-      notas: ""
+      notas: "",
+      foto: "assets/banco-fotos/plancha-guarnicion.jpg" // asignación random 2026-07-14 (Roger, cobertura total del banco) — no coincide ingrediente a ingrediente
     },
     {
       id: "coliflor-gratinada",
@@ -1293,7 +1340,8 @@ window.E3_RECETAS = {
         "Añadir {proteina} rallado o picado por encima.",
         "Gratinar en el horno 8-10 minutos hasta dorar."
       ],
-      notas: "Sabor fuerte de la coliflor: no siempre triunfa entre los más pequeños."
+      notas: "Sabor fuerte de la coliflor: no siempre triunfa entre los más pequeños.",
+      foto: "assets/banco-fotos/ensalada-lentejas.jpg" // asignación random 2026-07-14 (Roger, cobertura total del banco) — no coincide ingrediente a ingrediente
     }
   ]
 };

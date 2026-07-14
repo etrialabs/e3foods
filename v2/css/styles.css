@@ -304,6 +304,16 @@ body.wizard-open { overflow: hidden; }
   margin-bottom: 2px;
 }
 .cabecera-contador { font-size: var(--fs-aux); font-weight: 700; color: rgba(245, 240, 232, .55); margin-bottom: 4px; }
+/* botón "+" de cabecera (Roger 2026-07-14) — solo Recetas lo usa (banco de
+   platos), Semana tiene su propia cabecera clara y no pasa por aquí. */
+.cabecera-derecha-grupo { display: flex; align-items: center; gap: var(--space-2); }
+.cabecera-btn-anadir {
+  width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
+  background: var(--gold); color: var(--accent-ink); border: none;
+  font-size: 20px; font-weight: 700; line-height: 1; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.cabecera-btn-anadir:active { background: var(--gold-soft); }
 
 .vista-body { max-width: 640px; margin: 0 auto; padding: var(--space-3) var(--space-3) var(--space-5); }
 
@@ -476,8 +486,29 @@ body.wizard-open { overflow: hidden; }
 .pildora-dia-activa.pildora-dia-hoy .pildora-dia-letra { color: var(--gold); }
 
 /* ============================================================
-   RECETAS — chips de filtro por categoría
+   RECETAS — buscador + filtros colapsables + chips por categoría
    ============================================================ */
+.recetas-buscador-fila { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-3); }
+.buscador-wrap { position: relative; flex: 1; min-width: 0; }
+.input-buscador-icono {
+  position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+  width: 18px; height: 18px; color: var(--muted); pointer-events: none;
+}
+.input-buscador-icono svg { width: 100%; height: 100%; stroke: currentColor; display: block; }
+.input-buscador {
+  width: 100%; min-height: 44px; border: 1.5px solid var(--line-solid); border-radius: 12px;
+  padding: 0 var(--space-2) 0 40px; background: var(--panel); color: var(--ink);
+  font-size: var(--fs-cuerpo); font-family: inherit;
+}
+.input-buscador::placeholder { color: var(--muted); }
+.input-buscador:focus { outline: none; border-color: var(--gold); }
+.btn-filtro-icono {
+  width: 44px; height: 44px; flex-shrink: 0; border-radius: 12px; border: 1.5px solid var(--line-solid);
+  background: var(--panel); color: var(--soft); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.btn-filtro-icono svg { width: 20px; height: 20px; stroke: currentColor; display: block; }
+.btn-filtro-icono-activo { background: var(--ink); border-color: var(--ink); color: var(--gold); }
 .chips-filtro { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-bottom: var(--space-3); }
 .chip-filtro {
   font-size: var(--fs-aux); font-weight: 700; border-radius: 999px; padding: 7px 14px;
@@ -594,6 +625,15 @@ body.sheet-open { overflow: hidden; }
 .fila-receta-nombre { font-size: var(--fs-cuerpo); font-weight: 600; display: flex; flex-direction: column; gap: 2px; }
 .receta-oculta { opacity: 0.5; }
 .receta-oculta .fila-receta-nombre { text-decoration: line-through; }
+/* estrella (favorita) + ojo (ocultar) por fila (Roger 2026-07-14) —
+   sustituye el texto "Ocultar"/"Mostrar" de antes. */
+.fila-receta-acciones { display: flex; align-items: center; gap: var(--space-1); flex-shrink: 0; }
+.btn-icono-fila {
+  width: 40px; height: 40px; border-radius: 50%; border: none; background: none;
+  color: var(--muted); cursor: pointer; display: flex; align-items: center; justify-content: center;
+}
+.btn-icono-fila svg { width: 20px; height: 20px; stroke: currentColor; display: block; }
+.btn-icono-fila.btn-icono-activo { color: var(--gold); }
 
 /* ============================================================
    Bottom nav — 4 pestañas de texto, zona del pulgar, punto dorado activo
@@ -632,16 +672,6 @@ body.sheet-open { overflow: hidden; }
   color: var(--ink); background: var(--panel); font-size: var(--fs-cuerpo); font-weight: 600;
 }
 
-.pills-familia { display: flex; flex-wrap: wrap; gap: var(--space-2); }
-.pill-miembro {
-  font-size: var(--fs-aux); font-weight: 700; background: var(--ink); color: var(--navy-ink);
-  border-radius: 999px; padding: 8px 14px; display: inline-flex; align-items: center; gap: 6px;
-}
-.pill-anadir-miembro {
-  font-size: var(--fs-aux); font-weight: 600; border: 1.5px dashed var(--line-solid); border-radius: 999px;
-  padding: 8px 14px; color: var(--soft); background: none; cursor: pointer;
-}
-
 .fila-enlace {
   display: flex; align-items: center; padding: 14px 16px; min-height: 48px; cursor: pointer;
   background: var(--panel); border: none; width: 100%; text-align: left; font-size: var(--fs-cuerpo); font-weight: 700; color: var(--ink);
@@ -655,6 +685,19 @@ body.sheet-open { overflow: hidden; }
    ============================================================ */
 .lista-miembros { display: flex; flex-direction: column; gap: var(--space-2); }
 .miembro-card { background: var(--panel); border: 1px solid var(--line-solid); border-radius: 16px; padding: var(--space-2) var(--space-3); }
+/* última card de la lista (Roger 2026-07-14) — sustituye la fila de pills
+   que duplicaba nombre/año/dieta ya visibles en las cards de abajo. */
+.miembro-card-anadir {
+  display: flex; align-items: center; gap: var(--space-2); width: 100%;
+  background: none; border: 1.5px dashed var(--line-solid); border-radius: 16px;
+  padding: var(--space-2) var(--space-3); min-height: 64px; cursor: pointer;
+  color: var(--soft); font-size: var(--fs-cuerpo); font-weight: 700; text-align: left;
+}
+.miembro-card-anadir-icono {
+  width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0;
+  background: var(--gold); color: var(--accent-ink); font-size: 22px; font-weight: 700; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+}
 .miembro-card summary {
   display: flex; align-items: center; gap: var(--space-2); cursor: pointer;
   min-height: 48px; list-style: none;

@@ -87,7 +87,7 @@
   // Estado
   // ---------------------------------------------------------------
   function estadoVacio() {
-    return { nombreFamilia: '', familia: [], ausenciasPuntuales: {}, plan: null, ocultas: [], propias: [], compra: { marcados: [] } };
+    return { nombreFamilia: '', familia: [], ausenciasPuntuales: {}, plan: null, ocultas: [], favoritas: [], propias: [], compra: { marcados: [] } };
   }
 
   function cargarEstado() {
@@ -116,6 +116,8 @@
   var estado = cargarEstado();
   var vistaActual = 'semana';
   var filtroRecetas = 'todas'; // estado de UI, no persistido (SPEC: filtroRecetas)
+  var busquedaRecetas = ''; // estado de UI, no persistido
+  var filtrosRecetasVisibles = false; // colapsados por defecto (Roger 2026-07-14)
   var rangoCompra = '7d'; // '7d' | 'hoy' — estado de UI, no persistido (SPEC: rangoCompra)
   var semanaDiaSeleccionado = null; // índice 0-6 en la vista Semana — estado de UI, no persistido; null = hoy
   var pendienteCambiar = null; // {dia, tipoComida} mientras el sheet de "cambiar" está abierto
@@ -158,7 +160,7 @@
     document.querySelectorAll('.vista').forEach(function (v) { v.hidden = (v.id !== 'vista-' + vistaActual); });
     document.querySelectorAll('.nav-btn').forEach(function (b) { b.classList.toggle('active', b.dataset.vista === vistaActual); b.setAttribute('aria-current', b.dataset.vista === vistaActual ? 'page' : 'false'); });
     if (vistaActual === 'semana') cont.innerHTML = UI.renderSemana(estado, estado.plan, BANCO, semanaDiaSeleccionado);
-    else if (vistaActual === 'recetas') cont.innerHTML = UI.renderRecetasVista(estado, BANCO, filtroRecetas);
+    else if (vistaActual === 'recetas') cont.innerHTML = UI.renderRecetasVista(estado, BANCO, filtroRecetas, busquedaRecetas, filtrosRecetasVisibles);
     else if (vistaActual === 'compra') cont.innerHTML = UI.renderCompraVista(estado, estado.plan, BANCO, rangoCompra);
     aplicarDetallesAbiertos(cont);
   }
@@ -186,6 +188,18 @@
   function abrirSheetFamilia() {
     abrirSheet(UI.renderSheetFamilia(estado, BANCO));
     aplicarDetallesAbiertos(document.getElementById('sheet-contenido'));
+  }
+
+  // Menú hamburguesa (Roger 2026-07-14): Familia + Regenerar menús
+  function abrirMenuHamburguesa() {
+    abrirSheet(UI.renderSheetMenu());
+  }
+
+  function regenerarSemanaCompleta() {
+    if (!estado.familia.length) { cerrarSheet(); return; }
+    estado.plan = E.generarSemana(estado, BANCO);
+    guardarEstado();
+    cerrarSheet(); // ya re-renderiza
   }
 
   // ---------------------------------------------------------------
@@ -499,6 +513,13 @@
     render();
   }
 
+  function toggleFavoritaReceta(plantillaId) {
+    var idx = estado.favoritas.indexOf(plantillaId);
+    if (idx === -1) estado.favoritas.push(plantillaId); else estado.favoritas.splice(idx, 1);
+    guardarEstado();
+    render();
+  }
+
   function anadirRecetaPropia() {
     var val = function (id) { return document.getElementById(id).value; };
     var nombre = val('rp-nombre').trim();
@@ -527,6 +548,9 @@
     'empezar': function () { cerrarLanding(); },
     'ir-vista': function (btn) { irAVista(btn.dataset.vista); },
     'abrir-familia': function () { abrirSheetFamilia(); },
+    'abrir-menu-hamburguesa': function () { abrirMenuHamburguesa(); },
+    'menu-ir-familia': function () { abrirSheetFamilia(); },
+    'menu-regenerar-semana': function () { regenerarSemanaCompleta(); },
 
     'wizard-siguiente-bienvenida': function () { wizardSiguienteBienvenida(); },
     'wizard-volver-bienvenida': function () { mostrarWizardBienvenida(); },
@@ -577,6 +601,13 @@
     'segmento-compra': function (btn) { rangoCompra = btn.dataset.rango; render(); },
     'semana-elegir-dia': function (btn) { semanaDiaSeleccionado = parseInt(btn.dataset.dia, 10); render(); },
     'filtro-receta': function (btn) { filtroRecetas = btn.dataset.categoria; render(); },
+    'toggle-filtros-receta': function () { filtrosRecetasVisibles = !filtrosRecetasVisibles; render(); },
+    'abrir-form-receta-propia': function () {
+      var det = document.querySelector('.receta-propia-form');
+      if (!det) return;
+      det.open = true;
+      det.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    },
 
     'abrir-receta': function (btn) { abrirRecetaDetalle(Number(btn.dataset.dia), btn.dataset.tipo); },
     'abrir-cambiar': function (btn) { abrirCambiar(Number(btn.dataset.dia), btn.dataset.tipo); },
@@ -592,6 +623,7 @@
     'toggle-patron': function (btn) { togglePatron(btn.dataset.id, btn.dataset.tipo, Number(btn.dataset.dia)); },
     'toggle-veto': function (btn) { toggleVeto(btn.dataset.id, btn.dataset.ingrediente); },
     'toggle-oculta-receta': function (btn) { toggleOcultaReceta(btn.dataset.plantilla); },
+    'toggle-favorita-receta': function (btn) { toggleFavoritaReceta(btn.dataset.plantilla); },
     'anadir-receta-propia': function () { anadirRecetaPropia(); }
   };
 
@@ -651,6 +683,15 @@
     if (!t) return;
     if (t.id === 'wz-nombre-familia') wizardNombreFamilia = t.value;
     else if (t.id === 'mf-nombre' && !formFotoActual) actualizarPreviewFotoForm();
+    else if (t.id === 'recetas-buscador') {
+      // render() reconstruye el <input> entero — sin restaurar foco/cursor,
+      // cada letra tecleada perdería el foco (Roger 2026-07-14, buscador vivo).
+      busquedaRecetas = t.value;
+      var cursor = t.selectionStart;
+      render();
+      var nuevo = document.getElementById('recetas-buscador');
+      if (nuevo) { nuevo.focus(); nuevo.setSelectionRange(cursor, cursor); }
+    }
   });
 
   // ---------------------------------------------------------------

@@ -19,7 +19,10 @@
     'pescado-blanco': 'Pescado blanco', 'pescado-azul': 'Pescado azul', 'marisco': 'Marisco',
     'carne-blanca': 'Carne blanca', 'carne-roja': 'Carne roja', 'legumbre': 'Legumbre',
     'huevo': 'Huevo', 'lacteo': 'Lácteo', 'cereal': 'Cereal', 'tuberculo': 'Tubérculo',
-    'verdura': 'Vegetal', 'fruta': 'Fruta', 'otro': 'Otro'
+    'verdura': 'Vegetal', 'fruta': 'Fruta', 'otro': 'Otro',
+    // Roger 2026-07-14: chips presentes aunque el banco no tiene el dato para
+    // filtrar de verdad todavía — ver nota en renderRecetasVista.
+    'vegetariana': 'Vegetariana', 'sin-gluten': 'Sin gluten'
   };
   var ORDEN_CATEGORIA = ['pescado-blanco', 'pescado-azul', 'marisco', 'carne-blanca', 'carne-roja', 'legumbre', 'huevo', 'lacteo', 'cereal', 'tuberculo', 'verdura', 'fruta', 'otro'];
 
@@ -81,6 +84,10 @@
     } else if (opts.contador) {
       derecha = '<span class="cabecera-contador">' + escapeHtml(opts.contador) + '</span>';
     }
+    if (opts.botonAnadir) {
+      derecha = '<div class="cabecera-derecha-grupo">' + derecha +
+        '<button type="button" class="cabecera-btn-anadir" data-action="' + opts.botonAnadir + '" aria-label="Añadir receta">+</button></div>';
+    }
     var claseFija = opts.fija ? ' cabecera-midnight-fija' : '';
     return '<header class="cabecera-midnight' + claseFija + '"><div class="cabecera-fila">' + titulo + derecha + '</div>' + (opts.extra || '') + '</header>';
   }
@@ -97,6 +104,19 @@
   // queda decorativa — no hay sistema de notificaciones construido todavía.
   var ICONO_MENU = '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6.5h16M4 12h16M4 17.5h16"/></svg>';
   var ICONO_CAMPANA = '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 10.5a6 6 0 0 1 12 0c0 4 1.4 5.3 2 6H4c.6-.7 2-2 2-6z"/><path d="M10 19a2.2 2.2 0 0 0 4 0"/></svg>';
+
+  // RECETAS (Roger 2026-07-14): buscador, filtros colapsables, favorita/ocultar por fila
+  var ICONO_BUSCAR = '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M20 20l-4.8-4.8"/></svg>';
+  var ICONO_FILTRO = '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6.5h16M7.5 12h9M11 17.5h2"/></svg>';
+  var ICONO_OJO = '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+  var ICONO_OJO_TACHADO = '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 3.5l17 17M10.6 10.7a3 3 0 0 0 4.2 4.2M7 7.4C4.7 8.9 2.5 12 2.5 12S6 18.5 12 18.5c1.8 0 3.4-.4 4.8-1.1M17.9 16c2.3-1.6 3.6-4 3.6-4S18 5.5 12 5.5c-.9 0-1.8.1-2.6.4"/></svg>';
+  var ICONO_ESTRELLA = '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5l2.6 5.4 5.9.7-4.3 4.1 1.1 5.9L12 16.8l-5.3 2.8 1.1-5.9-4.3-4.1 5.9-.7z"/></svg>';
+  var ICONO_ESTRELLA_LLENA = '<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 3.5l2.6 5.4 5.9.7-4.3 4.1 1.1 5.9L12 16.8l-5.3 2.8 1.1-5.9-4.3-4.1 5.9-.7z"/></svg>';
+
+  // quita acentos para que "salmon" encuentre "Salmón" en el buscador
+  function normalizarTexto(s) {
+    return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  }
 
   // "Salmón a la plancha con Patata y Calabacín" -> título + subtítulo ("con..."),
   // heurística simple sobre el patrón de nombres del banco (todos siguen "X con Y").
@@ -272,7 +292,7 @@
   // ---------------------------------------------------------------
   function renderAppBar() {
     return '<header class="app-bar">' +
-      '<button type="button" class="app-bar-btn" data-action="abrir-familia" aria-label="Menú, tu familia">' + ICONO_MENU + '</button>' +
+      '<button type="button" class="app-bar-btn" data-action="abrir-menu-hamburguesa" aria-label="Menú">' + ICONO_MENU + '</button>' +
       '<p class="app-bar-logo"><span class="app-bar-logo-e3">e3</span><span class="app-bar-logo-foods">foods</span></p>' +
       '<button type="button" class="app-bar-btn app-bar-campana" aria-label="Notificaciones" disabled>' + ICONO_CAMPANA + '<span class="app-bar-campana-dot" aria-hidden="true"></span></button>' +
       '</header>';
@@ -368,15 +388,20 @@
       '</div></details>';
   }
 
-  function renderRecetasVista(estado, banco, filtro) {
+  function renderRecetasVista(estado, banco, filtro, busqueda, filtrosVisibles) {
     filtro = filtro || 'todas';
+    busqueda = busqueda || '';
     var todas = (banco.plantillas || []).concat(estado.propias || []);
     var ocultas = estado.ocultas || [];
+    var favoritas = estado.favoritas || [];
 
     var categoriasPresentes = {};
     todas.forEach(function (p) { Object.keys(categoriasDePlantilla(p, banco)).forEach(function (c) { categoriasPresentes[c] = 1; }); });
     var categorias = ORDEN_CATEGORIA.filter(function (c) { return categoriasPresentes[c]; });
-    var chips = ['todas'].concat(categorias);
+    // vegetariana/sin-gluten van siempre, aunque el banco no tenga ese dato
+    // todavía (Roger 2026-07-14) — al elegirlas ninguna plantilla coincide y
+    // se ve el mensaje de "sin resultados" habitual: honesto, no simulado.
+    var chips = ['todas'].concat(categorias, ['vegetariana', 'sin-gluten']);
 
     var chipsHtml = chips.map(function (c) {
       var activo = c === filtro;
@@ -385,19 +410,36 @@
     }).join('');
 
     var listaFiltrada = filtro === 'todas' ? todas : todas.filter(function (p) { return categoriasDePlantilla(p, banco)[filtro]; });
+    if (busqueda.trim()) {
+      var q = normalizarTexto(busqueda);
+      listaFiltrada = listaFiltrada.filter(function (p) { return normalizarTexto(nombreGenerico(p.nombre_patron)).indexOf(q) !== -1; });
+    }
 
     var filasHtml = listaFiltrada.map(function (p) {
       var oculta = ocultas.indexOf(p.id) !== -1;
+      var favorita = favoritas.indexOf(p.id) !== -1;
       return '<li class="fila-receta ' + (oculta ? 'receta-oculta' : '') + '">' +
         '<span class="fila-receta-nombre">' + escapeHtml(capitaliza(nombreGenerico(p.nombre_patron))) + '<span class="fila-plantilla-meta">' + (p.tiempo_min || '?') + ' min · ' + escapeHtml(p.esfuerzo || '') + '</span></span>' +
-        '<button type="button" class="btn-texto" data-action="toggle-oculta-receta" data-plantilla="' + p.id + '">' + (oculta ? 'Mostrar' : 'Ocultar') + '</button>' +
+        '<span class="fila-receta-acciones">' +
+          '<button type="button" class="btn-icono-fila' + (favorita ? ' btn-icono-activo' : '') + '" data-action="toggle-favorita-receta" data-plantilla="' + p.id + '" aria-label="' + (favorita ? 'Quitar de favoritas' : 'Marcar como favorita') + '" aria-pressed="' + favorita + '">' + (favorita ? ICONO_ESTRELLA_LLENA : ICONO_ESTRELLA) + '</button>' +
+          '<button type="button" class="btn-icono-fila" data-action="toggle-oculta-receta" data-plantilla="' + p.id + '" aria-label="' + (oculta ? 'Mostrar receta' : 'Ocultar receta') + '">' + (oculta ? ICONO_OJO : ICONO_OJO_TACHADO) + '</button>' +
+        '</span>' +
         '</li>';
     }).join('');
 
-    var cabecera = renderCabecera({ tituloPlain: 'Banco de', tituloItalico: 'recetas', contador: todas.length + ' platos' });
+    var cabecera = renderCabecera({ tituloPlain: 'Banco de', tituloItalico: 'recetas', contador: todas.length + ' platos', botonAnadir: 'abrir-form-receta-propia' });
+
+    var buscadorFila = '<div class="recetas-buscador-fila">' +
+      '<div class="buscador-wrap">' +
+        '<span class="input-buscador-icono" aria-hidden="true">' + ICONO_BUSCAR + '</span>' +
+        '<input type="search" id="recetas-buscador" class="input-buscador" placeholder="Buscar receta" value="' + escapeHtml(busqueda) + '">' +
+      '</div>' +
+      '<button type="button" class="btn-filtro-icono' + (filtrosVisibles ? ' btn-filtro-icono-activo' : '') + '" data-action="toggle-filtros-receta" aria-label="Filtros" aria-expanded="' + !!filtrosVisibles + '">' + ICONO_FILTRO + '</button>' +
+      '</div>';
 
     return cabecera + '<div class="vista-body">' +
-      '<div class="chips-filtro">' + chipsHtml + '</div>' +
+      buscadorFila +
+      (filtrosVisibles ? '<div class="chips-filtro">' + chipsHtml + '</div>' : '') +
       '<ul class="lista-recetas">' + (filasHtml || '<p class="card-msg">No hay recetas en esta categoría.</p>') + '</ul>' +
       renderFormRecetaPropia(banco) +
       '</div>';
@@ -664,24 +706,37 @@
 
   function renderSheetFamilia(estado, banco) {
     var miembros = estado.familia || [];
-    var pills = miembros.map(function (m) {
-      var extra = (m.dieta && m.dieta !== 'omnivora') ? (' · ' + (ETIQUETAS_DIETA[m.dieta] || '')) : '';
-      return '<span class="pill-miembro">' + escapeHtml(m.nombre) + ' · ' + (m.anioNacimiento || '?') + extra + '</span>';
-    }).join('');
     var ocultasN = (estado.ocultas || []).length;
     var miembrosCards = miembros.map(function (m) { return renderMiembro(m, banco); }).join('');
+    // "+ Añadir miembro" como última card de la lista (Roger 2026-07-14) —
+    // sustituye a la fila de pills que duplicaba la misma info de las cards
+    // de debajo.
+    var tarjetaAnadir = '<button type="button" class="miembro-card-anadir" data-action="familia-abrir-form-miembro">' +
+      '<span class="miembro-card-anadir-icono" aria-hidden="true">+</span>' +
+      '<span>Añadir miembro</span>' +
+      '</button>';
 
     return '<div class="sheet-head"><h2>Tu familia</h2>' +
       '<button type="button" class="btn-cerrar" data-action="cerrar-sheet" aria-label="Cerrar">&times;</button></div>' +
       '<div class="sheet-body">' +
       '<label class="campo-nombre-familia"><span class="campo-eyebrow">Nombre de familia</span>' +
         '<input type="text" id="familia-nombre-input" class="input-editorial" data-campo="nombreFamilia" maxlength="40" value="' + escapeHtml(estado.nombreFamilia || '') + '"></label>' +
-      '<div class="pills-familia">' + pills +
-        '<button type="button" class="pill-anadir-miembro" data-action="familia-abrir-form-miembro">+ miembro</button>' +
-      '</div>' +
-      '<div class="lista-miembros">' + miembrosCards + '</div>' +
+      '<div class="lista-miembros">' + miembrosCards + tarjetaAnadir + '</div>' +
       '<div class="lista-enlaces">' +
         '<button type="button" class="fila-enlace" data-action="ir-recetas-ocultas"><span>Recetas ocultas</span><span class="fila-enlace-valor">' + ocultasN + ' ›</span></button>' +
+      '</div>' +
+      '</div>';
+  }
+
+  // Menú hamburguesa (Roger 2026-07-14): antes abría "Tu familia" directo,
+  // ahora es un menú con 2 destinos — reutiliza el sheet genérico.
+  function renderSheetMenu() {
+    return '<div class="sheet-head"><h2>Menú</h2>' +
+      '<button type="button" class="btn-cerrar" data-action="cerrar-sheet" aria-label="Cerrar">&times;</button></div>' +
+      '<div class="sheet-body">' +
+      '<div class="lista-enlaces">' +
+        '<button type="button" class="fila-enlace" data-action="menu-ir-familia"><span>Familia</span></button>' +
+        '<button type="button" class="fila-enlace" data-action="menu-regenerar-semana"><span>Regenerar menús</span></button>' +
       '</div>' +
       '</div>';
   }
@@ -696,6 +751,7 @@
     renderNevera: renderNevera,
     renderConfirmarRegenerar: renderConfirmarRegenerar,
     renderSheetFamilia: renderSheetFamilia,
+    renderSheetMenu: renderSheetMenu,
     renderFormMiembroCompleto: renderFormMiembroCompleto,
     renderWizardBienvenida: renderWizardBienvenida,
     renderWizardHub: renderWizardHub,

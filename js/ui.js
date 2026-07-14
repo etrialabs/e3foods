@@ -639,7 +639,8 @@
       '<h1 class="wizard-pregunta">Quiero conoceros.<br>¿Cómo os llamáis?</h1>' +
       '<label class="campo-nombre-familia"><span class="campo-eyebrow">Nombre de familia</span>' +
         '<input type="text" id="wz-nombre-familia" class="input-editorial" maxlength="40" placeholder="p.ej. Los Fernández" value="' + escapeHtml(nombreFamilia || '') + '" autofocus></label>' +
-      '<button type="button" class="btn-primary wizard-cta" data-action="wizard-siguiente-bienvenida">Siguiente</button>';
+      '<button type="button" class="btn-primary wizard-cta" data-action="wizard-siguiente-bienvenida">Siguiente</button>' +
+      '<button type="button" class="btn-texto" data-action="landing-unirse">¿Ya tienes un código de familia?</button>';
   }
 
   // PASO 2 — "¿quién vive en casa de los X?" (usa el nombre ya dado, paso 1,
@@ -780,7 +781,8 @@
   function renderMenuHamburguesa() {
     return '<button type="button" class="menu-dropdown-item" role="menuitem" data-action="menu-ir-familia">Familia</button>' +
       '<button type="button" class="menu-dropdown-item" role="menuitem" data-action="menu-regenerar-semana">Regenerar menús</button>' +
-      '<button type="button" class="menu-dropdown-item" role="menuitem" data-action="menu-importar-cole">Importar menú del cole</button>';
+      '<button type="button" class="menu-dropdown-item" role="menuitem" data-action="menu-importar-cole">Importar menú del cole</button>' +
+      '<button type="button" class="menu-dropdown-item" role="menuitem" data-action="menu-sync">Sincronizar familia</button>';
   }
 
   // Placeholder honesto — el parser de PDF real (heurística de columnas por
@@ -791,6 +793,38 @@
       '<button type="button" class="btn-cerrar" data-action="cerrar-sheet" aria-label="Cerrar">&times;</button></div>' +
       '<div class="sheet-body">' +
       '<p class="card-msg">Próximamente: sube el PDF del menú del cole y detectamos qué proteína/hidrato evitar repetir en la cena de casa esos días. Todavía no está construido en esta versión.</p>' +
+      '</div>';
+  }
+
+  // Sincronización multiusuario (Roger 2026-07-14, pilar de backend). Misma
+  // sheet sirve desde el hamburguesa (familia ya dada de alta) y desde la
+  // landing (dispositivo nuevo que solo quiere unirse con un código).
+  function renderSheetSync(opts) {
+    opts = opts || {};
+    var head = '<div class="sheet-head"><h2>Sincronizar familia</h2>' +
+      '<button type="button" class="btn-cerrar" data-action="cerrar-sheet" aria-label="Cerrar">&times;</button></div>';
+
+    if (opts.cargando) {
+      return head + '<div class="sheet-body"><p class="card-msg">Cargando…</p></div>';
+    }
+
+    if (opts.synced) {
+      return head + '<div class="sheet-body">' +
+        '<p class="card-msg">' + escapeHtml(opts.nombreFamilia || 'Tu familia') + ' está sincronizada. Comparte este código con quien quieras que vea y edite el menú desde su móvil:</p>' +
+        '<p class="card-msg" style="font-size:28px;font-weight:700;letter-spacing:.08em;text-align:center;margin:16px 0;">' + escapeHtml(opts.code || '') + '</p>' +
+        '<p class="card-msg">Cualquier dispositivo con este código ve y edita todo el menú — no hay permisos distintos por persona.</p>' +
+        '</div>';
+    }
+
+    var errorHtml = opts.error ? '<p class="card-msg">' + escapeHtml(opts.error) + '</p>' : '';
+
+    return head + '<div class="sheet-body">' +
+      '<p class="card-msg">Activa la sincronización para ver y editar el menú desde varios móviles a la vez.</p>' +
+      errorHtml +
+      '<button type="button" class="btn-primary" id="sync-activar-btn" data-action="sync-activar">Activar sincronización</button>' +
+      '<p class="card-msg" style="margin-top:24px">¿Ya tienes un código de otra familia?</p>' +
+      '<label>Código<input type="text" id="sync-code-input" class="input-editorial" placeholder="8 caracteres" maxlength="8" autocapitalize="characters" autocomplete="off"></label>' +
+      '<button type="button" class="btn-secondary" id="sync-unirse-btn" data-action="sync-unirse">Unirme con el código</button>' +
       '</div>';
   }
 
@@ -806,6 +840,7 @@
     renderSheetFamilia: renderSheetFamilia,
     renderMenuHamburguesa: renderMenuHamburguesa,
     renderSheetImportarCole: renderSheetImportarCole,
+    renderSheetSync: renderSheetSync,
     renderFormMiembroCompleto: renderFormMiembroCompleto,
     renderWizardBienvenida: renderWizardBienvenida,
     renderWizardHub: renderWizardHub,

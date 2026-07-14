@@ -103,6 +103,9 @@
 
   function guardarEstado() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(estado));
+    if (window.E3Sync && window.E3Sync.getFamilyId()) {
+      window.E3Sync.guardarRemotoDebounced(estado);
+    }
   }
 
   // "Quién soy yo en este móvil" (Roger 2026-07-14): clave de localStorage
@@ -235,6 +238,84 @@
 
   function abrirImportarCole() {
     abrirSheet(UI.renderSheetImportarCole());
+  }
+
+  // ---------------------------------------------------------------
+  // Sincronización multiusuario (Roger 2026-07-14, pilar de backend).
+  // Local-first: localStorage sigue siendo la fuente rápida/offline
+  // (guardarEstado arriba); esto solo añade el empuje a Firestore + la
+  // escucha de cambios remotos cuando hay una familia sincronizada.
+  // ---------------------------------------------------------------
+  var desuscribirRemoto = null;
+
+  function mostrarAppPrincipal() {
+    document.getElementById('landing-screen').hidden = true;
+    document.body.classList.remove('landing-open');
+    document.getElementById('wizard-screen').hidden = true;
+    document.body.classList.remove('wizard-open');
+    asegurarPlanVigente();
+    render();
+  }
+
+  function iniciarEscuchaRemota(onPrimerSnapshot) {
+    if (!window.E3Sync) return;
+    if (desuscribirRemoto) { if (onPrimerSnapshot) onPrimerSnapshot(); return; }
+    var familyId = window.E3Sync.getFamilyId();
+    if (!familyId) return;
+    var primera = true;
+    desuscribirRemoto = window.E3Sync.suscribirEstado(familyId, function (remoto) {
+      estado = Object.assign(estadoVacio(), remoto);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(estado)); // caché local, sin re-disparar guardarRemotoDebounced
+      if (primera && onPrimerSnapshot) { primera = false; onPrimerSnapshot(); }
+      else { asegurarPlanVigente(); render(); }
+    });
+  }
+
+  function abrirSheetSync() {
+    abrirSheet(UI.renderSheetSync({ cargando: true }));
+    var familyId = window.E3Sync ? window.E3Sync.getFamilyId() : null;
+    if (!familyId) {
+      document.getElementById('sheet-contenido').innerHTML = UI.renderSheetSync({ synced: false });
+      return;
+    }
+    window.E3Sync.obtenerInfoFamilia(familyId).then(function (info) {
+      document.getElementById('sheet-contenido').innerHTML = UI.renderSheetSync({ synced: true, nombreFamilia: info.nombreFamilia, code: info.code });
+    }).catch(function () {
+      document.getElementById('sheet-contenido').innerHTML = UI.renderSheetSync({ synced: false, error: 'No se pudo cargar el estado de sincronización.' });
+    });
+  }
+
+  function activarSincronizacion() {
+    var btn = document.getElementById('sync-activar-btn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Activando…'; }
+    window.E3Sync.crearFamilia(estado.nombreFamilia || 'Mi familia').then(function (data) {
+      return window.E3Sync.subirEstadoInicial(estado).then(function () { return data; });
+    }).then(function (data) {
+      iniciarEscuchaRemota();
+      mostrarAppPrincipal();
+      document.getElementById('sheet-contenido').innerHTML = UI.renderSheetSync({ synced: true, nombreFamilia: estado.nombreFamilia, code: data.code });
+    }).catch(function (err) {
+      document.getElementById('sheet-contenido').innerHTML = UI.renderSheetSync({ synced: false, error: 'No se pudo activar: ' + err.message });
+    });
+  }
+
+  function unirseSincronizacion() {
+    var input = document.getElementById('sync-code-input');
+    var code = input ? input.value.trim() : '';
+    if (!code) return;
+    var btn = document.getElementById('sync-unirse-btn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Uniéndome…'; }
+    window.E3Sync.unirseFamilia(code).then(function () {
+      iniciarEscuchaRemota(function () {
+        mostrarAppPrincipal();
+        var familyId = window.E3Sync.getFamilyId();
+        window.E3Sync.obtenerInfoFamilia(familyId).then(function (info) {
+          document.getElementById('sheet-contenido').innerHTML = UI.renderSheetSync({ synced: true, nombreFamilia: info.nombreFamilia, code: info.code });
+        });
+      });
+    }).catch(function (err) {
+      document.getElementById('sheet-contenido').innerHTML = UI.renderSheetSync({ synced: false, error: 'Código no válido o error de red.' });
+    });
   }
 
   function regenerarSemanaCompleta() {
@@ -641,6 +722,10 @@
     'menu-ir-familia': function () { abrirSheetFamilia(); },
     'menu-regenerar-semana': function () { regenerarSemanaCompleta(); },
     'menu-importar-cole': function () { abrirImportarCole(); },
+    'menu-sync': function () { abrirSheetSync(); },
+    'landing-unirse': function () { abrirSheetSync(); },
+    'sync-activar': function () { activarSincronizacion(); },
+    'sync-unirse': function () { unirseSincronizacion(); },
 
     'wizard-siguiente-bienvenida': function () { wizardSiguienteBienvenida(); },
     'wizard-volver-bienvenida': function () { mostrarWizardBienvenida(); },
@@ -815,6 +900,7 @@
     // hamburguesa lo cierra (el propio dropdown no es hijo suyo, es hermano)
     var menuDropdownOverlayEl = document.getElementById('menu-dropdown-overlay');
     if (menuDropdownOverlayEl) menuDropdownOverlayEl.addEventListener('click', cerrarMenuHamburguesa);
+    iniciarEscuchaRemota(); // no-op si este dispositivo no tiene familyId cacheado
     asegurarPlanVigente();
     render();
     document.body.classList.add('landing-open');

@@ -613,7 +613,9 @@ body.wizard-open { overflow: hidden; }
    Bottom sheet (familia / compra / cambiar plato / confirmar / nevera)
    ============================================================ */
 .sheet-overlay {
-  position: fixed; inset: 0; z-index: 200;
+  position: fixed; inset: 0; z-index: 400; /* por encima de wizard(250)/landing(300) —
+  necesario desde 2026-07-14: "Sincronizar familia" abre esta sheet también desde
+  el wizard, un modal siempre debe quedar por encima de cualquier pantalla */
   background: rgba(8, 18, 34, 0.45);
   display: flex; align-items: flex-end;
 }

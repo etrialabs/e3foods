@@ -338,11 +338,12 @@ body.wizard-open { overflow: hidden; }
 .avatares { display: flex; flex-wrap: wrap; gap: var(--space-2); margin: var(--space-2) 0; }
 .card-comida-pie-fila .avatares { margin: 0; }
 /* -Roger 2026-07-14: los avatares tenían demasiado protagonismo frente al
-   plato — círculo más pequeño (48px→40px), además del badge ya reducido -30%. */
+   plato — círculo más pequeño en 2 rondas (48px→40px→32px, -20% la segunda),
+   además del badge ya reducido -30%. */
 .avatar {
-  width: 40px; height: 40px; border-radius: 50%;
+  width: 32px; height: 32px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
-  font-size: var(--fs-aux); font-weight: 700; cursor: pointer;
+  font-size: 11px; font-weight: 700; cursor: pointer;
   border: none; background-size: cover; background-position: center;
   transition: background var(--dur-fast), opacity var(--dur-fast), filter var(--dur-fast);
 }
@@ -368,9 +369,18 @@ body.wizard-open { overflow: hidden; }
 /* padding:0 en la card — la foto y el degradado deben llegar al borde real
    (esquinas redondeadas incluidas); el padding se aplica solo al contenido. */
 .card-foto-lateral { position: relative; overflow: hidden; padding: 0; }
-.card-foto-lateral-img { position: absolute; top: 0; right: 0; bottom: 0; width: 40%; background-size: cover; background-position: center; }
+/* mask-image (Roger 2026-07-14): antes la foto tenía un corte recto a los 0px;
+   ahora se funde ella misma con el blanco (además del overlay de encima), un
+   segundo degradado en la propia capa de la foto. */
+.card-foto-lateral-img {
+  position: absolute; top: 0; right: 0; bottom: 0; width: 40%; background-size: cover; background-position: center;
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, black 55%); mask-image: linear-gradient(to right, transparent 0%, black 55%);
+}
 .card-foto-lateral-degradado { position: absolute; inset: 0; background: linear-gradient(to right, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, .65) 100%); }
 .card-foto-lateral-contenido { position: relative; z-index: 1; padding: var(--space-3); }
+/* CTA centrado sobre la mitad inferior de la foto, no junto a los avatares
+   (Roger 2026-07-14). */
+.card-foto-lateral-cta { position: absolute; z-index: 1; right: 0; bottom: 0; width: 40%; display: flex; align-items: center; justify-content: center; padding: var(--space-2); }
 
 /* Título como protagonista de la card (Roger 2026-07-14: antes competía en
    tamaño con avatares/CTA, ahora es lo primero que se lee). */
@@ -495,9 +505,10 @@ body.wizard-open { overflow: hidden; }
 .btn-sorprendeme {
   display: inline-flex; align-items: center; flex-shrink: 0;
   background: none; border: none; padding: var(--space-2) 0 var(--space-2) var(--space-2); min-height: 44px; cursor: pointer;
-  color: var(--gold); font-size: var(--fs-aux); font-weight: 700;
+  color: var(--ink); font-size: var(--fs-aux); font-weight: 700;
 }
-.btn-sorprendeme:active { color: var(--ink); }
+.btn-sorprendeme:active { opacity: .6; }
+.card-foto-lateral-cta .btn-sorprendeme { padding: var(--space-2); }
 .btn-texto {
   background: none; border: none; color: var(--soft); font-size: var(--fs-aux); font-weight: 700;
   min-height: 44px; padding: var(--space-1) var(--space-2); cursor: pointer; text-decoration: underline;

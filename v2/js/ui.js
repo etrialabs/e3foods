@@ -173,7 +173,7 @@
       return '<section class="card card-slot card-vacia"><p class="card-msg">Receta no disponible.</p></section>';
     }
 
-    var resuelto = presentes.length ? E.resolverPlato(plantilla, slot.seleccion, presentes, banco) : E.resolverPlato(plantilla, slot.seleccion, miembrosDelSlot.slice(0, 1), banco);
+    var resuelto = presentes.length ? E.resolverPlato(plantilla, slot.seleccion, presentes, banco, slot.adaptaciones) : E.resolverPlato(plantilla, slot.seleccion, miembrosDelSlot.slice(0, 1), banco, slot.adaptaciones);
     var adaptacionesVisibles = (slot.adaptaciones || []).filter(function (a) {
       return presentes.some(function (p) { return p.id === a.miembroId; });
     }).map(function (a) {
@@ -236,7 +236,7 @@
     });
     var presentes = E.presentesEnComida(estado, dia.fecha, diaIndex, tipoComida);
     var comensales = presentes.length ? presentes : miembrosDelSlot.slice(0, 1);
-    var resuelto = E.resolverPlato(plantilla, slot.seleccion, comensales, banco);
+    var resuelto = E.resolverPlato(plantilla, slot.seleccion, comensales, banco, slot.adaptaciones);
 
     var ingredientesHtml = resuelto.ingredientes.slice().sort(function (a, b) {
       var na = banco.ingredientes[a.id] ? banco.ingredientes[a.id].nombre : a.id;
@@ -251,6 +251,16 @@
       ? '<ol class="lista-pasos-receta">' + resuelto.pasos.map(function (p) { return '<li>' + escapeHtml(p) + '</li>'; }).join('') + '</ol>'
       : '<p class="card-msg">Sin pasos detallados para esta receta.</p>';
 
+    // Segunda (o tercera...) cocción por mesa mixta (Roger 2026-07-14): si a
+    // alguien le toca un ingrediente distinto en el eje proteína, sus pasos
+    // van aparte — antes solo constaba como nota de texto en la card, sin
+    // explicar cómo cocinarlo ni sumarlo a la compra.
+    var pasosAdaptadosHtml = (resuelto.pasosAdaptados || []).map(function (pa) {
+      var m = (estado.familia || []).find(function (mm) { return mm.id === pa.miembroId; });
+      return '<p class="detalle-subtitulo">Para ' + escapeHtml(m ? m.nombre : '?') + ' (' + escapeHtml(pa.ingrediente) + ')</p>' +
+        '<ol class="lista-pasos-receta">' + pa.pasos.map(function (p) { return '<li>' + escapeHtml(p) + '</li>'; }).join('') + '</ol>';
+    }).join('');
+
     var comensalesTexto = comensales.length + (comensales.length === 1 ? ' comensal' : ' comensales');
     var kcalMedio = comensales.length ? Math.round(resuelto.kcalTotal / comensales.length) : 0;
 
@@ -262,6 +272,7 @@
       '<ul class="lista-ingredientes-receta">' + ingredientesHtml + '</ul>' +
       '<p class="detalle-subtitulo">Preparación</p>' +
       pasosHtml +
+      pasosAdaptadosHtml +
       '</div>';
   }
 

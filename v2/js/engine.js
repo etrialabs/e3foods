@@ -159,35 +159,69 @@
   // 3. Resolución de un plato concreto: nombre, kcal por comensal e
   //    ingredientes con cantidades (para la lista de la compra).
   // ---------------------------------------------------------------
-  function resolverPlato(plantilla, seleccion, presentes, banco) {
+
+  // nombre + pasos resueltos para UNA selección de ejes dada — extraído para
+  // reutilizarlo tal cual con la selección adaptada de cada miembro (mesa
+  // mixta), no solo con la compartida.
+  function resolverNombreYPasos(plantilla, seleccionUsada, banco) {
     var nombre = plantilla.nombre_patron;
-    var sustituciones = {}; // eje -> nombre de ingrediente resuelto, reutilizado también en pasos
+    var sustituciones = {};
     Object.keys(plantilla.ejes || {}).forEach(function (eje) {
-      var id = seleccion[eje];
+      var id = seleccionUsada[eje];
       var ing = banco.ingredientes[id];
       var texto = ing ? capitaliza(ing.nombre) : (id || ('{' + eje + '}'));
       sustituciones[eje] = texto;
       nombre = nombre.split('{' + eje + '}').join(texto);
     });
-
     var pasos = (plantilla.pasos || []).map(function (paso) {
       var texto = paso;
-      Object.keys(sustituciones).forEach(function (eje) {
-        texto = texto.split('{' + eje + '}').join(sustituciones[eje]);
-      });
+      Object.keys(sustituciones).forEach(function (eje) { texto = texto.split('{' + eje + '}').join(sustituciones[eje]); });
       return texto;
+    });
+    return { nombre: nombre, pasos: pasos, sustituciones: sustituciones };
+  }
+
+  // adaptaciones (Roger 2026-07-14, bug real encontrado por Roger: un miembro
+  // con tofu asignado por mesa mixta no aparecía en la lista de la compra).
+  // ANTES: se ignoraban aquí por completo — todo el mundo se contaba con la
+  // selección compartida, aunque algún presente tuviera un sustituto por
+  // dieta. Resultado: el ingrediente adaptado nunca se compraba y el
+  // compartido se compraba de más (ración de gente que no lo iba a comer).
+  // AHORA: cada miembro cuenta con SU propia selección efectiva (compartida,
+  // salvo el eje adaptado si lo tiene) tanto para gramos/kcal como para los
+  // pasos — la receta explica las dos cocciones, no solo la compartida.
+  function resolverPlato(plantilla, seleccion, presentes, banco, adaptaciones) {
+    adaptaciones = adaptaciones || [];
+    var base = resolverNombreYPasos(plantilla, seleccion, banco);
+
+    var mapaAdaptaciones = {};
+    adaptaciones.forEach(function (a) { mapaAdaptaciones[a.miembroId] = a; });
+
+    function seleccionEfectiva(miembroId) {
+      var a = mapaAdaptaciones[miembroId];
+      if (!a) return seleccion;
+      var copia = {};
+      Object.keys(seleccion).forEach(function (eje) { copia[eje] = seleccion[eje]; });
+      copia[a.eje] = a.valor;
+      return copia;
+    }
+
+    var pasosAdaptados = []; // [{miembroId, ingrediente, pasos}] — la "segunda cocción"
+    (presentes || []).forEach(function (m) {
+      var a = mapaAdaptaciones[m.id];
+      if (!a) return;
+      var alt = resolverNombreYPasos(plantilla, seleccionEfectiva(m.id), banco);
+      pasosAdaptados.push({ miembroId: m.id, ingrediente: alt.sustituciones[a.eje], pasos: alt.pasos });
     });
 
     var ingredientesCompra = []; // [{id, gramos}] — estable por id (para checks persistentes)
     var kcalPorComensal = [];
     var kcalTotal = 0;
 
-    var idsUnicos = idsUnicosDeSeleccion(seleccion);
-
     (presentes || []).forEach(function (miembro) {
       var esNino = edadEnAnios(miembro.anioNacimiento) < EDAD_MENOR;
       var kcalMiembro = plantilla.kcal_extra || 0;
-      idsUnicos.forEach(function (id) {
+      idsUnicosDeSeleccion(seleccionEfectiva(miembro.id)).forEach(function (id) {
         var ing = banco.ingredientes[id];
         if (!ing) return;
         var gramos = esNino ? ing.racion_nino_g : ing.racion_adulto_g;
@@ -202,7 +236,7 @@
       kcalTotal += kcalMiembro;
     });
 
-    return { nombre: nombre, kcalPorComensal: kcalPorComensal, kcalTotal: Math.round(kcalTotal), ingredientes: ingredientesCompra, pasos: pasos };
+    return { nombre: base.nombre, kcalPorComensal: kcalPorComensal, kcalTotal: Math.round(kcalTotal), ingredientes: ingredientesCompra, pasos: base.pasos, pasosAdaptados: pasosAdaptados };
   }
 
   // ---------------------------------------------------------------
@@ -581,7 +615,7 @@
         var plantilla = plantillaPorId(banco, estado, slot.plantillaId);
         if (!plantilla) return;
         var presentes = presentesEnComida(estado, dia.fecha, idx, tipoComida);
-        var resuelto = resolverPlato(plantilla, slot.seleccion, presentes, banco);
+        var resuelto = resolverPlato(plantilla, slot.seleccion, presentes, banco, slot.adaptaciones);
         resuelto.ingredientes.forEach(function (linea) {
           var ing = banco.ingredientes[linea.id];
           if (!acumulado[linea.id]) acumulado[linea.id] = { id: linea.id, nombre: ing ? ing.nombre : linea.id, categoria: ing ? ing.categoria : 'otro', gramos: 0 };

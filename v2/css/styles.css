@@ -368,7 +368,7 @@ body.wizard-open { overflow: hidden; }
    2ª corrección — ni lateral-40% ni foto-arriba: la referencia visual externa
    lleva la foto como thumbnail a la izquierda). Miniatura inset dentro del
    padding normal de la card — sin trucos de padding:0/overflow. */
-.card-comida-fila { display: flex; gap: var(--space-3); align-items: flex-start; }
+.card-comida-fila { display: flex; gap: var(--space-3); align-items: flex-start; cursor: pointer; }
 .card-foto-izq { width: 96px; height: 96px; border-radius: 12px; background-size: cover; background-position: center; flex-shrink: 0; }
 .card-comida-contenido { flex: 1; min-width: 0; }
 
@@ -665,6 +665,20 @@ body.sheet-open { overflow: hidden; }
 .miembro-resumen span { font-size: var(--fs-aux); color: var(--soft); }
 .miembro-detalle { display: flex; flex-direction: column; gap: var(--space-2); padding-top: var(--space-3); }
 .detalle-subtitulo { font-size: var(--fs-aux); font-weight: 700; color: var(--soft); text-transform: uppercase; margin-top: var(--space-2); }
+
+/* ============================================================
+   Sheet: receta completa (ingredientes por comensales + pasos)
+   ============================================================ */
+.receta-comensales { font-size: var(--fs-aux); color: var(--soft); font-weight: 600; }
+.lista-ingredientes-receta { list-style: none; display: flex; flex-direction: column; }
+.fila-ingrediente-receta {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: var(--space-2) 0; border-bottom: 1px solid var(--line-solid);
+  font-size: var(--fs-cuerpo);
+}
+.fila-ingrediente-receta span { color: var(--soft); font-weight: 600; }
+.lista-pasos-receta { padding-left: 22px; display: flex; flex-direction: column; gap: var(--space-2); }
+.lista-pasos-receta li { font-size: var(--fs-cuerpo); line-height: 1.5; padding-left: 4px; }
 
 /* .form-miembro: solo lo usa ya el form de "+ Añadir receta propia" (ui.js
    renderFormRecetaPropia) — los campos de miembro (wizard, sheet Familia) usan

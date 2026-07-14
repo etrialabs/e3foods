@@ -192,11 +192,57 @@
       '<div class="avatares" role="group" aria-label="Quién come">' + avataresHtml + '</div>' +
       '</div>';
 
+    // Tocar la foto o el contenido abre la receta completa (Roger 2026-07-14:
+    // el banco tiene ingredientes-por-comensales y pasos, pero no se veían en
+    // ningún sitio). Los avatares y el CTA tienen su propio data-action más
+    // específico y ganan el click por delegación — sin conflicto.
     return '<section class="card card-slot" data-dia="' + diaIndex + '" data-tipo="' + tipoComida + '">' +
       cabeceraTipo +
-      '<div class="card-comida-fila">' + fotoHtml + contenido + '</div>' +
+      '<div class="card-comida-fila" data-action="abrir-receta" data-dia="' + diaIndex + '" data-tipo="' + tipoComida + '" role="button" tabindex="0" aria-label="Ver receta completa">' + fotoHtml + contenido + '</div>' +
       btnSorprendeme +
       '</section>';
+  }
+
+  // ---------------------------------------------------------------
+  // Sheet: receta completa (ingredientes adaptados a comensales + pasos)
+  // ---------------------------------------------------------------
+  function renderSheetReceta(estado, banco, plan, diaIndex, tipoComida) {
+    var dia = plan.dias[diaIndex];
+    var slot = dia[tipoComida];
+    var plantilla = E.plantillaPorId(banco, estado, slot.plantillaId);
+    var miembrosDelSlot = (estado.familia || []).filter(function (m) {
+      var patron = m.patron && m.patron[tipoComida];
+      return !patron || patron[diaIndex] === 'casa';
+    });
+    var presentes = E.presentesEnComida(estado, dia.fecha, diaIndex, tipoComida);
+    var comensales = presentes.length ? presentes : miembrosDelSlot.slice(0, 1);
+    var resuelto = E.resolverPlato(plantilla, slot.seleccion, comensales, banco);
+
+    var ingredientesHtml = resuelto.ingredientes.slice().sort(function (a, b) {
+      var na = banco.ingredientes[a.id] ? banco.ingredientes[a.id].nombre : a.id;
+      var nb = banco.ingredientes[b.id] ? banco.ingredientes[b.id].nombre : b.id;
+      return na.localeCompare(nb);
+    }).map(function (item) {
+      var ing = banco.ingredientes[item.id];
+      return '<li class="fila-ingrediente-receta">' + escapeHtml(ing ? ing.nombre : item.id) + '<span>' + item.gramos + ' g</span></li>';
+    }).join('');
+
+    var pasosHtml = resuelto.pasos.length
+      ? '<ol class="lista-pasos-receta">' + resuelto.pasos.map(function (p) { return '<li>' + escapeHtml(p) + '</li>'; }).join('') + '</ol>'
+      : '<p class="card-msg">Sin pasos detallados para esta receta.</p>';
+
+    var comensalesTexto = comensales.length + (comensales.length === 1 ? ' comensal' : ' comensales');
+    var kcalMedio = comensales.length ? Math.round(resuelto.kcalTotal / comensales.length) : 0;
+
+    return '<div class="sheet-head"><h2>' + escapeHtml(resuelto.nombre) + '</h2>' +
+      '<button type="button" class="btn-cerrar" data-action="cerrar-sheet" aria-label="Cerrar">&times;</button></div>' +
+      '<div class="sheet-body">' +
+      '<p class="receta-comensales">Cantidades para ' + comensalesTexto + ' · ~' + kcalMedio + ' kcal por persona.</p>' +
+      '<p class="detalle-subtitulo">Ingredientes</p>' +
+      '<ul class="lista-ingredientes-receta">' + ingredientesHtml + '</ul>' +
+      '<p class="detalle-subtitulo">Preparación</p>' +
+      pasosHtml +
+      '</div>';
   }
 
   // ---------------------------------------------------------------
@@ -644,6 +690,7 @@
     renderSemana: renderSemana,
     renderRecetasVista: renderRecetasVista,
     renderCompraVista: renderCompraVista,
+    renderSheetReceta: renderSheetReceta,
     renderSheetCambiarInicio: renderSheetCambiarInicio,
     renderListaElegirOtro: renderListaElegirOtro,
     renderNevera: renderNevera,

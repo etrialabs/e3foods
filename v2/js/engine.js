@@ -161,10 +161,21 @@
   // ---------------------------------------------------------------
   function resolverPlato(plantilla, seleccion, presentes, banco) {
     var nombre = plantilla.nombre_patron;
+    var sustituciones = {}; // eje -> nombre de ingrediente resuelto, reutilizado también en pasos
     Object.keys(plantilla.ejes || {}).forEach(function (eje) {
       var id = seleccion[eje];
       var ing = banco.ingredientes[id];
-      nombre = nombre.split('{' + eje + '}').join(ing ? capitaliza(ing.nombre) : (id || ('{' + eje + '}')));
+      var texto = ing ? capitaliza(ing.nombre) : (id || ('{' + eje + '}'));
+      sustituciones[eje] = texto;
+      nombre = nombre.split('{' + eje + '}').join(texto);
+    });
+
+    var pasos = (plantilla.pasos || []).map(function (paso) {
+      var texto = paso;
+      Object.keys(sustituciones).forEach(function (eje) {
+        texto = texto.split('{' + eje + '}').join(sustituciones[eje]);
+      });
+      return texto;
     });
 
     var ingredientesCompra = []; // [{id, gramos}] — estable por id (para checks persistentes)
@@ -191,7 +202,7 @@
       kcalTotal += kcalMiembro;
     });
 
-    return { nombre: nombre, kcalPorComensal: kcalPorComensal, kcalTotal: Math.round(kcalTotal), ingredientes: ingredientesCompra };
+    return { nombre: nombre, kcalPorComensal: kcalPorComensal, kcalTotal: Math.round(kcalTotal), ingredientes: ingredientesCompra, pasos: pasos };
   }
 
   // ---------------------------------------------------------------

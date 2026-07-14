@@ -417,6 +417,10 @@
     render();
   }
 
+  function abrirRecetaDetalle(dia, tipoComida) {
+    abrirSheet(UI.renderSheetReceta(estado, BANCO, estado.plan, dia, tipoComida));
+  }
+
   function abrirCambiar(dia, tipoComida) {
     pendienteCambiar = { dia: dia, tipoComida: tipoComida };
     abrirSheet(UI.renderSheetCambiarInicio(estado, BANCO, dia, tipoComida));
@@ -574,6 +578,7 @@
     'semana-elegir-dia': function (btn) { semanaDiaSeleccionado = parseInt(btn.dataset.dia, 10); render(); },
     'filtro-receta': function (btn) { filtroRecetas = btn.dataset.categoria; render(); },
 
+    'abrir-receta': function (btn) { abrirRecetaDetalle(Number(btn.dataset.dia), btn.dataset.tipo); },
     'abrir-cambiar': function (btn) { abrirCambiar(Number(btn.dataset.dia), btn.dataset.tipo); },
     'cerrar-sheet': function () { cerrarSheet(); },
     'modo-elegir-otro': function (btn) { abrirSheet(UI.renderListaElegirOtro(estado, BANCO, Number(btn.dataset.dia), btn.dataset.tipo)); },
@@ -595,6 +600,17 @@
     if (!btn) return;
     var accion = ACCIONES[btn.dataset.action];
     if (accion) accion(btn, e);
+  });
+
+  // Enter/espacio activan [role="button"] (p.ej. .card-comida-fila, un <div>
+  // porque contiene botones anidados de avatares — un <button> real no puede
+  // envolver otros botones). Los <button> normales ya tienen esto gratis.
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    var btn = e.target.closest('[role="button"][data-action]');
+    if (!btn) return;
+    e.preventDefault();
+    btn.click();
   });
 
   document.addEventListener('change', function (e) {

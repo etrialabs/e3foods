@@ -157,22 +157,37 @@
     var meta = metaKcal + (presentes.length && plantilla.tiempo_min ? ' · ' : '') + metaTiempo;
 
     var nombreSplit = splitNombrePlato(resuelto.nombre);
-    var fotoHtml = plantilla.foto ? '<div class="card-comida-foto" style="background-image:url(\'' + escapeHtml(plantilla.foto) + '\')"></div>' : '';
+
+    // Redistribución (Roger 2026-07-14): título como protagonista, meta+avatares
+    // en una fila ligera y el CTA como texto discreto — ya no compiten en peso
+    // visual con el plato. Todo el contenido alineado a la izquierda.
+    var contenido = cabeceraTipo +
+      '<h2 class="card-comida-titulo">' + escapeHtml(nombreSplit.titulo) + '</h2>' +
+      (nombreSplit.subtitulo ? '<p class="card-comida-subtitulo">' + escapeHtml(nombreSplit.subtitulo) + '</p>' : '') +
+      (adaptacionesVisibles ? '<p class="card-adaptaciones">' + adaptacionesVisibles + '</p>' : '') +
+      (!presentes.length ? '<p class="card-msg">Nadie confirmado para esta comida.</p>' : '') +
+      '<div class="card-comida-pie">' +
+        (meta ? '<p class="card-comida-meta">' + meta + '</p>' : '') +
+        '<div class="card-comida-pie-fila">' +
+          '<div class="avatares" role="group" aria-label="Quién come">' + avataresHtml + '</div>' +
+          '<button type="button" class="btn-sorprendeme" data-action="abrir-cambiar" data-dia="' + diaIndex + '" data-tipo="' + tipoComida + '">✨ Quiero otra cosa</button>' +
+        '</div>' +
+      '</div>';
+
+    // Foto lateral (Roger 2026-07-14): la foto ocupa solo el 40% derecho de la
+    // card, con un degradado blanco encima (transparente a la izquierda, 65%
+    // opaco en el borde derecho) — sustituye la versión de foto a toda la card.
+    // Sin foto, cae en la card plana de siempre.
+    if (plantilla.foto) {
+      return '<section class="card card-slot card-foto-lateral" data-dia="' + diaIndex + '" data-tipo="' + tipoComida + '">' +
+        '<div class="card-foto-lateral-img" style="background-image:url(\'' + escapeHtml(plantilla.foto) + '\')"></div>' +
+        '<div class="card-foto-lateral-degradado"></div>' +
+        '<div class="card-foto-lateral-contenido">' + contenido + '</div>' +
+        '</section>';
+    }
 
     return '<section class="card card-slot" data-dia="' + diaIndex + '" data-tipo="' + tipoComida + '">' +
-      cabeceraTipo +
-      '<div class="card-comida-fila">' +
-        fotoHtml +
-        '<div class="card-comida-info">' +
-          '<h2 class="card-comida-titulo">' + escapeHtml(nombreSplit.titulo) + '</h2>' +
-          (nombreSplit.subtitulo ? '<p class="card-comida-subtitulo">' + escapeHtml(nombreSplit.subtitulo) + '</p>' : '') +
-          (meta ? '<p class="card-comida-meta">' + meta + '</p>' : '') +
-          (adaptacionesVisibles ? '<p class="card-adaptaciones">' + adaptacionesVisibles + '</p>' : '') +
-          (!presentes.length ? '<p class="card-msg">Nadie confirmado para esta comida.</p>' : '') +
-          '<div class="avatares" role="group" aria-label="Quién come">' + avataresHtml + '</div>' +
-        '</div>' +
-      '</div>' +
-      '<button type="button" class="btn-sorprendeme" data-action="abrir-cambiar" data-dia="' + diaIndex + '" data-tipo="' + tipoComida + '">✨ Quiero otra cosa</button>' +
+      contenido +
       '</section>';
   }
 

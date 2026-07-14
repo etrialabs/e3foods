@@ -105,6 +105,22 @@
     localStorage.setItem(STORAGE_KEY, JSON.stringify(estado));
   }
 
+  // "Quién soy yo en este móvil" (Roger 2026-07-14): clave de localStorage
+  // APARTE de STORAGE_KEY a propósito — es una preferencia del dispositivo,
+  // no de la familia. Cuando exista sync remoto, todo lo de estado viaja a
+  // Firestore; esto se queda siempre solo en este navegador, para que cada
+  // móvil pueda "ser" un miembro distinto de la misma familia compartida.
+  var DISPOSITIVO_KEY = 'e3foods_v2_yo';
+  function obtenerMiembroDispositivo() {
+    try { return localStorage.getItem(DISPOSITIVO_KEY) || null; } catch (e) { return null; }
+  }
+  function fijarMiembroDispositivo(id) {
+    try {
+      if (obtenerMiembroDispositivo() === id) localStorage.removeItem(DISPOSITIVO_KEY);
+      else localStorage.setItem(DISPOSITIVO_KEY, id);
+    } catch (e) { /* localStorage no disponible — sin preferencia, cae al primero */ }
+  }
+
   function generarId(prefijo) {
     return prefijo + '-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
   }
@@ -159,7 +175,7 @@
     var cont = document.getElementById('vista-' + vistaActual);
     document.querySelectorAll('.vista').forEach(function (v) { v.hidden = (v.id !== 'vista-' + vistaActual); });
     document.querySelectorAll('.nav-btn').forEach(function (b) { b.classList.toggle('active', b.dataset.vista === vistaActual); b.setAttribute('aria-current', b.dataset.vista === vistaActual ? 'page' : 'false'); });
-    if (vistaActual === 'semana') cont.innerHTML = UI.renderSemana(estado, estado.plan, BANCO, semanaDiaSeleccionado);
+    if (vistaActual === 'semana') cont.innerHTML = UI.renderSemana(estado, estado.plan, BANCO, semanaDiaSeleccionado, obtenerMiembroDispositivo());
     else if (vistaActual === 'recetas') cont.innerHTML = UI.renderRecetasVista(estado, BANCO, filtroRecetas, busquedaRecetas, filtrosRecetasVisibles);
     else if (vistaActual === 'compra') cont.innerHTML = UI.renderCompraVista(estado, estado.plan, BANCO, rangoCompra);
     aplicarDetallesAbiertos(cont);
@@ -186,8 +202,13 @@
   }
 
   function abrirSheetFamilia() {
-    abrirSheet(UI.renderSheetFamilia(estado, BANCO));
+    abrirSheet(UI.renderSheetFamilia(estado, BANCO, obtenerMiembroDispositivo()));
     aplicarDetallesAbiertos(document.getElementById('sheet-contenido'));
+  }
+
+  function marcarYoDispositivo(id) {
+    fijarMiembroDispositivo(id);
+    abrirSheetFamilia(); // re-pinta la sheet con el badge/chip actualizados
   }
 
   // Menú hamburguesa (Roger 2026-07-14, rehecho igual día): dropdown pequeño
@@ -691,6 +712,7 @@
     'regenerar-no': function () { regenerarSiguientes(false); },
 
     'borrar-miembro': function (btn) { borrarMiembro(btn.dataset.id); },
+    'marcar-yo-dispositivo': function (btn) { marcarYoDispositivo(btn.dataset.id); },
     'toggle-patron': function (btn) { togglePatron(btn.dataset.id, btn.dataset.tipo, Number(btn.dataset.dia)); },
     'toggle-veto': function (btn) { toggleVeto(btn.dataset.id, btn.dataset.ingrediente); },
     'toggle-oculta-receta': function (btn) { toggleOcultaReceta(btn.dataset.plantilla); },

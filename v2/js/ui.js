@@ -318,8 +318,14 @@
   // seleccionado en las píldoras (esas son para ojear la semana, no para
   // redefinir qué es "hoy"). Ingrediente que falta = clicable → COMPRA/hoy
   // (Roger 2026-07-14: reutiliza la vista existente, sin pieza nueva de estado).
-  function renderSaludoSemana(estado, plan, banco) {
-    var nombre = (estado.familia && estado.familia[0] && estado.familia[0].nombre) || '';
+  function renderSaludoSemana(estado, plan, banco, miembroDispositivoId) {
+    // "Quién soy yo en este móvil" (Roger 2026-07-14): preferencia LOCAL al
+    // dispositivo (localStorage aparte, ver DISPOSITIVO_KEY en app.js) — no
+    // viaja con la familia cuando haya sync, cada móvil recuerda la suya.
+    // Sin elegir todavía (o el miembro ya no existe) → cae al primero, como antes.
+    var familia = estado.familia || [];
+    var miembroDispositivo = miembroDispositivoId && familia.filter(function (m) { return m.id === miembroDispositivoId; })[0];
+    var nombre = (miembroDispositivo || familia[0] || {}).nombre || '';
     var titulo = '<h1 class="saludo-titulo">' + saludoHora() + (nombre ? ', ' + escapeHtml(nombre) : '') + '.</h1>';
 
     // Roger 2026-07-14: solo 2 frases fijas, sin listar el detalle de lo que
@@ -345,7 +351,7 @@
   // mismo en una sola pantalla). Selector de día (píldoras L-D) sticky por
   // sí solo sobre fondo claro — referencia visual del handoff externo.
   // ---------------------------------------------------------------
-  function renderSemana(estado, plan, banco, diaSeleccionado) {
+  function renderSemana(estado, plan, banco, diaSeleccionado, miembroDispositivoId) {
     if (!plan) {
       return renderAppBar() + '<div class="vista-body"><p class="card-msg">Todavía no hay semana generada.</p></div>';
     }
@@ -363,7 +369,7 @@
     var filaPildoras = '<div class="fila-pildoras-dia fila-pildoras-dia-sticky" role="group" aria-label="Elegir día">' + pildoras + '</div>';
 
     var dia = plan.dias[idx];
-    return renderAppBar() + renderSaludoSemana(estado, plan, banco) + filaPildoras +
+    return renderAppBar() + renderSaludoSemana(estado, plan, banco, miembroDispositivoId) + filaPildoras +
       '<div class="vista-body" data-dia-idx="' + idx + '">' +
       '<p class="vista-fecha-fila">' +
         '<span class="vista-fecha">' + NOMBRES_DIA[idx] + ' ' + fechaCorta(dia.fecha) + (idx === hoyIdx ? ' <span class="badge badge-hoy">HOY</span>' : '') + '</span>' +
@@ -706,13 +712,14 @@
     }).join('') + '</div>';
   }
 
-  function renderMiembro(miembro, banco) {
+  function renderMiembro(miembro, banco, miembroDispositivoId) {
     var edad = E.edadEnAnios(miembro.anioNacimiento);
     var tieneFoto = !!miembro.foto;
+    var esDispositivo = miembro.id === miembroDispositivoId;
     return '<details class="miembro-card" data-detalle-key="miembro-' + miembro.id + '">' +
       '<summary>' +
         '<span class="avatar avatar-presente"' + avatarEstilo(miembro) + '>' + avatarInner(miembro) + '</span>' +
-        '<span class="miembro-resumen"><strong>' + escapeHtml(miembro.nombre) + '</strong><span>' + edad + ' años · ' + (ETIQUETAS_DIETA[miembro.dieta] || 'De todo') + '</span></span>' +
+        '<span class="miembro-resumen"><strong>' + escapeHtml(miembro.nombre) + '</strong><span>' + edad + ' años · ' + (ETIQUETAS_DIETA[miembro.dieta] || 'De todo') + (esDispositivo ? ' · <span class="miembro-tu-badge">tú en este móvil</span>' : '') + '</span></span>' +
       '</summary>' +
       '<div class="miembro-detalle">' +
         '<button type="button" class="foto-tap foto-tap-pequena" data-action="miembro-subir-foto" data-id="' + miembro.id + '" ' +
@@ -737,14 +744,15 @@
         '<p class="detalle-subtitulo">Patrón — comida</p>' + renderPatronGrid(miembro, 'comida') +
         '<p class="detalle-subtitulo">Patrón — cena</p>' + renderPatronGrid(miembro, 'cena') +
         '<p class="detalle-subtitulo">Vetos (no le gusta / alergia)</p>' + renderVetos(miembro, banco) +
+        '<button type="button" class="chip-toggle' + (esDispositivo ? ' chip-toggle-activo' : '') + '" data-action="marcar-yo-dispositivo" data-id="' + miembro.id + '" aria-pressed="' + esDispositivo + '">' + (esDispositivo ? '✓ Eres tú en este móvil' : 'Marcar como tú en este móvil') + '</button>' +
         '<button type="button" class="btn-texto btn-borrar" data-action="borrar-miembro" data-id="' + miembro.id + '">Eliminar de la familia</button>' +
       '</div></details>';
   }
 
-  function renderSheetFamilia(estado, banco) {
+  function renderSheetFamilia(estado, banco, miembroDispositivoId) {
     var miembros = estado.familia || [];
     var ocultasN = (estado.ocultas || []).length;
-    var miembrosCards = miembros.map(function (m) { return renderMiembro(m, banco); }).join('');
+    var miembrosCards = miembros.map(function (m) { return renderMiembro(m, banco, miembroDispositivoId); }).join('');
     // "+ Añadir miembro" como última card de la lista (Roger 2026-07-14) —
     // sustituye a la fila de pills que duplicaba la misma info de las cards
     // de debajo.

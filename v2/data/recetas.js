@@ -128,7 +128,7 @@ window.E3_RECETAS = {
         "Emplatar {proteina} con {hidrato} y {verdura} al lado."
       ],
       notas: "",
-      foto: "assets/recetas/plancha-guarnicion.jpg" // piloto 2026-07-13 (Roger) — foto real de salmón; genérica para el resto de proteínas del eje, no coincide ingrediente a ingrediente
+      foto: "assets/banco-fotos/plancha-guarnicion.jpg" // piloto 2026-07-13 (Roger) — foto real de salmón; genérica para el resto de proteínas del eje, no coincide ingrediente a ingrediente
     },
     {
       id: "horno-bandeja",
@@ -627,7 +627,8 @@ window.E3_RECETAS = {
         "Triturar hasta obtener una crema fina.",
         "Servir con {proteina} como topping."
       ],
-      notas: ""
+      notas: "",
+      foto: "assets/banco-fotos/crema-zanahoria.jpg" // asignación random 2026-07-14 (Roger, banco de fotos ampliado) — genérica, no coincide ingrediente a ingrediente
     },
     {
       id: "crema-verduras-variadas",
@@ -765,7 +766,8 @@ window.E3_RECETAS = {
         "Aliñar con aceite de oliva, vinagre y sal.",
         "Servir a temperatura ambiente o fría."
       ],
-      notas: ""
+      notas: "",
+      foto: "assets/banco-fotos/ensalada-lentejas.jpg" // asignación random 2026-07-14 (Roger, banco de fotos ampliado) — genérica, no coincide ingrediente a ingrediente
     },
     {
       id: "ensalada-cesar-casera",
@@ -1108,7 +1110,7 @@ window.E3_RECETAS = {
         "Incorporar {hidrato}, un chorrito de salsa de soja y saltear todo junto 1-2 minutos."
       ],
       notas: "",
-      foto: "assets/recetas/salteado-wok.jpg" // piloto 2026-07-13 (Roger) — foto real de edamame+zanahoria+fideos; genérica para el resto de combinaciones del eje
+      foto: "assets/banco-fotos/salteado-wok.jpg" // piloto 2026-07-13 (Roger) — foto real de edamame+zanahoria+fideos; genérica para el resto de combinaciones del eje
     },
     {
       id: "hamburguesa-casera",

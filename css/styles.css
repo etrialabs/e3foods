@@ -265,6 +265,14 @@ body.wizard-open { overflow: hidden; }
 .form-miembro-completo .foto-tap, .form-miembro-completo .foto-quitar-link { display: flex; }
 .form-miembro-completo .foto-quitar-link { display: block; width: fit-content; margin-left: auto; margin-right: auto; }
 
+/* Foto a la derecha del nombre (Roger 2026-07-15) — antes la foto quedaba
+   centrada y a pantalla completa por encima del campo Nombre; ahora comparten
+   fila, la foto en una columna fija al lado. */
+.fila-foto-nombre { display: flex; align-items: flex-start; gap: var(--space-2); }
+.fila-foto-nombre .campo-nombre-miembro { flex: 1 1 auto; margin-bottom: 0; min-width: 0; }
+.columna-foto { display: flex; flex-direction: column; align-items: center; flex-shrink: 0; }
+.columna-foto .foto-quitar-link { font-size: 12px; text-align: center; }
+
 /* "Más detalles": enlace de texto con +/− animado, no acordeón con borde dashed */
 .mas-detalles { border: none; padding: 0; }
 .mas-detalles summary {

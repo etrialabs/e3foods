@@ -25,6 +25,9 @@
     'vegetariana': 'Vegetariana', 'sin-gluten': 'Sin gluten'
   };
   var ORDEN_CATEGORIA = ['pescado-blanco', 'pescado-azul', 'marisco', 'carne-blanca', 'carne-roja', 'legumbre', 'huevo', 'lacteo', 'cereal', 'tuberculo', 'verdura', 'fruta', 'otro'];
+  // claves de categorias_cuota que no son una categoría de ingrediente real (agregado
+  // pescado-total) — ETIQUETAS_CATEGORIA no las cubre, etiqueta aparte para el resumen semanal
+  var ETIQUETAS_CUOTA = { 'pescado-total': 'Pescado (total)' };
 
   function escapeHtml(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
@@ -270,11 +273,35 @@
       '</section>';
   }
 
+  // Feedback loop (P1, 2026-07-16): "¿qué tal?" post-comida, un toque por slot
+  // (fecha+tipoComida) — no se puede rellenar retroactivamente, así que solo se
+  // ofrece para hoy o días ya pasados (no tiene sentido valorar una cena futura).
+  var VALORACIONES = [
+    { valor: 'gusta', emoji: '😍', etiqueta: 'Les encantó' },
+    { valor: 'neutro', emoji: '🙂', etiqueta: 'Bien' },
+    { valor: 'no-gusta', emoji: '😕', etiqueta: 'No tanto' }
+  ];
+
+  function renderValoracion(estado, fecha, tipoComida) {
+    if (fecha > hoyISO()) return ''; // no se valora un plato que aún no se ha comido
+    var clave = fecha + '_' + tipoComida;
+    var actual = (estado.valoraciones || {})[clave];
+    var botones = VALORACIONES.map(function (v) {
+      var activo = actual && actual.valor === v.valor;
+      return '<button type="button" class="valoracion-btn' + (activo ? ' valoracion-btn-activo' : '') + '" ' +
+        'data-action="valorar-plato" data-fecha="' + fecha + '" data-tipo="' + tipoComida + '" data-valor="' + v.valor + '" ' +
+        'aria-pressed="' + !!activo + '" aria-label="' + escapeHtml(v.etiqueta) + '">' + v.emoji + '</button>';
+    }).join('');
+    return '<div class="valoracion-fila"><p class="detalle-subtitulo">¿Qué tal esta comida?</p>' +
+      '<div class="valoracion-botones">' + botones + '</div></div>';
+  }
+
   // ---------------------------------------------------------------
   // Sheet: receta completa (ingredientes adaptados a comensales + pasos)
   // ---------------------------------------------------------------
   function renderSheetReceta(estado, banco, plan, diaIndex, tipoComida) {
-    var slot = plan.dias[diaIndex][tipoComida];
+    var dia = plan.dias[diaIndex];
+    var slot = dia[tipoComida];
     var plantilla = E.plantillaPorId(banco, estado, slot.plantillaId);
     var comensales = comensalesDeSlot(estado, plan, diaIndex, tipoComida).comensales;
     var resuelto = E.resolverPlato(plantilla, slot.seleccion, comensales, banco, slot.adaptaciones);
@@ -313,6 +340,7 @@
       '<p class="detalle-subtitulo">Preparación</p>' +
       pasosHtml +
       pasosAdaptadosHtml +
+      renderValoracion(estado, dia.fecha, tipoComida) +
       '</div>';
   }
 
@@ -401,10 +429,69 @@
       '<div class="vista-body" data-dia-idx="' + idx + '">' +
       '<p class="vista-fecha-fila">' +
         '<span class="vista-fecha">' + NOMBRES_DIA[idx] + ' ' + fechaCorta(dia.fecha) + (idx === hoyIdx ? ' <span class="badge badge-hoy">HOY</span>' : '') + '</span>' +
-        '<span class="pill-resumen">Ver resumen semanal</span>' +
+        '<button type="button" class="pill-resumen" data-action="abrir-resumen-semana">Ver resumen semanal</button>' +
       '</p>' +
       renderSlot(estado, banco, plan, idx, 'comida') +
       renderSlot(estado, banco, plan, idx, 'cena') +
+      '</div>';
+  }
+
+  // ---------------------------------------------------------------
+  // Sheet: resumen semanal — índice de equilibrio (semáforo de cuotas, dato que
+  // el motor ya computa) + semana de un vistazo. Pedido convergente en la
+  // valoración externa de producto (2026-07-16); el pill de arriba ya estaba
+  // pintado sin acción — esta es esa acción.
+  // ---------------------------------------------------------------
+  function renderEquilibrioSemana(plan, banco) {
+    var resumen = E.resumenCuotasSemana(plan, banco);
+    if (!resumen.length) return '';
+    var cumplidas = resumen.filter(function (r) { return r.cumplido; }).length;
+    var filas = resumen.map(function (r) {
+      var etiqueta = ETIQUETAS_CUOTA[r.categoria] || ETIQUETAS_CATEGORIA[r.categoria] || capitaliza(r.categoria.replace(/-/g, ' '));
+      // min_sem=0 (p.ej. carne-roja) significa "sin mínimo, solo techo" — mostrar
+      // "N de 0" leería como un objetivo incumplido cuando en realidad no hay suelo;
+      // el dato relevante ahí es el máximo, no el mínimo trivial.
+      var meta = r.min_sem ? (r.cuenta + ' de ' + r.min_sem) : (r.cuenta + (r.max_sem != null ? ' (máx ' + r.max_sem + ')' : ''));
+      return '<li class="equilibrio-fila">' +
+        '<span class="equilibrio-marca ' + (r.cumplido ? 'equilibrio-marca-ok' : 'equilibrio-marca-no') + '" aria-hidden="true">' + (r.cumplido ? '✓' : '!') + '</span>' +
+        '<span class="equilibrio-etiqueta">' + escapeHtml(etiqueta) + '</span>' +
+        '<span class="equilibrio-cuenta">' + escapeHtml(meta) + '</span>' +
+        '</li>';
+    }).join('');
+    return '<div class="equilibrio-semana">' +
+      '<p class="detalle-subtitulo">Equilibrio semanal — ' + cumplidas + ' de ' + resumen.length + '</p>' +
+      '<ul class="equilibrio-lista">' + filas + '</ul>' +
+      '</div>';
+  }
+
+  // nombre corto de un plato para la vista de un vistazo — presentes=[] es
+  // intencional: resolverPlato calcula el nombre sin depender de comensales,
+  // así se evita recalcular presencia solo para un texto.
+  function nombreCortoSlot(estado, banco, slot) {
+    if (!slot) return 'Sin plan';
+    var plantilla = E.plantillaPorId(banco, estado, slot.plantillaId);
+    if (!plantilla) return '?';
+    return E.resolverPlato(plantilla, slot.seleccion, [], banco).nombre;
+  }
+
+  function renderResumenDia(estado, banco, plan, diaIndex, hoyIdx) {
+    var dia = plan.dias[diaIndex];
+    var esHoy = diaIndex === hoyIdx;
+    return '<div class="resumen-semana-dia">' +
+      '<p class="resumen-semana-fecha">' + NOMBRES_DIA[diaIndex] + ' ' + fechaCorta(dia.fecha) + (esHoy ? ' <span class="badge badge-hoy">HOY</span>' : '') + '</p>' +
+      '<p class="resumen-semana-plato"><span class="resumen-semana-ico">' + ICONO_SOL + '</span>' + escapeHtml(nombreCortoSlot(estado, banco, dia.comida)) + '</p>' +
+      '<p class="resumen-semana-plato"><span class="resumen-semana-ico">' + ICONO_LUNA + '</span>' + escapeHtml(nombreCortoSlot(estado, banco, dia.cena)) + '</p>' +
+      '</div>';
+  }
+
+  function renderSheetResumenSemana(estado, banco, plan) {
+    if (!plan) return sheetHead('Resumen de la semana') + '<div class="sheet-body"><p class="card-msg">Todavía no hay semana generada.</p></div>';
+    var hoyIdx = E.diaIndexDesdeFecha(plan, hoyISO());
+    var diasHtml = plan.dias.map(function (d, i) { return renderResumenDia(estado, banco, plan, i, hoyIdx); }).join('');
+    return sheetHead('Resumen de la semana') +
+      '<div class="sheet-body">' +
+      renderEquilibrioSemana(plan, banco) +
+      '<div class="resumen-semana-lista">' + diasHtml + '</div>' +
       '</div>';
   }
 
@@ -672,7 +759,8 @@
       '<label class="campo-nombre-familia"><span class="campo-eyebrow">Nombre de familia</span>' +
         '<input type="text" id="wz-nombre-familia" class="input-editorial" maxlength="40" placeholder="p.ej. Los Fernández" value="' + escapeHtml(nombreFamilia || '') + '" autofocus></label>' +
       '<button type="button" class="btn-primary wizard-cta" data-action="wizard-siguiente-bienvenida">Siguiente</button>' +
-      '<button type="button" class="btn-texto" data-action="landing-unirse">¿Ya tienes un código de familia?</button>';
+      '<button type="button" class="btn-texto" data-action="landing-unirse">¿Ya tienes un código de familia?</button>' +
+      '<button type="button" class="btn-texto" data-action="ver-demo">O mira un ejemplo primero</button>';
   }
 
   // PASO 2 — "¿quién vive en casa de los X?" (usa el nombre ya dado, paso 1,
@@ -865,6 +953,7 @@
     renderRecetasVista: renderRecetasVista,
     renderCompraVista: renderCompraVista,
     renderSheetReceta: renderSheetReceta,
+    renderSheetResumenSemana: renderSheetResumenSemana,
     renderSheetCambiarInicio: renderSheetCambiarInicio,
     renderListaElegirOtro: renderListaElegirOtro,
     renderNevera: renderNevera,

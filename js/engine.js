@@ -424,6 +424,22 @@
     return contador;
   }
 
+  // Semáforo de equilibrio semanal (P1, feedback externo 2026-07-16): reutiliza
+  // el mismo contador que ya usa el generador — solo lo expone por categoría de
+  // cuota en vez de mantenerlo interno. Sin lógica nueva, cero riesgo de divergir
+  // de lo que el motor realmente decide.
+  function resumenCuotasSemana(plan, banco) {
+    var cuotas = (banco && banco.categorias_cuota) || {};
+    var contador = contadorInicialDesdeDias((plan && plan.dias) || [], banco);
+    return Object.keys(cuotas).map(function (clave) {
+      var cuota = cuotas[clave];
+      var cuenta = contador[clave] || 0;
+      var minOk = cuota.min_sem == null || cuenta >= cuota.min_sem;
+      var maxOk = cuota.max_sem == null || cuenta <= cuota.max_sem;
+      return { categoria: clave, cuenta: cuenta, min_sem: cuota.min_sem, max_sem: cuota.max_sem, cumplido: minOk && maxOk };
+    });
+  }
+
   // ---------------------------------------------------------------
   // Ajuste kcal — restricción 7 (±15%, orientativo)
   // ---------------------------------------------------------------
@@ -431,6 +447,31 @@
     if (!objetivoKcal) return 0;
     var desvio = Math.abs(kcalTotal - objetivoKcal) / objetivoKcal;
     return -desvio * 20; // penalización suave — las cuotas pesan más que el ajuste fino de kcal
+  }
+
+  // ---------------------------------------------------------------
+  // Feedback loop (P1, 2026-07-16): "capturar, no modelar" — un toque post-comida
+  // por slot (fecha+tipoComida) en estado.valoraciones. Aquí solo se agrega el
+  // conteo de rechazos por plantilla, para sesgar el scoring; el gusto/neutro no
+  // puntúa (con 3 opciones simétricas, sesgar también hacia "le gustó" repetiría
+  // el mismo plato más de la cuenta — lo pedido es evitar lo rechazado, no más).
+  // ---------------------------------------------------------------
+  function contarRechazosPorPlantilla(estado) {
+    var contador = {};
+    var valoraciones = (estado && estado.valoraciones) || {};
+    Object.keys(valoraciones).forEach(function (clave) {
+      var v = valoraciones[clave];
+      if (v && v.valor === 'no-gusta' && v.plantillaId) contador[v.plantillaId] = (contador[v.plantillaId] || 0) + 1;
+    });
+    return contador;
+  }
+
+  // penalización suave y acotada — nunca debe pesar más que una restricción dura
+  // (cuotas/dieta), solo desempata entre plantillas ya viables. Techo en 3 rechazos:
+  // más allá no hace falta hundir más el score, ya perdió cualquier empate real.
+  function puntuarRechazos(plantillaId, rechazosPorPlantilla) {
+    var n = Math.min((rechazosPorPlantilla && rechazosPorPlantilla[plantillaId]) || 0, 3);
+    return -n * 6;
   }
 
   // ---------------------------------------------------------------
@@ -474,7 +515,8 @@
         if (violaVariedad(seleccion, opts.usadosHoy, opts.usadosAyer)) return; // restricción 4
         if (violaMaximoCuota(seleccion, opts.contadorCuotas, opts.cuotas, opts.banco)) return; // restricción 5 (máx.)
         var score = puntuarCuotas(seleccion, opts.contadorCuotas, opts.cuotas, opts.banco, opts.slotsRestantes) // restricción 5 (mín.)
-                  + puntuarKcal(kcalTotalSeleccion(plantilla, seleccion, opts.presentes, opts.banco), opts.objetivoKcal); // restricción 7
+                  + puntuarKcal(kcalTotalSeleccion(plantilla, seleccion, opts.presentes, opts.banco), opts.objetivoKcal) // restricción 7
+                  + puntuarRechazos(plantilla.id, opts.rechazosPorPlantilla); // feedback loop, sesgo suave
         if (score > mejorScore) {
           mejorScore = score;
           mejor = { plantilla: plantilla, seleccion: seleccion };
@@ -493,6 +535,7 @@
     var semanaISO = (planExistente && planExistente.semanaISO) || lunesDeEstaSemana(new Date());
     var cuotas = (banco && banco.categorias_cuota) || {};
     var contadorCuotas = contadorInicialDesdeDias(planExistente ? planExistente.dias.slice(0, desde) : [], banco);
+    var rechazosPorPlantilla = contarRechazosPorPlantilla(estado);
     var dias = [];
 
     for (var i = 0; i < 7; i++) {
@@ -517,7 +560,8 @@
           plantillasCandidatas: candidatas, presentes: presentes, vetosUnion: vetosUnion,
           objetivoKcal: objetivoKcal, usadosHoy: usadosHoy, usadosAyer: usadosAyer,
           contadorCuotas: contadorCuotas, cuotas: cuotas, banco: banco,
-          esFinde: esFinDeSemana(i), slotsRestantes: slotsRestantes
+          esFinde: esFinDeSemana(i), slotsRestantes: slotsRestantes,
+          rechazosPorPlantilla: rechazosPorPlantilla
         });
 
         if (!elegido) { diaActual[tipoComida] = null; return; }
@@ -621,7 +665,8 @@
       vetosViabilidad: vetosViabilidad, ignorarEsfuerzo: esManual,
       objetivoKcal: objetivoKcal, usadosHoy: usadosHoy, usadosAyer: usadosAyer,
       contadorCuotas: contadorCuotas, cuotas: cuotas, banco: banco,
-      esFinde: esFinDeSemana(dia), slotsRestantes: Math.max(1, (7 - dia) * 2)
+      esFinde: esFinDeSemana(dia), slotsRestantes: Math.max(1, (7 - dia) * 2),
+      rechazosPorPlantilla: contarRechazosPorPlantilla(estado)
     });
     if (!elegido) return null;
 
@@ -705,7 +750,8 @@
     todasLasPlantillas: todasLasPlantillas,
     plantillaViableParaMesa: plantillaViableParaMesa,
     vetosDe: vetosDe,
-    capitaliza: capitaliza
+    capitaliza: capitaliza,
+    resumenCuotasSemana: resumenCuotasSemana
   };
 
   if (typeof module !== 'undefined' && module.exports) module.exports = E3Engine;

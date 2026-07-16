@@ -30,7 +30,7 @@
   // Estado
   // ---------------------------------------------------------------
   function estadoVacio() {
-    return { nombreFamilia: '', familia: [], ausenciasPuntuales: {}, plan: null, ocultas: [], favoritas: [], propias: [], compra: { marcados: [] } };
+    return { nombreFamilia: '', familia: [], ausenciasPuntuales: {}, plan: null, ocultas: [], favoritas: [], propias: [], compra: { marcados: [] }, valoraciones: {} };
   }
 
   function cargarEstado() {
@@ -45,6 +45,7 @@
   }
 
   function guardarEstado() {
+    if (modoDemo) return; // vista de ejemplo — nunca se persiste ni sincroniza
     localStorage.setItem(STORAGE_KEY, JSON.stringify(estado));
     // No empujar a remoto hasta haber visto el primer snapshot (remotoListo):
     // un push anterior al snapshot inicial machacaría en Firestore lo que otro
@@ -89,6 +90,12 @@
   var semanaDiaSeleccionado = null; // índice 0-6 en la vista Semana — estado de UI, no persistido; null = hoy
   var pendienteCambiar = null; // {dia, tipoComida} mientras el sheet de "cambiar" está abierto
   var pendienteRegenerar = null; // {dia, tipoComida} tras un cambio, a la espera de sí/no
+  // Onboarding con familia demo (P1, 2026-07-16): mientras modoDemo es true, `estado`
+  // apunta a una familia de ejemplo en memoria — guardarEstado() no-opea (ver arriba) y
+  // el snapshot remoto se ignora (ver iniciarEscuchaRemota) para que nada de la demo
+  // toque localStorage/Firestore. estadoAntesDemo guarda la referencia real para volver.
+  var modoDemo = false;
+  var estadoAntesDemo = null;
 
   // qué <details> están abiertos (miembros del sheet Familia, receta propia) — un
   // re-render reconstruye el HTML entero; sin esto, cada toque colapsaría el panel abierto.
@@ -225,6 +232,7 @@
     if (!familyId) return;
     var primera = true;
     desuscribirRemoto = window.E3Sync.suscribirEstado(familyId, function (remoto) {
+      if (modoDemo) return; // no clobbear la vista de ejemplo con datos reales
       // un push local pendiente serializaría un estado anterior a este snapshot
       // y lo escribiría encima en Firestore — se cancela: el remoto es la verdad,
       // y cualquier edición posterior re-dispara su propio push.
@@ -240,6 +248,15 @@
   }
 
   function abrirSheetSync() {
+    // la sincronización subiría la familia de ejemplo a Firestore como si fuera
+    // real — inalcanzable en el uso normal (el hamburguesa vive dentro de SEMANA,
+    // que sí se muestra en demo), así que se corta aquí en vez de ocultar el menú.
+    if (modoDemo) {
+      abrirSheet(UI.sheetHead('Ejemplo') + '<div class="sheet-body"><p class="card-msg">' +
+        'La sincronización no está disponible en la vista de ejemplo. Sal del ejemplo ' +
+        'y crea tu familia real para activarla.</p></div>');
+      return;
+    }
     abrirSheet(UI.renderSheetSync({ cargando: true }));
     var familyId = window.E3Sync ? window.E3Sync.getFamilyId() : null;
     if (!familyId) {
@@ -307,9 +324,7 @@
   // ---------------------------------------------------------------
   // Landing → wizard (hub de alta) / HOY
   // ---------------------------------------------------------------
-  function cerrarLanding() {
-    document.getElementById('landing-screen').hidden = true;
-    document.body.classList.remove('landing-open');
+  function aterrizarSegunFamilia() {
     if (!estado.familia.length) {
       document.getElementById('wizard-screen').hidden = false;
       document.body.classList.add('wizard-open');
@@ -320,6 +335,56 @@
       asegurarPlanVigente();
       render();
     }
+  }
+
+  function cerrarLanding() {
+    document.getElementById('landing-screen').hidden = true;
+    document.body.classList.remove('landing-open');
+    aterrizarSegunFamilia();
+  }
+
+  // ---------------------------------------------------------------
+  // Onboarding con familia demo (P1, 2026-07-16): "ver un ejemplo" antes de
+  // rellenar nada — familia y semana generadas en memoria, nunca persistidas
+  // (guardarEstado/iniciarEscuchaRemota/abrirSheetSync están guardados arriba).
+  // Plenamente interactiva: como toda la app lee/escribe el `estado` del
+  // closure, tocar avatares o cambiar un plato en la demo funciona igual que
+  // en la app real — solo que se descarta entero al salir.
+  // ---------------------------------------------------------------
+  var DEMO_FAMILIA_DATOS = [
+    { nombre: 'Marta', sexo: 'mujer', anioNacimiento: 1985, peso: 62, altura: 165, actividad: 'media', dieta: 'omnivora' },
+    { nombre: 'Javier', sexo: 'hombre', anioNacimiento: 1983, peso: 80, altura: 178, actividad: 'media', dieta: 'omnivora' },
+    { nombre: 'Lucas', sexo: 'hombre', anioNacimiento: 2019, actividad: 'media', dieta: 'omnivora' }
+  ];
+
+  function crearFamiliaDemo() {
+    return DEMO_FAMILIA_DATOS.map(function (datos, i) {
+      return Object.assign({ id: 'demo-' + i, vetos: [], patron: patronPorDefecto() }, datos);
+    });
+  }
+
+  function mostrarDemo() {
+    estadoAntesDemo = estado;
+    var estadoDemo = Object.assign(estadoVacio(), { nombreFamilia: 'Familia Ejemplo', familia: crearFamiliaDemo() });
+    estadoDemo.plan = E.generarSemana(estadoDemo, BANCO);
+    estado = estadoDemo;
+    modoDemo = true;
+    document.getElementById('landing-screen').hidden = true;
+    document.body.classList.remove('landing-open');
+    document.getElementById('wizard-screen').hidden = true;
+    document.body.classList.remove('wizard-open');
+    document.getElementById('demo-banner').hidden = false;
+    vistaActual = 'semana';
+    semanaDiaSeleccionado = null;
+    render();
+  }
+
+  function salirDemo() {
+    modoDemo = false;
+    estado = estadoAntesDemo || estadoVacio();
+    estadoAntesDemo = null;
+    document.getElementById('demo-banner').hidden = true;
+    aterrizarSegunFamilia();
   }
 
   // ---------------------------------------------------------------
@@ -525,6 +590,25 @@
     abrirSheet(UI.renderSheetReceta(estado, BANCO, estado.plan, dia, tipoComida));
   }
 
+  // Feedback loop (P1, 2026-07-16): toque post-comida por slot. Toggle — tocar la
+  // misma carita otra vez quita la valoración (arrepentimiento sin fricción).
+  function valorarPlato(dia, tipoComida, valor) {
+    var slot = estado.plan && estado.plan.dias[dia] && estado.plan.dias[dia][tipoComida];
+    if (!slot) return;
+    var fecha = estado.plan.dias[dia].fecha;
+    var clave = fecha + '_' + tipoComida;
+    if (!estado.valoraciones) estado.valoraciones = {};
+    var actual = estado.valoraciones[clave];
+    if (actual && actual.valor === valor) delete estado.valoraciones[clave];
+    else estado.valoraciones[clave] = { plantillaId: slot.plantillaId, valor: valor };
+    guardarEstado();
+    abrirSheet(UI.renderSheetReceta(estado, BANCO, estado.plan, dia, tipoComida)); // re-pinta con el estado nuevo
+  }
+
+  function abrirResumenSemana() {
+    abrirSheet(UI.renderSheetResumenSemana(estado, BANCO, estado.plan));
+  }
+
   function abrirCambiar(dia, tipoComida) {
     pendienteCambiar = { dia: dia, tipoComida: tipoComida };
     abrirSheet(UI.renderSheetCambiarInicio(estado, BANCO, dia, tipoComida));
@@ -687,6 +771,8 @@
   // ---------------------------------------------------------------
   var ACCIONES = {
     'empezar': function () { cerrarLanding(); },
+    'ver-demo': function () { mostrarDemo(); },
+    'salir-demo': function () { salirDemo(); },
     'ir-vista': function (btn) { irAVista(btn.dataset.vista); },
     'abrir-familia': function () { abrirSheetFamilia(); },
     'abrir-menu-hamburguesa': function (btn) { abrirMenuHamburguesa(btn); },
@@ -766,6 +852,8 @@
     },
 
     'abrir-receta': function (btn) { abrirRecetaDetalle(Number(btn.dataset.dia), btn.dataset.tipo); },
+    'abrir-resumen-semana': function () { abrirResumenSemana(); },
+    'valorar-plato': function (btn) { valorarPlato(E.diaIndexDesdeFecha(estado.plan, btn.dataset.fecha), btn.dataset.tipo, btn.dataset.valor); },
     'abrir-cambiar': function (btn) { abrirCambiar(Number(btn.dataset.dia), btn.dataset.tipo); },
     'cerrar-sheet': function () { cerrarSheet(); },
     'modo-elegir-otro': function (btn) { abrirSheet(UI.renderListaElegirOtro(estado, BANCO, estado.plan, Number(btn.dataset.dia), btn.dataset.tipo)); },

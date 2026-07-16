@@ -21,13 +21,10 @@
   --muted: #8A93A5;
   --line: rgba(8, 18, 34, 0.10);
   --line-solid: #E2E6EC;
-  --accent: #C9A96E;
   --accent-ink: #081222;
   --navy-ink: #F5F0E8;
-  --emerald: #C9A96E;
   --gold: #C9A96E;
   --gold-soft: #E0C896;
-  --lime: #E0C896;
   --danger: #C0392B;
   --font-display: 'Instrument Serif', Georgia, serif;
   --font-ui: 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -90,8 +87,6 @@ button { touch-action: manipulation; -webkit-tap-highlight-color: transparent; f
 input, select { font-family: inherit; font-size: var(--fs-cuerpo); }
 
 :focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
-
-.oculto { display: none !important; }
 
 /* ============================================================
    Landing — cantera de e3foods.html (.landing-screen/.landing-hero),
@@ -191,7 +186,6 @@ body.wizard-open { overflow: hidden; }
 .campo-nombre-familia, .campo-nombre-miembro { display: block; margin-bottom: var(--space-1); }
 .campo-nombre-familia .input-editorial { font-family: var(--font-display); font-size: 28px; font-weight: 400; }
 
-.wizard-intro { color: var(--soft); font-size: var(--fs-cuerpo); }
 .wizard-pregunta { font-family: var(--font-display); font-size: var(--fs-hero); font-weight: 400; line-height: 1.1; color: var(--ink); margin-bottom: var(--space-1); }
 .wizard-pregunta em { font-style: italic; color: var(--gold); }
 
@@ -206,7 +200,6 @@ body.wizard-open { overflow: hidden; }
   min-height: 40px; font-size: var(--fs-aux); font-weight: 700; border-radius: 999px; padding: 8px 16px;
   cursor: pointer; background: var(--panel); color: var(--soft); border: 1px solid var(--line-solid);
 }
-.chip-toggle-activo { background: var(--ink); color: var(--navy-ink); border-color: var(--ink); }
 
 .wizard-lista-miembros { list-style: none; display: flex; flex-direction: column; gap: var(--space-2); }
 .wizard-miembro-card {
@@ -297,20 +290,9 @@ body.wizard-open { overflow: hidden; }
   background: var(--ink); color: var(--navy-ink);
   padding: calc(var(--space-5) + var(--safe-t)) var(--space-3) var(--space-4);
 }
-/* Fija (Roger 2026-07-13, referencia visual externa) — SEMANA es ahora la única
-   vista de primer nivel para el día a día, con el selector de día integrado
-   dentro de esta misma cabecera; se queda arriba al hacer scroll de las cards. */
-.cabecera-midnight-fija { position: sticky; top: 0; z-index: 40; }
 .cabecera-fila { display: flex; justify-content: space-between; align-items: center; gap: var(--space-2); }
 .cabecera-titulo { font-family: var(--font-display); font-weight: 400; font-size: 26px; line-height: 1.15; }
 .cabecera-titulo em { font-style: italic; color: var(--gold); }
-.cabecera-avatar {
-  width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0;
-  border: 1.5px solid rgba(245, 240, 232, .3); background: var(--ink) center/cover no-repeat;
-  color: var(--navy-ink); font-size: var(--fs-aux); font-weight: 700;
-  display: flex; align-items: center; justify-content: center; cursor: pointer;
-  margin-bottom: 2px;
-}
 .cabecera-contador { font-size: var(--fs-aux); font-weight: 700; color: rgba(245, 240, 232, .55); margin-bottom: 4px; }
 /* botón "+" de cabecera (Roger 2026-07-14) — solo Recetas lo usa (banco de
    platos), Semana tiene su propia cabecera clara y no pasa por aquí. */
@@ -334,8 +316,6 @@ body.wizard-open { overflow: hidden; }
 /* span, no botón (Roger 2026-07-14): visual del mockup replicado, sin sheet
    de resumen semanal construido todavía — no finge ser tocable. */
 .pill-resumen { font-size: var(--fs-aux); font-weight: 700; color: var(--soft); background: var(--panel); border: 1px solid var(--line-solid); border-radius: 999px; padding: 6px 12px; flex-shrink: 0; }
-.seccion-titulo { font-size: var(--fs-titulo); font-weight: 700; margin: var(--space-5) 0 var(--space-3); }
-.seccion-titulo:first-of-type { margin-top: 0; }
 
 /* ============================================================
    Cards de comida/cena
@@ -344,9 +324,6 @@ body.wizard-open { overflow: hidden; }
   background: var(--panel); border: 1px solid var(--line-solid); border-radius: 16px;
   padding: var(--space-3); margin-bottom: var(--space-3);
 }
-.card-head { display: flex; justify-content: space-between; align-items: center; gap: var(--space-2); margin-bottom: var(--space-2); }
-.card-eyebrow { font-size: var(--fs-aux); font-weight: 700; letter-spacing: 0.6px; color: var(--soft); text-transform: uppercase; }
-.card-title { font-size: var(--fs-titulo); font-weight: 700; line-height: 1.25; margin-bottom: var(--space-1); }
 .card-adaptaciones { font-size: var(--fs-aux); color: var(--soft); margin-bottom: var(--space-2); }
 .card-msg { font-size: var(--fs-cuerpo); color: var(--soft); margin: var(--space-1) 0 var(--space-2); }
 .card-vacia { background: var(--elev2); border-style: dashed; }
@@ -429,7 +406,6 @@ body.wizard-open { overflow: hidden; }
 .check-texto { flex: 1; font-size: var(--fs-cuerpo); }
 .check-cantidad { font-size: var(--fs-aux); color: var(--soft); }
 .check-marcado .check-texto { text-decoration: line-through; color: var(--soft); }
-.compra-resumen { font-size: var(--fs-aux); color: var(--soft); margin-top: var(--space-2); text-align: center; }
 
 /* ============================================================
    Cabecera clara SEMANA — app-bar + saludo + card IA (Roger 2026-07-14,
@@ -543,7 +519,6 @@ body.wizard-open { overflow: hidden; }
    por eso no hacía scroll y el botón de confirmar quedaba inalcanzable)
    ============================================================ */
 .nevera-top { position: sticky; top: 0; z-index: 1; background: var(--panel); display: flex; flex-direction: column; gap: var(--space-2); }
-.btn-mic-activo { background: var(--ink); border-color: var(--ink); color: var(--gold); }
 .nevera-seleccion { display: flex; flex-wrap: wrap; gap: 6px; }
 .nevera-chip {
   display: inline-flex; align-items: center; gap: 6px; background: var(--elev2); color: var(--ink);
@@ -558,7 +533,6 @@ body.wizard-open { overflow: hidden; }
   font-size: var(--fs-aux); font-weight: 700; border-radius: 999px; padding: 7px 14px;
   cursor: pointer; background: var(--panel); color: var(--soft); border: 1px solid var(--line-solid);
 }
-.chip-filtro-activo { background: var(--ink); color: var(--navy-ink); border-color: var(--ink); }
 
 /* ============================================================
    COMPRA — segmented control + secciones agrupadas por categoría
@@ -568,6 +542,9 @@ body.wizard-open { overflow: hidden; }
   flex: 1; text-align: center; font-size: var(--fs-aux); font-weight: 700; border-radius: 999px;
   padding: var(--space-2) 0; cursor: pointer; background: var(--panel); color: var(--soft); border: 1px solid var(--line-solid);
 }
+/* estado activo compartido de los chips/segmentos de toda la app */
+.chip-toggle-activo,
+.chip-filtro-activo,
 .segmento-activo { background: var(--ink); color: var(--navy-ink); border-color: var(--ink); }
 
 .seccion-compra { margin-bottom: var(--space-3); }

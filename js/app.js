@@ -12,76 +12,19 @@
   var STORAGE_KEY = 'e3foods_v2';
   var PATRON_DEFAULT = ['casa', 'casa', 'casa', 'casa', 'casa', 'casa', 'casa'];
 
-  /* ============================================================
-     DEV FALLBACK — se elimina cuando exista data/recetas.js
-     Mini-banco de 4 plantillas + ~19 ingredientes para poder probar el
-     flujo completo mientras el banco real (data/recetas.js, construido
-     en paralelo) no está disponible. Respeta el esquema de SPEC.md.
-     (Ampliado de ~15 a ~19 ingredientes: con solo 3 hidratos/3 verduras
-     únicos la regla dura de variedad -- SPEC §6.3, no repetir eje ni
-     mismo día ni día consecutivo -- agota el pool en 3-4 comidas y deja
-     huecos vacíos en la semana. Es una limitación esperable de un banco
-     mínimo, no un bug del motor, pero así el flujo de demo es fluido.)
-     ============================================================ */
-  var DEV_FALLBACK_BANCO = {
-    version: 1,
-    ingredientes: {
-      'pollo': { nombre: 'Pollo', categoria: 'carne-blanca', kcal_100g: 165, racion_adulto_g: 150, racion_nino_g: 90 },
-      'pavo': { nombre: 'Pavo', categoria: 'carne-blanca', kcal_100g: 135, racion_adulto_g: 150, racion_nino_g: 90 },
-      'ternera': { nombre: 'Ternera', categoria: 'carne-roja', kcal_100g: 250, racion_adulto_g: 150, racion_nino_g: 90 },
-      'merluza': { nombre: 'Merluza', categoria: 'pescado-blanco', kcal_100g: 86, racion_adulto_g: 150, racion_nino_g: 100 },
-      'salmon': { nombre: 'Salmón', categoria: 'pescado-azul', kcal_100g: 208, racion_adulto_g: 150, racion_nino_g: 100 },
-      'lentejas': { nombre: 'Lentejas', categoria: 'legumbre', kcal_100g: 116, racion_adulto_g: 200, racion_nino_g: 130 },
-      'garbanzos': { nombre: 'Garbanzos', categoria: 'legumbre', kcal_100g: 164, racion_adulto_g: 200, racion_nino_g: 130 },
-      'huevo': { nombre: 'Huevo', categoria: 'huevo', kcal_100g: 155, racion_adulto_g: 100, racion_nino_g: 53 },
-      'tofu': { nombre: 'Tofu', categoria: 'otro', kcal_100g: 76, racion_adulto_g: 150, racion_nino_g: 90 },
-      'arroz': { nombre: 'Arroz', categoria: 'cereal', kcal_100g: 130, racion_adulto_g: 180, racion_nino_g: 110 },
-      'patata': { nombre: 'Patata', categoria: 'tuberculo', kcal_100g: 87, racion_adulto_g: 200, racion_nino_g: 130 },
-      'cuscus': { nombre: 'Cuscús', categoria: 'cereal', kcal_100g: 112, racion_adulto_g: 180, racion_nino_g: 110 },
-      'brocoli': { nombre: 'Brócoli', categoria: 'verdura', kcal_100g: 35, racion_adulto_g: 200, racion_nino_g: 120 },
-      'judias-verdes': { nombre: 'Judías verdes', categoria: 'verdura', kcal_100g: 31, racion_adulto_g: 200, racion_nino_g: 120 },
-      'calabacin': { nombre: 'Calabacín', categoria: 'verdura', kcal_100g: 17, racion_adulto_g: 200, racion_nino_g: 120 },
-      'pasta': { nombre: 'Pasta', categoria: 'cereal', kcal_100g: 131, racion_adulto_g: 180, racion_nino_g: 110 },
-      'boniato': { nombre: 'Boniato', categoria: 'tuberculo', kcal_100g: 90, racion_adulto_g: 200, racion_nino_g: 130 },
-      'espinacas': { nombre: 'Espinacas', categoria: 'verdura', kcal_100g: 23, racion_adulto_g: 180, racion_nino_g: 100 },
-      'zanahoria': { nombre: 'Zanahoria', categoria: 'verdura', kcal_100g: 41, racion_adulto_g: 150, racion_nino_g: 90 }
-    },
-    categorias_cuota: {
-      'legumbre': { min_sem: 3, max_sem: null },
-      'pescado-total': { min_sem: 3, max_sem: null },
-      'pescado-azul': { min_sem: 1, max_sem: null },
-      'carne-roja': { min_sem: 0, max_sem: 2 },
-      'huevo': { min_sem: 3, max_sem: 4 }
-    },
-    plantillas: [
-      {
-        id: 'plancha-guarnicion', nombre_patron: '{proteina} a la plancha con {hidrato} y {verdura}', tipo: 'plantilla',
-        apta: ['comida', 'cena'], tiempo_min: 25, esfuerzo: 'rapido', ninos: true,
-        ejes: { proteina: ['pollo', 'pavo', 'merluza', 'salmon', 'tofu'], hidrato: ['arroz', 'patata', 'cuscus', 'pasta'], verdura: ['brocoli', 'judias-verdes', 'calabacin', 'espinacas'] },
-        kcal_extra: 100, pasos: ['Salpimentar la proteína y hacer a la plancha unos minutos por cada lado.', 'Cocer el hidrato según el tipo.', 'Saltear o cocer la verdura al dente.', 'Emplatar los tres juntos con un chorrito de aceite de oliva.'], notas: ''
-      },
-      {
-        id: 'guiso-legumbre', nombre_patron: 'Guiso de {proteina} con verduras', tipo: 'plato-unico',
-        apta: ['comida', 'cena'], tiempo_min: 40, esfuerzo: 'medio', ninos: true,
-        ejes: { proteina: ['lentejas', 'garbanzos'], verdura: ['judias-verdes', 'calabacin', 'zanahoria'] },
-        kcal_extra: 80, pasos: ['Sofreír verduras de la base (cebolla, ajo, pimiento).', 'Añadir la legumbre y la verdura elegida.', 'Cubrir con agua o caldo y cocer a fuego lento.', 'Rectificar de sal y servir caliente.'], notas: ''
-      },
-      {
-        id: 'carne-al-horno', nombre_patron: '{proteina} al horno con {hidrato} y {verdura}', tipo: 'plantilla',
-        apta: ['comida', 'cena'], tiempo_min: 45, esfuerzo: 'medio', ninos: true,
-        ejes: { proteina: ['ternera', 'pollo'], hidrato: ['patata', 'arroz', 'boniato'], verdura: ['brocoli', 'calabacin', 'zanahoria'] },
-        kcal_extra: 120, pasos: ['Precalentar el horno a 200ºC.', 'Colocar la proteína con el hidrato troceado alrededor.', 'Hornear hasta que esté hecho, dando la vuelta a media cocción.', 'Añadir la verdura los últimos 15 minutos o cocerla aparte.'], notas: ''
-      },
-      {
-        id: 'tortilla-patatas', nombre_patron: 'Tortilla de {hidrato} con {proteina}', tipo: 'plato-unico',
-        apta: ['comida', 'cena'], tiempo_min: 25, esfuerzo: 'rapido', ninos: true,
-        ejes: { proteina: ['huevo'], hidrato: ['patata'] },
-        kcal_extra: 150, pasos: ['Cortar la patata en láminas finas y freír u hornear.', 'Batir los huevos y mezclar con la patata.', 'Cuajar la tortilla a fuego medio por ambos lados.', 'Dejar reposar un par de minutos antes de servir.'], notas: ''
-      }
-    ]
-  }; /* FIN DEV FALLBACK */
-
-  var BANCO = window.E3_RECETAS || DEV_FALLBACK_BANCO;
+  // El banco real (data/recetas.js) se carga siempre antes que este script. Si
+  // falta (404, error de sintaxis tras una edición), fallar VISIBLE en vez de
+  // arrancar degradado en silencio — antes había un mini-banco de desarrollo
+  // aquí que enmascaraba justo ese fallo de despliegue.
+  var BANCO = window.E3_RECETAS;
+  if (!BANCO) {
+    document.addEventListener('DOMContentLoaded', function () {
+      document.body.innerHTML = '<div style="padding:32px 24px;font-family:sans-serif;max-width:480px;margin:0 auto">' +
+        '<h1 style="font-size:20px;margin-bottom:12px">No se pudo cargar el banco de recetas</h1>' +
+        '<p>Recarga la página. Si el problema sigue, es un fallo del despliegue (data/recetas.js no responde).</p></div>';
+    });
+    return;
+  }
 
   // ---------------------------------------------------------------
   // Estado
@@ -103,8 +46,13 @@
 
   function guardarEstado() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(estado));
-    if (window.E3Sync && window.E3Sync.getFamilyId()) {
-      window.E3Sync.guardarRemotoDebounced(estado);
+    // No empujar a remoto hasta haber visto el primer snapshot (remotoListo):
+    // un push anterior al snapshot inicial machacaría en Firestore lo que otro
+    // dispositivo escribió mientras este estaba cerrado. El getter se evalúa al
+    // disparar el debounce, no al programarlo — si entre medias llega un snapshot
+    // y `estado` se rebindea, se sube el estado vigente, no el capturado.
+    if (window.E3Sync && window.E3Sync.getFamilyId() && remotoListo) {
+      window.E3Sync.guardarRemotoDebounced(function () { return estado; });
     }
   }
 
@@ -176,12 +124,21 @@
   // ---------------------------------------------------------------
   function render() {
     var cont = document.getElementById('vista-' + vistaActual);
+    // render() reconstruye el <input> del buscador entero — si tenía el foco
+    // (tecleo local O re-render por snapshot remoto), restaurar foco y cursor
+    // para no cortar la escritura (Roger 2026-07-14, buscador vivo).
+    var focoBuscador = document.activeElement && document.activeElement.id === 'recetas-buscador';
+    var cursorBuscador = focoBuscador ? document.activeElement.selectionStart : 0;
     document.querySelectorAll('.vista').forEach(function (v) { v.hidden = (v.id !== 'vista-' + vistaActual); });
     document.querySelectorAll('.nav-btn').forEach(function (b) { b.classList.toggle('active', b.dataset.vista === vistaActual); b.setAttribute('aria-current', b.dataset.vista === vistaActual ? 'page' : 'false'); });
     if (vistaActual === 'semana') cont.innerHTML = UI.renderSemana(estado, estado.plan, BANCO, semanaDiaSeleccionado, obtenerMiembroDispositivo());
     else if (vistaActual === 'recetas') cont.innerHTML = UI.renderRecetasVista(estado, BANCO, filtroRecetas, busquedaRecetas, filtrosRecetasVisibles);
     else if (vistaActual === 'compra') cont.innerHTML = UI.renderCompraVista(estado, estado.plan, BANCO, rangoCompra);
     aplicarDetallesAbiertos(cont);
+    if (focoBuscador) {
+      var buscador = document.getElementById('recetas-buscador');
+      if (buscador) { buscador.focus(); buscador.setSelectionRange(cursorBuscador, cursorBuscador); }
+    }
   }
 
   function irAVista(nombre) { vistaActual = nombre; render(); }
@@ -247,6 +204,10 @@
   // escucha de cambios remotos cuando hay una familia sincronizada.
   // ---------------------------------------------------------------
   var desuscribirRemoto = null;
+  // true cuando ya se ha visto el primer snapshot remoto (o se acaba de subir el
+  // estado inicial al crear la familia) — hasta entonces no se empuja nada a
+  // Firestore para no pisar cambios de otros dispositivos con el estado local viejo.
+  var remotoListo = false;
 
   function mostrarAppPrincipal() {
     document.getElementById('landing-screen').hidden = true;
@@ -264,10 +225,17 @@
     if (!familyId) return;
     var primera = true;
     desuscribirRemoto = window.E3Sync.suscribirEstado(familyId, function (remoto) {
-      estado = Object.assign(estadoVacio(), remoto);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(estado)); // caché local, sin re-disparar guardarRemotoDebounced
+      // un push local pendiente serializaría un estado anterior a este snapshot
+      // y lo escribiría encima en Firestore — se cancela: el remoto es la verdad,
+      // y cualquier edición posterior re-dispara su propio push.
+      window.E3Sync.cancelarPendiente();
+      remotoListo = true;
+      if (remoto) {
+        estado = Object.assign(estadoVacio(), remoto);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(estado)); // caché local, sin re-disparar guardarRemotoDebounced
+      }
       if (primera && onPrimerSnapshot) { primera = false; onPrimerSnapshot(); }
-      else { asegurarPlanVigente(); render(); }
+      else if (remoto) { asegurarPlanVigente(); render(); }
     });
   }
 
@@ -288,9 +256,20 @@
   function activarSincronizacion() {
     var btn = document.getElementById('sync-activar-btn');
     if (btn) { btn.disabled = true; btn.textContent = 'Activando…'; }
-    window.E3Sync.crearFamilia(estado.nombreFamilia || 'Mi familia').then(function (data) {
-      return window.E3Sync.subirEstadoInicial(estado).then(function () { return data; });
-    }).then(function (data) {
+    // Si ya hay familyId (p.ej. la creación anterior falló a medias al subir el
+    // estado), NO crear otra familia — reintentar solo la subida y recuperar el
+    // código existente. Sin este guard, cada reintento acuñaba una familia nueva
+    // huérfana con código distinto.
+    var familyIdPrevio = window.E3Sync.getFamilyId();
+    var promesa = familyIdPrevio
+      ? window.E3Sync.subirEstadoInicial(estado).then(function () {
+          return window.E3Sync.obtenerInfoFamilia(familyIdPrevio);
+        })
+      : window.E3Sync.crearFamilia(estado.nombreFamilia || 'Mi familia').then(function (data) {
+          return window.E3Sync.subirEstadoInicial(estado).then(function () { return data; });
+        });
+    promesa.then(function (data) {
+      remotoListo = true; // el doc remoto acaba de escribirse con este estado
       iniciarEscuchaRemota();
       mostrarAppPrincipal();
       document.getElementById('sheet-contenido').innerHTML = UI.renderSheetSync({ synced: true, nombreFamilia: estado.nombreFamilia, code: data.code });
@@ -465,36 +444,24 @@
     formEditId = miembroId || null;
     var existente = miembroId ? estado.familia.find(function (m) { return m.id === miembroId; }) : null;
     formFotoActual = existente ? (existente.foto || null) : null;
-    abrirSheet('<div class="sheet-head"><h2>' + (existente ? 'Editar miembro' : 'Nuevo miembro') + '</h2>' +
-      '<button type="button" class="btn-cerrar" data-action="cerrar-sheet" aria-label="Cerrar">&times;</button></div>' +
+    abrirSheet(UI.sheetHead(existente ? 'Editar miembro' : 'Nuevo miembro') +
       '<div class="sheet-body">' + UI.renderFormMiembroCompleto(existente, !existente) + '</div>');
   }
 
   // #mf-foto-preview es un <button class="foto-tap"> con spans internos (iniciales +
-  // icono cámara en vacío, o "Cambiar" superpuesto sobre la foto) — reconstruye ese
-  // contenido interno en vez de tocar textContent/backgroundImage sueltos, que
-  // borrarían los spans. El botón "Quitar foto" es un hermano fuera del círculo,
-  // por eso se maneja aparte (mostrar/ocultar todo el nodo, no solo un flag).
-  var ICONO_CAMARA_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8.5A1.5 1.5 0 0 1 5.5 7h1.6l.9-1.5A1.5 1.5 0 0 1 9.29 4.75h5.42A1.5 1.5 0 0 1 16 5.5L16.9 7h1.6A1.5 1.5 0 0 1 20 8.5v9A1.5 1.5 0 0 1 18.5 19h-13A1.5 1.5 0 0 1 4 17.5z"/><circle cx="12" cy="12.5" r="3.4"/></svg>';
-
+  // icono cámara en vacío, o "Cambiar" superpuesto sobre la foto) — el contenido
+  // interno lo construye UI.fotoTapInner (el mismo helper de los renders), aquí
+  // solo se gestiona el background y el botón "Quitar foto", que es un hermano
+  // fuera del círculo (mostrar/ocultar todo el nodo, no solo un flag).
   function actualizarPreviewFotoForm() {
     var el = document.getElementById('mf-foto-preview');
     if (!el) return;
     var btnQuitar = document.getElementById('mf-foto-quitar');
-    if (formFotoActual) {
-      el.style.backgroundImage = "url('" + formFotoActual + "')";
-      el.innerHTML = '<span class="foto-tap-editar">Cambiar</span>';
-      el.setAttribute('aria-label', 'Cambiar foto');
-      if (btnQuitar) btnQuitar.hidden = false;
-    } else {
-      el.style.backgroundImage = 'none';
-      var nombreEl = document.getElementById('mf-nombre');
-      var nombre = nombreEl ? nombreEl.value : '';
-      var inicial = nombre ? nombre.trim().charAt(0).toUpperCase() : '?';
-      el.innerHTML = '<span class="foto-tap-inicial">' + inicial + '</span><span class="foto-tap-icono" aria-hidden="true">' + ICONO_CAMARA_SVG + '</span>';
-      el.setAttribute('aria-label', 'Añadir foto');
-      if (btnQuitar) btnQuitar.hidden = true;
-    }
+    var nombreEl = document.getElementById('mf-nombre');
+    el.style.backgroundImage = formFotoActual ? "url('" + formFotoActual + "')" : 'none';
+    el.innerHTML = UI.fotoTapInner({ foto: formFotoActual, nombre: nombreEl ? nombreEl.value : '' });
+    el.setAttribute('aria-label', formFotoActual ? 'Cambiar foto' : 'Añadir foto');
+    if (btnQuitar) btnQuitar.hidden = !formFotoActual;
   }
 
   function quitarFotoMiembro(id) {
@@ -622,13 +589,13 @@
     reconocedor.lang = 'es-ES';
     reconocedor.interimResults = false;
     reconocedor.maxAlternatives = 1;
-    btn.classList.add('btn-mic-activo');
+    btn.classList.add('btn-filtro-icono-activo');
     reconocedor.onresult = function (e) {
       input.value = e.results[0][0].transcript;
       input.dispatchEvent(new Event('input', { bubbles: true }));
     };
-    reconocedor.onerror = function () { btn.classList.remove('btn-mic-activo'); };
-    reconocedor.onend = function () { btn.classList.remove('btn-mic-activo'); };
+    reconocedor.onerror = function () { btn.classList.remove('btn-filtro-icono-activo'); };
+    reconocedor.onend = function () { btn.classList.remove('btn-filtro-icono-activo'); };
     reconocedor.start();
   }
 
@@ -658,14 +625,18 @@
     abrirSheetFamilia();
   }
 
-  function togglePatron(id, tipo, diaIdx) {
+  function togglePatron(id, tipo, diaIdx, btn) {
     var m = estado.familia.find(function (x) { return x.id === id; });
     if (!m) return;
     var ciclo = ['casa', 'fuera', 'cole'];
     var actual = m.patron[tipo][diaIdx];
     m.patron[tipo][diaIdx] = ciclo[(ciclo.indexOf(actual) + 1) % ciclo.length];
     guardarEstado();
-    abrirSheetFamilia();
+    // re-pintar SOLO el grid tocado — reconstruir el sheet entero por cada tap
+    // (con vetos de 57 ingredientes × miembro) hacía lag en taps consecutivos
+    var grid = btn && btn.closest('.patron-grid');
+    if (grid) grid.outerHTML = UI.renderPatronGrid(m, tipo);
+    else abrirSheetFamilia();
   }
 
   function toggleVeto(miembroId, ingredienteId) {
@@ -761,12 +732,22 @@
       if (input) input.click();
     },
     'miembro-quitar-foto': function (btn) { quitarFotoMiembro(btn.dataset.id); },
-    // chip de sexo/actividad/dieta en la card de edición del sheet Familia — mismo
-    // patrón que togglePatron: guarda y re-renderiza el sheet completo (los <details>
-    // abiertos se conservan vía el registro detallesAbiertos).
+    // chip de sexo/actividad/dieta en la card de edición del sheet Familia:
+    // guarda y refresca solo las clases activas del grupo (como mf-set-campo).
+    // Excepción dieta: su valor aparece también en la línea-resumen del miembro,
+    // así que ahí sí se re-renderiza el sheet completo (los <details> abiertos
+    // se conservan vía el registro detallesAbiertos).
     'miembro-set-campo': function (btn) {
       actualizarCampoMiembro(btn.dataset.id, btn.dataset.campo, btn.dataset.valor);
-      abrirSheetFamilia();
+      if (btn.dataset.campo === 'dieta') { abrirSheetFamilia(); return; }
+      var grupo = btn.parentElement;
+      if (grupo) {
+        grupo.querySelectorAll('.chip-toggle').forEach(function (b) {
+          var activo = b === btn;
+          b.classList.toggle('chip-toggle-activo', activo);
+          b.setAttribute('aria-pressed', activo);
+        });
+      }
     },
     'ir-recetas-ocultas': function () { vistaActual = 'recetas'; cerrarSheet(); },
     'ir-compra-hoy': function () { rangoCompra = 'hoy'; irAVista('compra'); },
@@ -787,7 +768,7 @@
     'abrir-receta': function (btn) { abrirRecetaDetalle(Number(btn.dataset.dia), btn.dataset.tipo); },
     'abrir-cambiar': function (btn) { abrirCambiar(Number(btn.dataset.dia), btn.dataset.tipo); },
     'cerrar-sheet': function () { cerrarSheet(); },
-    'modo-elegir-otro': function (btn) { abrirSheet(UI.renderListaElegirOtro(estado, BANCO, Number(btn.dataset.dia), btn.dataset.tipo)); },
+    'modo-elegir-otro': function (btn) { abrirSheet(UI.renderListaElegirOtro(estado, BANCO, estado.plan, Number(btn.dataset.dia), btn.dataset.tipo)); },
     'modo-nevera': function (btn) { abrirSheet(UI.renderNevera(estado, BANCO, Number(btn.dataset.dia), btn.dataset.tipo)); },
     'elegir-plantilla': function (btn) { elegirPlantilla(Number(btn.dataset.dia), btn.dataset.tipo, btn.dataset.plantilla); },
     'confirmar-nevera': function (btn) { confirmarNevera(Number(btn.dataset.dia), btn.dataset.tipo); },
@@ -798,7 +779,7 @@
 
     'borrar-miembro': function (btn) { borrarMiembro(btn.dataset.id); },
     'marcar-yo-dispositivo': function (btn) { marcarYoDispositivo(btn.dataset.id); },
-    'toggle-patron': function (btn) { togglePatron(btn.dataset.id, btn.dataset.tipo, Number(btn.dataset.dia)); },
+    'toggle-patron': function (btn) { togglePatron(btn.dataset.id, btn.dataset.tipo, Number(btn.dataset.dia), btn); },
     'toggle-veto': function (btn) { toggleVeto(btn.dataset.id, btn.dataset.ingrediente); },
     'toggle-oculta-receta': function (btn) { toggleOcultaReceta(btn.dataset.plantilla); },
     'toggle-favorita-receta': function (btn) { toggleFavoritaReceta(btn.dataset.plantilla); },
@@ -867,13 +848,9 @@
     if (t.id === 'wz-nombre-familia') wizardNombreFamilia = t.value;
     else if (t.id === 'mf-nombre' && !formFotoActual) actualizarPreviewFotoForm();
     else if (t.id === 'recetas-buscador') {
-      // render() reconstruye el <input> entero — sin restaurar foco/cursor,
-      // cada letra tecleada perdería el foco (Roger 2026-07-14, buscador vivo).
+      // render() restaura por sí mismo el foco/cursor del buscador
       busquedaRecetas = t.value;
-      var cursor = t.selectionStart;
       render();
-      var nuevo = document.getElementById('recetas-buscador');
-      if (nuevo) { nuevo.focus(); nuevo.setSelectionRange(cursor, cursor); }
     } else if (t.id === 'nevera-buscador') {
       // filtro directo sobre el DOM del sheet (no pasa por render()) — el
       // sheet vive fuera de las 3 vistas principales y así el input nunca

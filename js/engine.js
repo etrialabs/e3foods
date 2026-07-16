@@ -297,15 +297,20 @@
   // ---------------------------------------------------------------
   // Plantillas: catálogo disponible, viabilidad de mesa, combinatoria de ejes
   // ---------------------------------------------------------------
+  // banco + recetas propias de la familia, sin filtrar — base común de
+  // plantillasDisponibles/plantillaPorId y del banco de Recetas en ui.js
+  function todasLasPlantillas(banco, estado) {
+    return (banco.plantillas || []).concat((estado && estado.propias) || []);
+  }
+
   function plantillasDisponibles(banco, estado) {
     var ocultas = {};
     (estado.ocultas || []).forEach(function (id) { ocultas[id] = 1; });
-    var propias = estado.propias || [];
-    return (banco.plantillas || []).concat(propias).filter(function (p) { return !ocultas[p.id]; });
+    return todasLasPlantillas(banco, estado).filter(function (p) { return !ocultas[p.id]; });
   }
 
   function plantillaPorId(banco, estado, id) {
-    var todas = (banco.plantillas || []).concat(estado.propias || []);
+    var todas = todasLasPlantillas(banco, estado);
     for (var i = 0; i < todas.length; i++) { if (todas[i].id === id) return todas[i]; }
     return null;
   }
@@ -432,26 +437,51 @@
   // Elección del mejor plantilla+selección para un hueco (comida o cena de un día)
   // aplicando las 7 restricciones en orden.
   // ---------------------------------------------------------------
+
+  // kcal totales de una selección — mismo cálculo (y mismos redondeos) que
+  // resolverPlato, sin construir nombre/pasos/lista de compra: es lo único que
+  // necesita el scoring, que se ejecuta por CADA combo de CADA plantilla.
+  function kcalTotalSeleccion(plantilla, seleccion, presentes, banco) {
+    var total = 0;
+    (presentes || []).forEach(function (miembro) {
+      var esNino = edadEnAnios(miembro.anioNacimiento) < EDAD_MENOR;
+      var kcalMiembro = plantilla.kcal_extra || 0;
+      idsUnicosDeSeleccion(seleccion).forEach(function (id) {
+        var ing = banco.ingredientes[id];
+        if (!ing) return;
+        var gramos = esNino ? ing.racion_nino_g : ing.racion_adulto_g;
+        kcalMiembro += gramos * ing.kcal_100g / 100;
+      });
+      total += Math.round(kcalMiembro);
+    });
+    return Math.round(total);
+  }
+
   function elegirParaSlot(opts) {
     var mejor = null;
     var mejorScore = -Infinity;
+    // vetosViabilidad: vetos reales de los presentes, para mesa mixta. En modo
+    // nevera vetosUnion llega contaminado con "no está en la nevera", pero la
+    // adaptación de dieta es una ración extra que va a la compra — no tiene por
+    // qué estar en la nevera, así que la viabilidad se evalúa con los vetos limpios.
+    var vetosViabilidad = opts.vetosViabilidad || opts.vetosUnion;
     opts.plantillasCandidatas.forEach(function (plantilla) {
-      if (!opts.esFinde && plantilla.esfuerzo === 'elaborado') return; // restricción 6: tiempo
-      if (!plantillaViableParaMesa(plantilla, opts.presentes, opts.vetosUnion, opts.banco)) return; // restricciones 2+3
+      if (!opts.esFinde && !opts.ignorarEsfuerzo && plantilla.esfuerzo === 'elaborado') return; // restricción 6: tiempo
+      if (!plantillaViableParaMesa(plantilla, opts.presentes, vetosViabilidad, opts.banco)) return; // restricciones 2+3
       var combos = combinacionesEjes(plantilla, opts.vetosUnion);
       combos.forEach(function (seleccion) {
         if (!Object.keys(seleccion).length && Object.keys(plantilla.ejes || {}).length) return; // sin combo viable (todo vetado)
         if (violaVariedad(seleccion, opts.usadosHoy, opts.usadosAyer)) return; // restricción 4
         if (violaMaximoCuota(seleccion, opts.contadorCuotas, opts.cuotas, opts.banco)) return; // restricción 5 (máx.)
-        var resuelto = resolverPlato(plantilla, seleccion, opts.presentes, opts.banco);
         var score = puntuarCuotas(seleccion, opts.contadorCuotas, opts.cuotas, opts.banco, opts.slotsRestantes) // restricción 5 (mín.)
-                  + puntuarKcal(resuelto.kcalTotal, opts.objetivoKcal); // restricción 7
+                  + puntuarKcal(kcalTotalSeleccion(plantilla, seleccion, opts.presentes, opts.banco), opts.objetivoKcal); // restricción 7
         if (score > mejorScore) {
           mejorScore = score;
-          mejor = { plantilla: plantilla, seleccion: seleccion, resuelto: resuelto };
+          mejor = { plantilla: plantilla, seleccion: seleccion };
         }
       });
     });
+    if (mejor) mejor.resuelto = resolverPlato(mejor.plantilla, mejor.seleccion, opts.presentes, opts.banco);
     return mejor;
   }
 
@@ -532,6 +562,7 @@
     if (!presentes.length) return null;
 
     var vetosUnion = vetosDe(presentes);
+    var vetosViabilidad = vetosDe(presentes); // copia limpia: mesa mixta/adaptaciones no ven el filtro de nevera
     var objetivoKcal = kcalObjetivo(presentes, tipoComida);
     var usadosAyer = usadosEnDia(plan.dias[dia - 1]);
     var otraComida = tipoComida === 'comida' ? diaObj.cena : diaObj.comida;
@@ -550,8 +581,18 @@
 
     var candidatas = plantillasDisponibles(banco, estado).filter(function (p) { return (p.apta || []).indexOf(tipoComida) !== -1; });
 
-    if (opciones && opciones.modo === 'manual' && opciones.plantillaId) {
+    var esManual = !!(opciones && opciones.modo === 'manual' && opciones.plantillaId);
+    if (esManual) {
       candidatas = candidatas.filter(function (p) { return p.id === opciones.plantillaId; });
+      // El usuario ha elegido ESTA plantilla a mano: la elección explícita manda
+      // sobre las preferencias (mismo criterio ya fijado para nevera, Roger
+      // 2026-07-15). Variedad y el bloqueo de "elaborado entre semana" se
+      // relajan; cuotas máximas y dieta/mesa mixta se mantienen — protegen salud.
+      // Sin esto, la lista de "Elegir otro plato" ofrecía plantillas que el motor
+      // luego vetaba (18/43 caían solo por variedad) → alert de "no encontramos
+      // un plato", el bug real reportado el 2026-07-16.
+      usadosHoy = {};
+      usadosAyer = {};
     } else if (opciones && opciones.modo === 'nevera' && opciones.disponibles) {
       candidatas = plantillasMontables(opciones.disponibles, candidatas);
       // fuerza a que sólo se elijan ids disponibles: se vetan (para esta operación) todos los
@@ -577,13 +618,14 @@
 
     var elegido = elegirParaSlot({
       plantillasCandidatas: candidatas, presentes: presentes, vetosUnion: vetosUnion,
+      vetosViabilidad: vetosViabilidad, ignorarEsfuerzo: esManual,
       objetivoKcal: objetivoKcal, usadosHoy: usadosHoy, usadosAyer: usadosAyer,
       contadorCuotas: contadorCuotas, cuotas: cuotas, banco: banco,
       esFinde: esFinDeSemana(dia), slotsRestantes: Math.max(1, (7 - dia) * 2)
     });
     if (!elegido) return null;
 
-    var adaptaciones = calcularAdaptaciones(elegido.plantilla, elegido.seleccion, presentes, banco, vetosUnion);
+    var adaptaciones = calcularAdaptaciones(elegido.plantilla, elegido.seleccion, presentes, banco, vetosViabilidad);
     var nuevoSlot = { plantillaId: elegido.plantilla.id, seleccion: elegido.seleccion, adaptaciones: adaptaciones };
 
     var nuevoPlan = { semanaISO: plan.semanaISO, dias: plan.dias.slice() };
@@ -647,8 +689,6 @@
   // Export — UMD mínimo: window en navegador, module.exports en node (tests)
   // ---------------------------------------------------------------
   var E3Engine = {
-    necesidadKcalDia: necesidadKcalDia,
-    kcalObjetivo: kcalObjetivo,
     resolverPlato: resolverPlato,
     generarSemana: generarSemana,
     regenerarDesde: regenerarDesde,
@@ -658,13 +698,14 @@
     edadEnAnios: edadEnAnios,
     presentesEnComida: presentesEnComida,
     lunesDeEstaSemana: lunesDeEstaSemana,
-    fechaISO: fechaISO,
     fechaLocalISO: fechaLocalISO,
     diaIndexDesdeFecha: diaIndexDesdeFecha,
     plantillaPorId: plantillaPorId,
     plantillasDisponibles: plantillasDisponibles,
+    todasLasPlantillas: todasLasPlantillas,
+    plantillaViableParaMesa: plantillaViableParaMesa,
     vetosDe: vetosDe,
-    categoriaExcluidaPorDieta: categoriaExcluidaPorDieta
+    capitaliza: capitaliza
   };
 
   if (typeof module !== 'undefined' && module.exports) module.exports = E3Engine;

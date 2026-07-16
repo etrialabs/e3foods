@@ -32,7 +32,30 @@
     });
   }
 
-  function capitaliza(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
+  var capitaliza = E.capitaliza;
+
+  // opciones de los chip-toggle de miembro — compartidas entre el formulario de
+  // alta/edición (chipToggle) y el editor inline del sheet Familia (chipToggleMiembro)
+  var OPCIONES_SEXO = [{ valor: 'mujer', etiqueta: 'Mujer' }, { valor: 'hombre', etiqueta: 'Hombre' }];
+  var OPCIONES_ACTIVIDAD = [{ valor: 'baja', etiqueta: 'Baja' }, { valor: 'media', etiqueta: 'Media' }, { valor: 'alta', etiqueta: 'Alta' }];
+  var OPCIONES_DIETA = Object.keys(ETIQUETAS_DIETA).map(function (k) { return { valor: k, etiqueta: ETIQUETAS_DIETA[k] }; });
+
+  function etiquetaDieta(valor) { return ETIQUETAS_DIETA[valor] || 'De todo'; }
+
+  // ids de ingrediente del banco ordenados por nombre — listas de nevera, vetos y
+  // selects de receta propia
+  function idsIngredientesOrdenados(banco) {
+    return Object.keys(banco.ingredientes).sort(function (a, b) {
+      return banco.ingredientes[a].nombre.localeCompare(banco.ingredientes[b].nombre);
+    });
+  }
+
+  // cabecera estándar de cualquier bottom sheet (título + X de cerrar)
+  function sheetHead(titulo, sinCerrar) {
+    return '<div class="sheet-head"><h2>' + escapeHtml(titulo) + '</h2>' +
+      (sinCerrar ? '' : '<button type="button" class="btn-cerrar" data-action="cerrar-sheet" aria-label="Cerrar">&times;</button>') +
+      '</div>';
+  }
 
   var NOMBRES_EJE = { proteina: 'proteína', hidrato: 'hidrato', verdura: 'verdura' };
 
@@ -56,6 +79,17 @@
     return miembro.foto ? " style=\"background-image:url('" + miembro.foto + "')\"" : '';
   }
 
+  var ICONO_CAMARA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8.5A1.5 1.5 0 0 1 5.5 7h1.6l.9-1.5A1.5 1.5 0 0 1 9.29 4.75h5.42A1.5 1.5 0 0 1 16 5.5L16.9 7h1.6A1.5 1.5 0 0 1 20 8.5v9A1.5 1.5 0 0 1 18.5 19h-13A1.5 1.5 0 0 1 4 17.5z"/><circle cx="12" cy="12.5" r="3.4"/></svg>';
+
+  // contenido interno del botón de foto (.foto-tap): overlay "Cambiar" si hay foto,
+  // o inicial + icono de cámara si no — compartido por el formulario de miembro,
+  // la card del sheet Familia y el preview en vivo de app.js (actualizarPreviewFotoForm)
+  function fotoTapInner(miembro) {
+    if (miembro && miembro.foto) return '<span class="foto-tap-editar">Cambiar</span>';
+    return '<span class="foto-tap-inicial">' + escapeHtml(iniciales(miembro ? miembro.nombre : '')) + '</span>' +
+      '<span class="foto-tap-icono" aria-hidden="true">' + ICONO_CAMARA + '</span>';
+  }
+
   function fechaCorta(fechaISO) {
     var d = new Date(fechaISO + 'T00:00:00');
     return d.getDate() + ' ' + ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'][d.getMonth()];
@@ -77,19 +111,12 @@
     opts = opts || {};
     var titulo = '<h1 class="cabecera-titulo">' + escapeHtml(opts.tituloPlain || '') +
       (opts.tituloItalico ? ' <em>' + escapeHtml(opts.tituloItalico) + '</em>' : '') + '</h1>';
-    var derecha = '';
-    if (opts.avatarCount != null) {
-      var etiqueta = opts.avatarCount + (opts.avatarCount === 1 ? ' miembro' : ' miembros');
-      derecha = '<button type="button" class="cabecera-avatar" data-action="abrir-familia" aria-label="Tu familia, ' + etiqueta + '">' + opts.avatarCount + '</button>';
-    } else if (opts.contador) {
-      derecha = '<span class="cabecera-contador">' + escapeHtml(opts.contador) + '</span>';
-    }
+    var derecha = opts.contador ? '<span class="cabecera-contador">' + escapeHtml(opts.contador) + '</span>' : '';
     if (opts.botonAnadir) {
       derecha = '<div class="cabecera-derecha-grupo">' + derecha +
         '<button type="button" class="cabecera-btn-anadir" data-action="' + opts.botonAnadir + '" aria-label="Añadir receta">+</button></div>';
     }
-    var claseFija = opts.fija ? ' cabecera-midnight-fija' : '';
-    return '<header class="cabecera-midnight' + claseFija + '"><div class="cabecera-fila">' + titulo + derecha + '</div>' + (opts.extra || '') + '</header>';
+    return '<header class="cabecera-midnight"><div class="cabecera-fila">' + titulo + derecha + '</div>' + (opts.extra || '') + '</header>';
   }
 
   // iconos de sol/luna — mismo estilo de línea que el nav (24x24, stroke)
@@ -136,14 +163,29 @@
   // rediseñada 2026-07-13 (referencia visual externa, paleta/tipografía
   // traducidas a Etria — nunca los verdes/morados literales del handoff).
   // ---------------------------------------------------------------
-  function renderSlot(estado, banco, plan, diaIndex, tipoComida) {
+  // quién pertenece estructuralmente a una comida (patrón), quién está presente hoy
+  // (patrón + ausencia puntual) y con quién se resuelve la receta si nadie confirmó —
+  // compartido por la card de comida y el sheet de receta completa.
+  function comensalesDeSlot(estado, plan, diaIndex, tipoComida) {
     var dia = plan.dias[diaIndex];
-    var slot = dia ? dia[tipoComida] : null;
     var miembrosDelSlot = (estado.familia || []).filter(function (m) {
       var patron = m.patron && m.patron[tipoComida];
       return !patron || patron[diaIndex] === 'casa';
     });
     var presentes = E.presentesEnComida(estado, dia.fecha, diaIndex, tipoComida);
+    return {
+      miembrosDelSlot: miembrosDelSlot,
+      presentes: presentes,
+      comensales: presentes.length ? presentes : miembrosDelSlot.slice(0, 1)
+    };
+  }
+
+  function renderSlot(estado, banco, plan, diaIndex, tipoComida) {
+    var dia = plan.dias[diaIndex];
+    var slot = dia ? dia[tipoComida] : null;
+    var mesa = comensalesDeSlot(estado, plan, diaIndex, tipoComida);
+    var miembrosDelSlot = mesa.miembrosDelSlot;
+    var presentes = mesa.presentes;
     var etiqueta = tipoComida === 'comida' ? 'COMIDA' : 'CENA';
     var icono = tipoComida === 'comida' ? ICONO_SOL : ICONO_LUNA;
     var cabeceraTipo = '<div class="card-comida-head"><span class="card-comida-icono">' + icono + '</span><span class="card-comida-etiqueta">' + etiqueta + '</span></div>';
@@ -178,7 +220,7 @@
       return '<section class="card card-slot card-vacia"><p class="card-msg">Receta no disponible.</p></section>';
     }
 
-    var resuelto = presentes.length ? E.resolverPlato(plantilla, slot.seleccion, presentes, banco, slot.adaptaciones) : E.resolverPlato(plantilla, slot.seleccion, miembrosDelSlot.slice(0, 1), banco, slot.adaptaciones);
+    var resuelto = E.resolverPlato(plantilla, slot.seleccion, mesa.comensales, banco, slot.adaptaciones);
     var adaptacionesVisibles = (slot.adaptaciones || []).filter(function (a) {
       return presentes.some(function (p) { return p.id === a.miembroId; });
     }).map(function (a) {
@@ -232,15 +274,9 @@
   // Sheet: receta completa (ingredientes adaptados a comensales + pasos)
   // ---------------------------------------------------------------
   function renderSheetReceta(estado, banco, plan, diaIndex, tipoComida) {
-    var dia = plan.dias[diaIndex];
-    var slot = dia[tipoComida];
+    var slot = plan.dias[diaIndex][tipoComida];
     var plantilla = E.plantillaPorId(banco, estado, slot.plantillaId);
-    var miembrosDelSlot = (estado.familia || []).filter(function (m) {
-      var patron = m.patron && m.patron[tipoComida];
-      return !patron || patron[diaIndex] === 'casa';
-    });
-    var presentes = E.presentesEnComida(estado, dia.fecha, diaIndex, tipoComida);
-    var comensales = presentes.length ? presentes : miembrosDelSlot.slice(0, 1);
+    var comensales = comensalesDeSlot(estado, plan, diaIndex, tipoComida).comensales;
     var resuelto = E.resolverPlato(plantilla, slot.seleccion, comensales, banco, slot.adaptaciones);
 
     var ingredientesHtml = resuelto.ingredientes.slice().sort(function (a, b) {
@@ -269,8 +305,7 @@
     var comensalesTexto = comensales.length + (comensales.length === 1 ? ' comensal' : ' comensales');
     var kcalMedio = comensales.length ? Math.round(resuelto.kcalTotal / comensales.length) : 0;
 
-    return '<div class="sheet-head"><h2>' + escapeHtml(resuelto.nombre) + '</h2>' +
-      '<button type="button" class="btn-cerrar" data-action="cerrar-sheet" aria-label="Cerrar">&times;</button></div>' +
+    return sheetHead(resuelto.nombre) +
       '<div class="sheet-body">' +
       '<p class="receta-comensales">Cantidades para ' + comensalesTexto + ' · ~' + kcalMedio + ' kcal por persona.</p>' +
       '<p class="detalle-subtitulo">Ingredientes</p>' +
@@ -291,13 +326,6 @@
       '<span class="check-texto">' + escapeHtml(item.nombre) + '</span>' +
       '<span class="check-cantidad">' + item.gramos + ' g</span>' +
       '</label></li>';
-  }
-
-  function renderListaCompra(items) {
-    if (!items.length) return '<p class="card-msg">Nada pendiente de comprar.</p>';
-    var porMarcar = items.filter(function (i) { return !i.marcado; }).length;
-    return '<ul class="lista-check">' + items.map(filaCompraHtml).join('') + '</ul>' +
-      '<p class="compra-resumen">' + (porMarcar ? porMarcar + ' pendientes' : 'Todo listo') + '</p>';
   }
 
   // ---------------------------------------------------------------
@@ -395,7 +423,7 @@
   }
 
   function renderFormRecetaPropia(banco) {
-    var opcionesIng = Object.keys(banco.ingredientes).sort(function (a, b) { return banco.ingredientes[a].nombre.localeCompare(banco.ingredientes[b].nombre); })
+    var opcionesIng = idsIngredientesOrdenados(banco)
       .map(function (id) { return '<option value="' + id + '">' + escapeHtml(banco.ingredientes[id].nombre) + '</option>'; }).join('');
     return '<details class="receta-propia-form" data-detalle-key="receta-propia">' +
       '<summary>+ Añadir receta propia</summary>' +
@@ -413,7 +441,7 @@
   function renderRecetasVista(estado, banco, filtro, busqueda, filtrosVisibles) {
     filtro = filtro || 'todas';
     busqueda = busqueda || '';
-    var todas = (banco.plantillas || []).concat(estado.propias || []);
+    var todas = E.todasLasPlantillas(banco, estado);
     var ocultas = estado.ocultas || [];
     var favoritas = estado.favoritas || [];
 
@@ -508,16 +536,25 @@
   // Sheet: cambiar plato (elegir otro / nevera)
   // ---------------------------------------------------------------
   function renderSheetCambiarInicio(estado, banco, dia, tipoComida) {
-    return '<div class="sheet-head"><h2>Cambiar ' + (tipoComida === 'comida' ? 'comida' : 'cena') + '</h2>' +
-      '<button type="button" class="btn-cerrar" data-action="cerrar-sheet" aria-label="Cerrar">&times;</button></div>' +
+    return sheetHead('Cambiar ' + (tipoComida === 'comida' ? 'comida' : 'cena')) +
       '<div class="sheet-body">' +
       '<button type="button" class="btn-secondary btn-sheet-opcion" data-action="modo-elegir-otro" data-dia="' + dia + '" data-tipo="' + tipoComida + '">Elegir otro plato</button>' +
       '<button type="button" class="btn-secondary btn-sheet-opcion" data-action="modo-nevera" data-dia="' + dia + '" data-tipo="' + tipoComida + '">Con lo que hay en la nevera</button>' +
       '</div>';
   }
 
-  function renderListaElegirOtro(estado, banco, dia, tipoComida) {
-    var candidatas = E.plantillasDisponibles(banco, estado).filter(function (p) { return (p.apta || []).indexOf(tipoComida) !== -1; });
+  function renderListaElegirOtro(estado, banco, plan, dia, tipoComida) {
+    // Solo plantillas que el motor puede aceptar de verdad para ESTA mesa (dieta/
+    // mesa mixta y vetos) — antes se listaba todo lo 'apta' y el tap acababa en
+    // "no encontramos un plato" para opciones imposibles (bug 2026-07-16). Las
+    // cuotas máximas semanales no se pre-filtran: cambian con la propia elección.
+    var diaObj = plan && plan.dias[dia];
+    var presentes = diaObj ? E.presentesEnComida(estado, diaObj.fecha, dia, tipoComida) : [];
+    var vetosUnion = E.vetosDe(presentes);
+    var candidatas = E.plantillasDisponibles(banco, estado).filter(function (p) {
+      return (p.apta || []).indexOf(tipoComida) !== -1 &&
+        E.plantillaViableParaMesa(p, presentes, vetosUnion, banco);
+    });
     var listaHtml = candidatas.length
       ? '<ul class="lista-plantillas">' + candidatas.map(function (p) {
           return '<li><button type="button" class="fila-plantilla" data-action="elegir-plantilla" data-dia="' + dia + '" data-tipo="' + tipoComida + '" data-plantilla="' + p.id + '">' +
@@ -526,22 +563,19 @@
             '</button></li>';
         }).join('') + '</ul>'
       : '<p class="card-msg">No hay recetas disponibles para esta comida.</p>';
-    return '<div class="sheet-head"><h2>Elegir otro plato</h2>' +
-      '<button type="button" class="btn-cerrar" data-action="cerrar-sheet" aria-label="Cerrar">&times;</button></div>' +
+    return sheetHead('Elegir otro plato') +
       '<div class="sheet-body">' + listaHtml + '</div>';
   }
 
   function renderNevera(estado, banco, dia, tipoComida) {
-    var ids = Object.keys(banco.ingredientes).sort(function (a, b) { return banco.ingredientes[a].nombre.localeCompare(banco.ingredientes[b].nombre); });
-    var filas = ids.map(function (id) {
+    var filas = idsIngredientesOrdenados(banco).map(function (id) {
       var ing = banco.ingredientes[id];
       return '<li data-buscar="' + escapeHtml(normalizarTexto(ing.nombre)) + '"><label class="fila-nevera"><input type="checkbox" value="' + id + '" data-nombre="' + escapeHtml(ing.nombre) + '"> ' + escapeHtml(ing.nombre) + '</label></li>';
     }).join('');
     var micHtml = TIENE_VOZ
       ? '<button type="button" class="btn-filtro-icono btn-mic" data-action="nevera-voz" aria-label="Buscar por voz">' + ICONO_MIC + '</button>'
       : '';
-    return '<div class="sheet-head"><h2>Con lo que hay en la nevera</h2>' +
-      '<button type="button" class="btn-cerrar" data-action="cerrar-sheet" aria-label="Cerrar">&times;</button></div>' +
+    return sheetHead('Con lo que hay en la nevera') +
       '<div class="sheet-body">' +
       '<p class="card-msg">Marca lo que tienes en casa y buscamos un plato que se pueda montar con eso.</p>' +
       '<div class="nevera-top">' +
@@ -560,7 +594,7 @@
   }
 
   function renderConfirmarRegenerar(nombrePlato) {
-    return '<div class="sheet-head"><h2>Cambiado</h2></div>' +
+    return sheetHead('Cambiado', true) +
       '<div class="sheet-body">' +
       '<p class="card-msg">Nuevo plato: <strong>' + escapeHtml(nombrePlato) + '</strong>.</p>' +
       '<p class="card-msg">¿Regenero los días siguientes para que el resto de la semana se reajuste?</p>' +
@@ -595,16 +629,14 @@
       (esAltaNueva ? '<p class="wizard-mini-titular">Solo te pido tres cosas.</p>' : '') +
       '<button type="button" class="foto-tap" id="mf-foto-preview" data-action="mf-subir-foto" ' +
         'aria-label="' + (tieneFoto ? 'Cambiar foto' : 'Añadir foto') + '"' + (tieneFoto ? avatarEstilo(miembro) : '') + '>' +
-        (tieneFoto ? '<span class="foto-tap-editar">Cambiar</span>' :
-          '<span class="foto-tap-inicial">' + escapeHtml(iniciales(miembro.nombre)) + '</span>' +
-          '<span class="foto-tap-icono" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8.5A1.5 1.5 0 0 1 5.5 7h1.6l.9-1.5A1.5 1.5 0 0 1 9.29 4.75h5.42A1.5 1.5 0 0 1 16 5.5L16.9 7h1.6A1.5 1.5 0 0 1 20 8.5v9A1.5 1.5 0 0 1 18.5 19h-13A1.5 1.5 0 0 1 4 17.5z"/><circle cx="12" cy="12.5" r="3.4"/></svg></span>') +
+        fotoTapInner(miembro) +
       '</button>' +
       '<button type="button" class="btn-texto foto-quitar-link" id="mf-foto-quitar" data-action="mf-quitar-foto"' + (tieneFoto ? '' : ' hidden') + '>Quitar foto</button>' +
       '<input type="file" id="mf-foto-input" accept="image/*" hidden>' +
       '<label class="campo-nombre-miembro"><span class="campo-eyebrow">¿Cómo se llama?</span>' +
         '<input type="text" id="mf-nombre" class="input-editorial" maxlength="30" placeholder="Nombre" value="' + escapeHtml(miembro.nombre || '') + '" autocomplete="off"></label>' +
       '<div class="fila-sexo-anio">' +
-        '<div class="campo-corto"><span class="campo-eyebrow">Sexo</span>' + chipToggle('mf-sexo', [{ valor: 'mujer', etiqueta: 'Mujer' }, { valor: 'hombre', etiqueta: 'Hombre' }], miembro.sexo, 'mujer') + '</div>' +
+        '<div class="campo-corto"><span class="campo-eyebrow">Sexo</span>' + chipToggle('mf-sexo', OPCIONES_SEXO, miembro.sexo, 'mujer') + '</div>' +
         '<div class="campo-corto"><span class="campo-eyebrow">Año de nacimiento</span>' +
           '<input type="number" inputmode="numeric" id="mf-anio" class="input-editorial input-corto" placeholder="p.ej. 1985" min="1920" max="' + anioActual + '" value="' + (miembro.anioNacimiento || '') + '"></div>' +
       '</div>' +
@@ -616,8 +648,8 @@
           '<div class="campo-corto"><span class="campo-eyebrow">Altura (cm)</span><input type="number" id="mf-altura" class="input-editorial input-corto" min="30" max="230" value="' + (miembro.altura || '') + '"></div>' +
           '<div class="campo-corto"><span class="campo-eyebrow">Peso (kg)</span><input type="number" id="mf-peso" class="input-editorial input-corto" min="1" max="200" value="' + (miembro.peso || '') + '"></div>' +
         '</div>' +
-        '<span class="campo-eyebrow">Actividad</span>' + chipToggle('mf-actividad', [{ valor: 'baja', etiqueta: 'Baja' }, { valor: 'media', etiqueta: 'Media' }, { valor: 'alta', etiqueta: 'Alta' }], miembro.actividad, 'media') +
-        '<span class="campo-eyebrow">Tipo de dieta</span>' + chipToggle('mf-dieta', Object.keys(ETIQUETAS_DIETA).map(function (k) { return { valor: k, etiqueta: ETIQUETAS_DIETA[k] }; }), miembro.dieta, 'omnivora') +
+        '<span class="campo-eyebrow">Actividad</span>' + chipToggle('mf-actividad', OPCIONES_ACTIVIDAD, miembro.actividad, 'media') +
+        '<span class="campo-eyebrow">Tipo de dieta</span>' + chipToggle('mf-dieta', OPCIONES_DIETA, miembro.dieta, 'omnivora') +
         '</div>' +
       '</details>' +
       '<div class="fila-botones">' +
@@ -681,9 +713,10 @@
   // Sheet "Tu familia" (vía avatar en cabecera de HOY/SEMANA)
   // ---------------------------------------------------------------
   var ABREV_PATRON = { casa: 'Cas', fuera: 'Fue', cole: 'Col' };
+  var PATRON_TODO_CASA = ['casa', 'casa', 'casa', 'casa', 'casa', 'casa', 'casa'];
 
   function renderPatronGrid(miembro, tipo) {
-    var valores = (miembro.patron && miembro.patron[tipo]) || ['casa', 'casa', 'casa', 'casa', 'casa', 'casa', 'casa'];
+    var valores = (miembro.patron && miembro.patron[tipo]) || PATRON_TODO_CASA;
     return '<div class="patron-grid">' + valores.map(function (v, i) {
       var etiqueta = NOMBRES_DIA[i] + ': ' + ETIQUETAS_PATRON[v] + '. Toca para cambiar.';
       return '<button type="button" class="patron-celda patron-' + v + '" data-action="toggle-patron" data-id="' + miembro.id + '" data-tipo="' + tipo + '" data-dia="' + i + '" aria-label="' + escapeHtml(etiqueta) + '">' +
@@ -693,10 +726,10 @@
 
   function renderVetos(miembro, banco) {
     var vetos = miembro.vetos || [];
-    var ids = Object.keys(banco.ingredientes).sort(function (a, b) { return banco.ingredientes[a].nombre.localeCompare(banco.ingredientes[b].nombre); });
-    return '<div class="vetos-grid">' + ids.map(function (id) {
+    // el estado visual del chip marcado lo lleva .veto-chip:has(input:checked) en CSS
+    return '<div class="vetos-grid">' + idsIngredientesOrdenados(banco).map(function (id) {
       var marcado = vetos.indexOf(id) !== -1;
-      return '<label class="veto-chip ' + (marcado ? 'veto-activo' : '') + '">' +
+      return '<label class="veto-chip">' +
         '<input type="checkbox" data-action="toggle-veto" data-id="' + miembro.id + '" data-ingrediente="' + id + '" ' + (marcado ? 'checked' : '') + '> ' + escapeHtml(banco.ingredientes[id].nombre) +
         '</label>';
     }).join('') + '</div>';
@@ -720,7 +753,7 @@
     return '<details class="miembro-card" data-detalle-key="miembro-' + miembro.id + '">' +
       '<summary>' +
         '<span class="avatar avatar-presente"' + avatarEstilo(miembro) + '>' + avatarInner(miembro) + '</span>' +
-        '<span class="miembro-resumen"><strong>' + escapeHtml(miembro.nombre) + '</strong><span>' + edad + ' años · ' + (ETIQUETAS_DIETA[miembro.dieta] || 'De todo') + (esDispositivo ? ' · <span class="miembro-tu-badge">tú en este móvil</span>' : '') + '</span></span>' +
+        '<span class="miembro-resumen"><strong>' + escapeHtml(miembro.nombre) + '</strong><span>' + edad + ' años · ' + etiquetaDieta(miembro.dieta) + (esDispositivo ? ' · <span class="miembro-tu-badge">tú en este móvil</span>' : '') + '</span></span>' +
       '</summary>' +
       '<div class="miembro-detalle">' +
         '<div class="fila-foto-nombre">' +
@@ -728,24 +761,22 @@
         '<div class="columna-foto">' +
         '<button type="button" class="foto-tap foto-tap-pequena" data-action="miembro-subir-foto" data-id="' + miembro.id + '" ' +
           'aria-label="' + (tieneFoto ? 'Cambiar foto' : 'Añadir foto') + '"' + (tieneFoto ? avatarEstilo(miembro) : '') + '>' +
-          (tieneFoto ? '<span class="foto-tap-editar">Cambiar</span>' :
-            '<span class="foto-tap-inicial">' + escapeHtml(iniciales(miembro.nombre)) + '</span>' +
-            '<span class="foto-tap-icono" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8.5A1.5 1.5 0 0 1 5.5 7h1.6l.9-1.5A1.5 1.5 0 0 1 9.29 4.75h5.42A1.5 1.5 0 0 1 16 5.5L16.9 7h1.6A1.5 1.5 0 0 1 20 8.5v9A1.5 1.5 0 0 1 18.5 19h-13A1.5 1.5 0 0 1 4 17.5z"/><circle cx="12" cy="12.5" r="3.4"/></svg></span>') +
+          fotoTapInner(miembro) +
         '</button>' +
         (tieneFoto ? '<button type="button" class="btn-texto foto-quitar-link" data-action="miembro-quitar-foto" data-id="' + miembro.id + '">Quitar foto</button>' : '') +
         '</div>' +
         '</div>' +
         '<input type="file" accept="image/*" hidden data-foto-input="' + miembro.id + '">' +
         '<div class="fila-sexo-anio">' +
-          '<div class="campo-corto"><span class="campo-eyebrow">Sexo</span>' + chipToggleMiembro('sexo', [{ valor: 'mujer', etiqueta: 'Mujer' }, { valor: 'hombre', etiqueta: 'Hombre' }], miembro.sexo || 'mujer', miembro.id) + '</div>' +
+          '<div class="campo-corto"><span class="campo-eyebrow">Sexo</span>' + chipToggleMiembro('sexo', OPCIONES_SEXO, miembro.sexo || 'mujer', miembro.id) + '</div>' +
           '<div class="campo-corto"><span class="campo-eyebrow">Año de nacimiento</span><input type="number" inputmode="numeric" class="input-editorial input-corto" data-campo="anioNacimiento" data-id="' + miembro.id + '" value="' + (miembro.anioNacimiento || '') + '" min="1920" max="' + new Date().getFullYear() + '"></div>' +
         '</div>' +
         '<div class="fila-sexo-anio">' +
           '<div class="campo-corto"><span class="campo-eyebrow">Altura (cm, opcional)</span><input type="number" class="input-editorial input-corto" data-campo="altura" data-id="' + miembro.id + '" value="' + (miembro.altura || '') + '" min="30" max="230"></div>' +
           '<div class="campo-corto"><span class="campo-eyebrow">Peso (kg, opcional)</span><input type="number" class="input-editorial input-corto" data-campo="peso" data-id="' + miembro.id + '" value="' + (miembro.peso || '') + '" min="1" max="200"></div>' +
         '</div>' +
-        '<span class="campo-eyebrow">Actividad</span>' + chipToggleMiembro('actividad', [{ valor: 'baja', etiqueta: 'Baja' }, { valor: 'media', etiqueta: 'Media' }, { valor: 'alta', etiqueta: 'Alta' }], miembro.actividad || 'media', miembro.id) +
-        '<span class="campo-eyebrow">Tipo de dieta</span>' + chipToggleMiembro('dieta', Object.keys(ETIQUETAS_DIETA).map(function (k) { return { valor: k, etiqueta: ETIQUETAS_DIETA[k] }; }), miembro.dieta || 'omnivora', miembro.id) +
+        '<span class="campo-eyebrow">Actividad</span>' + chipToggleMiembro('actividad', OPCIONES_ACTIVIDAD, miembro.actividad || 'media', miembro.id) +
+        '<span class="campo-eyebrow">Tipo de dieta</span>' + chipToggleMiembro('dieta', OPCIONES_DIETA, miembro.dieta || 'omnivora', miembro.id) +
         '<p class="detalle-subtitulo">Patrón — comida</p>' + renderPatronGrid(miembro, 'comida') +
         '<p class="detalle-subtitulo">Patrón — cena</p>' + renderPatronGrid(miembro, 'cena') +
         '<p class="detalle-subtitulo">Vetos (no le gusta / alergia)</p>' + renderVetos(miembro, banco) +
@@ -766,8 +797,7 @@
       '<span>Añadir miembro</span>' +
       '</button>';
 
-    return '<div class="sheet-head"><h2>Tu familia</h2>' +
-      '<button type="button" class="btn-cerrar" data-action="cerrar-sheet" aria-label="Cerrar">&times;</button></div>' +
+    return sheetHead('Tu familia') +
       '<div class="sheet-body">' +
       '<label class="campo-nombre-familia"><span class="campo-eyebrow">Nombre de familia</span>' +
         '<input type="text" id="familia-nombre-input" class="input-editorial" data-campo="nombreFamilia" maxlength="40" value="' + escapeHtml(estado.nombreFamilia || '') + '"></label>' +
@@ -793,8 +823,7 @@
   // posición de texto, ~180 líneas) vive en v1 (e3foods.html) sin portar
   // todavía; no simular que funciona aquí.
   function renderSheetImportarCole() {
-    return '<div class="sheet-head"><h2>Menú del cole</h2>' +
-      '<button type="button" class="btn-cerrar" data-action="cerrar-sheet" aria-label="Cerrar">&times;</button></div>' +
+    return sheetHead('Menú del cole') +
       '<div class="sheet-body">' +
       '<p class="card-msg">Próximamente: sube el PDF del menú del cole y detectamos qué proteína/hidrato evitar repetir en la cena de casa esos días. Todavía no está construido en esta versión.</p>' +
       '</div>';
@@ -805,8 +834,7 @@
   // landing (dispositivo nuevo que solo quiere unirse con un código).
   function renderSheetSync(opts) {
     opts = opts || {};
-    var head = '<div class="sheet-head"><h2>Sincronizar familia</h2>' +
-      '<button type="button" class="btn-cerrar" data-action="cerrar-sheet" aria-label="Cerrar">&times;</button></div>';
+    var head = sheetHead('Sincronizar familia');
 
     if (opts.cargando) {
       return head + '<div class="sheet-body"><p class="card-msg">Cargando…</p></div>';
@@ -842,12 +870,15 @@
     renderNevera: renderNevera,
     renderConfirmarRegenerar: renderConfirmarRegenerar,
     renderSheetFamilia: renderSheetFamilia,
+    renderPatronGrid: renderPatronGrid,
     renderMenuHamburguesa: renderMenuHamburguesa,
     renderSheetImportarCole: renderSheetImportarCole,
     renderSheetSync: renderSheetSync,
     renderFormMiembroCompleto: renderFormMiembroCompleto,
     renderWizardBienvenida: renderWizardBienvenida,
     renderWizardHub: renderWizardHub,
+    sheetHead: sheetHead,
+    fotoTapInner: fotoTapInner,
     escapeHtml: escapeHtml,
     normalizarTexto: normalizarTexto
   };

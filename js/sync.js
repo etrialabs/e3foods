@@ -89,33 +89,46 @@
     });
   }
 
-  function guardarRemotoDebounced(estadoActual) {
+  // getEstado es un GETTER que se evalúa al disparar el timer, no al programarlo:
+  // si entre medias llega un snapshot remoto y app.js rebindea su variable de
+  // estado, aquí se serializa el estado vigente, no una referencia obsoleta.
+  function guardarRemotoDebounced(getEstado) {
     var familyId = getFamilyId();
     if (!familyId) return;
     if (debounceTimer) clearTimeout(debounceTimer);
     debounceTimer = setTimeout(function () {
+      debounceTimer = null;
+      var estadoActual = typeof getEstado === 'function' ? getEstado() : getEstado;
       db.collection('families').doc(familyId).collection('meta').doc('estado')
         .set(estadoActual)
         .catch(function (err) { console.error('[sync] guardarRemoto falló', err); });
     }, 800);
   }
 
+  // descarta un push pendiente — se llama al recibir un snapshot remoto, para no
+  // escribir encima un estado anterior a lo que acaba de llegar
+  function cancelarPendiente() {
+    if (debounceTimer) { clearTimeout(debounceTimer); debounceTimer = null; }
+  }
+
   function suscribirEstado(familyId, onChange) {
     return db.collection('families').doc(familyId).collection('meta').doc('estado')
       .onSnapshot(function (snap) {
         if (snap.metadata.hasPendingWrites) return; // eco de nuestra propia escritura, ignorar
-        if (snap.exists) onChange(snap.data());
+        // doc inexistente → onChange(null): el caller sabe así que el remoto está
+        // vacío (familia recién creada sin estado subido) y puede empujar el suyo
+        onChange(snap.exists ? snap.data() : null);
       }, function (err) { console.error('[sync] listener falló', err); });
   }
 
   window.E3Sync = {
     getFamilyId: getFamilyId,
-    ensureSignedIn: ensureSignedIn,
     crearFamilia: crearFamilia,
     unirseFamilia: unirseFamilia,
     obtenerInfoFamilia: obtenerInfoFamilia,
     subirEstadoInicial: subirEstadoInicial,
     guardarRemotoDebounced: guardarRemotoDebounced,
+    cancelarPendiente: cancelarPendiente,
     suscribirEstado: suscribirEstado
   };
 })();

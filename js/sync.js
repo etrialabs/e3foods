@@ -81,6 +81,55 @@
     });
   }
 
+  // Regenera el código de unión. Los móviles ya unidos siguen dentro: el acceso
+  // vive en authorizedUids, el código solo sirve para entrar la primera vez.
+  function rotarCodigo() {
+    var familyId = getFamilyId();
+    if (!familyId) return Promise.reject(new Error('sin familyId'));
+    return apiCall('/rotate-code', { familyId: familyId }); // {code}
+  }
+
+  // Export GDPR — se sirve desde el cliente, sin endpoint: las reglas ya dejan
+  // leer todo lo de la familia a un uid autorizado, así que un proxy solo añadiría
+  // superficie para leer lo mismo.
+  function exportarDatos() {
+    var familyId = getFamilyId();
+    if (!familyId) return Promise.reject(new Error('sin familyId'));
+    var ref = db.collection('families').doc(familyId);
+    return ensureSignedIn().then(function () {
+      return Promise.all([
+        ref.get(),
+        ref.collection('meta').doc('estado').get(),
+        ref.collection('familia').get(),
+        ref.collection('plan').get()
+      ]);
+    }).then(function (r) {
+      var familia = r[0].exists ? r[0].data() : {};
+      var docsDe = function (q) {
+        var out = {};
+        q.forEach(function (d) { out[d.id] = d.data(); });
+        return out;
+      };
+      return {
+        exportadoEl: new Date().toISOString(),
+        familyId: familyId,
+        familia: { nombreFamilia: familia.nombreFamilia, code: familia.code, createdAt: familia.createdAt },
+        estado: r[1].exists ? r[1].data() : null,
+        miembros: docsDe(r[2]),
+        planes: docsDe(r[3])
+      };
+    });
+  }
+
+  function borrarFamilia() {
+    var familyId = getFamilyId();
+    if (!familyId) return Promise.reject(new Error('sin familyId'));
+    return apiCall('/delete-family', { familyId: familyId }).then(function (data) {
+      try { localStorage.removeItem(FAMILY_KEY); } catch (e) { /* no disponible */ }
+      return data;
+    });
+  }
+
   function subirEstadoInicial(estado) {
     var familyId = getFamilyId();
     if (!familyId) return Promise.reject(new Error('sin familyId'));
@@ -126,6 +175,9 @@
     crearFamilia: crearFamilia,
     unirseFamilia: unirseFamilia,
     obtenerInfoFamilia: obtenerInfoFamilia,
+    rotarCodigo: rotarCodigo,
+    exportarDatos: exportarDatos,
+    borrarFamilia: borrarFamilia,
     subirEstadoInicial: subirEstadoInicial,
     guardarRemotoDebounced: guardarRemotoDebounced,
     cancelarPendiente: cancelarPendiente,

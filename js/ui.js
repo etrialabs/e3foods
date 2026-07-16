@@ -233,7 +233,7 @@
     }).join(' &nbsp; ');
 
     var kcalMedio = presentes.length ? Math.round(resuelto.kcalTotal / presentes.length) : 0;
-    // proteína/comensal: sin dato todavía (no existe en el banco, ver STATUS_E3FOODS.md)
+    // proteína/comensal: sin dato todavía (no existe en el banco, ver 00_Contexto_Claude/STATUS.md)
     // — se omite del meta en vez de inventar una cifra.
     var metaKcal = presentes.length ? '<span class="card-comida-meta-icono">' + ICONO_FUEGO + '</span>~' + kcalMedio + ' kcal' : '';
     var metaTiempo = plantilla.tiempo_min ? '<span class="card-comida-meta-icono">' + ICONO_RELOJ + '</span>' + plantilla.tiempo_min + ' min' : '';
@@ -929,10 +929,30 @@
     }
 
     if (opts.synced) {
+      var aviso = opts.aviso ? '<p class="card-msg">' + escapeHtml(opts.aviso) + '</p>' : '';
       return head + '<div class="sheet-body">' +
         '<p class="card-msg">' + escapeHtml(opts.nombreFamilia || 'Tu familia') + ' está sincronizada. Comparte este código con quien quieras que vea y edite el menú desde su móvil:</p>' +
         '<p class="card-msg" style="font-size:28px;font-weight:700;letter-spacing:.08em;text-align:center;margin:16px 0;">' + escapeHtml(opts.code || '') + '</p>' +
         '<p class="card-msg">Cualquier dispositivo con este código ve y edita todo el menú — no hay permisos distintos por persona.</p>' +
+        aviso +
+        '<button type="button" class="btn-secondary" id="sync-rotar-btn" data-action="sync-rotar">Generar un código nuevo</button>' +
+        '<p class="card-msg" style="margin-top:8px">Si el código se te ha escapado a quien no debía, genera otro: el viejo deja de servir al instante. Los móviles que ya están dentro siguen dentro.</p>' +
+        '<p class="card-msg" style="margin-top:24px">Tus datos</p>' +
+        '<button type="button" class="btn-secondary" id="sync-exportar-btn" data-action="sync-exportar">Descargar una copia</button>' +
+        '<p class="card-msg" style="margin-top:8px">Un archivo con todo lo de tu familia: miembros, menús y lista de la compra.</p>' +
+        '<button type="button" class="btn-secondary" id="sync-borrar-btn" data-action="sync-borrar" style="margin-top:16px;color:var(--danger);border-color:var(--danger)">Borrar la familia y sus datos</button>' +
+        '<p class="card-msg" style="margin-top:8px">Borra la familia de la nube para todos los móviles, sin vuelta atrás. Descarga una copia antes si la quieres.</p>' +
+        '</div>';
+    }
+
+    if (opts.confirmarBorrado) {
+      return head + '<div class="sheet-body">' +
+        '<p class="card-msg">Vas a borrar <strong>' + escapeHtml(opts.nombreFamilia || 'tu familia') + '</strong> y todos sus datos de la nube: miembros, menús y lista de la compra. Desaparece para todos los móviles de la familia y <strong>no se puede deshacer</strong>.</p>' +
+        (opts.error ? '<p class="card-msg">' + escapeHtml(opts.error) + '</p>' : '') +
+        '<p class="card-msg" style="margin-top:16px">Escribe <strong>BORRAR</strong> para confirmar:</p>' +
+        '<label>Confirmación<input type="text" id="sync-borrar-input" class="input-editorial" placeholder="BORRAR" autocapitalize="characters" autocomplete="off"></label>' +
+        '<button type="button" class="btn-secondary" id="sync-borrar-confirmar-btn" data-action="sync-borrar-confirmar" style="color:var(--danger);border-color:var(--danger)">Borrar definitivamente</button>' +
+        '<button type="button" class="btn-texto" data-action="menu-sync" style="margin-top:8px">Cancelar</button>' +
         '</div>';
     }
 

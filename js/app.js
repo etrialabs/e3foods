@@ -295,6 +295,76 @@
     });
   }
 
+  function rotarCodigo() {
+    var btn = document.getElementById('sync-rotar-btn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Generando…'; }
+    window.E3Sync.rotarCodigo().then(function (data) {
+      document.getElementById('sheet-contenido').innerHTML = UI.renderSheetSync({
+        synced: true, nombreFamilia: estado.nombreFamilia, code: data.code,
+        aviso: 'Código nuevo listo. El anterior ya no sirve para unirse.'
+      });
+    }).catch(function (err) {
+      document.getElementById('sheet-contenido').innerHTML = UI.renderSheetSync({
+        synced: true, nombreFamilia: estado.nombreFamilia, code: '…',
+        aviso: 'No se pudo generar: ' + err.message + '. El código anterior sigue siendo válido.'
+      });
+    });
+  }
+
+  function exportarDatos() {
+    var btn = document.getElementById('sync-exportar-btn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Preparando…'; }
+    window.E3Sync.exportarDatos().then(function (datos) {
+      var blob = new Blob([JSON.stringify(datos, null, 2)], { type: 'application/json' });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = 'e3foods-' + (estado.nombreFamilia || 'familia').replace(/[^\w-]+/g, '-').toLowerCase() + '.json';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      if (btn) { btn.disabled = false; btn.textContent = 'Descargar una copia'; }
+    }).catch(function (err) {
+      if (btn) { btn.disabled = false; btn.textContent = 'No se pudo descargar — reintentar'; }
+      console.error('[sync] export falló', err);
+    });
+  }
+
+  function pedirConfirmacionBorrado() {
+    document.getElementById('sheet-contenido').innerHTML = UI.renderSheetSync({
+      confirmarBorrado: true, nombreFamilia: estado.nombreFamilia
+    });
+  }
+
+  function confirmarBorrado() {
+    var input = document.getElementById('sync-borrar-input');
+    if (!input || input.value.trim().toUpperCase() !== 'BORRAR') {
+      document.getElementById('sheet-contenido').innerHTML = UI.renderSheetSync({
+        confirmarBorrado: true, nombreFamilia: estado.nombreFamilia,
+        error: 'Escribe BORRAR para confirmar.'
+      });
+      return;
+    }
+    var btn = document.getElementById('sync-borrar-confirmar-btn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Borrando…'; }
+    window.E3Sync.borrarFamilia().then(function () {
+      // el listener remoto apunta a un doc que ya no existe: cortarlo antes de
+      // que dispare un onChange(null) y app.js crea que el remoto está vacío
+      if (desuscribirRemoto) { desuscribirRemoto(); desuscribirRemoto = null; }
+      remotoListo = false;
+      document.getElementById('sheet-contenido').innerHTML = UI.sheetHead('Familia borrada') +
+        '<div class="sheet-body"><p class="card-msg">La familia y sus datos ya no están en la nube. ' +
+        'Este móvil conserva su copia local: puedes seguir usándolo sin sincronizar, o activar la ' +
+        'sincronización otra vez para crear una familia nueva.</p></div>';
+    }).catch(function (err) {
+      document.getElementById('sheet-contenido').innerHTML = UI.renderSheetSync({
+        confirmarBorrado: true, nombreFamilia: estado.nombreFamilia,
+        error: 'No se pudo borrar: ' + err.message
+      });
+    });
+  }
+
   function unirseSincronizacion() {
     var input = document.getElementById('sync-code-input');
     var code = input ? input.value.trim() : '';
@@ -783,6 +853,10 @@
     'landing-unirse': function () { abrirSheetSync(); },
     'sync-activar': function () { activarSincronizacion(); },
     'sync-unirse': function () { unirseSincronizacion(); },
+    'sync-rotar': function () { rotarCodigo(); },
+    'sync-exportar': function () { exportarDatos(); },
+    'sync-borrar': function () { pedirConfirmacionBorrado(); },
+    'sync-borrar-confirmar': function () { confirmarBorrado(); },
 
     'wizard-siguiente-bienvenida': function () { wizardSiguienteBienvenida(); },
     'wizard-volver-bienvenida': function () { mostrarWizardBienvenida(); },

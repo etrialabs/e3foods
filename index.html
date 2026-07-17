@@ -28,7 +28,20 @@
 
 <!-- LANDING — cada carga. Tap "Empezar" -> wizard (si no hay familia) o HOY. -->
 <div id="landing-screen" class="landing-screen">
-  <img class="landing-hero" src="assets/portada.png" alt="e3Foods — menús que piensan por ti. Familias que comen mejor.">
+  <img class="landing-hero" alt="e3Foods — menús que piensan por ti. Familias que comen mejor.">
+  <script>
+    // Rotación de portada por franja de 30 min (Roger 2026-07-17, evitar fatiga
+    // visual entre aperturas — NO es una animación en vivo, se fija una vez por
+    // carga). Sin src estático arriba a propósito: si el script corriera después
+    // (p.ej. en app.js, cargado al final del body) el navegador ya habría
+    // empezado a pedir la imagen equivocada. Inline y justo aquí = se fija antes
+    // de que el navegador tenga ocasión de pintar nada. Epoch, no hora local:
+    // sin líos de zona horaria, y de paso el cambio cae justo en :00/:30 en
+    // cualquier huso. Las 3 comparten lienzo y geometría del hueco del CTA
+    // (ver SPEC.md) — cambiar de slot no mueve el botón.
+    document.currentScript.previousElementSibling.src =
+      'assets/portada-' + (Math.floor(Date.now() / 1800000) % 3) + '.jpg?v=40';
+  </script>
   <button type="button" class="btn-primary landing-cta" data-action="empezar">Empezar</button>
 </div>
 

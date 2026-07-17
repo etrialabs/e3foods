@@ -30,7 +30,7 @@
   // Estado
   // ---------------------------------------------------------------
   function estadoVacio() {
-    return { nombreFamilia: '', familia: [], ausenciasPuntuales: {}, plan: null, ocultas: [], favoritas: [], propias: [], compra: { marcados: [] }, valoraciones: {} };
+    return { nombreFamilia: '', familiaRegion: null, familia: [], ausenciasPuntuales: {}, plan: null, ocultas: [], favoritas: [], propias: [], compra: { marcados: [] }, valoraciones: {}, historialPlantillas: {} };
   }
 
   function cargarEstado() {
@@ -121,6 +121,12 @@
     if (!estado.familia.length) return;
     var lunesActual = E.lunesDeEstaSemana(new Date());
     if (!estado.plan || estado.plan.semanaISO !== lunesActual) {
+      // tramo 1 (2026-07-17): antes de pisar el plan saliente, archivar sus
+      // plantillas en el historial — alimenta la rotación entre semanas y la
+      // novedad del scoring (engine.puntuarRecencia/puntuarNovedad).
+      if (estado.plan && estado.plan.semanaISO) {
+        estado.historialPlantillas = E.historialConPlan(estado, estado.plan, lunesActual);
+      }
       estado.plan = E.generarSemana(estado, BANCO);
       guardarEstado();
     }
@@ -465,6 +471,7 @@
   // ---------------------------------------------------------------
   var wizardMiembros = [];
   var wizardNombreFamilia = '';
+  var wizardRegion = ''; // región opcional del paso 1 (tramo 1, 2026-07-17)
 
   // contexto compartido del formulario de miembro (wizard hub vs sheet Familia)
   var formContexto = 'wizard'; // 'wizard' | 'familia'
@@ -481,7 +488,7 @@
     ocultarPasosWizard();
     var el = document.getElementById('wizard-bienvenida');
     el.hidden = false;
-    el.innerHTML = UI.renderWizardBienvenida(wizardNombreFamilia);
+    el.innerHTML = UI.renderWizardBienvenida(wizardNombreFamilia, wizardRegion);
   }
 
   function wizardSiguienteBienvenida() {
@@ -517,6 +524,7 @@
   function wizardGenerar() {
     if (!wizardMiembros.length) return;
     estado.nombreFamilia = wizardNombreFamilia.trim();
+    estado.familiaRegion = wizardRegion || null;
     estado.familia = wizardMiembros.slice();
     estado.plan = E.generarSemana(estado, BANCO);
     guardarEstado();
@@ -1009,9 +1017,14 @@
     // checkbox de un ingrediente en el sheet "con lo que hay en la nevera"
     if (t.type === 'checkbox' && t.closest('#lista-nevera-checks')) { actualizarNeveraSeleccion(); return; }
 
+    // región del wizard (select dispara 'change', no 'input')
+    if (t.id === 'wz-region') { wizardRegion = t.value; return; }
+
     var campo = t.dataset && t.dataset.campo;
     if (!campo) return;
     if (campo === 'nombreFamilia') { estado.nombreFamilia = t.value.trim(); guardarEstado(); return; }
+    // región de la familia (Ajustes): señal del motor en la próxima generación — no regenera en caliente
+    if (campo === 'familiaRegion') { estado.familiaRegion = t.value || null; guardarEstado(); return; }
     if (t.dataset.id) { actualizarCampoMiembro(t.dataset.id, campo, t.value); render(); }
   });
 

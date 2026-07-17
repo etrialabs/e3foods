@@ -851,6 +851,19 @@ body.sheet-open { overflow: hidden; }
 .veto-chip input { width: 18px; height: 18px; accent-color: var(--gold); }
 
 /* ============================================================
+   Tramo 1 (2026-07-17): postre del día, badge de novedad, select de región
+   ============================================================ */
+/* línea informativa bajo la cena — --soft sobre --bg pasa AA (6.95:1, UI_MOBILE §3) */
+.postre-linea { margin: var(--space-2) 0 0; font-size: var(--fs-aux); font-weight: 600; color: var(--soft); }
+
+/* "nuevo para probar": fondo ink + texto gold-soft (par seguro; dorado nunca
+   como texto sobre claro — UI_MOBILE §3). A la derecha del head de la card. */
+.badge-nuevo { margin-left: auto; padding: 2px 8px; border-radius: 999px; background: var(--ink); color: var(--gold-soft); font-size: var(--fs-aux); font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase; flex-shrink: 0; }
+
+/* el select de región hereda .campo-nombre-familia (28px display) — devolverlo a UI */
+.campo-nombre-familia select.input-editorial { font-family: var(--font-ui); font-size: 16px; font-weight: 500; }
+
+/* ============================================================
    Responsive — a partir de tablet, contenido centrado con más aire
    ============================================================ */
 @media (min-width: 720px) {

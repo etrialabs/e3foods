@@ -197,7 +197,13 @@
     var presentes = mesa.presentes;
     var etiqueta = tipoComida === 'comida' ? 'COMIDA' : 'CENA';
     var icono = tipoComida === 'comida' ? ICONO_SOL : ICONO_LUNA;
-    var cabeceraTipo = '<div class="card-comida-head"><span class="card-comida-icono">' + icono + '</span><span class="card-comida-etiqueta">' + etiqueta + '</span></div>';
+    // Badge "nuevo para probar" (tramo 1): plantilla sin rastro en el historial
+    // de rotación. Solo cuando ya existe historial — en una familia recién dada
+    // de alta todo sería "nuevo" y el badge no significaría nada.
+    var historialRot = estado.historialPlantillas || {};
+    var esNueva = !!slot && !!Object.keys(historialRot).length && !historialRot[slot.plantillaId];
+    var badgeNuevo = esNueva ? '<span class="badge-nuevo">Nuevo para probar</span>' : '';
+    var cabeceraTipo = '<div class="card-comida-head"><span class="card-comida-icono">' + icono + '</span><span class="card-comida-etiqueta">' + etiqueta + '</span>' + badgeNuevo + '</div>';
 
     var avataresHtml = miembrosDelSlot.map(function (m) {
       var estaPresente = presentes.some(function (p) { return p.id === m.id; });
@@ -439,7 +445,23 @@
       '</p>' +
       renderSlot(estado, banco, plan, idx, 'comida') +
       renderSlot(estado, banco, plan, idx, 'cena') +
+      renderPostreDia(estado, banco, plan, idx) +
       '</div>';
+  }
+
+  // Postre del día (tramo 1, 2026-07-17): línea informativa bajo la cena —
+  // fruta de temporada L-V (modelo AESAN, rotada por mes con el calendario
+  // MAPA), yogur el sábado, dulce tradicional como sugerencia el domingo.
+  // Sin decisión nueva por pantalla: se muestra, no se configura.
+  function renderPostreDia(estado, banco, plan, diaIndex) {
+    var dia = plan.dias[diaIndex];
+    if (!dia) return '';
+    var postre = E.postreDelDia(banco, dia.fecha, diaIndex);
+    if (!postre) return '';
+    var texto = postre.tipo === 'tradicional'
+      ? 'Sugerencia de postre: ' + postre.nombre + ' (receta de finde)'
+      : 'De postre: ' + postre.nombre;
+    return '<p class="postre-linea">' + escapeHtml(texto) + '</p>';
   }
 
   // ---------------------------------------------------------------
@@ -767,11 +789,42 @@
   // PASO 1 — saludo + "¿cómo os llamáis?" (nombre de familia). Sin campos de
   // miembro todavía: una sola pregunta, una sola respuesta, como pediría
   // alguien al conoceros de verdad.
-  function renderWizardBienvenida(nombreFamilia) {
+  // Vocabulario de regiones (tramo 1, 2026-07-17) — research §2.1. Es un dato
+  // de la familia (dónde vive), no un mando del motor: el sesgo regional del
+  // scoring es interno. cantabria está en el selector aunque el banco todavía
+  // no tenga platos suyos (una familia cántabra tiene que poder elegirse).
+  var REGIONES = [
+    { id: 'andalucia', nombre: 'Andalucía' },
+    { id: 'aragon', nombre: 'Aragón' },
+    { id: 'asturias', nombre: 'Asturias' },
+    { id: 'baleares', nombre: 'Baleares' },
+    { id: 'canarias', nombre: 'Canarias' },
+    { id: 'cantabria', nombre: 'Cantabria' },
+    { id: 'castilla', nombre: 'Castilla' },
+    { id: 'cataluna', nombre: 'Cataluña' },
+    { id: 'comunidad-valenciana', nombre: 'Comunidad Valenciana' },
+    { id: 'euskadi', nombre: 'Euskadi' },
+    { id: 'extremadura', nombre: 'Extremadura' },
+    { id: 'galicia', nombre: 'Galicia' },
+    { id: 'madrid', nombre: 'Madrid' },
+    { id: 'murcia', nombre: 'Murcia' },
+    { id: 'navarra-rioja', nombre: 'Navarra / La Rioja' }
+  ];
+
+  function opcionesRegion(seleccionada) {
+    return '<option value=""' + (!seleccionada ? ' selected' : '') + '>Prefiero no decirlo</option>' +
+      REGIONES.map(function (r) {
+        return '<option value="' + r.id + '"' + (seleccionada === r.id ? ' selected' : '') + '>' + escapeHtml(r.nombre) + '</option>';
+      }).join('');
+  }
+
+  function renderWizardBienvenida(nombreFamilia, familiaRegion) {
     return '<p class="wizard-saludo">¡Bienvenidos!</p>' +
       '<h1 class="wizard-pregunta">Quiero conoceros.<br>¿Cómo os llamáis?</h1>' +
       '<label class="campo-nombre-familia"><span class="campo-eyebrow">Nombre de familia</span>' +
         '<input type="text" id="wz-nombre-familia" class="input-editorial" maxlength="40" placeholder="p.ej. Los Fernández" value="' + escapeHtml(nombreFamilia || '') + '" autofocus></label>' +
+      '<label class="campo-nombre-familia"><span class="campo-eyebrow">¿De dónde sois? (opcional)</span>' +
+        '<select id="wz-region" class="input-editorial">' + opcionesRegion(familiaRegion) + '</select></label>' +
       '<button type="button" class="btn-primary wizard-cta" data-action="wizard-siguiente-bienvenida">Siguiente</button>' +
       '<button type="button" class="btn-texto" data-action="landing-unirse">¿Ya tienes un código de familia?</button>' +
       '<button type="button" class="btn-texto" data-action="ver-demo">O mira un ejemplo primero</button>';
@@ -903,6 +956,8 @@
       '<div class="sheet-body">' +
       '<label class="campo-nombre-familia"><span class="campo-eyebrow">Nombre de familia</span>' +
         '<input type="text" id="familia-nombre-input" class="input-editorial" data-campo="nombreFamilia" maxlength="40" value="' + escapeHtml(estado.nombreFamilia || '') + '"></label>' +
+      '<label class="campo-nombre-familia"><span class="campo-eyebrow">¿De dónde sois? (opcional)</span>' +
+        '<select id="familia-region-select" class="input-editorial" data-campo="familiaRegion">' + opcionesRegion(estado.familiaRegion) + '</select></label>' +
       '<div class="lista-miembros">' + miembrosCards + tarjetaAnadir + '</div>' +
       '<div class="lista-enlaces">' +
         '<button type="button" class="fila-enlace" data-action="ir-recetas-ocultas"><span>Recetas ocultas</span><span class="fila-enlace-valor">' + ocultasN + ' ›</span></button>' +

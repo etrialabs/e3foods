@@ -3,87 +3,121 @@
 // Convención de peso: carnes/pescados/marisco = crudo; cereales (arroz, pasta...) = en seco;
 // legumbres = cocidas/de bote listas para comer; verdura/tubérculo = en crudo tal cual se compra.
 window.E3_RECETAS = {
-  version: 1,
+  version: 2, // v2 = tramo 1 regional/estacional/postres (2026-07-17)
 
   ingredientes: {
     // ---- carne-blanca ----
-    "pollo": { nombre: "Pollo (pechuga o contramuslo)", categoria: "carne-blanca", kcal_100g: 165, racion_adulto_g: 150, racion_nino_g: 90 },
-    "pavo": { nombre: "Pavo (filete o picado)", categoria: "carne-blanca", kcal_100g: 110, racion_adulto_g: 150, racion_nino_g: 90 },
-    "conejo": { nombre: "Conejo", categoria: "carne-blanca", kcal_100g: 130, racion_adulto_g: 150, racion_nino_g: 90 },
+    "pollo": { nombre: "Pollo (pechuga o contramuslo)", categoria: "carne-blanca", kcal_100g: 165, racion_adulto_g: 150, racion_nino_g: 90, coste_banda: 2 },
+    "pavo": { nombre: "Pavo (filete o picado)", categoria: "carne-blanca", kcal_100g: 110, racion_adulto_g: 150, racion_nino_g: 90, coste_banda: 2 },
+    "conejo": { nombre: "Conejo", categoria: "carne-blanca", kcal_100g: 130, racion_adulto_g: 150, racion_nino_g: 90, coste_banda: 2 },
 
     // ---- carne-roja ----
-    "ternera-picada": { nombre: "Carne picada de ternera", categoria: "carne-roja", kcal_100g: 240, racion_adulto_g: 130, racion_nino_g: 80 },
-    "ternera": { nombre: "Ternera (filete o para guisar)", categoria: "carne-roja", kcal_100g: 200, racion_adulto_g: 150, racion_nino_g: 90 },
-    "cerdo": { nombre: "Cerdo (lomo o solomillo)", categoria: "carne-roja", kcal_100g: 180, racion_adulto_g: 150, racion_nino_g: 90 },
+    "ternera-picada": { nombre: "Carne picada de ternera", categoria: "carne-roja", kcal_100g: 240, racion_adulto_g: 130, racion_nino_g: 80, coste_banda: 2 },
+    "ternera": { nombre: "Ternera (filete o para guisar)", categoria: "carne-roja", kcal_100g: 200, racion_adulto_g: 150, racion_nino_g: 90, coste_banda: 3 },
+    "cerdo": { nombre: "Cerdo (lomo o solomillo)", categoria: "carne-roja", kcal_100g: 180, racion_adulto_g: 150, racion_nino_g: 90, coste_banda: 2 },
+    // -- procesados/curados de cerdo (tramo 1, 2026-07-17) — kcal BEDCA (API XML, jul-2026). Categoría
+    //    carne-roja a propósito: la carne procesada computa junto a la roja en las cuotas estilo AESAN/OMS.
+    //    Ración pequeña: son compango/condimento de plato, no proteína de ración completa.
+    "chorizo": { nombre: "Chorizo", categoria: "carne-roja", kcal_100g: 323, racion_adulto_g: 60, racion_nino_g: 30, coste_banda: 2 }, // BEDCA "Chorizo" (f_id 2264)
+    "panceta": { nombre: "Panceta de cerdo", categoria: "carne-roja", kcal_100g: 467, racion_adulto_g: 50, racion_nino_g: 25, coste_banda: 2 }, // BEDCA "Cerdo, panceta, cruda" (f_id 2260)
+    "jamon-serrano": { nombre: "Jamón serrano", categoria: "carne-roja", kcal_100g: 319, racion_adulto_g: 40, racion_nino_g: 25, coste_banda: 2 }, // BEDCA "Jamón serrano" (f_id 2273)
+    "compango": { nombre: "Compango asturiano (chorizo, morcilla y lacón)", categoria: "carne-roja", kcal_100g: 287, racion_adulto_g: 80, racion_nino_g: 40, coste_banda: 2 }, // media BEDCA chorizo 323 + morcilla 324 + lacón 214 — ⚠ morcilla/lacón con fiabilidad reducida (discrepancia FEN), ver 01_Research/2026-07-17_RESEARCH_BANCO_AMPLIACION.md
+    "ternera-rellena": { nombre: "Ternera rellena de jamón y queso (cachopo)", categoria: "carne-roja", kcal_100g: 195, racion_adulto_g: 200, racion_nino_g: 120, coste_banda: 3 }, // ponderado 60% ternera (200, banco) + 15% jamón serrano (319, BEDCA) + 25% queso fresco (110, banco)
 
     // ---- pescado-blanco ----
-    "merluza": { nombre: "Merluza", categoria: "pescado-blanco", kcal_100g: 90, racion_adulto_g: 160, racion_nino_g: 100 },
-    "bacalao": { nombre: "Bacalao desalado", categoria: "pescado-blanco", kcal_100g: 110, racion_adulto_g: 160, racion_nino_g: 100 },
-    "lubina": { nombre: "Lubina", categoria: "pescado-blanco", kcal_100g: 118, racion_adulto_g: 160, racion_nino_g: 100 },
-    "gallo": { nombre: "Gallo (filetes)", categoria: "pescado-blanco", kcal_100g: 80, racion_adulto_g: 160, racion_nino_g: 100 },
+    "merluza": { nombre: "Merluza", categoria: "pescado-blanco", kcal_100g: 90, racion_adulto_g: 160, racion_nino_g: 100, coste_banda: 3 },
+    "bacalao": { nombre: "Bacalao desalado", categoria: "pescado-blanco", kcal_100g: 110, racion_adulto_g: 160, racion_nino_g: 100, coste_banda: 2 },
+    "lubina": { nombre: "Lubina", categoria: "pescado-blanco", kcal_100g: 118, racion_adulto_g: 160, racion_nino_g: 100, coste_banda: 3 },
+    "gallo": { nombre: "Gallo (filetes)", categoria: "pescado-blanco", kcal_100g: 80, racion_adulto_g: 160, racion_nino_g: 100, coste_banda: 3 },
 
     // ---- pescado-azul ----
-    "salmon": { nombre: "Salmón", categoria: "pescado-azul", kcal_100g: 200, racion_adulto_g: 150, racion_nino_g: 90 },
-    "atun": { nombre: "Atún fresco", categoria: "pescado-azul", kcal_100g: 130, racion_adulto_g: 150, racion_nino_g: 90 },
-    "sardinas": { nombre: "Sardinas", categoria: "pescado-azul", kcal_100g: 170, racion_adulto_g: 150, racion_nino_g: 90 },
-    "boquerones": { nombre: "Boquerones", categoria: "pescado-azul", kcal_100g: 130, racion_adulto_g: 120, racion_nino_g: 70 },
+    "salmon": { nombre: "Salmón", categoria: "pescado-azul", kcal_100g: 200, racion_adulto_g: 150, racion_nino_g: 90, coste_banda: 3 },
+    "atun": { nombre: "Atún fresco", categoria: "pescado-azul", kcal_100g: 130, racion_adulto_g: 150, racion_nino_g: 90, coste_banda: 3 },
+    "sardinas": { nombre: "Sardinas", categoria: "pescado-azul", kcal_100g: 170, racion_adulto_g: 150, racion_nino_g: 90, coste_banda: 2 },
+    "boquerones": { nombre: "Boquerones", categoria: "pescado-azul", kcal_100g: 130, racion_adulto_g: 120, racion_nino_g: 70, coste_banda: 1 },
+    "bonito": { nombre: "Bonito del norte fresco", categoria: "pescado-azul", kcal_100g: 138, racion_adulto_g: 150, racion_nino_g: 90, coste_banda: 2 }, // FEN "Bonito" (T. alalunga) — BEDCA no tiene la especie en crudo
+    "trucha": { nombre: "Trucha", categoria: "pescado-azul", kcal_100g: 90, racion_adulto_g: 160, racion_nino_g: 100, coste_banda: 2 }, // FEN "Trucha" (arcoíris, O. mykiss); semigrasa (3%), agrupada con azul por perfil omega-3
 
     // ---- marisco ----
-    "gambas": { nombre: "Gambas o langostinos", categoria: "marisco", kcal_100g: 90, racion_adulto_g: 130, racion_nino_g: 80 },
-    "mejillones": { nombre: "Mejillones", categoria: "marisco", kcal_100g: 85, racion_adulto_g: 200, racion_nino_g: 120 },
+    "gambas": { nombre: "Gambas o langostinos", categoria: "marisco", kcal_100g: 90, racion_adulto_g: 130, racion_nino_g: 80, coste_banda: 3 },
+    "mejillones": { nombre: "Mejillones", categoria: "marisco", kcal_100g: 85, racion_adulto_g: 200, racion_nino_g: 120, coste_banda: 2 },
 
     // ---- huevo ----
-    "huevo": { nombre: "Huevo", categoria: "huevo", kcal_100g: 155, racion_adulto_g: 120, racion_nino_g: 60 },
+    "huevo": { nombre: "Huevo", categoria: "huevo", kcal_100g: 155, racion_adulto_g: 120, racion_nino_g: 60, coste_banda: 1 },
 
     // ---- legumbre (incluye soja/tofu como proteína vegetal asimilada) ----
-    "garbanzos": { nombre: "Garbanzos cocidos", categoria: "legumbre", kcal_100g: 120, racion_adulto_g: 200, racion_nino_g: 130 },
-    "lentejas": { nombre: "Lentejas cocidas", categoria: "legumbre", kcal_100g: 116, racion_adulto_g: 200, racion_nino_g: 130 },
-    "alubias-blancas": { nombre: "Alubias blancas cocidas", categoria: "legumbre", kcal_100g: 120, racion_adulto_g: 200, racion_nino_g: 130 },
-    "edamame": { nombre: "Edamame (soja verde)", categoria: "legumbre", kcal_100g: 120, racion_adulto_g: 150, racion_nino_g: 90 },
-    "tofu": { nombre: "Tofu", categoria: "legumbre", kcal_100g: 90, racion_adulto_g: 150, racion_nino_g: 90 },
-    "hummus": { nombre: "Hummus", categoria: "legumbre", kcal_100g: 170, racion_adulto_g: 100, racion_nino_g: 60 },
+    "garbanzos": { nombre: "Garbanzos cocidos", categoria: "legumbre", kcal_100g: 120, racion_adulto_g: 200, racion_nino_g: 130, coste_banda: 1 },
+    "lentejas": { nombre: "Lentejas cocidas", categoria: "legumbre", kcal_100g: 116, racion_adulto_g: 200, racion_nino_g: 130, coste_banda: 1 },
+    "alubias-blancas": { nombre: "Alubias blancas cocidas", categoria: "legumbre", kcal_100g: 120, racion_adulto_g: 200, racion_nino_g: 130, coste_banda: 1 },
+    "edamame": { nombre: "Edamame (soja verde)", categoria: "legumbre", kcal_100g: 120, racion_adulto_g: 150, racion_nino_g: 90, coste_banda: 1 },
+    "tofu": { nombre: "Tofu", categoria: "legumbre", kcal_100g: 90, racion_adulto_g: 150, racion_nino_g: 90, coste_banda: 2 },
+    "hummus": { nombre: "Hummus", categoria: "legumbre", kcal_100g: 170, racion_adulto_g: 100, racion_nino_g: 60, coste_banda: 2 },
+    "legumbres-variadas": { nombre: "Legumbres variadas cocidas", categoria: "legumbre", kcal_100g: 119, racion_adulto_g: 200, racion_nino_g: 130, coste_banda: 1 }, // media del propio banco (garbanzos 120 + lentejas 116 + alubias 120) — para la olleta
 
     // ---- cereal ----
-    "arroz": { nombre: "Arroz", categoria: "cereal", kcal_100g: 360, racion_adulto_g: 80, racion_nino_g: 50 },
-    "pasta": { nombre: "Pasta", categoria: "cereal", kcal_100g: 360, racion_adulto_g: 80, racion_nino_g: 50 },
-    "cuscus": { nombre: "Cuscús", categoria: "cereal", kcal_100g: 360, racion_adulto_g: 70, racion_nino_g: 45 },
-    "quinoa": { nombre: "Quinoa", categoria: "cereal", kcal_100g: 370, racion_adulto_g: 70, racion_nino_g: 45 },
-    "pan-integral": { nombre: "Pan integral", categoria: "cereal", kcal_100g: 250, racion_adulto_g: 60, racion_nino_g: 40 },
-    "fideos": { nombre: "Fideos", categoria: "cereal", kcal_100g: 360, racion_adulto_g: 70, racion_nino_g: 45 },
-    "masa-empanadilla": { nombre: "Masa de empanadilla", categoria: "cereal", kcal_100g: 310, racion_adulto_g: 90, racion_nino_g: 60 },
-    "tortilla-trigo": { nombre: "Tortilla de trigo (wrap)", categoria: "cereal", kcal_100g: 290, racion_adulto_g: 70, racion_nino_g: 40 },
-    "pan-hamburguesa": { nombre: "Pan de hamburguesa", categoria: "cereal", kcal_100g: 260, racion_adulto_g: 60, racion_nino_g: 45 },
-    "masa-pizza": { nombre: "Masa de pizza", categoria: "cereal", kcal_100g: 270, racion_adulto_g: 150, racion_nino_g: 100 },
-    "placas-lasana": { nombre: "Placas de lasaña", categoria: "cereal", kcal_100g: 350, racion_adulto_g: 90, racion_nino_g: 60 },
-    "pan-pita": { nombre: "Pan de pita", categoria: "cereal", kcal_100g: 275, racion_adulto_g: 60, racion_nino_g: 40 },
+    "arroz": { nombre: "Arroz", categoria: "cereal", kcal_100g: 360, racion_adulto_g: 80, racion_nino_g: 50, coste_banda: 1 },
+    "pasta": { nombre: "Pasta", categoria: "cereal", kcal_100g: 360, racion_adulto_g: 80, racion_nino_g: 50, coste_banda: 1 },
+    "cuscus": { nombre: "Cuscús", categoria: "cereal", kcal_100g: 360, racion_adulto_g: 70, racion_nino_g: 45, coste_banda: 1 },
+    "quinoa": { nombre: "Quinoa", categoria: "cereal", kcal_100g: 370, racion_adulto_g: 70, racion_nino_g: 45, coste_banda: 2 },
+    "pan-integral": { nombre: "Pan integral", categoria: "cereal", kcal_100g: 250, racion_adulto_g: 60, racion_nino_g: 40, coste_banda: 1 },
+    "fideos": { nombre: "Fideos", categoria: "cereal", kcal_100g: 360, racion_adulto_g: 70, racion_nino_g: 45, coste_banda: 1 },
+    "masa-empanadilla": { nombre: "Masa de empanadilla", categoria: "cereal", kcal_100g: 310, racion_adulto_g: 90, racion_nino_g: 60, coste_banda: 2 },
+    "tortilla-trigo": { nombre: "Tortilla de trigo (wrap)", categoria: "cereal", kcal_100g: 290, racion_adulto_g: 70, racion_nino_g: 40, coste_banda: 2 },
+    "pan-hamburguesa": { nombre: "Pan de hamburguesa", categoria: "cereal", kcal_100g: 260, racion_adulto_g: 60, racion_nino_g: 45, coste_banda: 2 },
+    "masa-pizza": { nombre: "Masa de pizza", categoria: "cereal", kcal_100g: 270, racion_adulto_g: 150, racion_nino_g: 100, coste_banda: 2 },
+    "placas-lasana": { nombre: "Placas de lasaña", categoria: "cereal", kcal_100g: 350, racion_adulto_g: 90, racion_nino_g: 60, coste_banda: 2 },
+    "pan-pita": { nombre: "Pan de pita", categoria: "cereal", kcal_100g: 275, racion_adulto_g: 60, racion_nino_g: 40, coste_banda: 2 },
+    "pan": { nombre: "Pan (barra)", categoria: "cereal", kcal_100g: 240, racion_adulto_g: 60, racion_nino_g: 40, coste_banda: 1 }, // BEDCA "Pan blanco, de barra" (f_id 2160) — migas, gazpacho, salmorejo, sopa castellana
 
     // ---- tuberculo ----
-    "patata": { nombre: "Patata", categoria: "tuberculo", kcal_100g: 77, racion_adulto_g: 220, racion_nino_g: 130 },
-    "boniato": { nombre: "Boniato", categoria: "tuberculo", kcal_100g: 86, racion_adulto_g: 200, racion_nino_g: 120 },
+    "patata": { nombre: "Patata", categoria: "tuberculo", kcal_100g: 77, racion_adulto_g: 220, racion_nino_g: 130, coste_banda: 1 },
+    "boniato": { nombre: "Boniato", categoria: "tuberculo", kcal_100g: 86, racion_adulto_g: 200, racion_nino_g: 120, coste_banda: 1 },
 
     // ---- verdura ----
-    "brocoli": { nombre: "Brócoli", categoria: "verdura", kcal_100g: 34, racion_adulto_g: 180, racion_nino_g: 100 },
-    "judias-verdes": { nombre: "Judías verdes", categoria: "verdura", kcal_100g: 31, racion_adulto_g: 180, racion_nino_g: 100 },
-    "calabacin": { nombre: "Calabacín", categoria: "verdura", kcal_100g: 17, racion_adulto_g: 200, racion_nino_g: 120 },
-    "zanahoria": { nombre: "Zanahoria", categoria: "verdura", kcal_100g: 41, racion_adulto_g: 150, racion_nino_g: 90 },
-    "pimiento": { nombre: "Pimiento", categoria: "verdura", kcal_100g: 30, racion_adulto_g: 150, racion_nino_g: 90 },
-    "espinacas": { nombre: "Espinacas", categoria: "verdura", kcal_100g: 23, racion_adulto_g: 150, racion_nino_g: 90 },
-    "champinones": { nombre: "Champiñones", categoria: "verdura", kcal_100g: 22, racion_adulto_g: 150, racion_nino_g: 90 },
-    "berenjena": { nombre: "Berenjena", categoria: "verdura", kcal_100g: 25, racion_adulto_g: 180, racion_nino_g: 100 },
-    "tomate": { nombre: "Tomate", categoria: "verdura", kcal_100g: 18, racion_adulto_g: 150, racion_nino_g: 90 },
-    "guisantes": { nombre: "Guisantes", categoria: "verdura", kcal_100g: 80, racion_adulto_g: 120, racion_nino_g: 80 },
-    "coliflor": { nombre: "Coliflor", categoria: "verdura", kcal_100g: 25, racion_adulto_g: 200, racion_nino_g: 110 },
-    "puerro": { nombre: "Puerro", categoria: "verdura", kcal_100g: 61, racion_adulto_g: 120, racion_nino_g: 70 },
-    "acelgas": { nombre: "Acelgas", categoria: "verdura", kcal_100g: 19, racion_adulto_g: 180, racion_nino_g: 100 },
-    "alcachofa": { nombre: "Alcachofa", categoria: "verdura", kcal_100g: 47, racion_adulto_g: 200, racion_nino_g: 110 },
-    "calabaza": { nombre: "Calabaza", categoria: "verdura", kcal_100g: 26, racion_adulto_g: 200, racion_nino_g: 110 },
-    "lechuga": { nombre: "Lechuga", categoria: "verdura", kcal_100g: 15, racion_adulto_g: 100, racion_nino_g: 60 },
-    "pepino": { nombre: "Pepino", categoria: "verdura", kcal_100g: 12, racion_adulto_g: 100, racion_nino_g: 60 },
-    "espinacas-queso": { nombre: "Relleno de espinacas y queso", categoria: "verdura", kcal_100g: 120, racion_adulto_g: 90, racion_nino_g: 60 },
+    "brocoli": { nombre: "Brócoli", categoria: "verdura", kcal_100g: 34, racion_adulto_g: 180, racion_nino_g: 100, coste_banda: 1 },
+    "judias-verdes": { nombre: "Judías verdes", categoria: "verdura", kcal_100g: 31, racion_adulto_g: 180, racion_nino_g: 100, coste_banda: 1 },
+    "calabacin": { nombre: "Calabacín", categoria: "verdura", kcal_100g: 17, racion_adulto_g: 200, racion_nino_g: 120, coste_banda: 1 },
+    "zanahoria": { nombre: "Zanahoria", categoria: "verdura", kcal_100g: 41, racion_adulto_g: 150, racion_nino_g: 90, coste_banda: 1 },
+    "pimiento": { nombre: "Pimiento", categoria: "verdura", kcal_100g: 30, racion_adulto_g: 150, racion_nino_g: 90, coste_banda: 1 },
+    "espinacas": { nombre: "Espinacas", categoria: "verdura", kcal_100g: 23, racion_adulto_g: 150, racion_nino_g: 90, coste_banda: 1 },
+    "champinones": { nombre: "Champiñones", categoria: "verdura", kcal_100g: 22, racion_adulto_g: 150, racion_nino_g: 90, coste_banda: 1 },
+    "berenjena": { nombre: "Berenjena", categoria: "verdura", kcal_100g: 25, racion_adulto_g: 180, racion_nino_g: 100, coste_banda: 1 },
+    "tomate": { nombre: "Tomate", categoria: "verdura", kcal_100g: 18, racion_adulto_g: 150, racion_nino_g: 90, coste_banda: 1 },
+    "guisantes": { nombre: "Guisantes", categoria: "verdura", kcal_100g: 80, racion_adulto_g: 120, racion_nino_g: 80, coste_banda: 1 },
+    "coliflor": { nombre: "Coliflor", categoria: "verdura", kcal_100g: 25, racion_adulto_g: 200, racion_nino_g: 110, coste_banda: 1 },
+    "puerro": { nombre: "Puerro", categoria: "verdura", kcal_100g: 61, racion_adulto_g: 120, racion_nino_g: 70, coste_banda: 1 },
+    "acelgas": { nombre: "Acelgas", categoria: "verdura", kcal_100g: 19, racion_adulto_g: 180, racion_nino_g: 100, coste_banda: 1 },
+    "alcachofa": { nombre: "Alcachofa", categoria: "verdura", kcal_100g: 47, racion_adulto_g: 200, racion_nino_g: 110, coste_banda: 2 },
+    "calabaza": { nombre: "Calabaza", categoria: "verdura", kcal_100g: 26, racion_adulto_g: 200, racion_nino_g: 110, coste_banda: 1 },
+    "lechuga": { nombre: "Lechuga", categoria: "verdura", kcal_100g: 15, racion_adulto_g: 100, racion_nino_g: 60, coste_banda: 1 },
+    "pepino": { nombre: "Pepino", categoria: "verdura", kcal_100g: 12, racion_adulto_g: 100, racion_nino_g: 60, coste_banda: 1 },
+    "espinacas-queso": { nombre: "Relleno de espinacas y queso", categoria: "verdura", kcal_100g: 120, racion_adulto_g: 90, racion_nino_g: 60, coste_banda: 2 },
 
     // ---- lacteo ----
-    "queso-fresco": { nombre: "Queso fresco", categoria: "lacteo", kcal_100g: 110, racion_adulto_g: 80, racion_nino_g: 50 },
-    "queso-feta": { nombre: "Queso feta", categoria: "lacteo", kcal_100g: 260, racion_adulto_g: 50, racion_nino_g: 30 }
+    "queso-fresco": { nombre: "Queso fresco", categoria: "lacteo", kcal_100g: 110, racion_adulto_g: 80, racion_nino_g: 50, coste_banda: 2 },
+    "queso-feta": { nombre: "Queso feta", categoria: "lacteo", kcal_100g: 260, racion_adulto_g: 50, racion_nino_g: 30, coste_banda: 3 },
+    "yogur": { nombre: "Yogur natural", categoria: "lacteo", kcal_100g: 57, racion_adulto_g: 125, racion_nino_g: 125, coste_banda: 1 }, // FEN "Yogur entero natural" — ración = 1 unidad; postre del sábado
+
+    // ---- otro (tramo 1) ----
+    "bechamel": { nombre: "Bechamel casera (leche, harina y mantequilla)", categoria: "otro", kcal_100g: 152, racion_adulto_g: 100, racion_nino_g: 60, coste_banda: 1 }, // BEDCA "Salsa bechamel" (f_id 2580) — base de croquetas
+
+    // ---- fruta (tramo 1, postre por defecto — rotación por mes con el calendario oficial MAPA) ----
+    // kcal BEDCA (API XML, jul-2026); ración fruta AESAN 120-200 g → 170/100 estándar,
+    // sandía/melón en rodaja 250/150, plátano por pieza 120/80.
+    "naranja": { nombre: "Naranja", categoria: "fruta", kcal_100g: 38, racion_adulto_g: 170, racion_nino_g: 100, coste_banda: 1 },
+    "mandarina": { nombre: "Mandarina", categoria: "fruta", kcal_100g: 40, racion_adulto_g: 170, racion_nino_g: 100, coste_banda: 1 },
+    "fresa": { nombre: "Fresas", categoria: "fruta", kcal_100g: 36, racion_adulto_g: 170, racion_nino_g: 100, coste_banda: 1 },
+    "cereza": { nombre: "Cerezas", categoria: "fruta", kcal_100g: 63, racion_adulto_g: 170, racion_nino_g: 100, coste_banda: 2 },
+    "albaricoque": { nombre: "Albaricoques", categoria: "fruta", kcal_100g: 42, racion_adulto_g: 170, racion_nino_g: 100, coste_banda: 1 },
+    "melocoton": { nombre: "Melocotón", categoria: "fruta", kcal_100g: 39, racion_adulto_g: 170, racion_nino_g: 100, coste_banda: 1 },
+    "sandia": { nombre: "Sandía", categoria: "fruta", kcal_100g: 20, racion_adulto_g: 250, racion_nino_g: 150, coste_banda: 1 },
+    "melon": { nombre: "Melón", categoria: "fruta", kcal_100g: 27, racion_adulto_g: 250, racion_nino_g: 150, coste_banda: 1 },
+    "uva": { nombre: "Uvas", categoria: "fruta", kcal_100g: 68, racion_adulto_g: 170, racion_nino_g: 100, coste_banda: 2 },
+    "caqui": { nombre: "Caqui", categoria: "fruta", kcal_100g: 67, racion_adulto_g: 170, racion_nino_g: 100, coste_banda: 1 },
+    "manzana": { nombre: "Manzana", categoria: "fruta", kcal_100g: 50, racion_adulto_g: 170, racion_nino_g: 100, coste_banda: 1 },
+    "pera": { nombre: "Pera", categoria: "fruta", kcal_100g: 45, racion_adulto_g: 170, racion_nino_g: 100, coste_banda: 1 },
+    "platano": { nombre: "Plátano", categoria: "fruta", kcal_100g: 89, racion_adulto_g: 120, racion_nino_g: 80, coste_banda: 1 },
+    "kiwi": { nombre: "Kiwi", categoria: "fruta", kcal_100g: 52, racion_adulto_g: 170, racion_nino_g: 100, coste_banda: 1 }
   },
 
   // Cuotas semanales — RESEARCH_ALIMENTACION_ESPANA.md §3.2 (adultos, A22) y §3.3 (niños, AI22/AC25).
@@ -138,6 +172,7 @@ window.E3_RECETAS = {
       tiempo_min: 45,
       esfuerzo: "medio",
       ninos: true,
+      temporada: "invierno",
       ejes: {
         proteina: ["pollo", "cerdo", "merluza", "salmon", "lubina"],
         hidrato: ["patata", "boniato"],
@@ -162,6 +197,7 @@ window.E3_RECETAS = {
       tiempo_min: 45,
       esfuerzo: "medio",
       ninos: true,
+      temporada: "invierno",
       ejes: {
         proteina: ["lentejas"],
         hidrato: ["lentejas"],
@@ -186,6 +222,7 @@ window.E3_RECETAS = {
       tiempo_min: 45,
       esfuerzo: "medio",
       ninos: true,
+      temporada: "invierno",
       ejes: {
         proteina: ["garbanzos"],
         hidrato: ["garbanzos"],
@@ -210,6 +247,8 @@ window.E3_RECETAS = {
       tiempo_min: 90,
       esfuerzo: "elaborado",
       ninos: true,
+      temporada: "invierno",
+      region: "madrid",
       ejes: {
         proteina: ["pollo", "ternera"],
         hidrato: ["garbanzos"],
@@ -234,6 +273,7 @@ window.E3_RECETAS = {
       tiempo_min: 45,
       esfuerzo: "medio",
       ninos: true,
+      temporada: "invierno",
       ejes: {
         proteina: ["alubias-blancas"],
         hidrato: ["alubias-blancas"],
@@ -258,6 +298,7 @@ window.E3_RECETAS = {
       tiempo_min: 60,
       esfuerzo: "elaborado",
       ninos: true,
+      region: "comunidad-valenciana",
       ejes: {
         proteina: ["pollo", "gambas", "conejo"],
         hidrato: ["arroz"],
@@ -282,6 +323,8 @@ window.E3_RECETAS = {
       tiempo_min: 55,
       esfuerzo: "elaborado",
       ninos: true,
+      temporada: "invierno",
+      region: "comunidad-valenciana",
       ejes: {
         proteina: ["pollo", "cerdo"],
         hidrato: ["arroz"],
@@ -306,6 +349,7 @@ window.E3_RECETAS = {
       tiempo_min: 50,
       esfuerzo: "elaborado",
       ninos: true,
+      temporada: "invierno",
       ejes: {
         proteina: ["pollo", "gambas", "merluza"],
         hidrato: ["arroz"],
@@ -448,6 +492,7 @@ window.E3_RECETAS = {
       tiempo_min: 65,
       esfuerzo: "elaborado",
       ninos: true,
+      temporada: "invierno",
       ejes: {
         proteina: ["ternera-picada", "pavo"],
         hidrato: ["placas-lasana"],
@@ -472,6 +517,7 @@ window.E3_RECETAS = {
       tiempo_min: 70,
       esfuerzo: "elaborado",
       ninos: true,
+      temporada: "invierno",
       ejes: {
         proteina: ["pollo", "conejo"],
         hidrato: ["patata", "boniato"],
@@ -496,6 +542,7 @@ window.E3_RECETAS = {
       tiempo_min: 40,
       esfuerzo: "medio",
       ninos: true,
+      temporada: "invierno",
       ejes: {
         proteina: ["merluza", "lubina", "salmon", "bacalao"],
         hidrato: ["patata"],
@@ -520,6 +567,7 @@ window.E3_RECETAS = {
       tiempo_min: 45,
       esfuerzo: "medio",
       ninos: true,
+      temporada: "verano",
       ejes: {
         proteina: ["huevo"],
         hidrato: ["patata", "boniato"],
@@ -683,6 +731,7 @@ window.E3_RECETAS = {
       tiempo_min: 30,
       esfuerzo: "medio",
       ninos: true,
+      temporada: "invierno",
       ejes: {
         proteina: ["huevo"],
         hidrato: ["boniato"],
@@ -707,6 +756,7 @@ window.E3_RECETAS = {
       tiempo_min: 25,
       esfuerzo: "rapido",
       ninos: true,
+      temporada: "verano",
       ejes: {
         proteina: ["atun", "huevo", "pollo", "queso-feta", "garbanzos"],
         hidrato: ["patata", "arroz", "pasta", "cuscus"],
@@ -731,6 +781,7 @@ window.E3_RECETAS = {
       tiempo_min: 25,
       esfuerzo: "rapido",
       ninos: true,
+      temporada: "verano",
       ejes: {
         proteina: ["atun", "pollo", "queso-feta", "huevo"],
         hidrato: ["pasta"],
@@ -755,6 +806,7 @@ window.E3_RECETAS = {
       tiempo_min: 15,
       esfuerzo: "rapido",
       ninos: true,
+      temporada: "verano",
       ejes: {
         proteina: ["garbanzos"],
         hidrato: ["garbanzos"],
@@ -779,6 +831,7 @@ window.E3_RECETAS = {
       tiempo_min: 15,
       esfuerzo: "rapido",
       ninos: true,
+      temporada: "verano",
       ejes: {
         proteina: ["lentejas"],
         hidrato: ["lentejas"],
@@ -803,6 +856,7 @@ window.E3_RECETAS = {
       tiempo_min: 20,
       esfuerzo: "rapido",
       ninos: true,
+      temporada: "verano",
       ejes: {
         proteina: ["pollo", "huevo"],
         hidrato: ["pan-integral"],
@@ -827,6 +881,7 @@ window.E3_RECETAS = {
       tiempo_min: 25,
       esfuerzo: "rapido",
       ninos: true,
+      temporada: "verano",
       ejes: {
         proteina: ["atun", "pollo", "huevo", "garbanzos"],
         hidrato: ["quinoa"],
@@ -851,6 +906,7 @@ window.E3_RECETAS = {
       tiempo_min: 35,
       esfuerzo: "medio",
       ninos: true,
+      region: "euskadi",
       ejes: {
         proteina: ["merluza", "bacalao"],
         hidrato: ["patata"],
@@ -899,6 +955,7 @@ window.E3_RECETAS = {
       tiempo_min: 35,
       esfuerzo: "medio",
       ninos: true,
+      temporada: "invierno",
       ejes: {
         proteina: ["bacalao", "merluza"],
         hidrato: ["patata"],
@@ -923,6 +980,8 @@ window.E3_RECETAS = {
       tiempo_min: 40,
       esfuerzo: "medio",
       ninos: true,
+      temporada: "verano",
+      region: "euskadi",
       ejes: {
         proteina: ["atun"],
         hidrato: ["patata"],
@@ -947,6 +1006,7 @@ window.E3_RECETAS = {
       tiempo_min: 20,
       esfuerzo: "rapido",
       ninos: false,
+      temporada: "verano",
       ejes: {
         proteina: ["sardinas", "boquerones"],
         hidrato: ["patata"],
@@ -1065,6 +1125,7 @@ window.E3_RECETAS = {
       tiempo_min: 15,
       esfuerzo: "rapido",
       ninos: true,
+      temporada: "verano",
       ejes: {
         proteina: ["pollo", "atun", "huevo", "hummus"],
         hidrato: ["tortilla-trigo"],
@@ -1089,6 +1150,7 @@ window.E3_RECETAS = {
       tiempo_min: 10,
       esfuerzo: "rapido",
       ninos: true,
+      temporada: "verano",
       ejes: {
         proteina: ["hummus"],
         hidrato: ["pan-integral", "pan-pita"],
@@ -1208,6 +1270,7 @@ window.E3_RECETAS = {
       tiempo_min: 25,
       esfuerzo: "rapido",
       ninos: true,
+      temporada: "invierno",
       ejes: {
         proteina: ["huevo"],
         hidrato: ["fideos"],
@@ -1255,6 +1318,7 @@ window.E3_RECETAS = {
       tiempo_min: 35,
       esfuerzo: "medio",
       ninos: true,
+      temporada: "invierno",
       ejes: {
         proteina: ["huevo", "bacalao"],
         hidrato: ["garbanzos"],
@@ -1279,6 +1343,7 @@ window.E3_RECETAS = {
       tiempo_min: 40,
       esfuerzo: "medio",
       ninos: true,
+      temporada: "invierno",
       ejes: {
         proteina: ["ternera-picada", "pavo"],
         hidrato: ["arroz", "patata", "pasta"],
@@ -1303,6 +1368,7 @@ window.E3_RECETAS = {
       tiempo_min: 45,
       esfuerzo: "medio",
       ninos: true,
+      temporada: "invierno",
       ejes: {
         proteina: ["pollo", "ternera", "cerdo"],
         hidrato: ["patata"],
@@ -1327,6 +1393,7 @@ window.E3_RECETAS = {
       tiempo_min: 35,
       esfuerzo: "medio",
       ninos: false,
+      temporada: "invierno",
       ejes: {
         proteina: ["huevo", "queso-fresco"],
         hidrato: ["patata"],
@@ -1342,6 +1409,764 @@ window.E3_RECETAS = {
       ],
       notas: "Sabor fuerte de la coliflor: no siempre triunfa entre los más pequeños.",
       foto: "assets/banco-fotos/ensalada-lentejas.jpg" // asignación random 2026-07-14 (Roger, cobertura total del banco) — no coincide ingrediente a ingrediente
+    },
+    // ================================================================
+    // Tramo 1 — ampliación regional/estacional (2026-07-17)
+    // Research y curación: 01_Research/2026-07-17_RESEARCH_BANCO_AMPLIACION.md
+    // ================================================================
+    {
+      id: "gazpacho-andaluz",
+      nombre_patron: "Gazpacho andaluz con huevo picado",
+      tipo: "plato-unico",
+      apta: ["comida", "cena"],
+      tiempo_min: 15,
+      esfuerzo: "rapido",
+      ninos: true,
+      temporada: "verano",
+      region: "andalucia",
+      ejes: {
+        proteina: ["huevo"],
+        hidrato: ["pan"],
+        verdura: ["tomate"]
+      },
+      kcal_extra: 90,
+      pasos: [
+        "Remojar el pan en agua unos minutos.",
+        "Triturar el tomate maduro con el pan, un diente de ajo, aceite de oliva y un chorrito de vinagre (si tienes medio pimiento o pepino, añádelos).",
+        "Colar si se quiere más fino y enfriar en la nevera al menos 30 minutos.",
+        "Cocer el huevo 10 minutos, picarlo y servirlo por encima."
+      ],
+      notas: "Servir bien frío. El huevo picado lo convierte en cena completa.",
+      foto: "assets/banco-fotos/crema-zanahoria.jpg" // asignación aproximada 2026-07-17 (pool de 4 fotos) — no coincide ingrediente a ingrediente
+    },
+    {
+      id: "salmorejo-cordobes",
+      nombre_patron: "Salmorejo cordobés con huevo",
+      tipo: "plato-unico",
+      apta: ["comida", "cena"],
+      tiempo_min: 15,
+      esfuerzo: "rapido",
+      ninos: true,
+      temporada: "verano",
+      region: "andalucia",
+      ejes: {
+        proteina: ["huevo"],
+        hidrato: ["pan"],
+        verdura: ["tomate"]
+      },
+      kcal_extra: 110,
+      pasos: [
+        "Remojar pan abundante en agua.",
+        "Triturar el tomate con el pan, un diente de ajo pequeño y aceite de oliva hasta que quede una crema espesa y lisa.",
+        "Enfriar en la nevera al menos 30 minutos.",
+        "Servir con huevo duro picado por encima (y virutas de jamón serrano si tienes)."
+      ],
+      notas: "Más espeso que el gazpacho — se come con cuchara.",
+      foto: "assets/banco-fotos/crema-zanahoria.jpg" // asignación aproximada 2026-07-17 (pool de 4 fotos) — no coincide ingrediente a ingrediente
+    },
+    {
+      id: "pisto-manchego",
+      nombre_patron: "Pisto manchego con {proteina}",
+      tipo: "plantilla",
+      apta: ["comida", "cena"],
+      tiempo_min: 30,
+      esfuerzo: "medio",
+      ninos: true,
+      temporada: "verano",
+      region: "castilla",
+      ejes: {
+        proteina: ["huevo", "atun"],
+        hidrato: ["pan"],
+        verdura: ["calabacin", "berenjena", "pimiento"]
+      },
+      kcal_extra: 110,
+      pasos: [
+        "Sofreír cebolla y ajo picados en aceite de oliva.",
+        "Añadir {verdura} en dados pequeños y rehogar 10 minutos.",
+        "Incorporar tomate triturado y cocinar 15 minutos a fuego medio hasta que pierda el agua.",
+        "Rematar con {proteina} (huevo frito o escalfado encima, o atún integrado).",
+        "Servir con pan."
+      ],
+      notas: "La base es el sofrito de tomate — añade tomate triturado a tu compra si no tienes.",
+      foto: "assets/banco-fotos/salteado-wok.jpg" // asignación aproximada 2026-07-17 (pool de 4 fotos) — no coincide ingrediente a ingrediente
+    },
+    {
+      id: "croquetas-caseras",
+      nombre_patron: "Croquetas caseras de {proteina}",
+      tipo: "plantilla",
+      apta: ["comida", "cena"],
+      tiempo_min: 45,
+      esfuerzo: "medio",
+      ninos: true,
+      ejes: {
+        proteina: ["jamon-serrano", "pollo", "champinones"],
+        hidrato: ["bechamel"]
+      },
+      kcal_extra: 130,
+      pasos: [
+        "Hacer una bechamel espesa: mantequilla, harina y leche, removiendo 8-10 minutos.",
+        "Picar muy fino {proteina} e integrarlo en la bechamel; salpimentar.",
+        "Enfriar la masa en la nevera (mínimo 2 horas, mejor de víspera).",
+        "Formar las croquetas y pasarlas por huevo y pan rallado.",
+        "Freír en aceite caliente hasta dorar (o al horno/airfryer con un hilo de aceite)."
+      ],
+      notas: "El tiempo no cuenta el enfriado de la masa. Huevo y pan rallado de despensa.",
+      foto: "assets/banco-fotos/plancha-guarnicion.jpg" // asignación aproximada 2026-07-17 (pool de 4 fotos) — no coincide ingrediente a ingrediente
+    },
+    {
+      id: "fideua",
+      nombre_patron: "Fideuà de {proteina}",
+      tipo: "plantilla",
+      apta: ["comida"],
+      tiempo_min: 35,
+      esfuerzo: "medio",
+      ninos: true,
+      region: "comunidad-valenciana",
+      ejes: {
+        proteina: ["gambas", "gallo"],
+        hidrato: ["fideos"],
+        verdura: ["tomate", "pimiento"]
+      },
+      kcal_extra: 130,
+      pasos: [
+        "Sofreír {proteina} en la paellera o sartén amplia y reservar.",
+        "En el mismo aceite, hacer un sofrito con ajo y {verdura}.",
+        "Tostar los fideos 2 minutos en el sofrito.",
+        "Cubrir con caldo caliente y cocer 8-10 minutos sin remover.",
+        "Devolver {proteina}, apagar y reposar 3 minutos."
+      ],
+      notas: "Caldo de pescado si tienes; agua con una pastilla también vale.",
+      foto: "assets/banco-fotos/crema-zanahoria.jpg" // asignación aproximada 2026-07-17 (pool de 4 fotos) — no coincide ingrediente a ingrediente
+    },
+    {
+      id: "pollo-al-chilindron",
+      nombre_patron: "Pollo al chilindrón",
+      tipo: "plato-unico",
+      apta: ["comida", "cena"],
+      tiempo_min: 40,
+      esfuerzo: "medio",
+      ninos: true,
+      region: "aragon",
+      ejes: {
+        proteina: ["pollo"],
+        hidrato: ["patata", "pan"],
+        verdura: ["pimiento", "tomate"]
+      },
+      kcal_extra: 100,
+      pasos: [
+        "Dorar el pollo troceado y salpimentado; reservar.",
+        "En el mismo aceite, sofreír cebolla, ajo y {verdura} en tiras.",
+        "Devolver el pollo, mojar con medio vaso de agua (o vino blanco) y guisar tapado 20-25 minutos.",
+        "Servir con {hidrato}."
+      ],
+      notas: "",
+      foto: "assets/banco-fotos/salteado-wok.jpg" // asignación aproximada 2026-07-17 (pool de 4 fotos) — no coincide ingrediente a ingrediente
+    },
+    {
+      id: "pochas-con-chorizo",
+      nombre_patron: "Pochas guisadas con chorizo",
+      tipo: "plato-unico",
+      apta: ["comida"],
+      tiempo_min: 40,
+      esfuerzo: "medio",
+      ninos: true,
+      region: "navarra-rioja",
+      ejes: {
+        proteina: ["chorizo"],
+        hidrato: ["alubias-blancas"],
+        verdura: ["pimiento", "zanahoria"]
+      },
+      kcal_extra: 80,
+      pasos: [
+        "Sofreír cebolla, ajo y {verdura} picadas en la cazuela.",
+        "Añadir el chorizo en rodajas y dar unas vueltas.",
+        "Incorporar las pochas (o alubias cocidas) y cubrir justo de agua.",
+        "Cocer suave 15-20 minutos moviendo la cazuela, sin remover con cuchara.",
+        "Reposar unos minutos antes de servir."
+      ],
+      notas: "Con pochas frescas (agosto-octubre) es otro nivel; con bote funciona igual.",
+      foto: "assets/banco-fotos/ensalada-lentejas.jpg" // asignación aproximada 2026-07-17 (pool de 4 fotos) — no coincide ingrediente a ingrediente
+    },
+    {
+      id: "fabada-asturiana",
+      nombre_patron: "Fabada asturiana",
+      tipo: "plato-unico",
+      apta: ["comida"],
+      tiempo_min: 90,
+      esfuerzo: "elaborado",
+      ninos: true,
+      temporada: "invierno",
+      region: "asturias",
+      ejes: {
+        proteina: ["compango"],
+        hidrato: ["alubias-blancas"]
+      },
+      kcal_extra: 60,
+      pasos: [
+        "Si las fabes son secas, remojo de la víspera (con bote, saltar este paso).",
+        "Poner las fabes cubiertas de agua fría con el compango entero.",
+        "Llevar a hervor, espumar y cocer a fuego muy suave 1h30 (bote: 40 minutos), moviendo la olla de vez en cuando, sin remover.",
+        "\"Asustar\" con un chorrito de agua fría un par de veces durante la cocción.",
+        "Reposar 10 minutos, trocear el compango y servir."
+      ],
+      notas: "De finde. Con alubia cocida de bote se queda en ~45 minutos.",
+      foto: "assets/banco-fotos/ensalada-lentejas.jpg" // asignación aproximada 2026-07-17 (pool de 4 fotos) — no coincide ingrediente a ingrediente
+    },
+    {
+      id: "cachopo",
+      nombre_patron: "Cachopo de ternera con jamón y queso",
+      tipo: "plato-unico",
+      apta: ["comida", "cena"],
+      tiempo_min: 50,
+      esfuerzo: "elaborado",
+      ninos: true,
+      region: "asturias",
+      ejes: {
+        proteina: ["ternera-rellena"],
+        hidrato: ["patata"],
+        verdura: ["pimiento", "lechuga"]
+      },
+      kcal_extra: 150,
+      pasos: [
+        "Salpimentar dos filetes finos de ternera por cachopo.",
+        "Montar jamón y queso entre los dos filetes y sellar bien los bordes.",
+        "Empanar: harina, huevo batido y pan rallado.",
+        "Freír en aceite caliente 3-4 minutos por cara hasta dorar; escurrir sobre papel.",
+        "Acompañar con {hidrato} y {verdura}."
+      ],
+      notas: "Ración generosa — un cachopo grande da para dos. Harina, huevo y pan rallado de despensa.",
+      foto: "assets/banco-fotos/plancha-guarnicion.jpg" // asignación aproximada 2026-07-17 (pool de 4 fotos) — no coincide ingrediente a ingrediente
+    },
+    {
+      id: "empanada-gallega",
+      nombre_patron: "Empanada gallega de atún",
+      tipo: "plato-unico",
+      apta: ["comida", "cena"],
+      tiempo_min: 45,
+      esfuerzo: "medio",
+      ninos: true,
+      region: "galicia",
+      ejes: {
+        proteina: ["atun"],
+        hidrato: ["masa-empanadilla"],
+        verdura: ["pimiento", "tomate"]
+      },
+      kcal_extra: 100,
+      pasos: [
+        "Hacer un sofrito lento de cebolla abundante y {verdura}.",
+        "Mezclar el sofrito con el atún desmigado.",
+        "Extender una lámina de masa, repartir el relleno y cubrir con la otra lámina, sellando los bordes.",
+        "Pintar con huevo batido y pinchar el centro.",
+        "Hornear 30-35 minutos a 180°C hasta dorar."
+      ],
+      notas: "Vale masa de empanada comprada (formato grande de la de empanadillas).",
+      foto: "assets/banco-fotos/ensalada-lentejas.jpg" // asignación aproximada 2026-07-17 (pool de 4 fotos) — no coincide ingrediente a ingrediente
+    },
+    {
+      id: "porrusalda-con-bacalao",
+      nombre_patron: "Porrusalda con bacalao",
+      tipo: "plato-unico",
+      apta: ["comida", "cena"],
+      tiempo_min: 25,
+      esfuerzo: "rapido",
+      ninos: true,
+      temporada: "invierno",
+      region: "euskadi",
+      ejes: {
+        proteina: ["bacalao"],
+        hidrato: ["patata"],
+        verdura: ["puerro"]
+      },
+      kcal_extra: 60,
+      pasos: [
+        "Rehogar el puerro en rodajas con un poco de aceite.",
+        "Añadir la patata en trozos cascados (no cortados del todo, para que suelte fécula).",
+        "Cubrir con agua o caldo y cocer 15 minutos.",
+        "Añadir el bacalao desmigado, cocer 5 minutos más y servir."
+      ],
+      notas: "",
+      foto: "assets/banco-fotos/crema-zanahoria.jpg" // asignación aproximada 2026-07-17 (pool de 4 fotos) — no coincide ingrediente a ingrediente
+    },
+    {
+      id: "piperrada-con-huevo",
+      nombre_patron: "Piperrada con huevo",
+      tipo: "plato-unico",
+      apta: ["cena"],
+      tiempo_min: 25,
+      esfuerzo: "rapido",
+      ninos: true,
+      temporada: "verano",
+      region: "euskadi",
+      ejes: {
+        proteina: ["huevo"],
+        hidrato: ["pan"],
+        verdura: ["pimiento"]
+      },
+      kcal_extra: 80,
+      pasos: [
+        "Sofreír cebolla y el pimiento en tiras a fuego medio hasta que estén muy tiernos.",
+        "Añadir tomate rallado y reducir 10 minutos.",
+        "Hacer los huevos encima (escalfados en la propia salsa o a la plancha).",
+        "Servir con pan."
+      ],
+      notas: "Con virutas de jamón por encima gana (opcional).",
+      foto: "assets/banco-fotos/salteado-wok.jpg" // asignación aproximada 2026-07-17 (pool de 4 fotos) — no coincide ingrediente a ingrediente
+    },
+    {
+      id: "zarangollo",
+      nombre_patron: "Zarangollo murciano de calabacín",
+      tipo: "plato-unico",
+      apta: ["cena"],
+      tiempo_min: 15,
+      esfuerzo: "rapido",
+      ninos: true,
+      temporada: "verano",
+      region: "murcia",
+      ejes: {
+        proteina: ["huevo"],
+        verdura: ["calabacin"]
+      },
+      kcal_extra: 60,
+      pasos: [
+        "Pochar cebolla picada en aceite de oliva.",
+        "Añadir el calabacín en medias lunas finas y hacer a fuego medio hasta muy tierno.",
+        "Batir los huevos, añadirlos y cuajar removiendo suave — queda cremoso, no tortilla.",
+        "Salpimentar y servir."
+      ],
+      notas: "",
+      foto: "assets/banco-fotos/salteado-wok.jpg" // asignación aproximada 2026-07-17 (pool de 4 fotos) — no coincide ingrediente a ingrediente
+    },
+    {
+      id: "ensalada-murciana",
+      nombre_patron: "Ensalada murciana de tomate y {proteina}",
+      tipo: "plantilla",
+      apta: ["comida", "cena"],
+      tiempo_min: 15,
+      esfuerzo: "rapido",
+      ninos: true,
+      temporada: "verano",
+      region: "murcia",
+      ejes: {
+        proteina: ["atun", "huevo"],
+        hidrato: ["pan"],
+        verdura: ["tomate"]
+      },
+      kcal_extra: 70,
+      pasos: [
+        "Escurrir y trocear el tomate (pelado en conserva, la versión clásica) en un bol.",
+        "Añadir {proteina} y cebolla tierna picada.",
+        "Aliñar con aceite de oliva y sal (un puñado de aceitunas negras si tienes).",
+        "Servir fría con pan."
+      ],
+      notas: "Con tomate entero pelado de bote es la receta clásica del moje.",
+      foto: "assets/banco-fotos/ensalada-lentejas.jpg" // asignación aproximada 2026-07-17 (pool de 4 fotos) — no coincide ingrediente a ingrediente
+    },
+    {
+      id: "fricando-de-ternera",
+      nombre_patron: "Fricandó de ternera con setas",
+      tipo: "plato-unico",
+      apta: ["comida"],
+      tiempo_min: 80,
+      esfuerzo: "elaborado",
+      ninos: true,
+      temporada: "invierno",
+      region: "cataluna",
+      ejes: {
+        proteina: ["ternera"],
+        hidrato: ["patata", "pan"],
+        verdura: ["champinones"]
+      },
+      kcal_extra: 100,
+      pasos: [
+        "Enharinar filetes finos de ternera y dorarlos; reservar.",
+        "Hacer un sofrito lento de cebolla y tomate rallado.",
+        "Devolver la carne con las setas y cubrir con caldo.",
+        "Guisar tapado 45-60 minutos hasta que la carne esté melosa.",
+        "Servir con {hidrato}."
+      ],
+      notas: "De finde. Con setas de temporada (rovellons) gana mucho.",
+      foto: "assets/banco-fotos/salteado-wok.jpg" // asignación aproximada 2026-07-17 (pool de 4 fotos) — no coincide ingrediente a ingrediente
+    },
+    {
+      id: "tumbet-mallorquin",
+      nombre_patron: "Tumbet mallorquín con {proteina}",
+      tipo: "plantilla",
+      apta: ["cena"],
+      tiempo_min: 40,
+      esfuerzo: "medio",
+      ninos: true,
+      temporada: "verano",
+      region: "baleares",
+      ejes: {
+        proteina: ["huevo", "bacalao"],
+        hidrato: ["patata"],
+        verdura: ["berenjena", "calabacin"]
+      },
+      kcal_extra: 120,
+      pasos: [
+        "Freír la patata en rodajas y colocarla de base en una fuente.",
+        "Freír {verdura} en rodajas y montar capas encima.",
+        "Cubrir con salsa de tomate.",
+        "Hornear 10 minutos para asentar.",
+        "Rematar con {proteina} (huevo frito o bacalao a la plancha)."
+      ],
+      notas: "Salsa de tomate frito casera o comprada — añádela a la compra.",
+      foto: "assets/banco-fotos/salteado-wok.jpg" // asignación aproximada 2026-07-17 (pool de 4 fotos) — no coincide ingrediente a ingrediente
+    },
+    {
+      id: "papas-arrugadas-con-mojo",
+      nombre_patron: "Papas arrugadas con mojo rojo y {proteina}",
+      tipo: "plantilla",
+      apta: ["comida", "cena"],
+      tiempo_min: 35,
+      esfuerzo: "medio",
+      ninos: true,
+      region: "canarias",
+      ejes: {
+        proteina: ["huevo", "merluza"],
+        hidrato: ["patata"],
+        verdura: ["pimiento"]
+      },
+      kcal_extra: 90,
+      pasos: [
+        "Cocer papas pequeñas con piel en agua muy salada hasta que estén tiernas.",
+        "Escurrir y secar al fuego un par de minutos hasta que la piel se arrugue.",
+        "Mojo rojo: triturar el pimiento con ajo, pimentón, comino, vinagre y aceite.",
+        "Hacer {proteina} (huevo duro o merluza a la plancha).",
+        "Servir todo junto, con el mojo por encima de las papas."
+      ],
+      notas: "",
+      foto: "assets/banco-fotos/plancha-guarnicion.jpg" // asignación aproximada 2026-07-17 (pool de 4 fotos) — no coincide ingrediente a ingrediente
+    },
+    {
+      id: "ropa-vieja-canaria",
+      nombre_patron: "Ropa vieja canaria de {proteina}",
+      tipo: "plantilla",
+      apta: ["comida"],
+      tiempo_min: 40,
+      esfuerzo: "medio",
+      ninos: true,
+      region: "canarias",
+      ejes: {
+        proteina: ["pollo", "cerdo"],
+        hidrato: ["garbanzos"],
+        verdura: ["pimiento", "tomate"]
+      },
+      kcal_extra: 110,
+      pasos: [
+        "Dorar {proteina} en tiras o desmenuzada.",
+        "Sofreír cebolla, ajo y {verdura}.",
+        "Añadir los garbanzos cocidos y un toque de pimentón.",
+        "Saltear todo junto 10 minutos (con patata frita en dados si quieres la versión completa).",
+        "Rectificar de sal y servir."
+      ],
+      notas: "Plato de aprovechamiento: perfecto con restos de pollo asado del finde.",
+      foto: "assets/banco-fotos/ensalada-lentejas.jpg" // asignación aproximada 2026-07-17 (pool de 4 fotos) — no coincide ingrediente a ingrediente
+    },
+    {
+      id: "atascaburras",
+      nombre_patron: "Atascaburras de bacalao y patata",
+      tipo: "plato-unico",
+      apta: ["comida"],
+      tiempo_min: 35,
+      esfuerzo: "medio",
+      ninos: true,
+      temporada: "invierno",
+      region: "castilla",
+      ejes: {
+        proteina: ["bacalao"],
+        hidrato: ["patata"]
+      },
+      kcal_extra: 120,
+      pasos: [
+        "Cocer la patata y, los últimos 5 minutos, el bacalao desalado.",
+        "Machacar la patata con ajo y el bacalao desmigado.",
+        "Ligar con aceite de oliva a hilo fino hasta conseguir un puré meloso.",
+        "Probar de sal y servir templado, con huevo duro en rodajas y nueces si tienes."
+      ],
+      notas: "",
+      foto: "assets/banco-fotos/crema-zanahoria.jpg" // asignación aproximada 2026-07-17 (pool de 4 fotos) — no coincide ingrediente a ingrediente
+    },
+    {
+      id: "sopa-castellana",
+      nombre_patron: "Sopa castellana de ajo con huevo",
+      tipo: "plato-unico",
+      apta: ["cena"],
+      tiempo_min: 25,
+      esfuerzo: "rapido",
+      ninos: true,
+      temporada: "invierno",
+      region: "castilla",
+      ejes: {
+        proteina: ["huevo"],
+        hidrato: ["pan"]
+      },
+      kcal_extra: 70,
+      pasos: [
+        "Dorar láminas de ajo en aceite de oliva en una cazuela.",
+        "Añadir pimentón, remover y echar el pan en láminas finas.",
+        "Mojar con caldo o agua y hervir 10 minutos.",
+        "Escalfar los huevos dentro 3-4 minutos y servir muy caliente."
+      ],
+      notas: "Con taquitos de jamón, mejor (opcional).",
+      foto: "assets/banco-fotos/crema-zanahoria.jpg" // asignación aproximada 2026-07-17 (pool de 4 fotos) — no coincide ingrediente a ingrediente
+    },
+    {
+      id: "migas-extremenas",
+      nombre_patron: "Migas extremeñas con {proteina}",
+      tipo: "plantilla",
+      apta: ["comida"],
+      tiempo_min: 40,
+      esfuerzo: "medio",
+      ninos: true,
+      temporada: "invierno",
+      region: "extremadura",
+      ejes: {
+        proteina: ["panceta", "chorizo"],
+        hidrato: ["pan"],
+        verdura: ["pimiento"]
+      },
+      kcal_extra: 110,
+      pasos: [
+        "La víspera, trocear el pan asentado y humedecerlo con agua y un paño.",
+        "Freír {proteina} en trozos y reservar.",
+        "En esa misma grasa, dorar ajos enteros y el pimiento en tiras.",
+        "Añadir el pan y mover sin parar 15-20 minutos hasta que queden migas sueltas.",
+        "Devolver {proteina}, mezclar y servir."
+      ],
+      notas: "El pan tiene que ser del día anterior.",
+      foto: "assets/banco-fotos/salteado-wok.jpg" // asignación aproximada 2026-07-17 (pool de 4 fotos) — no coincide ingrediente a ingrediente
+    },
+    {
+      id: "bonito-encebollado",
+      nombre_patron: "Bonito encebollado",
+      tipo: "plato-unico",
+      apta: ["comida", "cena"],
+      tiempo_min: 25,
+      esfuerzo: "rapido",
+      ninos: true,
+      temporada: "verano",
+      ejes: {
+        proteina: ["bonito"],
+        hidrato: ["pan", "patata"],
+        verdura: ["pimiento"]
+      },
+      kcal_extra: 80,
+      pasos: [
+        "Pochar cebolla abundante en juliana a fuego suave 15 minutos.",
+        "Añadir el pimiento en tiras y hacer 5 minutos más.",
+        "Subir el fuego y añadir el bonito en tacos, vuelta y vuelta — que quede jugoso.",
+        "Un chorrito de vinagre o vino blanco, mezclar y servir con {hidrato}."
+      ],
+      notas: "La cebolla es la clave: abundante y bien pochada. Temporada de bonito: junio-septiembre.",
+      foto: "assets/banco-fotos/plancha-guarnicion.jpg" // asignación aproximada 2026-07-17 (pool de 4 fotos) — no coincide ingrediente a ingrediente
+    },
+    {
+      id: "salpicon-de-pollo",
+      nombre_patron: "Salpicón de pollo con verduras",
+      tipo: "plato-unico",
+      apta: ["cena"],
+      tiempo_min: 20,
+      esfuerzo: "rapido",
+      ninos: true,
+      temporada: "verano",
+      ejes: {
+        proteina: ["pollo"],
+        hidrato: ["patata"],
+        verdura: ["tomate", "pimiento", "pepino"]
+      },
+      kcal_extra: 70,
+      pasos: [
+        "Cocer el pollo (o aprovechar restos de asado) y desmenuzarlo.",
+        "Cocer la patata en dados hasta que esté tierna.",
+        "Picar {verdura} fina.",
+        "Mezclar todo con una vinagreta de aceite, vinagre y sal.",
+        "Enfriar 15 minutos en la nevera y servir frío."
+      ],
+      notas: "Ideal con sobras de pollo del finde.",
+      foto: "assets/banco-fotos/ensalada-lentejas.jpg" // asignación aproximada 2026-07-17 (pool de 4 fotos) — no coincide ingrediente a ingrediente
+    },
+    {
+      id: "olleta-alicantina",
+      nombre_patron: "Olleta alicantina de legumbres y arroz",
+      tipo: "plato-unico",
+      apta: ["comida"],
+      tiempo_min: 40,
+      esfuerzo: "medio",
+      ninos: true,
+      temporada: "invierno",
+      region: "comunidad-valenciana",
+      ejes: {
+        proteina: ["legumbres-variadas"],
+        hidrato: ["arroz"],
+        verdura: ["calabaza", "acelgas"]
+      },
+      kcal_extra: 90,
+      pasos: [
+        "Sofreír cebolla, ajo y una cucharadita de pimentón.",
+        "Añadir {verdura} troceada y rehogar unos minutos.",
+        "Incorporar las legumbres cocidas y cubrir con agua o caldo.",
+        "Añadir un puñado de arroz y cocer 15-18 minutos.",
+        "Reposar 5 minutos antes de servir."
+      ],
+      notas: "Versión rápida con legumbre de bote; la tradicional es de cocción larga.",
+      foto: "assets/banco-fotos/crema-zanahoria.jpg" // asignación aproximada 2026-07-17 (pool de 4 fotos) — no coincide ingrediente a ingrediente
+    },
+    {
+      id: "soldaditos-de-pavia",
+      nombre_patron: "Soldaditos de Pavía (bacalao rebozado)",
+      tipo: "plato-unico",
+      apta: ["cena"],
+      tiempo_min: 20,
+      esfuerzo: "rapido",
+      ninos: true,
+      region: "madrid",
+      ejes: {
+        proteina: ["bacalao"],
+        hidrato: ["pan"],
+        verdura: ["pimiento"]
+      },
+      kcal_extra: 130,
+      pasos: [
+        "Cortar el bacalao desalado en tiras y secarlas bien.",
+        "Rebozar en harina y huevo batido (o gabardina con un poco de levadura).",
+        "Freír en aceite bien caliente hasta dorar.",
+        "Escurrir sobre papel y servir con tiras de pimiento asado y pan."
+      ],
+      notas: "Harina y huevo de despensa. Formato palitos: triunfa con los niños.",
+      foto: "assets/banco-fotos/plancha-guarnicion.jpg" // asignación aproximada 2026-07-17 (pool de 4 fotos) — no coincide ingrediente a ingrediente
+    },
+    {
+      id: "merluza-a-la-sidra",
+      nombre_patron: "{proteina} a la sidra",
+      tipo: "plantilla",
+      apta: ["comida", "cena"],
+      tiempo_min: 30,
+      esfuerzo: "medio",
+      ninos: true,
+      region: "asturias",
+      ejes: {
+        proteina: ["merluza", "gallo"],
+        hidrato: ["patata"],
+        verdura: ["puerro"]
+      },
+      kcal_extra: 90,
+      pasos: [
+        "Dorar la patata en rodajas finas y el puerro en una cazuela amplia.",
+        "Colocar {proteina} encima y salpimentar.",
+        "Regar con un buen vaso de sidra natural.",
+        "Cocer tapado 8-10 minutos hasta que el pescado esté jugoso.",
+        "Servir con el jugo de la cazuela."
+      ],
+      notas: "Añade una botella pequeña de sidra natural a la compra.",
+      foto: "assets/banco-fotos/plancha-guarnicion.jpg" // asignación aproximada 2026-07-17 (pool de 4 fotos) — no coincide ingrediente a ingrediente
+    },
+    {
+      id: "trucha-a-la-navarra",
+      nombre_patron: "Trucha a la navarra con jamón",
+      tipo: "plato-unico",
+      apta: ["comida", "cena"],
+      tiempo_min: 20,
+      esfuerzo: "rapido",
+      ninos: true,
+      region: "navarra-rioja",
+      ejes: {
+        proteina: ["trucha"],
+        hidrato: ["patata"]
+      },
+      kcal_extra: 100,
+      pasos: [
+        "Limpiar las truchas abiertas y salpimentar.",
+        "Rellenar cada una con un par de lonchas de jamón serrano.",
+        "Enharinar ligero y freír 3-4 minutos por lado.",
+        "Acompañar con {hidrato} cocida o panadera."
+      ],
+      notas: "Añade unas lonchas de jamón serrano a la compra.",
+      foto: "assets/banco-fotos/plancha-guarnicion.jpg" // asignación aproximada 2026-07-17 (pool de 4 fotos) — no coincide ingrediente a ingrediente
+    },
+    // ---- Huecos del Top 15 real de hogares españoles (MAPA/Kantar, Panel de Usos) ----
+    // Research → 01_Research/2026-07-17_RESEARCH_PLATOS_HOGAR_REPERTORIO.md §1: el banco cubría
+    // 13 de las 15 recetas más cocinadas de España; estas dos eran los huecos. Cero ingredientes
+    // nuevos — son de los platos más comunes del país, no exotismo.
+    {
+      id: "huevos-fritos-con-patatas",
+      nombre_patron: "Huevos fritos con patatas",
+      tipo: "plato-unico",
+      apta: ["cena"],
+      tiempo_min: 20,
+      esfuerzo: "rapido",
+      ninos: true,
+      ejes: {
+        proteina: ["huevo"],
+        hidrato: ["patata"]
+      },
+      kcal_extra: 140,
+      pasos: [
+        "Cortar la patata en bastones o rodajas finas y salar.",
+        "Freír la patata en aceite abundante a fuego medio hasta que esté tierna; subir el fuego al final para dorarla y escurrir sobre papel.",
+        "En el mismo aceite bien caliente, freír los huevos de uno en uno regando la yema con la puntilla hecha.",
+        "Servir los huevos sobre las patatas y romper la yema en la mesa."
+      ],
+      notas: "El #12 de España (MAPA). Un huevo por niño, dos por adulto.",
+      foto: "assets/banco-fotos/plancha-guarnicion.jpg" // asignación aproximada 2026-07-17 (pool de 4 fotos) — no coincide ingrediente a ingrediente
+    },
+    {
+      id: "judias-verdes-con-patatas",
+      nombre_patron: "Judías verdes con patatas",
+      tipo: "plato-unico",
+      apta: ["comida", "cena"],
+      tiempo_min: 25,
+      esfuerzo: "rapido",
+      ninos: true,
+      ejes: {
+        proteina: ["huevo"],
+        hidrato: ["patata"],
+        verdura: ["judias-verdes"]
+      },
+      kcal_extra: 80,
+      pasos: [
+        "Quitar las puntas y los hilos de las judías y trocearlas.",
+        "Cocer las judías con la patata en dados en agua con sal, 15-18 minutos, hasta que ambas estén tiernas.",
+        "Cocer el huevo aparte 10 minutos y pelarlo.",
+        "Escurrir, aliñar en caliente con un buen chorro de aceite de oliva crudo y servir con el huevo en cuartos por encima."
+      ],
+      notas: "El #13 de España (MAPA). Un refrito de ajo y pimentón por encima lo levanta.",
+      foto: "assets/banco-fotos/salteado-wok.jpg" // asignación aproximada 2026-07-17 (pool de 4 fotos) — no coincide ingrediente a ingrediente
     }
-  ]
+  ],
+
+  // ---- Postres (tramo 1, 2026-07-17) ----
+  // Modelo AESAN (Documento de Consenso comedores escolares 2010: fruta fresca
+  // 4-5/5 días, otros postres máx. 1/semana, yogur priorizado sobre dulces)
+  // trasladado a la semana familiar: L-V fruta de temporada, sábado lácteo,
+  // domingo dulce tradicional como sugerencia. Rotación de fruta por mes según
+  // el calendario oficial MAPA (01_Research/2026-07-17_RESEARCH_BANCO_AMPLIACION.md §3-4).
+  // Lo resuelve engine.postreDelDia(); fruta y yogur entran en la lista de compra.
+  postres: {
+    frutas_mes: {
+      1: ["naranja", "mandarina", "kiwi", "manzana", "pera", "platano"],
+      2: ["naranja", "mandarina", "kiwi", "fresa"],
+      3: ["fresa", "naranja", "kiwi"],
+      4: ["fresa", "kiwi", "platano"],
+      5: ["fresa", "cereza", "albaricoque", "melon"],
+      6: ["cereza", "albaricoque", "melon", "sandia"],
+      7: ["sandia", "melon", "melocoton", "cereza"],
+      8: ["sandia", "melon", "melocoton", "uva"],
+      9: ["uva", "melocoton", "manzana", "pera"],
+      10: ["uva", "caqui", "manzana", "pera", "mandarina"],
+      11: ["mandarina", "naranja", "caqui", "manzana", "pera"],
+      12: ["mandarina", "naranja", "caqui", "manzana", "pera"]
+    },
+    lacteo: "yogur", // sábado — id de ingrediente (entra en compra)
+    tradicionales: [ // domingo — sugerencia con receta aparte, no entra en compra
+      { nombre: "Arroz con leche", region: "asturias", temporada: "invierno" },
+      { nombre: "Natillas caseras", region: null, temporada: "invierno" },
+      { nombre: "Flan de huevo", region: null, temporada: null },
+      { nombre: "Macedonia de frutas", region: null, temporada: "verano" },
+      { nombre: "Torrijas", region: null, temporada: "invierno" },
+      { nombre: "Crema catalana", region: "cataluna", temporada: null },
+      { nombre: "Mel i mató", region: "cataluna", temporada: null },
+      { nombre: "Cuajada con miel", region: "navarra-rioja", temporada: "invierno" }
+    ]
+  }
 };

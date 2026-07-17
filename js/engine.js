@@ -42,7 +42,7 @@
   var CATEGORIAS_SIN_PESCADO_EXCLUIDAS = { 'pescado-blanco': 1, 'pescado-azul': 1, marisco: 1 };
   // 'sin-cerdo' no tiene categoría propia en el esquema (carne-blanca/carne-roja no distinguen
   // especie) — heurística mínima por id/nombre de ingrediente, documentada como limitación.
-  var IDS_CERDO_CONOCIDOS = ['cerdo', 'lomo', 'panceta', 'jamon', 'chorizo', 'salchicha', 'beicon', 'morcilla', 'costillas-cerdo', 'secreto', 'presa', 'solomillo-cerdo'];
+  var IDS_CERDO_CONOCIDOS = ['cerdo', 'lomo', 'panceta', 'jamon', 'chorizo', 'salchicha', 'beicon', 'morcilla', 'costillas-cerdo', 'secreto', 'presa', 'solomillo-cerdo', 'lacon', 'compango', 'ternera-rellena'];
 
   // ---------------------------------------------------------------
   // Utilidades
@@ -475,6 +475,147 @@
   }
 
   // ---------------------------------------------------------------
+  // Señales suaves del scoring (tramo 1, 2026-07-17): rotación entre semanas,
+  // novedad, temporada y región. Regla fija (Roger 2026-07-16): señales
+  // internas del motor, nunca mandos del usuario. Desempatan entre plantillas
+  // ya viables — mismo orden de magnitud que puntuarRechazos, siempre por
+  // debajo de cuotas/dieta/variedad. Diseño → 01_Research/2026-07-17_RESEARCH_BANCO_AMPLIACION.md §7.
+  // ---------------------------------------------------------------
+
+  // estado.historialPlantillas = { plantillaId: semanaISO del último uso }.
+  // Lo escribe app.js con historialConPlan() al pasar de semana; más viejo que
+  // HISTORIAL_SEMANAS se poda (y ese plato vuelve a contar como "novedad").
+  var HISTORIAL_SEMANAS = 6;
+
+  function semanasEntre(semanaISOAntigua, semanaISONueva) {
+    var a = new Date(semanaISOAntigua + 'T00:00:00');
+    var b = new Date(semanaISONueva + 'T00:00:00');
+    return Math.round((b - a) / (7 * 24 * 3600 * 1000));
+  }
+
+  // Devuelve el historial actualizado con el plan saliente (NO muta estado —
+  // el motor sigue puro; app.js asigna el resultado antes de generar la semana nueva).
+  function historialConPlan(estado, plan, lunesActualISO) {
+    var historial = {};
+    var previo = (estado && estado.historialPlantillas) || {};
+    Object.keys(previo).forEach(function (id) { historial[id] = previo[id]; });
+    if (plan && plan.dias) {
+      plan.dias.forEach(function (dia) {
+        ['comida', 'cena'].forEach(function (tipo) {
+          var slot = dia && dia[tipo];
+          if (slot && slot.plantillaId) historial[slot.plantillaId] = plan.semanaISO;
+        });
+      });
+    }
+    Object.keys(historial).forEach(function (id) {
+      if (semanasEntre(historial[id], lunesActualISO) > HISTORIAL_SEMANAS) delete historial[id];
+    });
+    return historial;
+  }
+
+  // Rotación: usada hace 1 semana −12, hace 2 −6, ≥3 libre. Un plato con
+  // "me gusta" repetido (≥2) vuelve un escalón antes — protección, no refuerzo:
+  // el feedback loop sigue sin premiar el 👍 para no repetir en bucle.
+  function puntuarRecencia(plantillaId, historial, semanaISO, gustasPorPlantilla) {
+    var ultimo = historial && historial[plantillaId];
+    if (!ultimo) return 0;
+    var distancia = semanasEntre(ultimo, semanaISO);
+    if (gustasPorPlantilla && gustasPorPlantilla[plantillaId] >= 2) distancia += 1;
+    if (distancia <= 1) return -12;
+    if (distancia === 2) return -6;
+    return 0;
+  }
+
+  // Novedad acotada: sin rastro en el historial (nunca probada, o hace >6
+  // semanas) → bonus pequeño. Cada semana tienden a colarse 1-2 platos nuevos.
+  function puntuarNovedad(plantillaId, historial) {
+    return historial && historial[plantillaId] ? 0 : 4;
+  }
+
+  // Repetición DENTRO de la semana: la variedad dura (restricción 4) solo mira
+  // ingredientes en días consecutivos — sin esto, el mismo plato top-score se
+  // repetía lunes/viernes/domingo (visto en verificación 2026-07-17: la señal
+  // estacional concentra candidatos y lo agrava). Penalización suave por cada
+  // uso previo esta semana: si no queda alternativa viable (cuotas/dieta), el
+  // plato aún puede repetir — mejor repetir que dejar el hueco vacío.
+  function puntuarRepeticionSemana(plantillaId, usosSemana) {
+    var n = Math.min((usosSemana && usosSemana[plantillaId]) || 0, 3);
+    return -n * 8;
+  }
+
+  function usosDePlan(dias) {
+    var usos = {};
+    (dias || []).forEach(function (dia) {
+      ['comida', 'cena'].forEach(function (tipo) {
+        var slot = dia && dia[tipo];
+        if (slot && slot.plantillaId) usos[slot.plantillaId] = (usos[slot.plantillaId] || 0) + 1;
+      });
+    });
+    return usos;
+  }
+
+  function contarGustasPorPlantilla(estado) {
+    var contador = {};
+    var valoraciones = (estado && estado.valoraciones) || {};
+    Object.keys(valoraciones).forEach(function (clave) {
+      var v = valoraciones[clave];
+      if (v && v.valor === 'gusta' && v.plantillaId) contador[v.plantillaId] = (contador[v.plantillaId] || 0) + 1;
+    });
+    return contador;
+  }
+
+  // Temporada del año por mes — versión sin API del clima→menú (UPGRADES §8):
+  // verano jun-sep, invierno nov-mar, abr/may/oct neutro (research 2026-07-17,
+  // AEMET + picos del calendario MAPA).
+  function estacionDelMes(mes) {
+    if (mes >= 6 && mes <= 9) return 'verano';
+    if (mes >= 11 || mes <= 3) return 'invierno';
+    return null;
+  }
+
+  function puntuarTemporada(plantilla, estacion) {
+    if (!plantilla.temporada || !estacion) return 0;
+    return plantilla.temporada === estacion ? 5 : -5;
+  }
+
+  // Región de la familia (estado.familiaRegion, dato opcional de Ajustes/alta):
+  // empujón a los platos de tu tierra; sin dato, sin sesgo.
+  function puntuarRegion(plantilla, familiaRegion) {
+    return (familiaRegion && plantilla.region === familiaRegion) ? 4 : 0;
+  }
+
+  // ---------------------------------------------------------------
+  // Postre del día (tramo 1, 2026-07-17) — modelo AESAN trasladado a la semana
+  // familiar (consenso comedores escolares 2010; research §4): L-V fruta de
+  // temporada rotada por mes (calendario MAPA), sábado lácteo sencillo,
+  // domingo dulce tradicional como sugerencia (receta aparte, no entra en
+  // compra). Determinista — no pasa por el scoring ni toca kcal del plato.
+  // ---------------------------------------------------------------
+  function postreDelDia(banco, fecha, diaIndex) {
+    var postres = banco && banco.postres;
+    if (!postres) return null;
+    var d = new Date(fecha + 'T00:00:00');
+    var mes = d.getMonth() + 1;
+    if (diaIndex === 5 && postres.lacteo) { // sábado
+      var ingL = banco.ingredientes[postres.lacteo];
+      return { tipo: 'lacteo', id: postres.lacteo, nombre: (ingL ? ingL.nombre : 'Yogur natural') + ' con fruta' };
+    }
+    if (diaIndex === 6 && (postres.tradicionales || []).length) { // domingo — sugerencia
+      var estacion = estacionDelMes(mes);
+      var aptos = postres.tradicionales.filter(function (p) { return !p.temporada || !estacion || p.temporada === estacion; });
+      if (!aptos.length) aptos = postres.tradicionales;
+      var nSemana = Math.floor(d.getTime() / (7 * 24 * 3600 * 1000));
+      var elegido = aptos[nSemana % aptos.length];
+      return { tipo: 'tradicional', nombre: elegido.nombre, receta_aparte: true };
+    }
+    var frutas = (postres.frutas_mes && postres.frutas_mes[mes]) || [];
+    if (!frutas.length) return null;
+    var idFruta = frutas[diaIndex % frutas.length];
+    var ingF = banco.ingredientes[idFruta];
+    return { tipo: 'fruta', id: idFruta, nombre: ingF ? ingF.nombre : idFruta };
+  }
+
+  // ---------------------------------------------------------------
   // Elección del mejor plantilla+selección para un hueco (comida o cena de un día)
   // aplicando las 7 restricciones en orden.
   // ---------------------------------------------------------------
@@ -516,7 +657,12 @@
         if (violaMaximoCuota(seleccion, opts.contadorCuotas, opts.cuotas, opts.banco)) return; // restricción 5 (máx.)
         var score = puntuarCuotas(seleccion, opts.contadorCuotas, opts.cuotas, opts.banco, opts.slotsRestantes) // restricción 5 (mín.)
                   + puntuarKcal(kcalTotalSeleccion(plantilla, seleccion, opts.presentes, opts.banco), opts.objetivoKcal) // restricción 7
-                  + puntuarRechazos(plantilla.id, opts.rechazosPorPlantilla); // feedback loop, sesgo suave
+                  + puntuarRechazos(plantilla.id, opts.rechazosPorPlantilla) // feedback loop, sesgo suave
+                  + puntuarRecencia(plantilla.id, opts.historialPlantillas, opts.semanaISO, opts.gustasPorPlantilla) // rotación entre semanas
+                  + puntuarNovedad(plantilla.id, opts.historialPlantillas) // novedad acotada
+                  + puntuarRepeticionSemana(plantilla.id, opts.usosSemana) // no repetir plato dentro de la semana
+                  + puntuarTemporada(plantilla, opts.estacion) // señal estacional (mes)
+                  + puntuarRegion(plantilla, opts.familiaRegion); // señal de región de la familia
         if (score > mejorScore) {
           mejorScore = score;
           mejor = { plantilla: plantilla, seleccion: seleccion };
@@ -536,6 +682,12 @@
     var cuotas = (banco && banco.categorias_cuota) || {};
     var contadorCuotas = contadorInicialDesdeDias(planExistente ? planExistente.dias.slice(0, desde) : [], banco);
     var rechazosPorPlantilla = contarRechazosPorPlantilla(estado);
+    // señales suaves del scoring (rotación/novedad/temporada/región) — se calculan una vez por semana
+    var historialPlantillas = (estado && estado.historialPlantillas) || null;
+    var gustasPorPlantilla = contarGustasPorPlantilla(estado);
+    var estacion = estacionDelMes(new Date(semanaISO + 'T00:00:00').getMonth() + 1);
+    var familiaRegion = (estado && estado.familiaRegion) || null;
+    var usosSemana = usosDePlan(planExistente ? planExistente.dias.slice(0, desde) : []);
     var dias = [];
 
     for (var i = 0; i < 7; i++) {
@@ -561,7 +713,10 @@
           objetivoKcal: objetivoKcal, usadosHoy: usadosHoy, usadosAyer: usadosAyer,
           contadorCuotas: contadorCuotas, cuotas: cuotas, banco: banco,
           esFinde: esFinDeSemana(i), slotsRestantes: slotsRestantes,
-          rechazosPorPlantilla: rechazosPorPlantilla
+          rechazosPorPlantilla: rechazosPorPlantilla,
+          historialPlantillas: historialPlantillas, semanaISO: semanaISO,
+          gustasPorPlantilla: gustasPorPlantilla, estacion: estacion, familiaRegion: familiaRegion,
+          usosSemana: usosSemana
         });
 
         if (!elegido) { diaActual[tipoComida] = null; return; }
@@ -569,6 +724,7 @@
         var adaptaciones = calcularAdaptaciones(elegido.plantilla, elegido.seleccion, presentes, banco, vetosUnion);
         diaActual[tipoComida] = { plantillaId: elegido.plantilla.id, seleccion: elegido.seleccion, adaptaciones: adaptaciones };
         actualizarContadorCuotas(contadorCuotas, elegido.seleccion, banco);
+        usosSemana[elegido.plantilla.id] = (usosSemana[elegido.plantilla.id] || 0) + 1;
       });
 
       dias.push(diaActual);
@@ -666,7 +822,13 @@
       objetivoKcal: objetivoKcal, usadosHoy: usadosHoy, usadosAyer: usadosAyer,
       contadorCuotas: contadorCuotas, cuotas: cuotas, banco: banco,
       esFinde: esFinDeSemana(dia), slotsRestantes: Math.max(1, (7 - dia) * 2),
-      rechazosPorPlantilla: contarRechazosPorPlantilla(estado)
+      rechazosPorPlantilla: contarRechazosPorPlantilla(estado),
+      historialPlantillas: (estado && estado.historialPlantillas) || null,
+      semanaISO: plan.semanaISO,
+      gustasPorPlantilla: contarGustasPorPlantilla(estado),
+      estacion: estacionDelMes(new Date(diaObj.fecha + 'T00:00:00').getMonth() + 1),
+      familiaRegion: (estado && estado.familiaRegion) || null,
+      usosSemana: usosDePlan(diasParaContar)
     });
     if (!elegido) return null;
 
@@ -716,6 +878,22 @@
           acumulado[linea.id].gramos += linea.gramos;
         });
       });
+
+      // postre del día (tramo 1, 2026-07-17): la fruta de L-V y el yogur del
+      // sábado entran en la compra por ración de los presentes en la cena; el
+      // dulce del domingo es sugerencia con receta aparte — no se compra solo.
+      var postre = postreDelDia(banco, dia.fecha, idx);
+      if (postre && postre.id) {
+        var ingPostre = banco.ingredientes[postre.id];
+        if (ingPostre) {
+          presentesEnComida(estado, dia.fecha, idx, 'cena').forEach(function (miembro) {
+            var esNino = edadEnAnios(miembro.anioNacimiento) < EDAD_MENOR;
+            var gramos = esNino ? ingPostre.racion_nino_g : ingPostre.racion_adulto_g;
+            if (!acumulado[postre.id]) acumulado[postre.id] = { id: postre.id, nombre: ingPostre.nombre, categoria: ingPostre.categoria, gramos: 0 };
+            acumulado[postre.id].gramos += gramos;
+          });
+        }
+      }
     });
 
     var marcados = {};
@@ -751,7 +929,10 @@
     plantillaViableParaMesa: plantillaViableParaMesa,
     vetosDe: vetosDe,
     capitaliza: capitaliza,
-    resumenCuotasSemana: resumenCuotasSemana
+    resumenCuotasSemana: resumenCuotasSemana,
+    // tramo 1 (2026-07-17): rotación entre semanas + postre del día
+    historialConPlan: historialConPlan,
+    postreDelDia: postreDelDia
   };
 
   if (typeof module !== 'undefined' && module.exports) module.exports = E3Engine;

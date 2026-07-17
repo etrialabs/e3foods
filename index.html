@@ -22,7 +22,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/styles.css?v=39">
+<link rel="stylesheet" href="css/styles.css?v=40">
 </head>
 <body>
 
@@ -76,11 +76,11 @@
   <button type="button" class="nav-btn" data-action="ir-vista" data-vista="compra" aria-current="false"><span class="nav-ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 8h11l-1 11.5h-9L6.5 8z"/><path d="M9 8V6.3a3 3 0 016 0V8"/></svg></span><span class="nav-label">Compra</span><span class="nav-dot"></span></button>
 </nav>
 
-<!-- Banco de recetas (52 plantillas). Si no carga (404/sintaxis), app.js muestra
+<!-- Banco de recetas (81 plantillas + postres). Si no carga (404/sintaxis), app.js muestra
      un error visible en vez de arrancar degradado — no hay banco de respaldo. -->
-<script src="data/recetas.js?v=39"></script>
-<script src="js/engine.js?v=39"></script>
-<script src="js/ui.js?v=39"></script>
+<script src="data/recetas.js?v=40"></script>
+<script src="js/engine.js?v=40"></script>
+<script src="js/ui.js?v=40"></script>
 <!-- Firebase compat (multiusuario, Roger 2026-07-14) — build "compat" a propósito:
      el resto del bundle son scripts planos sin módulos ES, esto evita reestructurar
      todo a type="module" solo por esto. -->
@@ -88,7 +88,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-check-compat.js"></script>
-<script src="js/sync.js?v=39"></script>
-<script src="js/app.js?v=39"></script>
+<script src="js/sync.js?v=40"></script>
+<script src="js/app.js?v=40"></script>
 </body>
 </html>

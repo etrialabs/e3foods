@@ -115,10 +115,14 @@
     var titulo = '<h1 class="cabecera-titulo">' + escapeHtml(opts.tituloPlain || '') +
       (opts.tituloItalico ? ' <em>' + escapeHtml(opts.tituloItalico) + '</em>' : '') + '</h1>';
     var derecha = opts.contador ? '<span class="cabecera-contador">' + escapeHtml(opts.contador) + '</span>' : '';
+    var extras = '';
     if (opts.botonAnadir) {
-      derecha = '<div class="cabecera-derecha-grupo">' + derecha +
-        '<button type="button" class="cabecera-btn-anadir" data-action="' + opts.botonAnadir + '" aria-label="Añadir receta">+</button></div>';
+      extras += '<button type="button" class="cabecera-btn-anadir" data-action="' + opts.botonAnadir + '" aria-label="Añadir receta">+</button>';
     }
+    if (opts.linkVaciar) {
+      extras += '<button type="button" class="cabecera-btn-vaciar" data-action="' + opts.linkVaciar + '" aria-label="Vaciar la lista de la compra">' + ICONO_VACIAR + '</button>';
+    }
+    if (extras) derecha = '<div class="cabecera-derecha-grupo">' + derecha + extras + '</div>';
     return '<header class="cabecera-midnight"><div class="cabecera-fila">' + titulo + derecha + '</div>' + (opts.extra || '') + '</header>';
   }
 
@@ -143,6 +147,8 @@
   var ICONO_ESTRELLA = '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5l2.6 5.4 5.9.7-4.3 4.1 1.1 5.9L12 16.8l-5.3 2.8 1.1-5.9-4.3-4.1 5.9-.7z"/></svg>';
   var ICONO_ESTRELLA_LLENA = '<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 3.5l2.6 5.4 5.9.7-4.3 4.1 1.1 5.9L12 16.8l-5.3 2.8 1.1-5.9-4.3-4.1 5.9-.7z"/></svg>';
   var ICONO_MIC = '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2.5" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0"/><path d="M12 17.5v3.5M9 21h6"/></svg>';
+  // flecha circular estándar (reset/vaciar) — arco casi cerrado + flecha en la punta
+  var ICONO_VACIAR = '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v4h-4"/></svg>';
 
   // soporte de reconocimiento de voz del navegador (nevera) — si no existe, el
   // botón de micro ni se pinta (degradación silenciosa, cero rotura)
@@ -593,7 +599,15 @@
     }
     var items = E.listaCompra(estado, plan, rango === '7d' ? 'semana' : 'hoy', banco);
     var marcadosN = items.filter(function (i) { return i.marcado; }).length;
-    var cabecera = renderCabecera({ tituloPlain: 'Lista de', tituloItalico: 'compra', contador: marcadosN + '/' + items.length + ' en el carro' });
+    // "Vaciar" desmarca SIEMPRE los marcados globales (Roger 2026-07-17), no solo los del
+    // segmento visible: marcados es un único array (no hay "marcados de hoy" vs "de la
+    // semana"), y la lista no es editable — se deriva del plan, así que "vaciar" solo
+    // puede significar desmarcar. Oculto si no hay nada marcado (nada que vaciar).
+    var cabecera = renderCabecera({
+      tituloPlain: 'Lista de', tituloItalico: 'compra',
+      contador: marcadosN + '/' + items.length + ' en el carro',
+      linkVaciar: marcadosN > 0 ? 'vaciar-compra' : null
+    });
 
     var porCategoria = {};
     var ordenCategorias = [];

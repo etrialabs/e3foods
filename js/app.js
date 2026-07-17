@@ -656,6 +656,16 @@
     render();
   }
 
+  // "Vaciar" (Roger 2026-07-17): desmarca TODO, sin importar el segmento visible
+  // (7 días / hoy) — marcados es un único array global, no hay uno por segmento.
+  // Sin confirmación a propósito: es un toggle reversible con un toque (igual que
+  // marcar un ítem), no un borrado — sube en la próxima carta al súper.
+  function vaciarCompra() {
+    estado.compra.marcados = [];
+    guardarEstado();
+    render();
+  }
+
   function abrirRecetaDetalle(dia, tipoComida) {
     abrirSheet(UI.renderSheetReceta(estado, BANCO, estado.plan, dia, tipoComida));
   }
@@ -914,6 +924,7 @@
 
     'toggle-presente': function (btn) { togglePresente(Number(btn.dataset.dia), btn.dataset.tipo, btn.dataset.miembro); },
     'toggle-compra-item': function (btn) { toggleCompraItem(btn.dataset.id); },
+    'vaciar-compra': function () { vaciarCompra(); },
     'segmento-compra': function (btn) { rangoCompra = btn.dataset.rango; render(); },
     'semana-elegir-dia': function (btn) { semanaDiaSeleccionado = parseInt(btn.dataset.dia, 10); render(); },
     'filtro-receta': function (btn) { filtroRecetas = btn.dataset.categoria; render(); },

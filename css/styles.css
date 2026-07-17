@@ -319,6 +319,19 @@ body.wizard-open { overflow: hidden; }
   display: flex; align-items: center; justify-content: center;
 }
 .cabecera-btn-anadir:active { background: var(--gold-soft); }
+/* botón "vaciar" de la cabecera de Compra (Roger 2026-07-17) — icono fantasma
+   (sin relleno), mismo tamaño 32px que su vecino "+" pero jerarquía menor:
+   "+" es la acción primaria de Recetas (relleno), esto es secundario. Dorado
+   sobre --ink pasa AAA (8.38:1, ver UI_MOBILE.md §3) — no reusar ese dorado
+   fuera de una cabecera oscura. Icon-only → exige aria-label (checklist
+   UI_MOBILE §6). */
+.cabecera-btn-vaciar {
+  width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
+  background: none; border: none; color: var(--gold); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.cabecera-btn-vaciar svg { width: 20px; height: 20px; stroke: currentColor; display: block; }
+.cabecera-btn-vaciar:active { color: var(--gold-soft); }
 
 .vista-body { max-width: 640px; margin: 0 auto; padding: var(--space-3) var(--space-3) var(--space-5); }
 

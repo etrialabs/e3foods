@@ -871,6 +871,22 @@ body.sheet-open { overflow: hidden; }
 /* "también con salmón, merluza…" bajo el nombre-ejemplo en Recetas (F1) */
 .fila-receta-variantes { display: block; font-size: var(--fs-aux); font-weight: 500; color: var(--soft); }
 
+/* Vista Semana: toggle Hoy/Semana + swipe del modo Foco (Roger 2026-07-17) */
+.vista-fecha-fila { flex-wrap: wrap; gap: var(--space-2); }
+.vista-fecha-acciones { display: flex; align-items: center; gap: var(--space-2); margin-left: auto; }
+.toggle-vista { display: inline-flex; background: var(--panel); border: 1px solid rgba(8,18,34,.12); border-radius: 999px; padding: 2px; }
+.toggle-vista-btn { border: none; background: none; font-family: var(--font-ui); font-size: var(--fs-aux); font-weight: 600; color: var(--soft); padding: 6px 14px; min-height: 36px; border-radius: 999px; cursor: pointer; }
+.toggle-vista-activo { background: var(--ink); color: #fff; }
+/* card de la próxima comida: transición suave al alternar (la card es un
+   elemento nuevo en cada render, así que la animación se re-dispara sola) */
+.foco-swipe .card-slot { animation: focoIn .18s ease; }
+@keyframes focoIn { from { opacity: .35; } to { opacity: 1; } }
+.foco-nav { display: flex; align-items: center; justify-content: center; gap: var(--space-3); margin: var(--space-3) 0 var(--space-2); }
+.foco-dots { display: inline-flex; gap: 6px; }
+.foco-dot { width: 7px; height: 7px; border-radius: 999px; background: var(--muted); opacity: .4; }
+.foco-dot-activo { background: var(--gold); opacity: 1; }
+.foco-flip { margin: 0; }
+
 /* ============================================================
    Responsive — a partir de tablet, contenido centrado con más aire
    ============================================================ */

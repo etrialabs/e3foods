@@ -440,18 +440,41 @@
   }
 
   // ---------------------------------------------------------------
-  // Vista SEMANA (única vista de primer nivel para el día a día — Hoy se
-  // retiró como tab aparte, Roger 2026-07-13: el selector de día hace lo
-  // mismo en una sola pantalla). Selector de día (píldoras L-D) sticky por
-  // sí solo sobre fondo claro — referencia visual del handoff externo.
+  // Vista SEMANA — dos modos (Roger 2026-07-17), elegibles con un toggle que
+  // se guarda por dispositivo (ver obtenerModoVista en app.js):
+  //   'foco'   → una sola card, la próxima comida de hoy; swipe comida↔cena.
+  //              La expresión más pura de la promesa (0 decisiones al abrir).
+  //   'semana' → la vista clásica: píldoras L-D + comida+cena del día elegido
+  //              (Hoy se retiró como tab aparte, Roger 2026-07-13).
   // ---------------------------------------------------------------
-  function renderSemana(estado, plan, banco, diaSeleccionado, miembroDispositivoId) {
+
+  // Toggle Hoy/Semana — va "al lado de Ver resumen" (Roger), presente en ambos
+  // modos para poder alternar. "Hoy"/"Semana" son las etiquetas de usuario;
+  // 'foco'/'semana' los nombres internos.
+  function renderToggleVista(modo) {
+    return '<span class="toggle-vista" role="group" aria-label="Vista">' +
+      '<button type="button" class="toggle-vista-btn' + (modo === 'foco' ? ' toggle-vista-activo' : '') + '" data-action="vista-modo" data-modo="foco" aria-pressed="' + (modo === 'foco') + '">Hoy</button>' +
+      '<button type="button" class="toggle-vista-btn' + (modo === 'semana' ? ' toggle-vista-activo' : '') + '" data-action="vista-modo" data-modo="semana" aria-pressed="' + (modo === 'semana') + '">Semana</button>' +
+      '</span>';
+  }
+
+  function filaVista(fechaHtml, modo) {
+    return '<p class="vista-fecha-fila">' +
+      '<span class="vista-fecha">' + fechaHtml + '</span>' +
+      '<span class="vista-fecha-acciones">' + renderToggleVista(modo) +
+        '<button type="button" class="pill-resumen" data-action="abrir-resumen-semana">Ver resumen semanal</button>' +
+      '</span>' +
+      '</p>';
+  }
+
+  function renderSemana(estado, plan, banco, diaSeleccionado, miembroDispositivoId, modoVista, focoComida) {
     if (!plan) {
       return renderAppBar() + '<div class="vista-body"><p class="card-msg">Todavía no hay semana generada.</p></div>';
     }
     var hoyIdx = E.diaIndexDesdeFecha(plan, hoyISO());
-    var idx = (diaSeleccionado != null && plan.dias[diaSeleccionado]) ? diaSeleccionado : (hoyIdx === -1 ? 0 : hoyIdx);
+    if (modoVista === 'foco') return renderSemanaFoco(estado, plan, banco, miembroDispositivoId, hoyIdx, focoComida);
 
+    var idx = (diaSeleccionado != null && plan.dias[diaSeleccionado]) ? diaSeleccionado : (hoyIdx === -1 ? 0 : hoyIdx);
     var pildoras = plan.dias.map(function (dia, i) {
       var d = new Date(dia.fecha + 'T00:00:00');
       var clases = 'pildora-dia' + (i === idx ? ' pildora-dia-activa' : '') + (i === hoyIdx ? ' pildora-dia-hoy' : '');
@@ -463,16 +486,37 @@
     var filaPildoras = '<div class="fila-pildoras-dia fila-pildoras-dia-sticky" role="group" aria-label="Elegir día">' + pildoras + '</div>';
 
     var dia = plan.dias[idx];
+    var fechaHtml = NOMBRES_DIA[idx] + ' ' + fechaCorta(dia.fecha) + (idx === hoyIdx ? ' <span class="badge badge-hoy">HOY</span>' : '');
     return renderAppBar() + renderSaludoSemana(estado, plan, banco, miembroDispositivoId) + filaPildoras +
       '<div class="vista-body" data-dia-idx="' + idx + '">' +
-      '<p class="vista-fecha-fila">' +
-        '<span class="vista-fecha">' + NOMBRES_DIA[idx] + ' ' + fechaCorta(dia.fecha) + (idx === hoyIdx ? ' <span class="badge badge-hoy">HOY</span>' : '') + '</span>' +
-        '<button type="button" class="pill-resumen" data-action="abrir-resumen-semana">Ver resumen semanal</button>' +
-      '</p>' +
+      filaVista(fechaHtml, 'semana') +
       renderColeDia(estado, plan, idx, hoyIdx) +
       renderSlot(estado, banco, plan, idx, 'comida') +
       renderSlot(estado, banco, plan, idx, 'cena') +
       renderPostreDia(estado, banco, plan, idx) +
+      '</div>';
+  }
+
+  // Modo Foco: una card (la próxima comida de hoy) + swipe/tap comida↔cena.
+  // `meal` llega ya resuelto desde app.js (próxima por hora, o lo que el usuario
+  // deslizó). El postre se muestra solo con la cena (es el postre del día).
+  function renderSemanaFoco(estado, plan, banco, miembroDispositivoId, hoyIdx, meal) {
+    var idx = hoyIdx === -1 ? 0 : hoyIdx;
+    var dia = plan.dias[idx];
+    meal = (meal === 'cena') ? 'cena' : 'comida';
+    var otra = meal === 'comida' ? 'cena' : 'comida';
+    var fechaHtml = (idx === hoyIdx ? '<span class="badge badge-hoy">HOY</span> ' : '') + NOMBRES_DIA[idx] + ' ' + fechaCorta(dia.fecha);
+    var dots = ['comida', 'cena'].map(function (t) { return '<span class="foco-dot' + (t === meal ? ' foco-dot-activo' : '') + '"></span>'; }).join('');
+    return renderAppBar() + renderSaludoSemana(estado, plan, banco, miembroDispositivoId) +
+      '<div class="vista-body">' +
+      filaVista(fechaHtml, 'foco') +
+      renderColeDia(estado, plan, idx, hoyIdx) +
+      '<div class="foco-swipe" id="foco-swipe" data-meal="' + meal + '">' + renderSlot(estado, banco, plan, idx, meal) + '</div>' +
+      '<div class="foco-nav">' +
+      '<span class="foco-dots" aria-hidden="true">' + dots + '</span>' +
+      '<button type="button" class="pill-resumen foco-flip" data-action="foco-cambiar-comida" data-comida="' + otra + '">Ver ' + (otra === 'comida' ? 'la comida' : 'la cena') + ' ›</button>' +
+      '</div>' +
+      (meal === 'cena' ? renderPostreDia(estado, banco, plan, idx) : '') +
       '</div>';
   }
 

@@ -83,6 +83,25 @@
 
   var estado = cargarEstado();
   var vistaActual = 'semana';
+
+  // Modo de la vista Semana (Roger 2026-07-17): 'foco' (una card, próxima
+  // comida) por defecto | 'semana' (clásica, píldoras). Preferencia DE
+  // DISPOSITIVO, como "quién soy yo" — no viaja con la familia; cada móvil
+  // recuerda la suya. Clave aparte de STORAGE_KEY.
+  var VISTA_KEY = 'e3foods_v2_vista';
+  function obtenerModoVista() {
+    try { return localStorage.getItem(VISTA_KEY) || 'foco'; } catch (e) { return 'foco'; }
+  }
+  function setModoVista(m) {
+    try { if (m === 'foco') localStorage.removeItem(VISTA_KEY); else localStorage.setItem(VISTA_KEY, m); } catch (e) {}
+  }
+  // Próxima comida por hora local: comida hasta las 16h, cena a partir de las 16h
+  // (Roger 2026-07-17). Regla simple, sin "ya me lo comí".
+  function comidaProximaPorHora() { return new Date().getHours() < 16 ? 'comida' : 'cena'; }
+  // Qué comida muestra el modo Foco: null = próxima por hora; se fija al deslizar
+  // o pulsar. Se resetea a null (→ próxima) al cambiar de modo. No se persiste:
+  // cada apertura de la app vuelve a "lo que toca ahora".
+  var focoComida = null;
   var filtroRecetas = 'todas'; // estado de UI, no persistido (SPEC: filtroRecetas)
   var busquedaRecetas = ''; // estado de UI, no persistido
   var filtrosRecetasVisibles = false; // colapsados por defecto (Roger 2026-07-14)
@@ -144,7 +163,7 @@
     var cursorBuscador = focoBuscador ? document.activeElement.selectionStart : 0;
     document.querySelectorAll('.vista').forEach(function (v) { v.hidden = (v.id !== 'vista-' + vistaActual); });
     document.querySelectorAll('.nav-btn').forEach(function (b) { b.classList.toggle('active', b.dataset.vista === vistaActual); b.setAttribute('aria-current', b.dataset.vista === vistaActual ? 'page' : 'false'); });
-    if (vistaActual === 'semana') cont.innerHTML = UI.renderSemana(estado, estado.plan, BANCO, semanaDiaSeleccionado, obtenerMiembroDispositivo());
+    if (vistaActual === 'semana') cont.innerHTML = UI.renderSemana(estado, estado.plan, BANCO, semanaDiaSeleccionado, obtenerMiembroDispositivo(), obtenerModoVista(), focoComida || comidaProximaPorHora());
     else if (vistaActual === 'recetas') cont.innerHTML = UI.renderRecetasVista(estado, BANCO, filtroRecetas, busquedaRecetas, filtrosRecetasVisibles);
     else if (vistaActual === 'compra') cont.innerHTML = UI.renderCompraVista(estado, estado.plan, BANCO, rangoCompra);
     aplicarDetallesAbiertos(cont);
@@ -908,6 +927,8 @@
     'menu-importar-cole': function () { abrirImportarCole(); },
     'cole-importar': function () { importarCole(); },
     'cole-borrar': function () { borrarCole(); },
+    'vista-modo': function (btn) { setModoVista(btn.dataset.modo); focoComida = null; render(); },
+    'foco-cambiar-comida': function (btn) { focoComida = btn.dataset.comida; render(); },
     'menu-sync': function () { abrirSheetSync(); },
     'landing-unirse': function () { abrirSheetSync(); },
     'sync-activar': function () { activarSincronizacion(); },
@@ -1087,6 +1108,39 @@
         li.hidden = !!q && li.dataset.buscar.indexOf(q) === -1;
       });
     }
+  });
+
+  // Swipe comida↔cena en el modo Foco (Roger 2026-07-17). Umbral de 8px antes
+  // de decidir si es arrastre — el mismo golpe ya pagado con el bottom-sheet
+  // (el jitter del dedo robaba el tap, UI_MOBILE §5). No hace preventDefault
+  // hasta confirmar que el gesto es horizontal, para no romper el scroll
+  // vertical. El tap normal (mover <8px) pasa limpio a la card (abrir receta,
+  // avatares, botón). Solo cuenta como cambio un desplazamiento horizontal >45px.
+  var focoTouch = null;
+  document.addEventListener('touchstart', function (e) {
+    var sw = e.target.closest && e.target.closest('#foco-swipe');
+    if (!sw) { focoTouch = null; return; }
+    var t = e.touches[0];
+    focoTouch = { x: t.clientX, y: t.clientY, dir: null, dx: 0 };
+  }, { passive: true });
+  document.addEventListener('touchmove', function (e) {
+    if (!focoTouch) return;
+    var t = e.touches[0];
+    var dx = t.clientX - focoTouch.x, dy = t.clientY - focoTouch.y;
+    if (focoTouch.dir === null) {
+      if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return; // todavía es tap (umbral 8px)
+      focoTouch.dir = Math.abs(dx) > Math.abs(dy) ? 'h' : 'v';
+    }
+    if (focoTouch.dir === 'h') { e.preventDefault(); focoTouch.dx = dx; } // swipe horizontal: bloquea scroll
+  }, { passive: false });
+  document.addEventListener('touchend', function () {
+    if (focoTouch && focoTouch.dir === 'h' && Math.abs(focoTouch.dx) > 45) {
+      var sw = document.getElementById('foco-swipe');
+      var actual = sw ? sw.dataset.meal : comidaProximaPorHora();
+      focoComida = actual === 'comida' ? 'cena' : 'comida';
+      render();
+    }
+    focoTouch = null;
   });
 
   // ---------------------------------------------------------------

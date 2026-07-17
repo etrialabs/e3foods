@@ -20,6 +20,17 @@
   };
   firebase.initializeApp(firebaseConfig);
 
+  // App Check (2026-07-17): prueba que la llamada viene de la app real, no de un
+  // script con un token anónimo válido. El site key es PÚBLICO por diseño (viaja en
+  // este mismo fichero, servido por GitHub Pages) — el secreto vive solo en la consola
+  // de Firebase. El 2º argumento (true) refresca el token solo antes de que caduque.
+  // En local (file:// o localhost) se salta: reCAPTCHA solo autoriza etrialabs.github.io,
+  // y la vía oficial para local es un debug token, no meter localhost en la clave.
+  var esProduccion = location.hostname === 'etrialabs.github.io';
+  if (esProduccion && firebase.appCheck) {
+    firebase.appCheck().activate('6LfLMlgtAAAAAEtvyh8EUWgd1hcdMVBZ5X4CYO8p', true);
+  }
+
   var fbAuth = firebase.auth();
   var db = firebase.firestore();
   var API_BASE = "https://e3foods-api-730055281618.europe-west1.run.app";
@@ -36,19 +47,35 @@
     });
   }
 
+  // El SDK adjunta el token de App Check solo a los servicios de Firebase (Firestore,
+  // Auth). El proxy de Cloud Run no es uno: hay que ponerlo a mano en X-Firebase-AppCheck.
+  // Si falla, se devuelve null y la llamada sale sin cabecera — el backend decide qué
+  // hacer con eso; así un fallo de reCAPTCHA no deja a la familia sin poder operar
+  // mientras el enforcement esté en monitor.
+  function tokenAppCheck() {
+    if (!esProduccion || !firebase.appCheck) return Promise.resolve(null);
+    return firebase.appCheck().getToken()
+      .then(function (r) { return r && r.token ? r.token : null; })
+      .catch(function (err) { console.warn('[appcheck] sin token', err); return null; });
+  }
+
   function apiCall(path, body) {
-    return ensureSignedIn().then(function (user) { return user.getIdToken(); }).then(function (token) {
-      return fetch(API_BASE + path, {
-        method: 'POST',
-        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
-        body: JSON.stringify(body || {})
-      }).then(function (res) {
-        return res.json().catch(function () { return {}; }).then(function (data) {
-          if (!res.ok) throw new Error(data.error || 'error de red');
-          return data;
+    return ensureSignedIn()
+      .then(function (user) { return Promise.all([user.getIdToken(), tokenAppCheck()]); })
+      .then(function (tokens) {
+        var headers = { 'Authorization': 'Bearer ' + tokens[0], 'Content-Type': 'application/json' };
+        if (tokens[1]) headers['X-Firebase-AppCheck'] = tokens[1];
+        return fetch(API_BASE + path, {
+          method: 'POST',
+          headers: headers,
+          body: JSON.stringify(body || {})
+        }).then(function (res) {
+          return res.json().catch(function () { return {}; }).then(function (data) {
+            if (!res.ok) throw new Error(data.error || 'error de red');
+            return data;
+          });
         });
       });
-    });
   }
 
   function getFamilyId() {

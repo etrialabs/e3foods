@@ -376,7 +376,6 @@ body.wizard-open { overflow: hidden; }
   background: var(--panel); border: 1px solid var(--line-solid); border-radius: 16px;
   padding: var(--space-3); margin-bottom: var(--space-3);
 }
-.card-adaptaciones { font-size: var(--fs-aux); color: var(--soft); margin-bottom: var(--space-2); }
 .card-msg { font-size: var(--fs-cuerpo); color: var(--soft); margin: var(--space-1) 0 var(--space-2); }
 .card-vacia { background: var(--elev2); border-style: dashed; }
 
@@ -401,32 +400,6 @@ body.wizard-open { overflow: hidden; }
 /* Ausente (Roger 2026-07-13): sin punteado, más translúcido y foto difuminada
    en vez de un borde — la propia card ya lo dice ("Toca para marcar..."). */
 .avatar-ausente { background-color: var(--elev3); color: var(--soft); opacity: 0.45; filter: blur(2px); }
-
-/* Cabecera de tipo de comida (icono sol/luna + etiqueta) — sustituye el eyebrow
-   plano; mismo tono dorado para ambas, el icono ya distingue comida/cena (Roger
-   2026-07-13, referencia visual externa — traducida a paleta Etria, sin el
-   verde/morado literal del handoff). */
-.card-comida-head { display: flex; align-items: center; gap: 6px; margin-bottom: var(--space-2); }
-.card-comida-icono { width: 18px; height: 18px; color: var(--gold); flex-shrink: 0; }
-.card-comida-icono svg { width: 100%; height: 100%; stroke: currentColor; display: block; }
-.card-comida-etiqueta { font-size: var(--fs-aux); font-weight: 700; letter-spacing: 0.6px; color: var(--soft); text-transform: uppercase; }
-
-/* Foto en miniatura a la izquierda, contenido a la derecha (Roger 2026-07-14,
-   2ª corrección — ni lateral-40% ni foto-arriba: la referencia visual externa
-   lleva la foto como thumbnail a la izquierda). Miniatura inset dentro del
-   padding normal de la card — sin trucos de padding:0/overflow. */
-.card-comida-fila { display: flex; gap: var(--space-3); align-items: flex-start; cursor: pointer; }
-.card-foto-izq { width: 96px; height: 96px; border-radius: 12px; background-size: cover; background-position: center; flex-shrink: 0; }
-.card-comida-contenido { flex: 1; min-width: 0; }
-
-/* Título como protagonista de la card (Roger 2026-07-14: antes competía en
-   tamaño con avatares/CTA, ahora es lo primero que se lee). */
-.card-comida-titulo { font-family: var(--font-display); font-size: var(--fs-titulo); font-weight: 400; line-height: 1.2; }
-.card-comida-subtitulo { color: var(--soft); font-size: var(--fs-cuerpo); margin-top: 2px; }
-.card-comida-meta { color: var(--soft); font-size: var(--fs-aux); font-weight: 600; margin-top: var(--space-2); }
-/* silueta gris, no emoji a color (Roger 2026-07-14) */
-.card-comida-meta-icono { display: inline-flex; width: 12px; height: 12px; vertical-align: -1px; margin-right: 2px; }
-.card-comida-meta-icono svg { width: 100%; height: 100%; stroke: currentColor; display: block; }
 
 /* Avatar con badge de estado superpuesto (check/menos) — Roger 2026-07-13,
    referencia visual externa. Clúster ligeramente superpuesto. */
@@ -633,11 +606,6 @@ body.wizard-open { overflow: hidden; }
   font-size: var(--fs-aux); font-weight: 700;
 }
 .btn-sorprendeme:active { background: var(--elev2); }
-/* card-slot recorta su propio padding inferior (Roger 2026-07-14, 4ª pasada:
-   "demasiado espacio" entre el botón y el borde de la card) — el botón ya
-   aporta su franja de separación arriba, no hace falta el padding completo
-   de .card debajo también. */
-.card-slot { padding-bottom: var(--space-2); }
 .btn-texto {
   background: none; border: none; color: var(--soft); font-size: var(--fs-aux); font-weight: 700;
   min-height: 44px; padding: var(--space-1) var(--space-2); cursor: pointer; text-decoration: underline;
@@ -853,9 +821,6 @@ body.sheet-open { overflow: hidden; }
 /* ============================================================
    Tramo 1 (2026-07-17): postre del día, badge de novedad, select de región
    ============================================================ */
-/* línea informativa bajo la cena — --soft sobre --bg pasa AA (6.95:1, UI_MOBILE §3) */
-.postre-linea { margin: var(--space-2) 0 0; font-size: var(--fs-aux); font-weight: 600; color: var(--soft); }
-
 /* "nuevo para probar": fondo ink + texto gold-soft (par seguro; dorado nunca
    como texto sobre claro — UI_MOBILE §3). A la derecha del head de la card. */
 .badge-nuevo { margin-left: auto; padding: 2px 8px; border-radius: 999px; background: var(--ink); color: var(--gold-soft); font-size: var(--fs-aux); font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase; flex-shrink: 0; }
@@ -871,21 +836,177 @@ body.sheet-open { overflow: hidden; }
 /* "también con salmón, merluza…" bajo el nombre-ejemplo en Recetas (F1) */
 .fila-receta-variantes { display: block; font-size: var(--fs-aux); font-weight: 500; color: var(--soft); }
 
-/* Vista Semana: toggle Hoy/Semana + swipe del modo Foco (Roger 2026-07-17) */
-.vista-fecha-fila { flex-wrap: wrap; gap: var(--space-2); }
-.vista-fecha-acciones { display: flex; align-items: center; gap: var(--space-2); margin-left: auto; }
-.toggle-vista { display: inline-flex; background: var(--panel); border: 1px solid rgba(8,18,34,.12); border-radius: 999px; padding: 2px; }
-.toggle-vista-btn { border: none; background: none; font-family: var(--font-ui); font-size: var(--fs-aux); font-weight: 600; color: var(--soft); padding: 6px 14px; min-height: 36px; border-radius: 999px; cursor: pointer; }
-.toggle-vista-activo { background: var(--ink); color: #fff; }
-/* card de la próxima comida: transición suave al alternar (la card es un
-   elemento nuevo en cada render, así que la animación se re-dispara sola) */
-.foco-swipe .card-slot { animation: focoIn .18s ease; }
-@keyframes focoIn { from { opacity: .35; } to { opacity: 1; } }
-.foco-nav { display: flex; align-items: center; justify-content: center; gap: var(--space-3); margin: var(--space-3) 0 var(--space-2); }
-.foco-dots { display: inline-flex; gap: 6px; }
-.foco-dot { width: 7px; height: 7px; border-radius: 999px; background: var(--muted); opacity: .4; }
-.foco-dot-activo { background: var(--gold); opacity: 1; }
-.foco-flip { margin: 0; }
+/* ============================================================
+   Modo Foco (Roger 2026-07-17) — réplica de su referencia visual,
+   con datos reales del plan. Colores por categoría: informativos, no
+   de marca (paleta oficial --gold/--ink intacta en el resto de la app).
+   ============================================================ */
+.saludo-semana-foco { padding-top: 4px; padding-bottom: 0; margin-bottom: -1px; }
+.saludo-semana-foco .saludo-semana-sub { line-height: 1.2; }
+/* Saludo Foco: pill "Ver semana" a la derecha, alineado con el saludo;
+   subtítulo del rango de semana pequeño y gris debajo del h1 (Roger
+   2026-07-17, 2ª iteración — sustituye a la card oscura de "faltan
+   ingredientes", que no lleva la referencia en modo Foco). */
+.saludo-semana-fila { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
+.saludo-semana-textos { min-width: 0; }
+/* Roger 2026-07-17 (7ª iteración): vuelta a serif — revierte la 3ª iteración
+   (sans-serif "más legible en móvil"), fidelidad literal a la foto de
+   referencia manda sobre ese razonamiento. */
+.saludo-semana-foco .saludo-titulo { margin-bottom: 2px; font-family: var(--font-display); font-weight: 400; font-size: 26px; line-height: 1.15; }
+.saludo-semana-sub { font-size: var(--fs-aux); color: var(--soft); font-weight: 600; }
+.saludo-semana-fila .pill-resumen {
+  flex-shrink: 0; height: 20px; padding: 0 12px; font-size: 10px;
+  display: flex; align-items: center; justify-content: center;
+}
+
+.bloque-equilibrio { margin: 0 0 12px; }
+.bloque-equilibrio-titulo { display: flex; justify-content: space-between; align-items: baseline; font-family: var(--font-ui); font-size: 11px; font-weight: 700; color: var(--ink); margin: 0 0 6px; }
+.bloque-equilibrio-ok { font-size: 9px; font-weight: 600; color: var(--gold); }
+.fila-chips-equilibrio { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; }
+.chip-equilibrio { background: var(--panel); border-radius: 12px; padding: 6px 2px; min-width: 0; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.chip-equilibrio-icono { width: 26px; height: 26px; border-radius: 999px; display: flex; align-items: center; justify-content: center; font-size: 11px; }
+/* círculo SÓLIDO y saturado con icono blanco — igual que la referencia, no
+   un tinte pálido con icono de color (Roger 2026-07-17, 4ª iteración) */
+.chip-equilibrio-solido-verde { background: #2E9E4F; }
+.chip-equilibrio-solido-azul { background: #2E86D8; }
+.chip-equilibrio-solido-rojo { background: #E0483E; }
+.chip-equilibrio-solido-amarillo { background: #D9A62E; }
+.chip-equilibrio-solido-morado { background: #8B5CD6; }
+.chip-equilibrio-nombre { font-size: 9.5px; font-weight: 700; color: var(--ink); line-height: 1.15; white-space: nowrap; letter-spacing: -0.1px; }
+.chip-equilibrio-fraccion { font-size: 10px; font-weight: 600; color: var(--soft); }
+.chip-equilibrio-fraccion-verde { color: #2E7D32; }
+.chip-equilibrio-fraccion-azul { color: #1E6FBF; }
+.chip-equilibrio-fraccion-rojo { color: var(--danger); }
+.chip-equilibrio-fraccion-amarillo { color: #C9971F; }
+.chip-equilibrio-fraccion-morado { color: #7E57C2; }
+.chip-equilibrio-barra { width: 100%; height: 3px; border-radius: 999px; background: var(--elev3); overflow: hidden; }
+.chip-equilibrio-barra-fill { display: block; height: 100%; border-radius: 999px; }
+.chip-equilibrio-barra-verde { background: #2E7D32; }
+.chip-equilibrio-barra-azul { background: #1E6FBF; }
+.chip-equilibrio-barra-rojo { background: var(--danger); }
+.chip-equilibrio-barra-amarillo { background: #C9971F; }
+.chip-equilibrio-barra-morado { background: #7E57C2; }
+
+/* Card única de HOY (Roger 2026-07-17, 2ª iteración): UNA comida a la vez +
+   flecha lateral circular para pasar a la otra — sustituye a la card dual
+   (comida+cena juntas). La fila reserva su propia columna para la flecha vía
+   flex (icono/foto/info a la izquierda con flex:1, flecha aparte) para que
+   nunca solape el texto. */
+/* Card HOY = la card actual (renderSlot) + flecha lateral para pasar comida↔cena */
+.hoy-bloque { margin-bottom: 6px; }
+.hoy-eyebrow { font-size: 11px; font-weight: 700; letter-spacing: .4px; color: var(--soft); text-transform: uppercase; margin: 0 0 6px; }
+/* Card HOY v2 (Roger 2026-07-17): avatares arriba a la altura de COMIDA/CENA,
+   flecha INLINE junto al tiempo (no columna absoluta vacía). */
+.hoy2 { padding: 14px; padding-top: 6px; padding-bottom: 6px; margin-bottom: 0; position: relative; }
+/* Vista clásica (comida+cena seguidas, sin flecha): hueco entre las dos cards.
+   Solo se activa cuando hay un .hoy2 justo detrás de otro — en Foco (una sola
+   card) este selector nunca aplica. */
+.hoy2 + .hoy2 { margin-top: 8px; }
+.hoy2-cab { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.hoy2-tipo { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; letter-spacing: .4px; color: var(--soft); text-transform: uppercase; }
+.hoy2-tipo svg { width: 14px; height: 14px; stroke: var(--gold); flex-shrink: 0; }
+.avatares-sm { margin: 0; }
+.avatares-sm .avatar-wrap.avatar-wrap-sm { margin-left: -7px; }
+.avatares-sm .avatar-wrap.avatar-wrap-sm:first-child { margin-left: 0; }
+/* -10% (Roger 2026-07-17, 3ª iteración) sobre el tamaño que vio: 26px→23px; -13% más (6ª iteración): 23px→20px */
+.avatar-wrap-sm .avatar-sm { width: 20px; height: 20px; font-size: 9px; }
+/* align-items:stretch (no flex-start): la info ocupa la MISMA altura que la
+   foto, y dentro se reparte arriba (título) / abajo (kcal·tiempo) — así el
+   texto queda a la altura del borde superior e inferior de la foto */
+.hoy2-fila { display: flex; align-items: stretch; gap: var(--space-2); cursor: pointer; }
+/* recalibrada tras reducir las 4 líneas de texto (6ª iteración) — ver medición live */
+.hoy2-foto { width: 65px; height: 65px; border-radius: 12px; background-size: cover; background-position: center; flex-shrink: 0; }
+.hoy2-info { min-width: 0; flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
+/* sans-serif (Roger 2026-07-17, 3ª iteración) — ver nota de saludo-titulo arriba */
+.hoy2-titulo { font-family: var(--font-ui); font-weight: 700; font-size: 14px; line-height: 1.2; color: var(--ink); margin: 0; }
+.hoy2-subtitulo { display: block; font-family: var(--font-ui); font-weight: 500; font-size: 11px; color: var(--soft); }
+.hoy2-postre { font-family: var(--font-ui); font-weight: 500; font-size: 11px; color: var(--soft); margin: 2px 0 0; }
+/* fila de meta separada del texto (no flex mixto con nodos de texto — eso
+   rompía el ajuste de línea) — texto a la izquierda, la flecha ya no vive aquí */
+.hoy2-meta-fila { display: flex; align-items: center; margin: 0; }
+.hoy2-meta { font-size: 11px; color: var(--soft); }
+.hoy2-meta-icono { display: inline-flex; width: 14px; height: 14px; vertical-align: -2px; }
+.hoy2-meta-icono svg { width: 100%; height: 100%; stroke: currentColor; }
+/* Flecha de swipe (Roger 2026-07-17, 5ª iteración): anclada al marco derecho
+   de la card entera, centrada a media altura — ya no inline junto al tiempo. */
+.hoy-flecha-inline {
+  position: absolute; top: 50%; right: -17.5px; transform: translateY(-50%);
+  border: none; background: none; cursor: pointer;
+  color: var(--muted); font-size: 24px; line-height: 1;
+  width: 35px; height: 35px; display: flex; align-items: center; justify-content: center;
+}
+.hoy2 .btn-sorprendeme { margin-top: 12px; padding-top: var(--space-1); min-height: 28px; }
+/* Batch cooking (desactivado) + Compra, dos columnas como en la referencia */
+.fila-batch-compra { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 6px; align-items: stretch; }
+/* Semana resuelta (batch) + Compra semanal (Roger 2026-07-17, 4ª iteración —
+   fidelidad literal a la referencia): MISMA escala tipográfica y de botón en
+   las dos cards, iconos por paso, botón SÓLIDO con flecha (no outline). */
+/* min-height EXPLÍCITA e idéntica — el stretch del grid no bastaba: el
+   contenido intrínseco de cada card difiere y quedaban 16px de diferencia
+   (Roger 2026-07-17, 4ª iteración: "el tamaño de las cajas tiene que ser igual") */
+/* altura EXPLÍCITA (no min-height ni stretch del grid — el stretch no daba
+   igualdad exacta por los márgenes internos distintos de cada card, Roger
+   2026-07-17, 4ª iteración) — determinista, no depende del contenido */
+/* 172px (Roger 2026-07-17, 6ª iteración): los 264px venían de una sesión
+   previa sin verificar contra la foto — comparado en vivo, el texto quedaba
+   enorme para el tamaño real de la caja. Recalculado junto con las fuentes
+   de dentro, no solo la caja sola. */
+.card-batch, .card-compra-resumen { padding: 10px; display: flex; flex-direction: column; height: 140px; box-sizing: border-box; min-width: 0; }
+.card-batch { background: #F7F4ED; margin-bottom: 0; }
+.card-compra-resumen { background: #EAF3EC; margin-bottom: 0; position: relative; }
+.card-compra-resumen-ilustracion { position: absolute; top: 32px; right: 6px; width: 34px; height: 34px; }
+.card-compra-resumen-ilustracion svg { width: 100%; height: 100%; display: block; }
+.card-batch-eyebrow, .card-compra-resumen-eyebrow {
+  font-size: 8px; font-weight: 700; letter-spacing: .2px; text-transform: uppercase; white-space: nowrap;
+  margin: 0; display: flex; align-items: center; gap: 5px;
+}
+.card-batch-eyebrow { color: var(--gold); }
+.card-compra-resumen-eyebrow { color: #2E7D32; }
+.card-batch-titulo, .card-compra-resumen-titulo {
+  font-family: var(--font-ui); font-weight: 700; font-size: 11px; line-height: 1.25;
+  color: var(--ink); margin: 3px 0 5px;
+}
+.card-batch-pasos { display: flex; align-items: center; justify-content: space-between; gap: 5px; margin-bottom: 5px; flex: 1; }
+/* flex:1 + min-width:0: sin esto, "preparaciones" (palabra larga sin espacios)
+   fija un ancho mínimo que empuja el 3er paso fuera de la card (el bug real
+   del corte "días cub…", Roger 2026-07-17, 4ª iteración) */
+.card-batch-paso { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 8px; color: var(--soft); line-height: 1.15; text-align: center; }
+.card-batch-paso-icono { width: 14px; height: 14px; color: var(--ink); }
+.card-batch-paso-icono svg { width: 100%; height: 100%; stroke: currentColor; }
+.card-batch-paso b { display: block; font-size: 14px; color: var(--ink); font-weight: 700; line-height: 1.3; }
+.card-batch-flecha { color: var(--muted); font-size: 10px; flex-shrink: 0; align-self: center; }
+.card-compra-resumen-barra { height: 4px; border-radius: 999px; background: rgba(46,125,50,.15); overflow: hidden; margin: 3px 0 5px; }
+.card-compra-resumen-barra span { display: block; height: 100%; background: #2E7D32; border-radius: 999px; }
+.card-compra-resumen-sub { display: flex; align-items: center; gap: 4px; font-size: 9px; color: var(--soft); margin: 0 0 5px; padding-right: 14px; }
+.card-compra-resumen-sub-icono { width: 12px; height: 12px; flex-shrink: 0; }
+.card-compra-resumen-sub-icono svg { width: 100%; height: 100%; stroke: currentColor; }
+/* botón SÓLIDO con flecha — mismo tamaño en las dos cards, solo cambia color */
+/* altura FIJA (no min-height): "Ver lista de la compra" envuelve a 2 líneas
+   y "Ver plan de Batch Cooking" a 1 — con height fijo miden igual los dos
+   pase lo que pase con el ajuste de línea (Roger 2026-07-17, 4ª iteración) */
+.card-batch-btn {
+  width: 100%; padding: 4px 6px; font-size: 10px; font-weight: 700; line-height: 1.2;
+  height: 20px; flex-shrink: 0; margin-top: auto; border: none; border-radius: 10px; color: #fff;
+  display: flex; align-items: center; justify-content: center; gap: 4px; text-align: center;
+  opacity: 0.5;
+}
+.card-batch-btn-solido { background: var(--ink); }
+.card-batch-btn-solido[disabled] { cursor: not-allowed; }
+.card-batch-btn-verde { background: #2E7D32; }
+
+.bloque-vistazo { margin-bottom: 12px; }
+.bloque-vistazo-titulo { display: flex; justify-content: space-between; align-items: baseline; font-family: var(--font-ui); font-size: 11px; font-weight: 700; color: var(--ink); margin: 0 0 6px; }
+.bloque-vistazo-link { background: none; border: none; font-size: 9px; font-weight: 600; color: var(--gold); cursor: pointer; padding: 0; }
+.fila-vistazo { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+.dia-vistazo { background: var(--panel); border: none; width: 100%; cursor: pointer; border-radius: 9px; padding: 5px 2px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.dia-vistazo-hoy { border: 1.5px solid var(--gold); }
+.dia-vistazo-letra { font-size: 9px; font-weight: 700; color: var(--soft); }
+.dia-vistazo-iconos { font-size: 11px; }
+
+.aviso-equilibrio { display: flex; align-items: center; gap: 8px; background: var(--elev2); border-radius: 12px; padding: 8px 12px; }
+.aviso-equilibrio-icono { width: 22px; height: 22px; border-radius: 999px; background: var(--ink); color: var(--gold-soft); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 10px; }
+.aviso-equilibrio-texto { flex: 1; font-size: 9px; color: var(--soft); margin: 0; }
+.aviso-equilibrio .pill-resumen { font-size: 9px; height: 18px; padding: 0 10px; display: flex; align-items: center; justify-content: center; }
 
 /* ============================================================
    Responsive — a partir de tablet, contenido centrado con más aire

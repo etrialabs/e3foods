@@ -22,7 +22,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/styles.css?v=42">
+<link rel="stylesheet" href="css/styles.css?v=43">
 </head>
 <body>
 
@@ -46,9 +46,9 @@
     (function () {
       var img = document.getElementById('landing-hero-img');
       img.onerror = function () {
-        if (img.src.indexOf('portada-0.jpg') === -1) img.src = 'assets/portada-0.jpg?v=42';
+        if (img.src.indexOf('portada-0.jpg') === -1) img.src = 'assets/portada-0.jpg?v=43';
       };
-      img.src = 'assets/portada-' + (Math.floor(Date.now() / 1800000) % 3) + '.jpg?v=42';
+      img.src = 'assets/portada-' + (Math.floor(Date.now() / 1800000) % 3) + '.jpg?v=43';
     })();
   </script>
   <button type="button" class="btn-primary landing-cta" data-action="empezar">Empezar</button>
@@ -100,9 +100,9 @@
 
 <!-- Banco de recetas (82 plantillas + postres). Si no carga (404/sintaxis), app.js muestra
      un error visible en vez de arrancar degradado — no hay banco de respaldo. -->
-<script src="data/recetas.js?v=42"></script>
-<script src="js/engine.js?v=42"></script>
-<script src="js/ui.js?v=42"></script>
+<script src="data/recetas.js?v=43"></script>
+<script src="js/engine.js?v=43"></script>
+<script src="js/ui.js?v=43"></script>
 <!-- Firebase compat (multiusuario, Roger 2026-07-14) — build "compat" a propósito:
      el resto del bundle son scripts planos sin módulos ES, esto evita reestructurar
      todo a type="module" solo por esto. -->
@@ -110,7 +110,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-check-compat.js"></script>
-<script src="js/sync.js?v=42"></script>
-<script src="js/app.js?v=42"></script>
+<script src="js/sync.js?v=43"></script>
+<script src="js/app.js?v=43"></script>
 </body>
 </html>

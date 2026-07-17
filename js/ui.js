@@ -215,100 +215,90 @@
     };
   }
 
-  function renderSlot(estado, banco, plan, diaIndex, tipoComida) {
+  // Card de comida/cena — pieza ÚNICA compartida por Foco (una a la vez, con
+  // flecha de swipe) y la vista clásica (comida+cena juntas, sin flecha:
+  // Roger 2026-07-18, "no puede copiar el código de la card de FOCO
+  // directamente en lugar de cambiar pieza a pieza" — antes eran dos
+  // funciones paralelas que se iban desincronizando (postre, espaciados).
+  // opts.conFlecha=true → añade el botón de flip y el id de swipe (solo
+  // tiene sentido cuando se muestra UNA comida a la vez, nunca con las dos
+  // juntas: el id sería duplicado en el DOM).
+  function renderCardComida(estado, banco, plan, diaIndex, meal, opts) {
+    opts = opts || {};
     var dia = plan.dias[diaIndex];
-    var slot = dia ? dia[tipoComida] : null;
-    var mesa = comensalesDeSlot(estado, plan, diaIndex, tipoComida);
-    var miembrosDelSlot = mesa.miembrosDelSlot;
-    var presentes = mesa.presentes;
-    var etiqueta = tipoComida === 'comida' ? 'COMIDA' : 'CENA';
-    var icono = tipoComida === 'comida' ? ICONO_SOL : ICONO_LUNA;
+    var slot = dia ? dia[meal] : null;
+    var mesa = comensalesDeSlot(estado, plan, diaIndex, meal);
+    var icono = meal === 'comida' ? ICONO_SOL : ICONO_LUNA;
+    var etiqueta = meal === 'comida' ? 'COMIDA' : 'CENA';
+    var otra = meal === 'comida' ? 'cena' : 'comida';
+
     // Badge "nuevo para probar" (tramo 1): plantilla sin rastro en el historial
     // de rotación. Solo cuando ya existe historial — en una familia recién dada
     // de alta todo sería "nuevo" y el badge no significaría nada.
     var historialRot = estado.historialPlantillas || {};
     var esNueva = !!slot && !!Object.keys(historialRot).length && !historialRot[slot.plantillaId];
     var badgeNuevo = esNueva ? '<span class="badge-nuevo">Nuevo para probar</span>' : '';
-    var cabeceraTipo = '<div class="card-comida-head"><span class="card-comida-icono">' + icono + '</span><span class="card-comida-etiqueta">' + etiqueta + '</span>' + badgeNuevo + '</div>';
 
-    var avataresHtml = miembrosDelSlot.map(function (m) {
-      var estaPresente = presentes.some(function (p) { return p.id === m.id; });
-      return '<span class="avatar-wrap">' +
-        '<button type="button" class="avatar ' + (estaPresente ? 'avatar-presente' : 'avatar-ausente') + '"' + avatarEstilo(m) + ' ' +
-        'data-action="toggle-presente" data-dia="' + diaIndex + '" data-tipo="' + tipoComida + '" data-miembro="' + m.id + '" ' +
+    var avataresHtml = mesa.miembrosDelSlot.map(function (m) {
+      var estaPresente = mesa.presentes.some(function (p) { return p.id === m.id; });
+      return '<span class="avatar-wrap avatar-wrap-sm">' +
+        '<button type="button" class="avatar avatar-sm ' + (estaPresente ? 'avatar-presente' : 'avatar-ausente') + '"' + avatarEstilo(m) + ' ' +
+        'data-action="toggle-presente" data-dia="' + diaIndex + '" data-tipo="' + meal + '" data-miembro="' + m.id + '" ' +
         'aria-pressed="' + estaPresente + '" aria-label="' + escapeHtml(m.nombre) + (estaPresente ? ', en casa. Toca para marcar que hoy no come.' : ', fuera hoy. Toca para marcar que sí come.') + '">' +
         avatarInner(m) + '</button>' +
         '<span class="avatar-badge ' + (estaPresente ? 'avatar-badge-ok' : 'avatar-badge-no') + '" aria-hidden="true">' + (estaPresente ? '✓' : '−') + '</span>' +
         '</span>';
     }).join('');
+    var cabecera = '<div class="hoy2-cab"><span class="hoy2-tipo">' + icono + etiqueta + '</span>' + badgeNuevo +
+      (avataresHtml ? '<span class="avatares avatares-sm">' + avataresHtml + '</span>' : '') + '</div>';
 
-    if (!miembrosDelSlot.length) {
-      return '<section class="card card-slot card-vacia">' + cabeceraTipo +
-        '<p class="card-msg">Nadie come en casa (' + (tipoComida === 'comida' ? 'mediodía' : 'noche') + ').</p>' +
-        '</section>';
+    var plantilla = slot ? E.plantillaPorId(banco, estado, slot.plantillaId) : null;
+    var postre = meal === 'cena' ? E.postreDelDia(banco, dia.fecha, diaIndex) : null;
+    var postreTexto = postre
+      ? (postre.tipo === 'tradicional' ? 'Sugerencia de postre: ' + postre.nombre + ' (receta de finde)' : 'De postre: ' + postre.nombre)
+      : '';
+
+    var cuerpo, flechaHtml = '', vacia = '';
+    if (!mesa.miembrosDelSlot.length) {
+      vacia = ' card-vacia';
+      cuerpo = '<p class="card-msg">Nadie come en casa (' + (meal === 'comida' ? 'mediodía' : 'noche') + ').</p>';
+    } else if (!slot || !plantilla) {
+      vacia = ' card-vacia';
+      cuerpo = '<p class="card-msg">No encontramos un plato que encaje con los gustos/vetos actuales.</p>' +
+        '<button type="button" class="btn-secondary btn-cambiar" data-action="abrir-cambiar" data-dia="' + diaIndex + '" data-tipo="' + meal + '">Elegir plato</button>';
+    } else {
+      var resuelto = E.resolverPlato(plantilla, slot.seleccion, mesa.comensales, banco, slot.adaptaciones);
+      var nombreSplit = splitNombrePlato(resuelto.nombre);
+      var kcalMedio = mesa.presentes.length ? Math.round(resuelto.kcalTotal / mesa.presentes.length) : 0;
+      var fotoHtml = plantilla.foto ? '<div class="hoy2-foto" style="background-image:url(\'' + escapeHtml(plantilla.foto) + '\')"></div>' : '';
+      var adaptacionesVisibles = (slot.adaptaciones || []).filter(function (a) {
+        return mesa.presentes.some(function (p) { return p.id === a.miembroId; });
+      }).map(function (a) {
+        var m = (estado.familia || []).find(function (mm) { return mm.id === a.miembroId; });
+        var ing = banco.ingredientes[a.valor];
+        return '· ' + escapeHtml(m ? m.nombre : '?') + ': ' + escapeHtml(ing ? ing.nombre : a.valor);
+      }).join(' &nbsp; ');
+      if (opts.conFlecha) flechaHtml = '<button type="button" class="hoy-flecha-inline" data-action="foco-flip-comida" data-comida="' + otra + '" aria-label="Ver la otra comida">›</button>';
+      cuerpo = '<div class="hoy2-fila" data-action="abrir-receta" data-dia="' + diaIndex + '" data-tipo="' + meal + '" role="button" tabindex="0" aria-label="Ver receta completa">' +
+        fotoHtml +
+        '<div class="hoy2-info">' +
+        '<p class="hoy2-titulo">' + escapeHtml(nombreSplit.titulo) + (nombreSplit.subtitulo ? '<span class="hoy2-subtitulo">' + escapeHtml(nombreSplit.subtitulo) + '</span>' : '') + '</p>' +
+        (postreTexto ? '<p class="hoy2-postre">' + escapeHtml(postreTexto) + '</p>' : '') +
+        (adaptacionesVisibles ? '<p class="hoy2-postre">' + adaptacionesVisibles + '</p>' : '') +
+        (!mesa.presentes.length ? '<p class="card-msg">Nadie confirmado para esta comida.</p>' : '') +
+        '<div class="hoy2-meta-fila"><span class="hoy2-meta">' +
+        (mesa.presentes.length ? '<span class="hoy2-meta-icono">' + ICONO_FUEGO + '</span>~' + kcalMedio + ' kcal · ' : '') +
+        '<span class="hoy2-meta-icono">' + ICONO_RELOJ + '</span>' + (plantilla.tiempo_min || '?') + ' min</span>' +
+        '</div></div></div>' +
+        '<button type="button" class="btn-sorprendeme" data-action="abrir-cambiar" data-dia="' + diaIndex + '" data-tipo="' + meal + '">✨ Me apetece otra cosa</button>';
     }
 
-    if (!slot) {
-      return '<section class="card card-slot card-vacia" data-dia="' + diaIndex + '" data-tipo="' + tipoComida + '">' + cabeceraTipo +
-        '<p class="card-msg">No encontramos un plato que encaje con los gustos/vetos actuales.</p>' +
-        '<div class="avatares" role="group" aria-label="Quién come">' + avataresHtml + '</div>' +
-        '<button type="button" class="btn-secondary btn-cambiar" data-action="abrir-cambiar" data-dia="' + diaIndex + '" data-tipo="' + tipoComida + '">Elegir plato</button>' +
-        '</section>';
-    }
+    return '<section class="card hoy2' + vacia + '"' + (opts.conFlecha ? ' id="hoy-swipe"' : '') + ' data-dia="' + diaIndex + '" data-tipo="' + meal + '" data-meal="' + meal + '">' +
+      cabecera + cuerpo + flechaHtml + '</section>';
+  }
 
-    var plantilla = E.plantillaPorId(banco, estado, slot.plantillaId);
-    if (!plantilla) {
-      return '<section class="card card-slot card-vacia"><p class="card-msg">Receta no disponible.</p></section>';
-    }
-
-    var resuelto = E.resolverPlato(plantilla, slot.seleccion, mesa.comensales, banco, slot.adaptaciones);
-    var adaptacionesVisibles = (slot.adaptaciones || []).filter(function (a) {
-      return presentes.some(function (p) { return p.id === a.miembroId; });
-    }).map(function (a) {
-      var m = (estado.familia || []).find(function (mm) { return mm.id === a.miembroId; });
-      var ing = banco.ingredientes[a.valor];
-      return '· ' + escapeHtml(m ? m.nombre : '?') + ': ' + escapeHtml(ing ? ing.nombre : a.valor);
-    }).join(' &nbsp; ');
-
-    var kcalMedio = presentes.length ? Math.round(resuelto.kcalTotal / presentes.length) : 0;
-    // proteína/comensal: sin dato todavía (no existe en el banco, ver 00_Contexto_Claude/STATUS.md)
-    // — se omite del meta en vez de inventar una cifra.
-    var metaKcal = presentes.length ? '<span class="card-comida-meta-icono">' + ICONO_FUEGO + '</span>~' + kcalMedio + ' kcal' : '';
-    var metaTiempo = plantilla.tiempo_min ? '<span class="card-comida-meta-icono">' + ICONO_RELOJ + '</span>' + plantilla.tiempo_min + ' min' : '';
-    var meta = metaKcal + (presentes.length && plantilla.tiempo_min ? ' · ' : '') + metaTiempo;
-
-    var nombreSplit = splitNombrePlato(resuelto.nombre);
-    var btnSorprendeme = '<button type="button" class="btn-sorprendeme" data-action="abrir-cambiar" data-dia="' + diaIndex + '" data-tipo="' + tipoComida + '">✨ Me apetece otra cosa</button>';
-
-    // Foto a la izquierda + contenido a la derecha en fila (Roger 2026-07-14,
-    // 2ª corrección: ni lateral-40% ni foto-arriba, la referencia visual
-    // externa lleva la foto como miniatura a la izquierda). Botón como franja
-    // propia, discreta, debajo de toda la fila — no flota sobre la foto ni
-    // compite en peso visual con el plato.
-    var fotoHtml = plantilla.foto ? '<div class="card-foto-izq" style="background-image:url(\'' + escapeHtml(plantilla.foto) + '\')"></div>' : '';
-
-    // Header COMIDA/CENA siempre arriba-izquierda de la card entera, no
-    // dentro de la columna de contenido (Roger 2026-07-14, 3ª corrección) —
-    // así el título del plato es lo primero de esa columna y queda alineado
-    // con el borde superior de la foto, no debajo del eyebrow.
-    var contenido = '<div class="card-comida-contenido">' +
-      '<h2 class="card-comida-titulo">' + escapeHtml(nombreSplit.titulo) + '</h2>' +
-      (nombreSplit.subtitulo ? '<p class="card-comida-subtitulo">' + escapeHtml(nombreSplit.subtitulo) + '</p>' : '') +
-      (adaptacionesVisibles ? '<p class="card-adaptaciones">' + adaptacionesVisibles + '</p>' : '') +
-      (!presentes.length ? '<p class="card-msg">Nadie confirmado para esta comida.</p>' : '') +
-      (meta ? '<p class="card-comida-meta">' + meta + '</p>' : '') +
-      '<div class="avatares" role="group" aria-label="Quién come">' + avataresHtml + '</div>' +
-      '</div>';
-
-    // Tocar la foto o el contenido abre la receta completa (Roger 2026-07-14:
-    // el banco tiene ingredientes-por-comensales y pasos, pero no se veían en
-    // ningún sitio). Los avatares y el CTA tienen su propio data-action más
-    // específico y ganan el click por delegación — sin conflicto.
-    return '<section class="card card-slot" data-dia="' + diaIndex + '" data-tipo="' + tipoComida + '">' +
-      cabeceraTipo +
-      '<div class="card-comida-fila" data-action="abrir-receta" data-dia="' + diaIndex + '" data-tipo="' + tipoComida + '" role="button" tabindex="0" aria-label="Ver receta completa">' + fotoHtml + contenido + '</div>' +
-      btnSorprendeme +
-      '</section>';
+  function renderSlot(estado, banco, plan, diaIndex, tipoComida) {
+    return renderCardComida(estado, banco, plan, diaIndex, tipoComida, { conFlecha: false });
   }
 
   // Feedback loop (P1, 2026-07-16): "¿qué tal?" post-comida, un toque por slot
@@ -412,7 +402,7 @@
   // seleccionado en las píldoras (esas son para ojear la semana, no para
   // redefinir qué es "hoy"). Ingrediente que falta = clicable → COMPRA/hoy
   // (Roger 2026-07-14: reutiliza la vista existente, sin pieza nueva de estado).
-  function renderSaludoSemana(estado, plan, banco, miembroDispositivoId) {
+  function renderSaludoSemana(estado, plan, banco, miembroDispositivoId, sinCardIA) {
     // "Quién soy yo en este móvil" (Roger 2026-07-14): preferencia LOCAL al
     // dispositivo (localStorage aparte, ver DISPOSITIVO_KEY en app.js) — no
     // viaja con la familia cuando haya sync, cada móvil recuerda la suya.
@@ -421,6 +411,29 @@
     var miembroDispositivo = miembroDispositivoId && familia.filter(function (m) { return m.id === miembroDispositivoId; })[0];
     var nombre = (miembroDispositivo || familia[0] || {}).nombre || '';
     var titulo = '<h1 class="saludo-titulo">' + saludoHora() + (nombre ? ', ' + escapeHtml(nombre) : '') + '.</h1>';
+
+    // sinCardIA (modo Foco, Roger 2026-07-17): la referencia no lleva la card
+    // oscura de "faltan ingredientes" — esa señal la da ahora la card de
+    // Compra semanal, más abajo. En su lugar: subtítulo con el rango de la
+    // semana + pill "Ver semana" (drill-in a la vista clásica), en la misma
+    // fila que el saludo. En Clásica se mantiene igual que siempre.
+    if (sinCardIA) {
+      var subtitulo = '';
+      if (plan && plan.dias && plan.dias.length) {
+        var diaIni = plan.dias[0], diaFin = plan.dias[plan.dias.length - 1];
+        var mesFin = fechaCorta(diaFin.fecha).split(' ')[1];
+        subtitulo = 'Semana del ' + new Date(diaIni.fecha + 'T00:00:00').getDate() + ' – ' +
+          new Date(diaFin.fecha + 'T00:00:00').getDate() + ' ' + mesFin;
+      }
+      return '<section class="saludo-semana saludo-semana-foco">' +
+        '<div class="saludo-semana-fila">' +
+        '<div class="saludo-semana-textos">' + titulo +
+        (subtitulo ? '<p class="saludo-semana-sub">' + escapeHtml(subtitulo) + '</p>' : '') +
+        '</div>' +
+        '<button type="button" class="pill-resumen" data-action="ver-semana-clasica">Semana</button>' +
+        '</div>' +
+        '</section>';
+    }
 
     // Roger 2026-07-14: solo 2 frases fijas, sin listar el detalle de lo que
     // falta aquí (eso vive en Compra) — "algunos ingredientes" es el link,
@@ -440,30 +453,33 @@
   }
 
   // ---------------------------------------------------------------
-  // Vista SEMANA — dos modos (Roger 2026-07-17), elegibles con un toggle que
-  // se guarda por dispositivo (ver obtenerModoVista en app.js):
-  //   'foco'   → una sola card, la próxima comida de hoy; swipe comida↔cena.
-  //              La expresión más pura de la promesa (0 decisiones al abrir).
+  // Vista SEMANA — dos modos (Roger 2026-07-17), 'foco' por defecto en cada
+  // entrada al tab (vistaSemanaModo en app.js, variable de sesión — ya no
+  // localStorage):
+  //   'foco'   → home tipo informe (réplica de la referencia de Roger, sin el
+  //              anillo de "% semana"): equilibrio + HOY (UNA comida —
+  //              comida o cena, con flecha lateral para pasar a la otra)
+  //              + compra + semana de un vistazo + aviso si algo desequilibra.
+  //              "Ver semana" (en el saludo) hace drill-in a la clásica.
   //   'semana' → la vista clásica: píldoras L-D + comida+cena del día elegido
-  //              (Hoy se retiró como tab aparte, Roger 2026-07-13).
+  //              (Hoy se retiró como tab aparte, Roger 2026-07-13). Su pill
+  //              "Ver informe" vuelve a la home Foco.
+  // Todo dato mostrado en Foco sale de datos reales del plan (resumenCuotasSemana,
+  // listaCompra) — nada inventado. Dos piezas de la referencia NO se replican
+  // por eso: el bloque "Batch Cooking" (90 min/6 preparaciones/5 días — la
+  // feature no existe, es F4 de MOTOR_RECETAS) y la sugerencia de IA con swap
+  // concreto ("sustituye el jueves por merluza" — exigiría lógica de detección+
+  // sustitución que no está construida). El aviso de equilibrio si se sustituye
+  // por un mensaje honesto derivado de resumenCuotasSemana, sin plato inventado.
   // ---------------------------------------------------------------
 
-  // Toggle Hoy/Semana — va "al lado de Ver resumen" (Roger), presente en ambos
-  // modos para poder alternar. "Hoy"/"Semana" son las etiquetas de usuario;
-  // 'foco'/'semana' los nombres internos.
-  function renderToggleVista(modo) {
-    return '<span class="toggle-vista" role="group" aria-label="Vista">' +
-      '<button type="button" class="toggle-vista-btn' + (modo === 'foco' ? ' toggle-vista-activo' : '') + '" data-action="vista-modo" data-modo="foco" aria-pressed="' + (modo === 'foco') + '">Hoy</button>' +
-      '<button type="button" class="toggle-vista-btn' + (modo === 'semana' ? ' toggle-vista-activo' : '') + '" data-action="vista-modo" data-modo="semana" aria-pressed="' + (modo === 'semana') + '">Semana</button>' +
-      '</span>';
-  }
-
-  function filaVista(fechaHtml, modo) {
+  // filaVista — SOLO la usa ya la vista clásica (píldoras); Foco tiene su
+  // propio saludo con el pill "Ver semana" (renderSaludoSemana, sinCardIA).
+  // Su pill vuelve a la home Foco.
+  function filaVista(fechaHtml) {
     return '<p class="vista-fecha-fila">' +
       '<span class="vista-fecha">' + fechaHtml + '</span>' +
-      '<span class="vista-fecha-acciones">' + renderToggleVista(modo) +
-        '<button type="button" class="pill-resumen" data-action="abrir-resumen-semana">Ver resumen semanal</button>' +
-      '</span>' +
+      '<button type="button" class="pill-resumen" data-action="ver-informe-foco">Ver informe</button>' +
       '</p>';
   }
 
@@ -472,7 +488,7 @@
       return renderAppBar() + '<div class="vista-body"><p class="card-msg">Todavía no hay semana generada.</p></div>';
     }
     var hoyIdx = E.diaIndexDesdeFecha(plan, hoyISO());
-    if (modoVista === 'foco') return renderSemanaFoco(estado, plan, banco, miembroDispositivoId, hoyIdx, focoComida);
+    if (modoVista === 'foco') return renderSemanaFoco(estado, plan, banco, miembroDispositivoId, hoyIdx, focoComida, diaSeleccionado);
 
     var idx = (diaSeleccionado != null && plan.dias[diaSeleccionado]) ? diaSeleccionado : (hoyIdx === -1 ? 0 : hoyIdx);
     var pildoras = plan.dias.map(function (dia, i) {
@@ -489,34 +505,235 @@
     var fechaHtml = NOMBRES_DIA[idx] + ' ' + fechaCorta(dia.fecha) + (idx === hoyIdx ? ' <span class="badge badge-hoy">HOY</span>' : '');
     return renderAppBar() + renderSaludoSemana(estado, plan, banco, miembroDispositivoId) + filaPildoras +
       '<div class="vista-body" data-dia-idx="' + idx + '">' +
-      filaVista(fechaHtml, 'semana') +
+      filaVista(fechaHtml) +
       renderColeDia(estado, plan, idx, hoyIdx) +
       renderSlot(estado, banco, plan, idx, 'comida') +
       renderSlot(estado, banco, plan, idx, 'cena') +
-      renderPostreDia(estado, banco, plan, idx) +
       '</div>';
   }
 
-  // Modo Foco: una card (la próxima comida de hoy) + swipe/tap comida↔cena.
-  // `meal` llega ya resuelto desde app.js (próxima por hora, o lo que el usuario
-  // deslizó). El postre se muestra solo con la cena (es el postre del día).
-  function renderSemanaFoco(estado, plan, banco, miembroDispositivoId, hoyIdx, meal) {
-    var idx = hoyIdx === -1 ? 0 : hoyIdx;
-    var dia = plan.dias[idx];
-    meal = (meal === 'cena') ? 'cena' : 'comida';
-    var otra = meal === 'comida' ? 'cena' : 'comida';
-    var fechaHtml = (idx === hoyIdx ? '<span class="badge badge-hoy">HOY</span> ' : '') + NOMBRES_DIA[idx] + ' ' + fechaCorta(dia.fecha);
-    var dots = ['comida', 'cena'].map(function (t) { return '<span class="foco-dot' + (t === meal ? ' foco-dot-activo' : '') + '"></span>'; }).join('');
-    return renderAppBar() + renderSaludoSemana(estado, plan, banco, miembroDispositivoId) +
-      '<div class="vista-body">' +
-      filaVista(fechaHtml, 'foco') +
-      renderColeDia(estado, plan, idx, hoyIdx) +
-      '<div class="foco-swipe" id="foco-swipe" data-meal="' + meal + '">' + renderSlot(estado, banco, plan, idx, meal) + '</div>' +
-      '<div class="foco-nav">' +
-      '<span class="foco-dots" aria-hidden="true">' + dots + '</span>' +
-      '<button type="button" class="pill-resumen foco-flip" data-action="foco-cambiar-comida" data-comida="' + otra + '">Ver ' + (otra === 'comida' ? 'la comida' : 'la cena') + ' ›</button>' +
+  // ---------------------------------------------------------------
+  // Modo Foco — piezas del informe (Roger 2026-07-17)
+  // ---------------------------------------------------------------
+
+  var ICONO_CATEGORIA = {
+    'pescado-blanco': '🐟', 'pescado-azul': '🐟', marisco: '🦐',
+    huevo: '🥚', 'carne-roja': '🥩', 'carne-blanca': '🍗',
+    legumbre: '🌱', otro: '🍽️'
+  };
+  var ETIQUETA_CUOTA = { legumbre: 'Legumbres', 'pescado-total': 'Pescado', 'carne-roja': 'Carne roja', huevo: 'Huevos' };
+  var COLOR_CUOTA = { legumbre: 'verde', 'pescado-total': 'azul', 'carne-roja': 'rojo', huevo: 'amarillo' };
+
+  // Icono representativo de un plato resuelto: la categoría del primer
+  // ingrediente del eje proteína (si existe), si no el primero de cualquier eje.
+  function iconoDePlato(seleccion, banco) {
+    var ids = idsUnicosSeleccionOrdenados(seleccion);
+    for (var i = 0; i < ids.length; i++) {
+      var ing = banco.ingredientes[ids[i]];
+      if (ing && ICONO_CATEGORIA[ing.categoria]) return ICONO_CATEGORIA[ing.categoria];
+    }
+    return ICONO_CATEGORIA.otro;
+  }
+
+  function idsUnicosSeleccionOrdenados(seleccion) {
+    var orden = ['proteina', 'hidrato', 'verdura'];
+    var vistos = {}, lista = [];
+    orden.concat(Object.keys(seleccion || {})).forEach(function (eje) {
+      var id = seleccion && seleccion[eje];
+      if (id && !vistos[id]) { vistos[id] = true; lista.push(id); }
+    });
+    return lista;
+  }
+
+  // Iconos blancos de los chips de equilibrio (Roger 2026-07-17): la referencia
+  // usa icono blanco sobre círculo sólido de color — un emoji no se puede
+  // recolorear a blanco por CSS, así que estos 4+1 son SVG de línea propios
+  // (stroke:currentColor), solo para este componente.
+  // Iconos de los chips de equilibrio (Roger 2026-07-17): los SVG de línea
+  // dibujados a mano resultaron irreconocibles (4ª iteración) — vuelta a
+  // emoji (ya usados en ICONO_CATEGORIA en otras partes de la app), que sí
+  // se identifican de un vistazo, sobre el círculo sólido de color.
+  var ICONO_CHIP = { legumbre: '🌱', pescado: '🐟', 'carne-roja': '🥩', huevo: '🥚', variedad: '🔀' };
+
+  // Chips de equilibrio semanal (Roger 2026-07-17): 4 cuotas reales del banco
+  // (`banco.categorias_cuota`) + 1 quinta calculada, "Variedad" (plantillas
+  // únicas / huecos rellenados esta semana) — no es una cuota AESAN, es un
+  // conteo honesto sobre el propio plan, coherente con la promesa de variedad.
+  // Reutiliza EXACTAMENTE E.resumenCuotasSemana — el mismo dato que ya arma
+  // el sheet "Ver resumen semanal" — para no divergir de lo que decide el motor.
+  function renderEquilibrioChips(estado, plan, banco) {
+    var resumen = E.resumenCuotasSemana(plan, banco);
+    var chips = ['legumbre', 'pescado-total', 'carne-roja', 'huevo'].map(function (clave) {
+      var fila = resumen.filter(function (r) { return r.categoria === clave; })[0];
+      if (!fila) return '';
+      var objetivo = fila.max_sem != null ? fila.max_sem : fila.min_sem;
+      var pct = objetivo ? Math.min(100, Math.round(fila.cuenta / objetivo * 100)) : 0;
+      var color = COLOR_CUOTA[clave];
+      var iconoClave = clave === 'pescado-total' ? 'pescado' : clave;
+      return '<div class="chip-equilibrio">' +
+        '<span class="chip-equilibrio-icono chip-equilibrio-solido-' + color + '">' + ICONO_CHIP[iconoClave] + '</span>' +
+        '<span class="chip-equilibrio-nombre">' + ETIQUETA_CUOTA[clave] + '</span>' +
+        '<span class="chip-equilibrio-fraccion chip-equilibrio-fraccion-' + color + '">' + fila.cuenta + ' / ' + objetivo + '</span>' +
+        '<span class="chip-equilibrio-barra"><span class="chip-equilibrio-barra-fill chip-equilibrio-barra-' + color + '" style="width:' + pct + '%"></span></span>' +
+        '</div>';
+    }).join('');
+
+    // Variedad: plantillas únicas sobre huecos rellenados — dato del propio plan
+    var idsUsados = [], huecos = 0;
+    plan.dias.forEach(function (dia) {
+      ['comida', 'cena'].forEach(function (t) {
+        if (dia[t]) { huecos++; if (idsUsados.indexOf(dia[t].plantillaId) === -1) idsUsados.push(dia[t].plantillaId); }
+      });
+    });
+    var pctVariedad = huecos ? Math.min(100, Math.round(idsUsados.length / huecos * 100)) : 0;
+    var chipVariedad = '<div class="chip-equilibrio">' +
+      '<span class="chip-equilibrio-icono chip-equilibrio-solido-morado">' + ICONO_CHIP.variedad + '</span>' +
+      '<span class="chip-equilibrio-nombre">Variedad</span>' +
+      '<span class="chip-equilibrio-fraccion chip-equilibrio-fraccion-morado">' + idsUsados.length + ' / ' + huecos + '</span>' +
+      '<span class="chip-equilibrio-barra"><span class="chip-equilibrio-barra-fill chip-equilibrio-barra-morado" style="width:' + pctVariedad + '%"></span></span>' +
+      '</div>';
+
+    var totalCumplidas = resumen.filter(function (r) { return ['legumbre', 'pescado-total', 'carne-roja', 'huevo'].indexOf(r.categoria) !== -1 && r.cumplido; }).length
+      + (idsUsados.length === huecos && huecos > 0 ? 1 : 0);
+    return '<section class="bloque-equilibrio">' +
+      '<p class="bloque-equilibrio-titulo">Equilibrio semanal<span class="bloque-equilibrio-ok">' + totalCumplidas + ' de 5 categorías OK</span></p>' +
+      '<div class="fila-chips-equilibrio">' + chips + chipVariedad + '</div>' +
+      '</section>';
+  }
+
+  // Card única de HOY (Roger 2026-07-17, 2ª iteración): UNA sola comida a la
+  // vez (antes mostraba comida+cena juntas) — el parámetro `meal` decide cuál
+  // (comida antes de las 16h / cena después, o lo que el usuario eligió con la
+  // flecha). Flecha lateral circular para pasar a la otra comida — Roger
+  // rechazó explícitamente un botón inferior tipo "Ver la cena ›" ("come
+  // pantalla"), así que el único control de cambio es esa flecha (y el swipe
+  // horizontal sobre la card, ver #hoy-swipe en app.js).
+  // Card HOY (Roger 2026-07-17): UNA sola comida (la próxima por hora), con
+  // los mismos datos que la card clásica (foto, título, kcal, tiempo, quién
+  // come) pero en formato compacto propio de Foco — avatares arriba a la
+  // altura de la etiqueta COMIDA/CENA (Roger: "podrían ir en la parte
+  // superior, alineados a la derecha") y flecha INLINE junto al tiempo, no
+  // flotando en una columna vacía a lo alto de toda la card.
+  function renderTarjetaHoy(estado, banco, plan, diaIndex, meal, hoyIdx) {
+    var dia = plan.dias[diaIndex];
+    var prefijoDia = diaIndex === hoyIdx ? 'HOY · ' : '';
+    return '<div class="hoy-bloque">' +
+      '<p class="hoy-eyebrow">' + prefijoDia + NOMBRES_DIA[diaIndex].toUpperCase() + ' ' + fechaCorta(dia.fecha) + '</p>' +
+      renderCardComida(estado, banco, plan, diaIndex, meal, { conFlecha: true }) +
+      '</div>';
+  }
+
+  // Card batch cooking (Roger 2026-07-17): mostrada pero DESACTIVADA — la feature
+  // no está construida (es F4 del cerebro). Los números (90/6/5) son ilustrativos
+  // del diseño, no datos de la familia: la card se ve claramente "Próximamente"
+  // y su botón está deshabilitado, así que no simula un dato real.
+  // Iconos de línea 24x24, mismo estilo que ICONO_SOL/LUNA/RELOJ/FUEGO — para
+  // los 3 pasos del batch (olla/tarros/calendario) y la bolsa de la compra.
+  var ICONO_OLLA = '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11h16v3a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5v-3z"/><path d="M2 11h20"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>';
+  var ICONO_TARROS = '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="9" width="7" height="11" rx="1.5"/><path d="M5 9V6a1.5 1.5 0 0 1 1.5-1.5h1A1.5 1.5 0 0 1 9 6v3"/><rect x="13" y="6" width="8" height="14" rx="1.5"/><path d="M15.5 6V4a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1v2"/></svg>';
+  var ICONO_CALENDARIO_OK = '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 9.5h17"/><path d="M8 3v3.3"/><path d="M16 3v3.3"/><path d="M8.5 14.5l2 2 4.5-4.5"/></svg>';
+  var ICONO_BOLSA = '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 8h11l-1 11.5h-9L6.5 8z"/><path d="M9 8V6.3a3 3 0 016 0V8"/></svg>';
+  // Ilustración bolsa+planta de la card Compra semanal (Roger 2026-07-17,
+  // 5ª iteración): la referencia lleva un dibujo decorativo a la derecha,
+  // ausente hasta ahora — bolsa de papel con brotes verdes asomando.
+  var ILUSTRACION_BOLSA_PLANTA = '<svg viewBox="0 0 100 100" fill="none">' +
+    '<path d="M40 42 C36 24 24 15 13 17 C15 30 24 41 40 42 Z" fill="#9CBB93"/>' +
+    '<path d="M50 42 C50 20 50 6 50 1 C55 10 57 27 50 42 Z" fill="#7FA377"/>' +
+    '<path d="M59 42 C64 27 76 18 87 20 C83 32 74 41 59 42 Z" fill="#8FB086"/>' +
+    '<path d="M21 43 L79 43 L70 97 L30 97 Z" fill="#EDEAE1" stroke="#D8D3C6" stroke-width="1.5"/>' +
+    '<path d="M21 43 L30 97 M50 43 L50 97 M79 43 L70 97" stroke="#D8D3C6" stroke-width="1.2"/>' +
+    '</svg>';
+
+  // Card batch cooking (Roger 2026-07-17): mostrada pero DESACTIVADA — la feature
+  // no está construida (es F4 del cerebro). Los números (90/6/5) son ilustrativos
+  // del diseño, no datos de la familia: la card se ve claramente "Próximamente"
+  // y su botón está deshabilitado, así que no simula un dato real.
+  function renderBatchCard() {
+    return '<section class="card card-batch">' +
+      '<p class="card-batch-eyebrow">SEMANA RESUELTA</p>' +
+      '<p class="card-batch-titulo">Cocina el domingo, disfruta toda la semana</p>' +
+      '<div class="card-batch-pasos">' +
+      '<span class="card-batch-paso"><span class="card-batch-paso-icono">' + ICONO_OLLA + '</span><b>90</b>mins</span>' +
+      '<span class="card-batch-flecha">→</span>' +
+      '<span class="card-batch-paso"><span class="card-batch-paso-icono">' + ICONO_TARROS + '</span><b>6</b>preps.</span>' +
+      '<span class="card-batch-flecha">→</span>' +
+      '<span class="card-batch-paso"><span class="card-batch-paso-icono">' + ICONO_CALENDARIO_OK + '</span><b>5</b>dias</span>' +
       '</div>' +
-      (meal === 'cena' ? renderPostreDia(estado, banco, plan, idx) : '') +
+      '<button type="button" class="card-batch-btn card-batch-btn-solido" disabled aria-label="Batch cooking, próximamente">Ver plan <span aria-hidden="true">›</span></button>' +
+      '</section>';
+  }
+
+  // Card de compra (Roger 2026-07-17): % real ya marcado + nº de productos
+  // pendientes, de E.listaCompra — mismo dato que la pestaña Compra.
+  function renderCompraResumenCard(estado, plan, banco) {
+    var items = E.listaCompra(estado, plan, 'hoy', banco);
+    if (!items.length) return '';
+    var marcados = items.filter(function (i) { return i.marcado; }).length;
+    var pct = Math.round(marcados / items.length * 100);
+    var titulo = marcados === items.length ? 'Ya tienes todo lo necesario para hoy' : 'Ya tienes el ' + pct + '% de lo necesario';
+    return '<section class="card card-compra-resumen">' +
+      '<div class="card-compra-resumen-ilustracion" aria-hidden="true">' + ILUSTRACION_BOLSA_PLANTA + '</div>' +
+      '<p class="card-compra-resumen-eyebrow">COMPRA DIARIA</p>' +
+      '<p class="card-compra-resumen-titulo">' + titulo + '</p>' +
+      '<div class="card-compra-resumen-barra"><span style="width:' + pct + '%"></span></div>' +
+      '<p class="card-compra-resumen-sub"><span class="card-compra-resumen-sub-icono">' + ICONO_BOLSA + '</span>' + (items.length - marcados) + ' producto' + (items.length - marcados === 1 ? '' : 's') + ' por comprar</p>' +
+      '<button type="button" class="card-batch-btn card-batch-btn-solido card-batch-btn-verde" data-action="ir-vista" data-vista="compra">Ver lista de la compra <span aria-hidden="true">›</span></button>' +
+      '</section>';
+  }
+
+  // Tira "tu semana de un vistazo" (Roger 2026-07-17): 7 días con hasta 2
+  // iconos de categoría por día (de las proteínas realmente usadas ese día).
+  // "Ver semana completa" cambia al modo Semana (reutiliza el toggle).
+  function renderSemanaVistazo(estado, plan, banco, hoyIdx, diaSeleccionadoIdx) {
+    var dias = plan.dias.map(function (dia, i) {
+      var vistos = [];
+      ['comida', 'cena'].forEach(function (t) {
+        if (!dia[t]) return;
+        var ic = iconoDePlato(dia[t].seleccion, banco);
+        if (vistos.indexOf(ic) === -1) vistos.push(ic);
+      });
+      var clases = 'dia-vistazo' + (i === hoyIdx ? ' dia-vistazo-hoy' : '');
+      return '<button type="button" class="' + clases + '" data-action="semana-elegir-dia" data-dia="' + i + '" aria-pressed="' + (i === diaSeleccionadoIdx) + '" aria-label="Ver menú de ' + NOMBRES_DIA[i] + '">' +
+        '<span class="dia-vistazo-letra">' + NOMBRES_DIA_CORTO[i] + ' ' + new Date(dia.fecha + 'T00:00:00').getDate() + '</span>' +
+        '<span class="dia-vistazo-iconos">' + vistos.slice(0, 2).join(' ') + '</span>' +
+        '</button>';
+    }).join('');
+    return '<section class="bloque-vistazo">' +
+      '<p class="bloque-vistazo-titulo">Tu semana de un vistazo<button type="button" class="bloque-vistazo-link" data-action="ver-semana-clasica">Ver semana completa</button></p>' +
+      '<div class="fila-vistazo">' + dias + '</div>' +
+      '</section>';
+  }
+
+  // Aviso de equilibrio (Roger 2026-07-17): SOLO si una cuota real no está
+  // cumplida esta semana — nunca un swap concreto inventado (eso exigiría
+  // lógica de sustitución que no existe). Si todo cumple, no se muestra nada:
+  // más honesto que fabricar un mensaje positivo.
+  function renderAvisoEquilibrio(plan, banco) {
+    var resumen = E.resumenCuotasSemana(plan, banco);
+    var fallo = resumen.filter(function (r) { return !r.cumplido && ETIQUETA_CUOTA[r.categoria]; })[0];
+    var texto = !fallo
+      ? 'Semana equilibrada: las 5 categorías están al día.'
+      : (fallo.max_sem != null && fallo.cuenta > fallo.max_sem
+        ? 'Esta semana hay más ' + ETIQUETA_CUOTA[fallo.categoria].toLowerCase() + ' de lo recomendado (' + fallo.cuenta + ' de ' + fallo.max_sem + ').'
+        : 'Esta semana falta ' + ETIQUETA_CUOTA[fallo.categoria].toLowerCase() + ' para llegar al mínimo (' + fallo.cuenta + ' de ' + fallo.min_sem + ').');
+    return '<div class="aviso-equilibrio">' +
+      '<span class="aviso-equilibrio-icono" aria-hidden="true">🤖</span>' +
+      '<p class="aviso-equilibrio-texto">' + escapeHtml(texto) + '</p>' +
+      '<button type="button" class="pill-resumen" data-action="abrir-resumen-semana">Ver equilibrio</button>' +
+      '</div>';
+  }
+
+  function renderSemanaFoco(estado, plan, banco, miembroDispositivoId, hoyIdx, focoComida, diaSeleccionado) {
+    var idx = (diaSeleccionado != null && plan.dias[diaSeleccionado]) ? diaSeleccionado : (hoyIdx === -1 ? 0 : hoyIdx);
+    var meal = focoComida === 'cena' ? 'cena' : 'comida';
+    return renderAppBar() + renderSaludoSemana(estado, plan, banco, miembroDispositivoId, true) +
+      '<div class="vista-body">' +
+      renderEquilibrioChips(estado, plan, banco) +
+      renderColeDia(estado, plan, idx, hoyIdx) +
+      renderTarjetaHoy(estado, banco, plan, idx, meal, hoyIdx) +
+      '<div class="fila-batch-compra">' + renderBatchCard() + renderCompraResumenCard(estado, plan, banco) + '</div>' +
+      renderSemanaVistazo(estado, plan, banco, hoyIdx, idx) +
+      renderAvisoEquilibrio(plan, banco) +
       '</div>';
   }
 
@@ -528,21 +745,6 @@
     if (!coleDia || !coleDia.resumen) return '';
     var prefijo = diaIndex === hoyIdx ? 'Hoy en el cole: ' : 'En el cole: ';
     return '<p class="cole-linea">' + escapeHtml(prefijo + coleDia.resumen) + '</p>';
-  }
-
-  // Postre del día (tramo 1, 2026-07-17): línea informativa bajo la cena —
-  // fruta de temporada L-V (modelo AESAN, rotada por mes con el calendario
-  // MAPA), yogur el sábado, dulce tradicional como sugerencia el domingo.
-  // Sin decisión nueva por pantalla: se muestra, no se configura.
-  function renderPostreDia(estado, banco, plan, diaIndex) {
-    var dia = plan.dias[diaIndex];
-    if (!dia) return '';
-    var postre = E.postreDelDia(banco, dia.fecha, diaIndex);
-    if (!postre) return '';
-    var texto = postre.tipo === 'tradicional'
-      ? 'Sugerencia de postre: ' + postre.nombre + ' (receta de finde)'
-      : 'De postre: ' + postre.nombre;
-    return '<p class="postre-linea">' + escapeHtml(texto) + '</p>';
   }
 
   // ---------------------------------------------------------------
@@ -731,8 +933,8 @@
 
     return cabecera + '<div class="vista-body">' +
       '<div class="segmentado">' +
-        '<span class="segmento' + (rango === '7d' ? ' segmento-activo' : '') + '" data-action="segmento-compra" data-rango="7d">Próximos 7 días</span>' +
         '<span class="segmento' + (rango === 'hoy' ? ' segmento-activo' : '') + '" data-action="segmento-compra" data-rango="hoy">Solo hoy</span>' +
+        '<span class="segmento' + (rango === '7d' ? ' segmento-activo' : '') + '" data-action="segmento-compra" data-rango="7d">Próximos 7 días</span>' +
       '</div>' +
       (items.length ? seccionesHtml : '<p class="card-msg">Nada pendiente de comprar.</p>') +
       '</div>';

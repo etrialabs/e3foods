@@ -68,6 +68,32 @@
     return nombrePatron.replace(/\{([a-z]+)\}/g, function (_, eje) { return NOMBRES_EJE[eje] || eje; });
   }
 
+  function nombreCortoIngrediente(nombre) {
+    return (nombre || '').split(' (')[0];
+  }
+
+  // F1 (Roger 2026-07-17, MOTOR_RECETAS §7): el usuario nunca ve el álgebra
+  // "{proteína} con hidrato". Cada plantilla se presenta por su combinación más
+  // icónica — la primera opción de cada eje, que en el banco es la canónica a
+  // propósito. La variabilidad se cuenta aparte (variantesProteina), en llano.
+  function nombreEjemplo(p, banco) {
+    return p.nombre_patron.replace(/\{([a-z]+)\}/g, function (_, eje) {
+      var id = p.ejes && p.ejes[eje] && p.ejes[eje][0];
+      var ing = id && banco.ingredientes[id];
+      return ing ? nombreCortoIngrediente(ing.nombre).toLowerCase() : (NOMBRES_EJE[eje] || eje);
+    });
+  }
+
+  function variantesProteina(p, banco) {
+    var ops = (p.ejes && p.ejes.proteina) || [];
+    if (p.tipo !== 'plantilla' || ops.length < 2) return '';
+    var otras = ops.slice(1, 4).map(function (id) {
+      var ing = banco.ingredientes[id];
+      return ing ? nombreCortoIngrediente(ing.nombre).toLowerCase() : id;
+    });
+    return 'también con ' + otras.join(', ') + (ops.length > 4 ? '…' : '');
+  }
+
   function iniciales(nombre) {
     if (!nombre) return '?';
     return nombre.trim().charAt(0).toUpperCase();
@@ -443,10 +469,21 @@
         '<span class="vista-fecha">' + NOMBRES_DIA[idx] + ' ' + fechaCorta(dia.fecha) + (idx === hoyIdx ? ' <span class="badge badge-hoy">HOY</span>' : '') + '</span>' +
         '<button type="button" class="pill-resumen" data-action="abrir-resumen-semana">Ver resumen semanal</button>' +
       '</p>' +
+      renderColeDia(estado, plan, idx, hoyIdx) +
       renderSlot(estado, banco, plan, idx, 'comida') +
       renderSlot(estado, banco, plan, idx, 'cena') +
       renderPostreDia(estado, banco, plan, idx) +
       '</div>';
+  }
+
+  // Menú del cole (F1): la cara visible del dato — sin esta línea el "cena
+  // pensada contra el cole" pierde la mitad del valor percibido (research).
+  function renderColeDia(estado, plan, diaIndex, hoyIdx) {
+    var dia = plan.dias[diaIndex];
+    var coleDia = dia && estado.cole && estado.cole.dias && estado.cole.dias[dia.fecha];
+    if (!coleDia || !coleDia.resumen) return '';
+    var prefijo = diaIndex === hoyIdx ? 'Hoy en el cole: ' : 'En el cole: ';
+    return '<p class="cole-linea">' + escapeHtml(prefijo + coleDia.resumen) + '</p>';
   }
 
   // Postre del día (tramo 1, 2026-07-17): línea informativa bajo la cena —
@@ -544,9 +581,9 @@
       '<summary>+ Añadir receta propia</summary>' +
       '<div class="form-miembro">' +
       '<label>Nombre del plato<input type="text" id="rp-nombre" maxlength="60" placeholder="p.ej. Salmón con puré"></label>' +
-      '<label>Proteína<select id="rp-proteina"><option value="">(sin proteína)</option>' + opcionesIng + '</select></label>' +
-      '<label>Hidrato<select id="rp-hidrato"><option value="">(sin hidrato)</option>' + opcionesIng + '</select></label>' +
-      '<label>Verdura<select id="rp-verdura"><option value="">(sin verdura)</option>' + opcionesIng + '</select></label>' +
+      '<label>Lo principal<select id="rp-proteina"><option value="">(nada en concreto)</option>' + opcionesIng + '</select></label>' +
+      '<label>El acompañamiento<select id="rp-hidrato"><option value="">(sin acompañamiento)</option>' + opcionesIng + '</select></label>' +
+      '<label>La verdura<select id="rp-verdura"><option value="">(sin verdura)</option>' + opcionesIng + '</select></label>' +
       '<label>Apta para<select id="rp-apta"><option value="comida,cena">Comida y cena</option><option value="comida">Solo comida</option><option value="cena">Solo cena</option></select></label>' +
       '<label>Esfuerzo<select id="rp-esfuerzo"><option value="rapido">Rápido (≤25 min)</option><option value="medio">Medio (≤45 min)</option><option value="elaborado">Elaborado (findes)</option></select></label>' +
       '<button type="button" class="btn-primary" data-action="anadir-receta-propia">Guardar receta</button>' +
@@ -577,14 +614,16 @@
     var listaFiltrada = filtro === 'todas' ? todas : todas.filter(function (p) { return categoriasDePlantilla(p, banco)[filtro]; });
     if (busqueda.trim()) {
       var q = normalizarTexto(busqueda);
-      listaFiltrada = listaFiltrada.filter(function (p) { return normalizarTexto(nombreGenerico(p.nombre_patron)).indexOf(q) !== -1; });
+      listaFiltrada = listaFiltrada.filter(function (p) { return normalizarTexto(nombreEjemplo(p, banco)).indexOf(q) !== -1; });
     }
 
     var filasHtml = listaFiltrada.map(function (p) {
       var oculta = ocultas.indexOf(p.id) !== -1;
       var favorita = favoritas.indexOf(p.id) !== -1;
       return '<li class="fila-receta ' + (oculta ? 'receta-oculta' : '') + '">' +
-        '<span class="fila-receta-nombre">' + escapeHtml(capitaliza(nombreGenerico(p.nombre_patron))) + '<span class="fila-plantilla-meta">' + (p.tiempo_min || '?') + ' min · ' + escapeHtml(p.esfuerzo || '') + '</span></span>' +
+        '<span class="fila-receta-nombre">' + escapeHtml(capitaliza(nombreEjemplo(p, banco))) +
+          (variantesProteina(p, banco) ? '<span class="fila-receta-variantes">' + escapeHtml(variantesProteina(p, banco)) + '</span>' : '') +
+          '<span class="fila-plantilla-meta">' + (p.tiempo_min || '?') + ' min · ' + escapeHtml(p.esfuerzo || '') + '</span></span>' +
         '<span class="fila-receta-acciones">' +
           '<button type="button" class="btn-icono-fila' + (favorita ? ' btn-icono-activo' : '') + '" data-action="toggle-favorita-receta" data-plantilla="' + p.id + '" aria-label="' + (favorita ? 'Quitar de favoritas' : 'Marcar como favorita') + '" aria-pressed="' + favorita + '">' + (favorita ? ICONO_ESTRELLA_LLENA : ICONO_ESTRELLA) + '</button>' +
           '<button type="button" class="btn-icono-fila" data-action="toggle-oculta-receta" data-plantilla="' + p.id + '" aria-label="' + (oculta ? 'Mostrar receta' : 'Ocultar receta') + '">' + (oculta ? ICONO_OJO : ICONO_OJO_TACHADO) + '</button>' +
@@ -681,7 +720,7 @@
     var listaHtml = candidatas.length
       ? '<ul class="lista-plantillas">' + candidatas.map(function (p) {
           return '<li><button type="button" class="fila-plantilla" data-action="elegir-plantilla" data-dia="' + dia + '" data-tipo="' + tipoComida + '" data-plantilla="' + p.id + '">' +
-            '<span class="fila-plantilla-nombre">' + escapeHtml(capitaliza(nombreGenerico(p.nombre_patron))) + '</span>' +
+            '<span class="fila-plantilla-nombre">' + escapeHtml(capitaliza(nombreEjemplo(p, banco))) + '</span>' +
             '<span class="fila-plantilla-meta">' + (p.tiempo_min || '?') + ' min · ' + escapeHtml(p.esfuerzo || '') + '</span>' +
             '</button></li>';
         }).join('') + '</ul>'
@@ -976,13 +1015,29 @@
       '<button type="button" class="menu-dropdown-item" role="menuitem" data-action="menu-sync">Sincronizar familia</button>';
   }
 
-  // Placeholder honesto — el parser de PDF real (heurística de columnas por
-  // posición de texto, ~180 líneas) vive en v1 (e3foods.html) sin portar
-  // todavía; no simular que funciona aquí.
-  function renderSheetImportarCole() {
+  // Menú del cole (F1, 2026-07-17 — versión manual del P1 #2): se pega el JSON
+  // generado con el prompt de ChatGPT (el PDF automático llegará con /ai/cole-menu).
+  // Con menú cargado: los peques comen esos mediodías en el cole sin tocar su
+  // patrón, y las cenas evitan repetir lo que ya comieron.
+  function renderSheetImportarCole(estado) {
+    var cole = estado && estado.cole;
+    var cargadoHtml = '';
+    if (cole && cole.dias) {
+      var filas = Object.keys(cole.dias).sort().map(function (f) {
+        var d = cole.dias[f];
+        return '<li class="fila-ingrediente-receta">' + escapeHtml(fechaCorta(f)) + '<span>' + escapeHtml(d.resumen || '—') + '</span></li>';
+      }).join('');
+      cargadoHtml = '<p class="detalle-subtitulo" style="margin-top:16px">Menú cargado</p>' +
+        '<ul class="lista-ingredientes-receta">' + filas + '</ul>' +
+        '<button type="button" class="btn-texto" data-action="cole-borrar">Quitar el menú del cole</button>';
+    }
     return sheetHead('Menú del cole') +
       '<div class="sheet-body">' +
-      '<p class="card-msg">Próximamente: sube el PDF del menú del cole y detectamos qué proteína/hidrato evitar repetir en la cena de casa esos días. Todavía no está construido en esta versión.</p>' +
+      '<p class="card-msg">Pega aquí el menú semanal del cole (formato JSON del asistente — pronto será subir el PDF directamente).</p>' +
+      '<p class="card-msg">Con el menú cargado, los peques comen esos mediodías en el cole (no hay que tocar su patrón) y las cenas evitan repetir lo que ya comieron.</p>' +
+      '<textarea id="cole-json" class="cole-textarea" placeholder=\'{"semanaISO":"2026-07-20","dias":{"2026-07-20":{"resumen":"...","proteina":"...","hidrato":"...","verdura":true}}}\'></textarea>' +
+      '<button type="button" class="btn-primary" data-action="cole-importar">Importar menú</button>' +
+      cargadoHtml +
       '</div>';
   }
 

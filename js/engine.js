@@ -290,6 +290,12 @@
       var patronDia = (m.patron && m.patron[tipoComida]) ? m.patron[tipoComida][diaIndex] : 'casa';
       if (patronDia !== 'casa') return false; // ausencia estructural (fuera/cole)
       if (ausenciasDia.indexOf(m.id) !== -1) return false; // ausencia puntual
+      // Menú del cole cargado (F1, Roger 2026-07-17): los niños comen SIEMPRE en
+      // casa salvo que haya menú importado para esa fecha — ese mediodía comen en
+      // el cole. Va al revés que el patrón: subir el menú desmarca a los menores
+      // de esas comidas, sin tocar nada más; sin menú (verano), vuelven solos.
+      if (tipoComida === 'comida' && estado.cole && estado.cole.dias && estado.cole.dias[fecha] &&
+          edadEnAnios(m.anioNacimiento) < EDAD_MENOR) return false;
       return true;
     });
   }
@@ -585,6 +591,52 @@
   }
 
   // ---------------------------------------------------------------
+  // Menú del cole (F1, 2026-07-17 — versión manual del P1 #2, MOTOR_RECETAS §2).
+  // estado.cole = { semanaISO, dias: { "YYYY-MM-DD": {resumen, proteina, hidrato,
+  // verdura} } }, importado pegando el JSON del prompt de ChatGPT hasta que
+  // exista /ai/cole-menu. Señal SOLO en la cena de ese día: evitar repetir la
+  // proteína y el hidrato que los niños ya comieron a mediodía. Suave — nunca
+  // por encima de cuotas/dieta/variedad, como todas las señales.
+  // ---------------------------------------------------------------
+  var TIPOS_HIDRATO_COLE = {
+    pasta: { 'pasta': 1, 'fideos': 1, 'placas-lasana': 1 },
+    arroz: { 'arroz': 1 },
+    patata: { 'patata': 1, 'boniato': 1 },
+    pan: { 'pan': 1, 'pan-integral': 1, 'pan-pita': 1, 'pan-hamburguesa': 1, 'tortilla-trigo': 1, 'masa-pizza': 1, 'masa-empanadilla': 1 }
+    // 'legumbre' se detecta por categoría del ingrediente, no por lista
+  };
+
+  function puntuarCole(seleccion, coleDia, banco) {
+    if (!coleDia) return 0;
+    var malus = 0;
+    idsUnicosDeSeleccion(seleccion).forEach(function (id) {
+      var ing = banco.ingredientes[id];
+      if (!ing) return;
+      if (coleDia.proteina && ing.categoria === coleDia.proteina) malus -= 8;
+      if (coleDia.hidrato) {
+        var esTipo = coleDia.hidrato === 'legumbre'
+          ? ing.categoria === 'legumbre'
+          : !!(TIPOS_HIDRATO_COLE[coleDia.hidrato] && TIPOS_HIDRATO_COLE[coleDia.hidrato][id]);
+        if (esTipo) malus -= 8;
+      }
+    });
+    return malus;
+  }
+
+  // "Me apetece otra cosa" repetido (F1, MOTOR_RECETAS §2): app.js incrementa
+  // estado.cambios[plantillaId] SOLO en cambios por elección — los de modo nevera
+  // no se registran jamás (necesidad ≠ preferencia, Roger 2026-07-17). Señal más
+  // débil que el rechazo explícito (−6): cambiar no siempre es "no nos gusta".
+  function contarCambiosPorPlantilla(estado) {
+    return (estado && estado.cambios) || {};
+  }
+
+  function puntuarCambios(plantillaId, cambiosPorPlantilla) {
+    var n = Math.min((cambiosPorPlantilla && cambiosPorPlantilla[plantillaId]) || 0, 3);
+    return -n * 3;
+  }
+
+  // ---------------------------------------------------------------
   // Postre del día (tramo 1, 2026-07-17) — modelo AESAN trasladado a la semana
   // familiar (consenso comedores escolares 2010; research §4): L-V fruta de
   // temporada rotada por mes (calendario MAPA), sábado lácteo sencillo,
@@ -662,7 +714,9 @@
                   + puntuarNovedad(plantilla.id, opts.historialPlantillas) // novedad acotada
                   + puntuarRepeticionSemana(plantilla.id, opts.usosSemana) // no repetir plato dentro de la semana
                   + puntuarTemporada(plantilla, opts.estacion) // señal estacional (mes)
-                  + puntuarRegion(plantilla, opts.familiaRegion); // señal de región de la familia
+                  + puntuarRegion(plantilla, opts.familiaRegion) // señal de región de la familia
+                  + puntuarCambios(plantilla.id, opts.cambiosPorPlantilla) // "me apetece otra cosa" repetido
+                  + puntuarCole(seleccion, opts.coleDia, opts.banco); // cena: no repetir lo del cole
         if (score > mejorScore) {
           mejorScore = score;
           mejor = { plantilla: plantilla, seleccion: seleccion };
@@ -682,9 +736,10 @@
     var cuotas = (banco && banco.categorias_cuota) || {};
     var contadorCuotas = contadorInicialDesdeDias(planExistente ? planExistente.dias.slice(0, desde) : [], banco);
     var rechazosPorPlantilla = contarRechazosPorPlantilla(estado);
-    // señales suaves del scoring (rotación/novedad/temporada/región) — se calculan una vez por semana
+    // señales suaves del scoring (rotación/novedad/temporada/región/cambios) — se calculan una vez por semana
     var historialPlantillas = (estado && estado.historialPlantillas) || null;
     var gustasPorPlantilla = contarGustasPorPlantilla(estado);
+    var cambiosPorPlantilla = contarCambiosPorPlantilla(estado);
     var estacion = estacionDelMes(new Date(semanaISO + 'T00:00:00').getMonth() + 1);
     var familiaRegion = (estado && estado.familiaRegion) || null;
     var usosSemana = usosDePlan(planExistente ? planExistente.dias.slice(0, desde) : []);
@@ -716,7 +771,9 @@
           rechazosPorPlantilla: rechazosPorPlantilla,
           historialPlantillas: historialPlantillas, semanaISO: semanaISO,
           gustasPorPlantilla: gustasPorPlantilla, estacion: estacion, familiaRegion: familiaRegion,
-          usosSemana: usosSemana
+          usosSemana: usosSemana, cambiosPorPlantilla: cambiosPorPlantilla,
+          // el cole solo condiciona la CENA del día (los niños ya comieron eso a mediodía)
+          coleDia: tipoComida === 'cena' ? ((estado.cole && estado.cole.dias && estado.cole.dias[fecha]) || null) : null
         });
 
         if (!elegido) { diaActual[tipoComida] = null; return; }
@@ -828,7 +885,9 @@
       gustasPorPlantilla: contarGustasPorPlantilla(estado),
       estacion: estacionDelMes(new Date(diaObj.fecha + 'T00:00:00').getMonth() + 1),
       familiaRegion: (estado && estado.familiaRegion) || null,
-      usosSemana: usosDePlan(diasParaContar)
+      usosSemana: usosDePlan(diasParaContar),
+      cambiosPorPlantilla: contarCambiosPorPlantilla(estado),
+      coleDia: tipoComida === 'cena' ? ((estado.cole && estado.cole.dias && estado.cole.dias[diaObj.fecha]) || null) : null
     });
     if (!elegido) return null;
 

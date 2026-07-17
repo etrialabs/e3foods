@@ -863,6 +863,14 @@ body.sheet-open { overflow: hidden; }
 /* el select de región hereda .campo-nombre-familia (28px display) — devolverlo a UI */
 .campo-nombre-familia select.input-editorial { font-family: var(--font-ui); font-size: 16px; font-weight: 500; }
 
+/* Menú del cole (F1): línea informativa sobre las cards del día — mismo rol y
+   par de color que .postre-linea (--soft sobre --bg, 6.95:1 AA) */
+.cole-linea { margin: 0 0 var(--space-2); font-size: var(--fs-aux); font-weight: 600; color: var(--soft); }
+/* textarea del sheet de importar: 16px mínimo (iOS hace zoom con menos) */
+.cole-textarea { width: 100%; min-height: 120px; font-size: 16px; font-family: var(--font-ui); color: var(--ink); border: 1px solid var(--muted); border-radius: 8px; padding: 8px; margin: var(--space-2) 0; }
+/* "también con salmón, merluza…" bajo el nombre-ejemplo en Recetas (F1) */
+.fila-receta-variantes { display: block; font-size: var(--fs-aux); font-weight: 500; color: var(--soft); }
+
 /* ============================================================
    Responsive — a partir de tablet, contenido centrado con más aire
    ============================================================ */

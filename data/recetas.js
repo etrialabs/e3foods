@@ -2132,6 +2132,32 @@ window.E3_RECETAS = {
       ],
       notas: "El #13 de España (MAPA). Un refrito de ajo y pimentón por encima lo levanta.",
       foto: "assets/banco-fotos/salteado-wok.jpg" // asignación aproximada 2026-07-17 (pool de 4 fotos) — no coincide ingrediente a ingrediente
+    },
+    // Regla de Roger 2026-07-17 (UPGRADES §3): España es cultura de queso y embutido —
+    // sin esta plantilla el formato de cena más común del país quedaba excluido de facto.
+    // La cuota de carne roja lo dosifica sola; nada de sermones.
+    {
+      id: "cena-de-tabla",
+      nombre_patron: "Tabla de {proteina} y queso con pan con tomate",
+      tipo: "plantilla",
+      apta: ["cena"],
+      tiempo_min: 10,
+      esfuerzo: "rapido",
+      ninos: true,
+      ejes: {
+        proteina: ["jamon-serrano", "chorizo"],
+        hidrato: ["pan"],
+        verdura: ["tomate"]
+      },
+      kcal_extra: 150, // el queso al gusto + el aceite del pan con tomate
+      pasos: [
+        "Cortar el pan en rebanadas, mejor un poco tostadas.",
+        "Frotar con tomate maduro, un hilo de aceite y una pizca de sal.",
+        "Montar la tabla: {proteina} y el queso que os guste.",
+        "A la mesa — cero fogones."
+      ],
+      notas: "La cena más rápida de España. Añade el queso que os guste a la compra.",
+      foto: "assets/banco-fotos/ensalada-lentejas.jpg" // asignación aproximada 2026-07-17 (pool de 4 fotos) — no coincide ingrediente a ingrediente
     }
   ],
 

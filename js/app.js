@@ -30,7 +30,7 @@
   // Estado
   // ---------------------------------------------------------------
   function estadoVacio() {
-    return { nombreFamilia: '', familiaRegion: null, familia: [], ausenciasPuntuales: {}, plan: null, ocultas: [], favoritas: [], propias: [], compra: { marcados: [] }, valoraciones: {}, historialPlantillas: {} };
+    return { nombreFamilia: '', familiaRegion: null, familia: [], ausenciasPuntuales: {}, plan: null, ocultas: [], favoritas: [], propias: [], compra: { marcados: [] }, valoraciones: {}, historialPlantillas: {}, cambios: {}, cole: null };
   }
 
   function cargarEstado() {
@@ -207,7 +207,37 @@
   }
 
   function abrirImportarCole() {
-    abrirSheet(UI.renderSheetImportarCole());
+    abrirSheet(UI.renderSheetImportarCole(estado));
+  }
+
+  // Importa el menú del cole (F1, 2026-07-17 — versión manual del P1 #2): Roger
+  // genera el JSON con el prompt de ChatGPT y se pega aquí, hasta que exista
+  // /ai/cole-menu. Al cargar: los menores comen esos mediodías en el cole
+  // (presentesEnComida) y las cenas evitan repetir proteína/hidrato del día.
+  function importarCole() {
+    var ta = document.getElementById('cole-json');
+    if (!ta) return;
+    var datos;
+    try { datos = JSON.parse(ta.value); } catch (e) { alert('Eso no es un JSON válido — copia la respuesta completa del asistente, con las llaves.'); return; }
+    if (!datos || !datos.dias || typeof datos.dias !== 'object' || !Object.keys(datos.dias).length) { alert('El JSON no trae días de menú ("dias").'); return; }
+    var fechasMal = Object.keys(datos.dias).filter(function (f) { return !/^\d{4}-\d{2}-\d{2}$/.test(f); });
+    if (fechasMal.length) { alert('Hay fechas con formato raro: ' + fechasMal.join(', ')); return; }
+    estado.cole = { semanaISO: datos.semanaISO || Object.keys(datos.dias).sort()[0], dias: datos.dias };
+    guardarEstado();
+    render();
+    if (confirm('Menú del cole importado. ¿Regenero la semana para tenerlo en cuenta?')) {
+      cerrarSheet();
+      regenerarSemanaCompleta();
+    } else {
+      abrirSheet(UI.renderSheetImportarCole(estado));
+    }
+  }
+
+  function borrarCole() {
+    estado.cole = null;
+    guardarEstado();
+    render();
+    abrirSheet(UI.renderSheetImportarCole(estado));
   }
 
   // ---------------------------------------------------------------
@@ -712,7 +742,16 @@
   }
 
   function elegirPlantilla(dia, tipoComida, plantillaId) {
+    var slotPrevio = estado.plan && estado.plan.dias[dia] && estado.plan.dias[dia][tipoComida];
+    var previoId = slotPrevio && slotPrevio.plantillaId;
     var resultado = E.cambiarPlato(estado, estado.plan, dia, tipoComida, { modo: 'manual', plantillaId: plantillaId }, BANCO);
+    // Registro de cambios (F1, MOTOR_RECETAS §2): el plato REEMPLAZADO acumula
+    // señal suave de "me apetece otra cosa". SOLO en cambios por elección — el
+    // modo nevera no registra jamás (necesidad ≠ preferencia, Roger 2026-07-17).
+    if (resultado && previoId && previoId !== plantillaId) {
+      if (!estado.cambios) estado.cambios = {};
+      estado.cambios[previoId] = (estado.cambios[previoId] || 0) + 1;
+    }
     trasCambiarPlato(resultado);
   }
 
@@ -867,6 +906,8 @@
     'menu-ir-familia': function () { abrirSheetFamilia(); },
     'menu-regenerar-semana': function () { regenerarSemanaCompleta(); },
     'menu-importar-cole': function () { abrirImportarCole(); },
+    'cole-importar': function () { importarCole(); },
+    'cole-borrar': function () { borrarCole(); },
     'menu-sync': function () { abrirSheetSync(); },
     'landing-unirse': function () { abrirSheetSync(); },
     'sync-activar': function () { activarSincronizacion(); },

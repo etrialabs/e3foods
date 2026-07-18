@@ -1322,8 +1322,8 @@
     }
     return sheetHead('Menú del cole') +
       '<div class="sheet-body">' +
-      '<p class="card-msg">Pega aquí el menú semanal del cole (formato JSON del asistente — pronto será subir el PDF directamente).</p>' +
-      '<p class="card-msg">Con el menú cargado, los peques comen esos mediodías en el cole (no hay que tocar su patrón) y las cenas evitan repetir lo que ya comieron.</p>' +
+      '<p class="card-msg">Pega aquí el menú del cole (formato JSON del asistente — pronto será subir el PDF directamente). Puedes pegar una semana o varias de golpe: se añade a lo que ya tengas cargado, no lo sustituye.</p>' +
+      '<p class="card-msg">Con el menú cargado, los peques comen esos mediodías en el cole (no hay que tocar su patrón) y las cenas evitan repetir lo que ya comieron. Al importar o quitar el menú, la semana se recalcula sola.</p>' +
       '<textarea id="cole-json" class="cole-textarea" placeholder=\'{"semanaISO":"2026-07-20","dias":{"2026-07-20":{"resumen":"...","proteina":"...","hidrato":"...","verdura":true}}}\'></textarea>' +
       '<button type="button" class="btn-primary" data-action="cole-importar">Importar menú</button>' +
       cargadoHtml +

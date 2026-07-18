@@ -281,6 +281,15 @@
   // genera el JSON con el prompt de ChatGPT y se pega aquí, hasta que exista
   // /ai/cole-menu. Al cargar: los menores comen esos mediodías en el cole
   // (presentesEnComida) y las cenas evitan repetir proteína/hidrato del día.
+  //
+  // Horizonte 2 semanas + carga mensual (Roger 2026-07-18): cada importación
+  // ACUMULA en estado.cole.dias en vez de reemplazarlo entero — así una
+  // semana suelta, varias semanas pegadas una a una, o un mes entero del PDF
+  // (el prompt sigue siendo semanal; ampliarlo es tarea aparte) se guardan
+  // todas para el día que corresponda, sin perder lo ya cargado. Mismo id de
+  // fecha en dos importaciones → gana la más reciente. Recalcular es SIEMPRE
+  // automático, no una pregunta — Roger: "cuando se sube menú del cole
+  // siempre se recalcula la semana".
   function importarCole() {
     var ta = document.getElementById('cole-json');
     if (!ta) return;
@@ -289,22 +298,17 @@
     if (!datos || !datos.dias || typeof datos.dias !== 'object' || !Object.keys(datos.dias).length) { alert('El JSON no trae días de menú ("dias").'); return; }
     var fechasMal = Object.keys(datos.dias).filter(function (f) { return !/^\d{4}-\d{2}-\d{2}$/.test(f); });
     if (fechasMal.length) { alert('Hay fechas con formato raro: ' + fechasMal.join(', ')); return; }
-    estado.cole = { semanaISO: datos.semanaISO || Object.keys(datos.dias).sort()[0], dias: datos.dias };
+    if (!estado.cole || !estado.cole.dias) estado.cole = { dias: {} };
+    Object.keys(datos.dias).forEach(function (f) { estado.cole.dias[f] = datos.dias[f]; });
     guardarEstado();
-    render();
-    if (confirm('Menú del cole importado. ¿Regenero la semana para tenerlo en cuenta?')) {
-      cerrarSheet();
-      regenerarSemanaCompleta();
-    } else {
-      abrirSheet(UI.renderSheetImportarCole(estado));
-    }
+    regenerarSemanaCompleta(); // siempre, sin preguntar — cierra el sheet y re-renderiza (vigente + siguiente)
   }
 
   function borrarCole() {
     estado.cole = null;
     guardarEstado();
-    render();
-    abrirSheet(UI.renderSheetImportarCole(estado));
+    regenerarSemanaCompleta(); // el dato del cole cambió (a "nada") — recalcula igual que al importar,
+    // si no los niños quedarían "fuera" de comidas de días que ya no tienen menú cargado
   }
 
   // ---------------------------------------------------------------

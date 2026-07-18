@@ -981,6 +981,7 @@
     presentesEnComida: presentesEnComida,
     lunesDeEstaSemana: lunesDeEstaSemana,
     fechaLocalISO: fechaLocalISO,
+    fechaISO: fechaISO,
     diaIndexDesdeFecha: diaIndexDesdeFecha,
     plantillaPorId: plantillaPorId,
     plantillasDisponibles: plantillasDisponibles,

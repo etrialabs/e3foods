@@ -30,7 +30,7 @@
   // Estado
   // ---------------------------------------------------------------
   function estadoVacio() {
-    return { nombreFamilia: '', familiaRegion: null, familia: [], ausenciasPuntuales: {}, plan: null, ocultas: [], favoritas: [], propias: [], compra: { marcados: [] }, valoraciones: {}, historialPlantillas: {}, cambios: {}, cole: null };
+    return { nombreFamilia: '', familiaRegion: null, familia: [], ausenciasPuntuales: {}, plan: null, planSiguiente: null, ocultas: [], favoritas: [], propias: [], compra: { marcados: [], marcadosSiguiente: [] }, valoraciones: {}, historialPlantillas: {}, cambios: {}, cole: null };
   }
 
   function cargarEstado() {
@@ -100,6 +100,10 @@
   var filtrosRecetasVisibles = false; // colapsados por defecto (Roger 2026-07-14)
   var rangoCompra = '7d'; // '7d' | 'hoy' — estado de UI, no persistido (SPEC: rangoCompra)
   var semanaDiaSeleccionado = null; // índice 0-6 en la vista Semana — estado de UI, no persistido; null = hoy
+  // horizonte 2 semanas (Roger 2026-07-18): 'vigente' | 'siguiente' — qué semana se ve en la
+  // vista clásica (píldoras + flechas). Foco ignora esto siempre (planActivo() lo fuerza a
+  // 'vigente' en modo foco) — Foco es un dashboard de HOY, no tiene sentido para una semana futura.
+  var semanaSeleccionada = 'vigente';
   var pendienteCambiar = null; // {dia, tipoComida} mientras el sheet de "cambiar" está abierto
   var pendienteRegenerar = null; // {dia, tipoComida} tras un cambio, a la espera de sí/no
   // Onboarding con familia demo (P1, 2026-07-16): mientras modoDemo es true, `estado`
@@ -127,7 +131,37 @@
   }
 
   // ---------------------------------------------------------------
-  // Asegura que hay un plan fresco para la semana en curso
+  // Horizonte 2 semanas (Roger 2026-07-18) — qué plan está "en pantalla" ahora
+  // mismo, para que render() y los handlers de mutación (cambiar plato, marcar
+  // presente, valorar…) lean y escriban siempre en el mismo sitio. Foco fuerza
+  // vigente: es un dashboard de HOY, no existe "HOY" de una semana futura.
+  // ---------------------------------------------------------------
+  function planActivo() {
+    if (vistaSemanaModo === 'foco') return estado.plan;
+    return semanaSeleccionada === 'siguiente' ? estado.planSiguiente : estado.plan;
+  }
+  function setPlanActivo(nuevoPlan) {
+    if (vistaSemanaModo !== 'foco' && semanaSeleccionada === 'siguiente') estado.planSiguiente = nuevoPlan;
+    else estado.plan = nuevoPlan;
+  }
+
+  // Genera (o regenera) la semana siguiente a partir de estado.plan — con
+  // historial TEMPORAL que incluye las elecciones de la semana vigente, para
+  // que la rotación (puntuarRecencia/puntuarNovedad) no repita en exceso de
+  // una semana a la siguiente. No muta estado.historialPlantillas (ese solo se
+  // actualiza de verdad al archivar una semana ya pasada, en asegurarPlanVigente).
+  function generarPlanSiguiente() {
+    if (!estado.plan || !estado.plan.semanaISO) { estado.planSiguiente = null; return; }
+    var lunesSiguiente = E.fechaISO(estado.plan.semanaISO, 7);
+    var historialTemp = E.historialConPlan(estado, estado.plan, lunesSiguiente);
+    var estadoParaSiguiente = Object.assign({}, estado, { historialPlantillas: historialTemp });
+    estado.planSiguiente = E.generarSemana(estadoParaSiguiente, BANCO, 0, { semanaISO: lunesSiguiente, dias: [] });
+  }
+
+  // ---------------------------------------------------------------
+  // Asegura que hay un plan fresco para la semana en curso + la siguiente ya
+  // generada por delante (horizonte 2 semanas, Roger 2026-07-18: la compra del
+  // viernes/sábado y la cena del lunes no pueden esperar a que ruede el lunes).
   // ---------------------------------------------------------------
   function asegurarPlanVigente() {
     if (!estado.familia.length) return;
@@ -139,7 +173,21 @@
       if (estado.plan && estado.plan.semanaISO) {
         estado.historialPlantillas = E.historialConPlan(estado, estado.plan, lunesActual);
       }
-      estado.plan = E.generarSemana(estado, BANCO);
+      // si la semana siguiente ya estaba generada y ahora es la vigente,
+      // ASCENDER en vez de regenerar (ya está calculada — cero espera) y
+      // arrastrar sus checks de compra ya marcados a la lista de esta semana.
+      if (estado.planSiguiente && estado.planSiguiente.semanaISO === lunesActual) {
+        estado.plan = estado.planSiguiente;
+        estado.compra.marcados = estado.compra.marcadosSiguiente || [];
+      } else {
+        estado.plan = E.generarSemana(estado, BANCO);
+        estado.compra.marcados = [];
+      }
+      estado.compra.marcadosSiguiente = [];
+      generarPlanSiguiente();
+      guardarEstado();
+    } else if (!estado.planSiguiente || estado.planSiguiente.semanaISO !== E.fechaISO(lunesActual, 7)) {
+      generarPlanSiguiente();
       guardarEstado();
     }
   }
@@ -156,9 +204,9 @@
     var cursorBuscador = focoBuscador ? document.activeElement.selectionStart : 0;
     document.querySelectorAll('.vista').forEach(function (v) { v.hidden = (v.id !== 'vista-' + vistaActual); });
     document.querySelectorAll('.nav-btn').forEach(function (b) { b.classList.toggle('active', b.dataset.vista === vistaActual); b.setAttribute('aria-current', b.dataset.vista === vistaActual ? 'page' : 'false'); });
-    if (vistaActual === 'semana') cont.innerHTML = UI.renderSemana(estado, estado.plan, BANCO, semanaDiaSeleccionado, obtenerMiembroDispositivo(), vistaSemanaModo, focoComida || comidaProximaPorHora());
+    if (vistaActual === 'semana') cont.innerHTML = UI.renderSemana(estado, planActivo(), BANCO, semanaDiaSeleccionado, obtenerMiembroDispositivo(), vistaSemanaModo, focoComida || comidaProximaPorHora(), semanaSeleccionada);
     else if (vistaActual === 'recetas') cont.innerHTML = UI.renderRecetasVista(estado, BANCO, filtroRecetas, busquedaRecetas, filtrosRecetasVisibles);
-    else if (vistaActual === 'compra') cont.innerHTML = UI.renderCompraVista(estado, estado.plan, BANCO, rangoCompra);
+    else if (vistaActual === 'compra') cont.innerHTML = UI.renderCompraVista(estado, rangoCompra === 'siguiente' ? estado.planSiguiente : estado.plan, BANCO, rangoCompra);
     aplicarDetallesAbiertos(cont);
     if (focoBuscador) {
       var buscador = document.getElementById('recetas-buscador');
@@ -171,7 +219,7 @@
   // quedar pegados al volver a tocar el tab.
   function irAVista(nombre) {
     vistaActual = nombre;
-    if (nombre === 'semana') { vistaSemanaModo = 'foco'; focoComida = null; }
+    if (nombre === 'semana') { vistaSemanaModo = 'foco'; focoComida = null; semanaSeleccionada = 'vigente'; }
     render();
   }
 
@@ -442,6 +490,7 @@
   function regenerarSemanaCompleta() {
     if (!estado.familia.length) { cerrarSheet(); return; }
     estado.plan = E.generarSemana(estado, BANCO);
+    generarPlanSiguiente(); // datos de familia/cole cambiaron — la siguiente no puede quedarse obsoleta
     guardarEstado();
     cerrarSheet(); // ya re-renderiza
   }
@@ -493,6 +542,7 @@
     var estadoDemo = Object.assign(estadoVacio(), { nombreFamilia: 'Familia Ejemplo', familia: crearFamiliaDemo() });
     estadoDemo.plan = E.generarSemana(estadoDemo, BANCO);
     estado = estadoDemo;
+    generarPlanSiguiente(); // horizonte 2 semanas también en la demo — es interactiva de verdad
     modoDemo = true;
     document.getElementById('landing-screen').hidden = true;
     document.body.classList.remove('landing-open');
@@ -576,6 +626,7 @@
     estado.familiaRegion = wizardRegion || null;
     estado.familia = wizardMiembros.slice();
     estado.plan = E.generarSemana(estado, BANCO);
+    generarPlanSiguiente();
     guardarEstado();
     document.getElementById('wizard-screen').hidden = true;
     document.body.classList.remove('wizard-open');
@@ -694,7 +745,7 @@
   // HOY / SEMANA — presencia, compra, cambiar plato
   // ---------------------------------------------------------------
   function togglePresente(dia, tipoComida, miembroId) {
-    var fecha = estado.plan.dias[dia].fecha;
+    var fecha = planActivo().dias[dia].fecha;
     if (!estado.ausenciasPuntuales[fecha]) estado.ausenciasPuntuales[fecha] = { comida: [], cena: [] };
     var lista = estado.ausenciasPuntuales[fecha][tipoComida] || [];
     var idx = lista.indexOf(miembroId);
@@ -704,46 +755,56 @@
     render();
   }
 
+  // horizonte 2 semanas (Roger 2026-07-18): marcados vive por semana —
+  // 'marcados' (vigente, comparte hoy/7d como siempre) vs 'marcadosSiguiente'
+  // (mismos ids de ingrediente pueden repetirse entre semanas; sin escopar,
+  // marcar "pollo" en la lista de esta semana lo marcaría también en la de
+  // la que viene).
+  function campoMarcados() { return rangoCompra === 'siguiente' ? 'marcadosSiguiente' : 'marcados'; }
+
   function toggleCompraItem(ingredienteId) {
-    var marcados = estado.compra.marcados || [];
+    var campo = campoMarcados();
+    var marcados = estado.compra[campo] || [];
     var idx = marcados.indexOf(ingredienteId);
     if (idx === -1) marcados.push(ingredienteId); else marcados.splice(idx, 1);
-    estado.compra.marcados = marcados;
+    estado.compra[campo] = marcados;
     guardarEstado();
     render();
   }
 
-  // "Vaciar" (Roger 2026-07-17): desmarca TODO, sin importar el segmento visible
-  // (7 días / hoy) — marcados es un único array global, no hay uno por segmento.
-  // Sin confirmación a propósito: es un toggle reversible con un toque (igual que
-  // marcar un ítem), no un borrado — sube en la próxima carta al súper.
+  // "Vaciar" (Roger 2026-07-17): desmarca TODO el segmento de semana visible,
+  // sin importar el sub-segmento (7 días / hoy) — esos dos comparten el mismo
+  // array, solo "semana que viene" tiene el suyo aparte. Sin confirmación a
+  // propósito: es un toggle reversible con un toque (igual que marcar un
+  // ítem), no un borrado — sube en la próxima carta al súper.
   function vaciarCompra() {
-    estado.compra.marcados = [];
+    estado.compra[campoMarcados()] = [];
     guardarEstado();
     render();
   }
 
   function abrirRecetaDetalle(dia, tipoComida) {
-    abrirSheet(UI.renderSheetReceta(estado, BANCO, estado.plan, dia, tipoComida));
+    abrirSheet(UI.renderSheetReceta(estado, BANCO, planActivo(), dia, tipoComida));
   }
 
   // Feedback loop (P1, 2026-07-16): toque post-comida por slot. Toggle — tocar la
   // misma carita otra vez quita la valoración (arrepentimiento sin fricción).
   function valorarPlato(dia, tipoComida, valor) {
-    var slot = estado.plan && estado.plan.dias[dia] && estado.plan.dias[dia][tipoComida];
+    var plan = planActivo();
+    var slot = plan && plan.dias[dia] && plan.dias[dia][tipoComida];
     if (!slot) return;
-    var fecha = estado.plan.dias[dia].fecha;
+    var fecha = plan.dias[dia].fecha;
     var clave = fecha + '_' + tipoComida;
     if (!estado.valoraciones) estado.valoraciones = {};
     var actual = estado.valoraciones[clave];
     if (actual && actual.valor === valor) delete estado.valoraciones[clave];
     else estado.valoraciones[clave] = { plantillaId: slot.plantillaId, valor: valor };
     guardarEstado();
-    abrirSheet(UI.renderSheetReceta(estado, BANCO, estado.plan, dia, tipoComida)); // re-pinta con el estado nuevo
+    abrirSheet(UI.renderSheetReceta(estado, BANCO, planActivo(), dia, tipoComida)); // re-pinta con el estado nuevo
   }
 
   function abrirResumenSemana() {
-    abrirSheet(UI.renderSheetResumenSemana(estado, BANCO, estado.plan));
+    abrirSheet(UI.renderSheetResumenSemana(estado, BANCO, planActivo()));
   }
 
   function abrirCambiar(dia, tipoComida) {
@@ -753,7 +814,7 @@
 
   function trasCambiarPlato(resultado) {
     if (!resultado) { alert('No encontramos un plato que encaje con esas condiciones.'); cerrarSheet(); render(); return; }
-    estado.plan = resultado.plan;
+    setPlanActivo(resultado.plan);
     guardarEstado();
     pendienteRegenerar = { dia: pendienteCambiar.dia, tipoComida: pendienteCambiar.tipoComida };
     abrirSheet(UI.renderConfirmarRegenerar(resultado.resuelto.nombre));
@@ -761,9 +822,10 @@
   }
 
   function elegirPlantilla(dia, tipoComida, plantillaId) {
-    var slotPrevio = estado.plan && estado.plan.dias[dia] && estado.plan.dias[dia][tipoComida];
+    var plan = planActivo();
+    var slotPrevio = plan && plan.dias[dia] && plan.dias[dia][tipoComida];
     var previoId = slotPrevio && slotPrevio.plantillaId;
-    var resultado = E.cambiarPlato(estado, estado.plan, dia, tipoComida, { modo: 'manual', plantillaId: plantillaId }, BANCO);
+    var resultado = E.cambiarPlato(estado, plan, dia, tipoComida, { modo: 'manual', plantillaId: plantillaId }, BANCO);
     // Registro de cambios (F1, MOTOR_RECETAS §2): el plato REEMPLAZADO acumula
     // señal suave de "me apetece otra cosa". SOLO en cambios por elección — el
     // modo nevera no registra jamás (necesidad ≠ preferencia, Roger 2026-07-17).
@@ -778,7 +840,7 @@
     var checks = document.querySelectorAll('#lista-nevera-checks input:checked');
     var disponibles = Array.prototype.map.call(checks, function (c) { return c.value; });
     if (!disponibles.length) { alert('Marca al menos un ingrediente disponible.'); return; }
-    var resultado = E.cambiarPlato(estado, estado.plan, dia, tipoComida, { modo: 'nevera', disponibles: disponibles }, BANCO);
+    var resultado = E.cambiarPlato(estado, planActivo(), dia, tipoComida, { modo: 'nevera', disponibles: disponibles }, BANCO);
     trasCambiarPlato(resultado);
   }
 
@@ -831,7 +893,7 @@
 
   function regenerarSiguientes(si) {
     if (si && pendienteRegenerar) {
-      estado.plan = E.regenerarDesde(estado, estado.plan, pendienteRegenerar.dia + 1, BANCO);
+      setPlanActivo(E.regenerarDesde(estado, planActivo(), pendienteRegenerar.dia + 1, BANCO));
       guardarEstado();
     }
     cerrarSheet(); // ya re-renderiza
@@ -928,7 +990,7 @@
     'cole-importar': function () { importarCole(); },
     'cole-borrar': function () { borrarCole(); },
     'ver-semana-clasica': function () { vistaSemanaModo = 'semana'; render(); },
-    'ver-informe-foco': function () { vistaSemanaModo = 'foco'; focoComida = null; render(); },
+    'ver-informe-foco': function () { vistaSemanaModo = 'foco'; focoComida = null; semanaSeleccionada = 'vigente'; render(); },
     'foco-flip-comida': function (btn) { focoComida = btn.dataset.comida; render(); },
     'menu-sync': function () { abrirSheetSync(); },
     'landing-unirse': function () { abrirSheetSync(); },
@@ -997,7 +1059,17 @@
     'toggle-compra-item': function (btn) { toggleCompraItem(btn.dataset.id); },
     'vaciar-compra': function () { vaciarCompra(); },
     'segmento-compra': function (btn) { rangoCompra = btn.dataset.rango; render(); },
-    'semana-elegir-dia': function (btn) { semanaDiaSeleccionado = parseInt(btn.dataset.dia, 10); render(); },
+    'semana-elegir-dia': function (btn) {
+      semanaDiaSeleccionado = parseInt(btn.dataset.dia, 10);
+      // Tocar un día del vistazo de Foco mientras se mira "semana que viene":
+      // Foco no tiene HOY de una semana futura, así que en vez de intentar
+      // reflejarlo ahí, se hace drill-in directo a la vista clásica (que ya
+      // respeta semanaSeleccionada) — mismo comportamiento que "Ver semana
+      // completa" pero aterrizando ya en el día tocado.
+      if (vistaSemanaModo === 'foco' && semanaSeleccionada === 'siguiente') vistaSemanaModo = 'semana';
+      render();
+    },
+    'semana-pag': function (btn) { semanaSeleccionada = btn.dataset.semana; semanaDiaSeleccionado = null; render(); },
     'filtro-receta': function (btn) { filtroRecetas = btn.dataset.categoria; render(); },
     'toggle-filtros-receta': function () { filtrosRecetasVisibles = !filtrosRecetasVisibles; render(); },
     'abrir-form-receta-propia': function () {
@@ -1009,10 +1081,10 @@
 
     'abrir-receta': function (btn) { abrirRecetaDetalle(Number(btn.dataset.dia), btn.dataset.tipo); },
     'abrir-resumen-semana': function () { abrirResumenSemana(); },
-    'valorar-plato': function (btn) { valorarPlato(E.diaIndexDesdeFecha(estado.plan, btn.dataset.fecha), btn.dataset.tipo, btn.dataset.valor); },
+    'valorar-plato': function (btn) { valorarPlato(E.diaIndexDesdeFecha(planActivo(), btn.dataset.fecha), btn.dataset.tipo, btn.dataset.valor); },
     'abrir-cambiar': function (btn) { abrirCambiar(Number(btn.dataset.dia), btn.dataset.tipo); },
     'cerrar-sheet': function () { cerrarSheet(); },
-    'modo-elegir-otro': function (btn) { abrirSheet(UI.renderListaElegirOtro(estado, BANCO, estado.plan, Number(btn.dataset.dia), btn.dataset.tipo)); },
+    'modo-elegir-otro': function (btn) { abrirSheet(UI.renderListaElegirOtro(estado, BANCO, planActivo(), Number(btn.dataset.dia), btn.dataset.tipo)); },
     'modo-nevera': function (btn) { abrirSheet(UI.renderNevera(estado, BANCO, Number(btn.dataset.dia), btn.dataset.tipo)); },
     'elegir-plantilla': function (btn) { elegirPlantilla(Number(btn.dataset.dia), btn.dataset.tipo, btn.dataset.plantilla); },
     'confirmar-nevera': function (btn) { confirmarNevera(Number(btn.dataset.dia), btn.dataset.tipo); },
@@ -1209,7 +1281,8 @@
         var idx = parseInt(zona.dataset.diaIdx, 10);
         if (isNaN(idx)) return;
         var siguiente = dx < 0 ? idx + 1 : idx - 1;
-        if (siguiente < 0 || siguiente > 6 || !estado.plan || !estado.plan.dias[siguiente]) return;
+        var plan = planActivo();
+        if (siguiente < 0 || siguiente > 6 || !plan || !plan.dias[siguiente]) return;
         semanaDiaSeleccionado = siguiente;
         render();
       }, { passive: true });

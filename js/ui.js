@@ -483,12 +483,12 @@
       '</p>';
   }
 
-  function renderSemana(estado, plan, banco, diaSeleccionado, miembroDispositivoId, modoVista, focoComida) {
+  function renderSemana(estado, plan, banco, diaSeleccionado, miembroDispositivoId, modoVista, focoComida, semanaSeleccionada) {
     if (!plan) {
       return renderAppBar() + '<div class="vista-body"><p class="card-msg">Todavía no hay semana generada.</p></div>';
     }
     var hoyIdx = E.diaIndexDesdeFecha(plan, hoyISO());
-    if (modoVista === 'foco') return renderSemanaFoco(estado, plan, banco, miembroDispositivoId, hoyIdx, focoComida, diaSeleccionado);
+    if (modoVista === 'foco') return renderSemanaFoco(estado, plan, banco, miembroDispositivoId, hoyIdx, focoComida, diaSeleccionado, semanaSeleccionada);
 
     var idx = (diaSeleccionado != null && plan.dias[diaSeleccionado]) ? diaSeleccionado : (hoyIdx === -1 ? 0 : hoyIdx);
     var pildoras = plan.dias.map(function (dia, i) {
@@ -499,7 +499,18 @@
         '<span class="pildora-dia-num">' + d.getDate() + '</span>' +
         '</button>';
     }).join('');
-    var filaPildoras = '<div class="fila-pildoras-dia fila-pildoras-dia-sticky" role="group" aria-label="Elegir día">' + pildoras + '</div>';
+    // horizonte 2 semanas (Roger 2026-07-18): paginador de 2 posiciones (vigente
+    // ⇄ siguiente, no navegación libre — solo existen esas dos semanas
+    // materializadas) recuperando el patrón visual de v1 (_legacy_v1, nav-chev)
+    // que se perdió al reconstruir v2. La fila de píldoras no cambia.
+    var enVigente = (semanaSeleccionada || 'vigente') !== 'siguiente';
+    var flechaIzq = enVigente
+      ? '<span class="nav-chev-semana nav-chev-semana-disabled" aria-hidden="true">‹</span>'
+      : '<button type="button" class="nav-chev-semana" data-action="semana-pag" data-semana="vigente" aria-label="Semana actual">‹</button>';
+    var flechaDer = enVigente
+      ? '<button type="button" class="nav-chev-semana" data-action="semana-pag" data-semana="siguiente" aria-label="Semana que viene">›</button>'
+      : '<span class="nav-chev-semana nav-chev-semana-disabled" aria-hidden="true">›</span>';
+    var filaPildoras = '<div class="fila-pildoras-dia fila-pildoras-dia-sticky" role="group" aria-label="Elegir día">' + flechaIzq + pildoras + flechaDer + '</div>';
 
     var dia = plan.dias[idx];
     var fechaHtml = NOMBRES_DIA[idx] + ' ' + fechaCorta(dia.fecha) + (idx === hoyIdx ? ' <span class="badge badge-hoy">HOY</span>' : '');
@@ -684,7 +695,7 @@
   // Tira "tu semana de un vistazo" (Roger 2026-07-17): 7 días con hasta 2
   // iconos de categoría por día (de las proteínas realmente usadas ese día).
   // "Ver semana completa" cambia al modo Semana (reutiliza el toggle).
-  function renderSemanaVistazo(estado, plan, banco, hoyIdx, diaSeleccionadoIdx) {
+  function renderSemanaVistazo(estado, plan, banco, hoyIdx, diaSeleccionadoIdx, semanaSeleccionada) {
     var dias = plan.dias.map(function (dia, i) {
       var vistos = [];
       ['comida', 'cena'].forEach(function (t) {
@@ -698,9 +709,20 @@
         '<span class="dia-vistazo-iconos">' + vistos.slice(0, 2).join(' ') + '</span>' +
         '</button>';
     }).join('');
+    // horizonte 2 semanas (Roger 2026-07-18, 2ª petición): mismo paginador de 2
+    // posiciones que la vista clásica, en versión compacta para esta tira densa
+    // (reutiliza semanaSeleccionada — comparte estado con la clásica a propósito,
+    // así "Ver semana completa" aterriza en la misma semana que se estaba mirando).
+    var enVigente = (semanaSeleccionada || 'vigente') !== 'siguiente';
+    var flechaIzq = enVigente
+      ? '<span class="nav-chev-semana nav-chev-vistazo nav-chev-semana-disabled" aria-hidden="true">‹</span>'
+      : '<button type="button" class="nav-chev-semana nav-chev-vistazo" data-action="semana-pag" data-semana="vigente" aria-label="Semana actual">‹</button>';
+    var flechaDer = enVigente
+      ? '<button type="button" class="nav-chev-semana nav-chev-vistazo" data-action="semana-pag" data-semana="siguiente" aria-label="Semana que viene">›</button>'
+      : '<span class="nav-chev-semana nav-chev-vistazo nav-chev-semana-disabled" aria-hidden="true">›</span>';
     return '<section class="bloque-vistazo">' +
       '<p class="bloque-vistazo-titulo">Tu semana de un vistazo<button type="button" class="bloque-vistazo-link" data-action="ver-semana-clasica">Ver semana completa</button></p>' +
-      '<div class="fila-vistazo">' + dias + '</div>' +
+      '<div class="fila-vistazo-nav">' + flechaIzq + '<div class="fila-vistazo">' + dias + '</div>' + flechaDer + '</div>' +
       '</section>';
   }
 
@@ -723,16 +745,23 @@
       '</div>';
   }
 
-  function renderSemanaFoco(estado, plan, banco, miembroDispositivoId, hoyIdx, focoComida, diaSeleccionado) {
+  function renderSemanaFoco(estado, plan, banco, miembroDispositivoId, hoyIdx, focoComida, diaSeleccionado, semanaSeleccionada) {
     var idx = (diaSeleccionado != null && plan.dias[diaSeleccionado]) ? diaSeleccionado : (hoyIdx === -1 ? 0 : hoyIdx);
     var meal = focoComida === 'cena' ? 'cena' : 'comida';
+    // horizonte 2 semanas: SOLO la tira "de un vistazo" puede pasar a la semana
+    // siguiente — HOY/equilibrio/cole/compra de Foco se quedan siempre en
+    // `plan` (vigente, ya forzado por planActivo() en app.js): "HOY" no
+    // significa nada en una semana que no ha empezado.
+    var enSiguiente = semanaSeleccionada === 'siguiente';
+    var planVistazo = (enSiguiente && estado.planSiguiente) ? estado.planSiguiente : plan;
+    var hoyIdxVistazo = enSiguiente ? -1 : hoyIdx;
     return renderAppBar() + renderSaludoSemana(estado, plan, banco, miembroDispositivoId, true) +
       '<div class="vista-body">' +
       renderEquilibrioChips(estado, plan, banco) +
       renderColeDia(estado, plan, idx, hoyIdx) +
       renderTarjetaHoy(estado, banco, plan, idx, meal, hoyIdx) +
       '<div class="fila-batch-compra">' + renderBatchCard() + renderCompraResumenCard(estado, plan, banco) + '</div>' +
-      renderSemanaVistazo(estado, plan, banco, hoyIdx, idx) +
+      renderSemanaVistazo(estado, planVistazo, banco, hoyIdxVistazo, idx, semanaSeleccionada) +
       renderAvisoEquilibrio(plan, banco) +
       '</div>';
   }
@@ -904,12 +933,25 @@
       return renderCabecera({ tituloPlain: 'Lista de', tituloItalico: 'compra', contador: '0/0 en el carro' }) +
         '<div class="vista-body"><p class="card-msg">Todavía no hay semana generada.</p></div>';
     }
-    var items = E.listaCompra(estado, plan, rango === '7d' ? 'semana' : 'hoy', banco);
+    // horizonte 2 semanas (Roger 2026-07-18): "Semana que viene" usa el plan
+    // siguiente entero (no tiene sentido un sub-segmento "solo hoy" de una
+    // semana que no ha empezado) y sus propios marcados — mismos ids de
+    // ingrediente que la semana vigente pueden repetirse, así que listaCompra()
+    // necesita ver marcadosSiguiente en vez de marcados para no cruzar checks
+    // entre las dos semanas.
+    var estadoParaLista = estado;
+    if (rango === 'siguiente') {
+      estadoParaLista = Object.assign({}, estado, {
+        compra: Object.assign({}, estado.compra, { marcados: (estado.compra && estado.compra.marcadosSiguiente) || [] })
+      });
+    }
+    var items = E.listaCompra(estadoParaLista, plan, rango === 'hoy' ? 'hoy' : 'semana', banco);
     var marcadosN = items.filter(function (i) { return i.marcado; }).length;
-    // "Vaciar" desmarca SIEMPRE los marcados globales (Roger 2026-07-17), no solo los del
-    // segmento visible: marcados es un único array (no hay "marcados de hoy" vs "de la
-    // semana"), y la lista no es editable — se deriva del plan, así que "vaciar" solo
-    // puede significar desmarcar. Oculto si no hay nada marcado (nada que vaciar).
+    // "Vaciar" desmarca SIEMPRE los marcados del segmento de SEMANA visible (Roger
+    // 2026-07-17, ampliado 2026-07-18): "hoy"/"7 días" comparten un único array (no
+    // hay "marcados de hoy" vs "de la semana"), pero "semana que viene" tiene el
+    // suyo aparte. La lista no es editable — se deriva del plan, así que "vaciar"
+    // solo puede significar desmarcar. Oculto si no hay nada marcado.
     var cabecera = renderCabecera({
       tituloPlain: 'Lista de', tituloItalico: 'compra',
       contador: marcadosN + '/' + items.length + ' en el carro',
@@ -935,6 +977,7 @@
       '<div class="segmentado">' +
         '<span class="segmento' + (rango === 'hoy' ? ' segmento-activo' : '') + '" data-action="segmento-compra" data-rango="hoy">Solo hoy</span>' +
         '<span class="segmento' + (rango === '7d' ? ' segmento-activo' : '') + '" data-action="segmento-compra" data-rango="7d">Próximos 7 días</span>' +
+        '<span class="segmento' + (rango === 'siguiente' ? ' segmento-activo' : '') + '" data-action="segmento-compra" data-rango="siguiente">Semana que viene</span>' +
       '</div>' +
       (items.length ? seccionesHtml : '<p class="card-msg">Nada pendiente de comprar.</p>') +
       '</div>';

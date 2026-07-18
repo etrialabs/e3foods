@@ -513,6 +513,18 @@ body.wizard-open { overflow: hidden; }
 .pildora-dia-activa .pildora-dia-num { color: var(--navy-ink); }
 .pildora-dia-activa.pildora-dia-hoy .pildora-dia-letra { color: var(--gold); }
 
+/* horizonte 2 semanas (Roger 2026-07-18): paginador vigente ⇄ siguiente
+   flanqueando la fila de píldoras — recupera el patrón nav-chev de v1. Ancho
+   fijo pequeño (no flex:1 como las píldoras) para no comerles espacio; alto
+   44px por el mínimo de área tocable (UI_MOBILE §2) aunque el glifo sea
+   pequeño — es el área lo que cuenta, no el icono. */
+.nav-chev-semana {
+  flex: 0 0 auto; width: 40px; min-height: 44px; background: none; border: none;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; font-weight: 700; color: var(--ink); cursor: pointer; padding: 0;
+}
+.nav-chev-semana-disabled { color: var(--soft); opacity: .35; cursor: default; }
+
 /* ============================================================
    RECETAS — buscador + filtros colapsables + chips por categoría
    ============================================================ */
@@ -997,7 +1009,13 @@ body.sheet-open { overflow: hidden; }
 .bloque-vistazo { margin-bottom: 12px; }
 .bloque-vistazo-titulo { display: flex; justify-content: space-between; align-items: baseline; font-family: var(--font-ui); font-size: 11px; font-weight: 700; color: var(--ink); margin: 0 0 6px; }
 .bloque-vistazo-link { background: none; border: none; font-size: 9px; font-weight: 600; color: var(--gold); cursor: pointer; padding: 0; }
-.fila-vistazo { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+.fila-vistazo-nav { display: flex; align-items: stretch; gap: 3px; }
+.fila-vistazo { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; flex: 1 1 auto; min-width: 0; }
+/* variante compacta del paginador para la tira densa de Foco (9-11px, gap 3px
+   ya de por sí más apretada que la vista clásica) — mismo criterio de área
+   tocable (UI_MOBILE §2) resuelto con padding, no con un ancho de 40px que
+   aquí sí competiría de forma notoria con los 7 días. */
+.nav-chev-vistazo { width: 22px; min-height: 0; font-size: 14px; }
 .dia-vistazo { background: var(--panel); border: none; width: 100%; cursor: pointer; border-radius: 9px; padding: 5px 2px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 3px; }
 .dia-vistazo-hoy { border: 1.5px solid var(--gold); }
 .dia-vistazo-letra { font-size: 9px; font-weight: 700; color: var(--soft); }

@@ -1341,34 +1341,45 @@
       '</div>';
   }
 
-  // Descubrir — shell sin lógica (Roger 2026-07-19, handoff): pestaña nueva,
-  // sin banco de "ideas de temporada" real detrás todavía. Cabecera ya con el
-  // lenguaje visual nuevo (coherente con Recetas/Compra/Familia); el cuerpo es
-  // un mensaje honesto, no cards de recomendación simuladas — eso es contenido
-  // real pendiente de construir, no una pieza de UI que se pueda maquetar sola.
-  // Fichas de Descubrir — PLACEHOLDER explícito (Roger 2026-07-20, revisando la
-  // decisión de la sesión anterior de no mostrar nada): no hay banco de
-  // contenido real de Descubrir todavía, así que se muestran tal cual las 3
-  // ideas fijas del mock (mismo kicker/título/foto de e3Foods.dc.html) como
-  // marcador visual — no son datos reales, sustituir en cuanto exista ese banco.
-  var FICHAS_DESCUBRIR_MENTIRA = [
-    { kicker: 'De temporada', titulo: '5 recetas fresquitas para el verano', foto: 'assets/banco-fotos/salteado-wok.jpg' },
-    { kicker: 'En 15 minutos', titulo: 'Cenas rápidas cuando no hay tiempo', foto: 'assets/banco-fotos/ensalada-lentejas.jpg' },
-    { kicker: 'Para peques', titulo: 'Verduras que sí se comen', foto: 'assets/banco-fotos/crema-zanahoria.jpg' }
-  ];
-
-  function renderDescubrirVista() {
-    var fichasHtml = FICHAS_DESCUBRIR_MENTIRA.map(function (d) {
-      return '<div class="desc-ficha">' +
+  // Descubrir — 3 fichas de categorías REALES rotando a diario (Roger
+  // 2026-07-20: sustituye el placeholder de mentira de la sesión anterior).
+  // `E.categoriasDescubrir` hace todo el trabajo de datos (filtros sobre el
+  // banco real, rotación determinista por día) — aquí solo se renderiza.
+  // Cada ficha abre su lista de recetas (Roger 2026-07-20: tocaba la ficha y
+  // no pasaba nada — las candidatas ya las calculaba el motor, solo faltaba
+  // exponerlas y pintarlas en un sheet).
+  function renderDescubrirVista(estado, banco) {
+    var categorias = E.categoriasDescubrir(banco, estado, hoyISO());
+    var fichasHtml = categorias.map(function (d, idx) {
+      return '<button type="button" class="desc-ficha" data-action="descubrir-abrir-categoria" data-idx="' + idx + '">' +
         '<img src="' + d.foto + '" alt="">' +
         '<div class="desc-ficha-degradado"></div>' +
         '<div class="desc-ficha-texto">' +
         '<span class="desc-kicker">' + escapeHtml(d.kicker) + '</span>' +
         '<div class="desc-titulo">' + escapeHtml(d.titulo) + '</div>' +
-        '</div></div>';
+        '</div></button>';
     }).join('');
     return '<div class="rc-cabecera"><div><h1 class="rc-titulo">Descubrir</h1><p class="cp-resumen">Ideas nuevas para tu familia</p></div></div>' +
-      '<div class="vista-body rc-body"><div class="desc-lista">' + fichasHtml + '</div></div>';
+      '<div class="vista-body rc-body"><div class="desc-lista">' +
+      (fichasHtml || '<p class="card-msg">Muy pronto: ideas nuevas para tu familia.</p>') +
+      '</div></div>';
+  }
+
+  // Descubrir → detalle de categoría: mismas tarjetas que la pestaña Recetas
+  // (Roger 2026-07-20: "quiero pagina de recetas como la generica") — reutiliza
+  // tarjetaRecetaGrid tal cual (foto, badge de esfuerzo, favorita/ocultar) en
+  // vez de inventar una fila propia. Sin chips ni buscador: la categoría ya
+  // viene filtrada por el motor, no hace falta volver a filtrar 7 platos.
+  // Corazón/ojo tocan el mismo estado.favoritas/ocultas que Recetas — apto
+  // porque es la MISMA plantilla, no una copia con su propio estado.
+  function renderSheetDescubrirCategoria(categoria, estado, banco) {
+    var ocultas = estado.ocultas || [];
+    var favoritas = estado.favoritas || [];
+    var tarjetasHtml = categoria.candidatas.map(function (p) {
+      return tarjetaRecetaGrid(p, banco, ocultas.indexOf(p.id) !== -1, favoritas.indexOf(p.id) !== -1);
+    }).join('');
+    return sheetHead(categoria.titulo) +
+      '<div class="sheet-body"><div class="rc-grid">' + tarjetasHtml + '</div></div>';
   }
 
   // Familia — lista de miembros (Roger 2026-07-19, handoff): tarjeta por
@@ -1397,6 +1408,7 @@
   global.E3UI = {
     renderHome: renderHome,
     renderDescubrirVista: renderDescubrirVista,
+    renderSheetDescubrirCategoria: renderSheetDescubrirCategoria,
     renderPerfilVista: renderPerfilVista,
     renderRecetasVista: renderRecetasVista,
     renderVistaRecetaPlantilla: renderVistaRecetaPlantilla,

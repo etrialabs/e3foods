@@ -142,6 +142,7 @@ window.E3_RECETAS = {
   plantillas: [
     {
       id: "plancha-guarnicion",
+      tematica: "A la plancha o al horno",
       nombre_patron: "{proteina} a la plancha con {hidrato} y {verdura}",
       tipo: "plantilla",
       apta: ["comida", "cena"],
@@ -166,6 +167,7 @@ window.E3_RECETAS = {
     },
     {
       id: "horno-bandeja",
+      tematica: "A la plancha o al horno",
       nombre_patron: "{proteina} al horno con {hidrato} y {verdura}",
       tipo: "plantilla",
       apta: ["comida", "cena"],
@@ -191,6 +193,7 @@ window.E3_RECETAS = {
     },
     {
       id: "lentejas-guiso",
+      tematica: "Potajes y guisos",
       nombre_patron: "Lentejas guisadas con verduras",
       tipo: "plato-unico",
       apta: ["comida", "cena"],
@@ -216,6 +219,7 @@ window.E3_RECETAS = {
     },
     {
       id: "garbanzos-guiso",
+      tematica: "Potajes y guisos",
       nombre_patron: "Garbanzos guisados con verduras",
       tipo: "plato-unico",
       apta: ["comida", "cena"],
@@ -241,6 +245,7 @@ window.E3_RECETAS = {
     },
     {
       id: "cocido-simplificado",
+      tematica: "Potajes y guisos",
       nombre_patron: "Cocido simplificado de garbanzos con {proteina}",
       tipo: "plato-unico",
       apta: ["comida"],
@@ -267,6 +272,7 @@ window.E3_RECETAS = {
     },
     {
       id: "alubias-guiso",
+      tematica: "Potajes y guisos",
       nombre_patron: "Alubias blancas guisadas con verduras",
       tipo: "plato-unico",
       apta: ["comida", "cena"],
@@ -292,6 +298,7 @@ window.E3_RECETAS = {
     },
     {
       id: "paella-sencilla",
+      tematica: "Arroces y fideuà",
       nombre_patron: "Paella sencilla de {proteina}",
       tipo: "plato-unico",
       apta: ["comida"],
@@ -317,6 +324,7 @@ window.E3_RECETAS = {
     },
     {
       id: "arroz-horno",
+      tematica: "Arroces y fideuà",
       nombre_patron: "Arroz al horno con {proteina}",
       tipo: "plato-unico",
       apta: ["comida"],
@@ -343,6 +351,7 @@ window.E3_RECETAS = {
     },
     {
       id: "arroz-caldoso",
+      tematica: "Arroces y fideuà",
       nombre_patron: "Arroz caldoso de {proteina}",
       tipo: "plato-unico",
       apta: ["comida", "cena"],
@@ -368,6 +377,7 @@ window.E3_RECETAS = {
     },
     {
       id: "arroz-verduras",
+      tematica: "Arroces y fideuà",
       nombre_patron: "Arroz con verduras y {proteina}",
       tipo: "plantilla",
       apta: ["comida", "cena"],
@@ -392,6 +402,7 @@ window.E3_RECETAS = {
     },
     {
       id: "arroz-cubana",
+      tematica: "Arroces y fideuà",
       nombre_patron: "Arroz a la cubana con huevo y tomate",
       tipo: "plato-unico",
       apta: ["comida", "cena"],
@@ -415,6 +426,7 @@ window.E3_RECETAS = {
     },
     {
       id: "pasta-bolonesa",
+      tematica: "Pasta",
       nombre_patron: "{hidrato} con boloñesa de {proteina}",
       tipo: "plantilla",
       apta: ["comida", "cena"],
@@ -439,6 +451,7 @@ window.E3_RECETAS = {
     },
     {
       id: "pasta-verduras-salteadas",
+      tematica: "Pasta",
       nombre_patron: "{hidrato} con {proteina} y verduras salteadas",
       tipo: "plantilla",
       apta: ["comida", "cena"],
@@ -463,6 +476,7 @@ window.E3_RECETAS = {
     },
     {
       id: "pasta-atun",
+      tematica: "Pasta",
       nombre_patron: "Pasta con atún y tomate",
       tipo: "plato-unico",
       apta: ["comida", "cena"],
@@ -486,6 +500,7 @@ window.E3_RECETAS = {
     },
     {
       id: "lasana-verduras",
+      tematica: "Pasta",
       nombre_patron: "Lasaña de {proteina} con verduras",
       tipo: "plato-unico",
       apta: ["comida"],
@@ -511,6 +526,7 @@ window.E3_RECETAS = {
     },
     {
       id: "pollo-asado-horno",
+      tematica: "A la plancha o al horno",
       nombre_patron: "{proteina} asado al horno con {hidrato} y verduras",
       tipo: "plantilla",
       apta: ["comida"],
@@ -536,6 +552,7 @@ window.E3_RECETAS = {
     },
     {
       id: "pescado-horno-limon",
+      tematica: "Pescado y marisco",
       nombre_patron: "{proteina} al horno con limón y {verdura}",
       tipo: "plantilla",
       apta: ["comida", "cena"],
@@ -561,6 +578,7 @@ window.E3_RECETAS = {
     },
     {
       id: "verduras-horno-huevo",
+      tematica: "Huevos y tortillas",
       nombre_patron: "Verduras al horno con huevo",
       tipo: "plato-unico",
       apta: ["cena", "comida"],
@@ -586,6 +604,7 @@ window.E3_RECETAS = {
     },
     {
       id: "tortilla-patata",
+      tematica: "Huevos y tortillas",
       nombre_patron: "Tortilla de patata",
       tipo: "plato-unico",
       apta: ["comida", "cena"],
@@ -609,6 +628,7 @@ window.E3_RECETAS = {
     },
     {
       id: "tortilla-francesa-verdura",
+      tematica: "Huevos y tortillas",
       nombre_patron: "Tortilla francesa con {verdura}",
       tipo: "plato-unico",
       apta: ["cena"],
@@ -631,6 +651,7 @@ window.E3_RECETAS = {
     },
     {
       id: "revuelto-champinones",
+      tematica: "Huevos y tortillas",
       nombre_patron: "Revuelto de huevo con {verdura}",
       tipo: "plato-unico",
       apta: ["cena"],
@@ -653,6 +674,7 @@ window.E3_RECETAS = {
     },
     {
       id: "crema-calabacin",
+      tematica: "Cremas y sopas",
       nombre_patron: "Crema de calabacín",
       tipo: "plato-unico",
       apta: ["cena"],
@@ -677,6 +699,7 @@ window.E3_RECETAS = {
     },
     {
       id: "crema-zanahoria",
+      tematica: "Cremas y sopas",
       nombre_patron: "Crema de zanahoria",
       tipo: "plato-unico",
       apta: ["cena"],
@@ -701,6 +724,7 @@ window.E3_RECETAS = {
     },
     {
       id: "crema-verduras-variadas",
+      tematica: "Cremas y sopas",
       nombre_patron: "Crema de {verdura}",
       tipo: "plato-unico",
       apta: ["cena"],
@@ -725,6 +749,7 @@ window.E3_RECETAS = {
     },
     {
       id: "crema-calabaza-boniato",
+      tematica: "Cremas y sopas",
       nombre_patron: "Crema de calabaza y boniato",
       tipo: "plato-unico",
       apta: ["cena"],
@@ -750,6 +775,7 @@ window.E3_RECETAS = {
     },
     {
       id: "ensalada-completa",
+      tematica: "Ensaladas completas",
       nombre_patron: "Ensalada completa de {proteina} con {hidrato}",
       tipo: "plantilla",
       apta: ["comida", "cena"],
@@ -775,6 +801,7 @@ window.E3_RECETAS = {
     },
     {
       id: "ensalada-pasta",
+      tematica: "Ensaladas completas",
       nombre_patron: "Ensalada de pasta con {proteina} y {verdura}",
       tipo: "plantilla",
       apta: ["comida", "cena"],
@@ -800,6 +827,7 @@ window.E3_RECETAS = {
     },
     {
       id: "ensalada-garbanzos",
+      tematica: "Ensaladas completas",
       nombre_patron: "Ensalada de garbanzos con {verdura}",
       tipo: "plato-unico",
       apta: ["comida", "cena"],
@@ -825,6 +853,7 @@ window.E3_RECETAS = {
     },
     {
       id: "ensalada-lentejas",
+      tematica: "Ensaladas completas",
       nombre_patron: "Ensalada de lentejas con {verdura}",
       tipo: "plato-unico",
       apta: ["comida", "cena"],
@@ -850,6 +879,7 @@ window.E3_RECETAS = {
     },
     {
       id: "ensalada-cesar-casera",
+      tematica: "Ensaladas completas",
       nombre_patron: "Ensalada César casera con {proteina}",
       tipo: "plantilla",
       apta: ["comida", "cena"],
@@ -875,6 +905,7 @@ window.E3_RECETAS = {
     },
     {
       id: "quinoa-ensalada",
+      tematica: "Ensaladas completas",
       nombre_patron: "Ensalada de quinoa con {proteina} y {verdura}",
       tipo: "plantilla",
       apta: ["comida", "cena"],
@@ -900,6 +931,7 @@ window.E3_RECETAS = {
     },
     {
       id: "merluza-salsa-verde",
+      tematica: "Pescado y marisco",
       nombre_patron: "{proteina} en salsa verde con {verdura}",
       tipo: "plantilla",
       apta: ["comida"],
@@ -925,6 +957,7 @@ window.E3_RECETAS = {
     },
     {
       id: "salmon-salsa",
+      tematica: "Pescado y marisco",
       nombre_patron: "Salmón en salsa con {hidrato} y {verdura}",
       tipo: "plantilla",
       apta: ["comida", "cena"],
@@ -949,6 +982,7 @@ window.E3_RECETAS = {
     },
     {
       id: "bacalao-tomate",
+      tematica: "Pescado y marisco",
       nombre_patron: "{proteina} con tomate y {verdura}",
       tipo: "plantilla",
       apta: ["comida"],
@@ -974,6 +1008,7 @@ window.E3_RECETAS = {
     },
     {
       id: "marmitako-atun",
+      tematica: "Pescado y marisco",
       nombre_patron: "Marmitako de atún y patata",
       tipo: "plato-unico",
       apta: ["comida"],
@@ -1000,6 +1035,7 @@ window.E3_RECETAS = {
     },
     {
       id: "pescaditos-plancha",
+      tematica: "Pescado y marisco",
       nombre_patron: "{proteina} a la plancha con {hidrato} y {verdura}",
       tipo: "plantilla",
       apta: ["comida", "cena"],
@@ -1025,6 +1061,7 @@ window.E3_RECETAS = {
     },
     {
       id: "gallo-plancha",
+      tematica: "Pescado y marisco",
       nombre_patron: "Filetes de gallo a la plancha con {hidrato} y {verdura}",
       tipo: "plantilla",
       apta: ["comida", "cena"],
@@ -1049,6 +1086,7 @@ window.E3_RECETAS = {
     },
     {
       id: "gambas-ajillo",
+      tematica: "Pescado y marisco",
       nombre_patron: "Gambas al ajillo con {hidrato}",
       tipo: "plantilla",
       apta: ["comida", "cena"],
@@ -1072,6 +1110,7 @@ window.E3_RECETAS = {
     },
     {
       id: "mejillones-marinera",
+      tematica: "Pescado y marisco",
       nombre_patron: "Mejillones a la marinera con {hidrato}",
       tipo: "plato-unico",
       apta: ["comida"],
@@ -1096,6 +1135,7 @@ window.E3_RECETAS = {
     },
     {
       id: "empanadillas-caseras",
+      tematica: "Comida rápida e informal",
       nombre_patron: "Empanadillas caseras de {proteina}",
       tipo: "plato-unico",
       apta: ["comida", "cena"],
@@ -1119,6 +1159,7 @@ window.E3_RECETAS = {
     },
     {
       id: "wrap-casero",
+      tematica: "Comida rápida e informal",
       nombre_patron: "Wrap casero de {proteina} con {verdura}",
       tipo: "plantilla",
       apta: ["comida", "cena"],
@@ -1144,6 +1185,7 @@ window.E3_RECETAS = {
     },
     {
       id: "hummus-plato",
+      tematica: "Comida rápida e informal",
       nombre_patron: "Plato de hummus con {hidrato} y {verdura}",
       tipo: "plantilla",
       apta: ["comida", "cena"],
@@ -1168,6 +1210,7 @@ window.E3_RECETAS = {
     },
     {
       id: "tofu-plancha-verduras",
+      tematica: "A la plancha o al horno",
       nombre_patron: "Tofu a la plancha con {hidrato} y {verdura}",
       tipo: "plantilla",
       apta: ["comida", "cena"],
@@ -1192,6 +1235,7 @@ window.E3_RECETAS = {
     },
     {
       id: "salteado-wok",
+      tematica: "Comida rápida e informal",
       nombre_patron: "Salteado de {proteina} con {verdura} y {hidrato}",
       tipo: "plantilla",
       apta: ["comida", "cena"],
@@ -1216,6 +1260,7 @@ window.E3_RECETAS = {
     },
     {
       id: "hamburguesa-casera",
+      tematica: "Comida rápida e informal",
       nombre_patron: "Hamburguesa casera de {proteina} con {verdura}",
       tipo: "plantilla",
       apta: ["comida", "cena"],
@@ -1240,6 +1285,7 @@ window.E3_RECETAS = {
     },
     {
       id: "pizza-casera",
+      tematica: "Comida rápida e informal",
       nombre_patron: "Pizza casera de {proteina} y {verdura}",
       tipo: "plantilla",
       apta: ["comida", "cena"],
@@ -1264,6 +1310,7 @@ window.E3_RECETAS = {
     },
     {
       id: "sopa-fideos",
+      tematica: "Cremas y sopas",
       nombre_patron: "Sopa de fideos con verduras",
       tipo: "plato-unico",
       apta: ["cena"],
@@ -1289,6 +1336,7 @@ window.E3_RECETAS = {
     },
     {
       id: "menestra-verduras",
+      tematica: "Verduras y platos de verdura",
       nombre_patron: "Menestra de verduras con {proteina}",
       tipo: "plantilla",
       apta: ["comida", "cena"],
@@ -1312,6 +1360,7 @@ window.E3_RECETAS = {
     },
     {
       id: "garbanzos-espinacas",
+      tematica: "Potajes y guisos",
       nombre_patron: "Garbanzos con espinacas y {proteina}",
       tipo: "plato-unico",
       apta: ["comida", "cena"],
@@ -1337,6 +1386,7 @@ window.E3_RECETAS = {
     },
     {
       id: "albondigas-salsa",
+      tematica: "Carnes de cuchara y horno",
       nombre_patron: "Albóndigas de {proteina} en salsa con {hidrato}",
       tipo: "plantilla",
       apta: ["comida", "cena"],
@@ -1362,6 +1412,7 @@ window.E3_RECETAS = {
     },
     {
       id: "patatas-guisadas",
+      tematica: "Potajes y guisos",
       nombre_patron: "Patatas guisadas con {proteina} y verduras",
       tipo: "plato-unico",
       apta: ["comida", "cena"],
@@ -1387,6 +1438,7 @@ window.E3_RECETAS = {
     },
     {
       id: "coliflor-gratinada",
+      tematica: "Verduras y platos de verdura",
       nombre_patron: "Coliflor gratinada con {proteina}",
       tipo: "plato-unico",
       apta: ["cena"],
@@ -1416,6 +1468,7 @@ window.E3_RECETAS = {
     // ================================================================
     {
       id: "gazpacho-andaluz",
+      tematica: "Cremas y sopas",
       nombre_patron: "Gazpacho andaluz con huevo picado",
       tipo: "plato-unico",
       apta: ["comida", "cena"],
@@ -1441,6 +1494,7 @@ window.E3_RECETAS = {
     },
     {
       id: "salmorejo-cordobes",
+      tematica: "Cremas y sopas",
       nombre_patron: "Salmorejo cordobés con huevo",
       tipo: "plato-unico",
       apta: ["comida", "cena"],
@@ -1466,6 +1520,7 @@ window.E3_RECETAS = {
     },
     {
       id: "pisto-manchego",
+      tematica: "Verduras y platos de verdura",
       nombre_patron: "Pisto manchego con {proteina}",
       tipo: "plantilla",
       apta: ["comida", "cena"],
@@ -1492,6 +1547,7 @@ window.E3_RECETAS = {
     },
     {
       id: "croquetas-caseras",
+      tematica: "Comida rápida e informal",
       nombre_patron: "Croquetas caseras de {proteina}",
       tipo: "plantilla",
       apta: ["comida", "cena"],
@@ -1515,6 +1571,7 @@ window.E3_RECETAS = {
     },
     {
       id: "fideua",
+      tematica: "Arroces y fideuà",
       nombre_patron: "Fideuà de {proteina}",
       tipo: "plantilla",
       apta: ["comida"],
@@ -1540,6 +1597,7 @@ window.E3_RECETAS = {
     },
     {
       id: "pollo-al-chilindron",
+      tematica: "Carnes de cuchara y horno",
       nombre_patron: "Pollo al chilindrón",
       tipo: "plato-unico",
       apta: ["comida", "cena"],
@@ -1564,6 +1622,7 @@ window.E3_RECETAS = {
     },
     {
       id: "pochas-con-chorizo",
+      tematica: "Potajes y guisos",
       nombre_patron: "Pochas guisadas con chorizo",
       tipo: "plato-unico",
       apta: ["comida"],
@@ -1589,6 +1648,7 @@ window.E3_RECETAS = {
     },
     {
       id: "fabada-asturiana",
+      tematica: "Potajes y guisos",
       nombre_patron: "Fabada asturiana",
       tipo: "plato-unico",
       apta: ["comida"],
@@ -1614,6 +1674,7 @@ window.E3_RECETAS = {
     },
     {
       id: "cachopo",
+      tematica: "Carnes de cuchara y horno",
       nombre_patron: "Cachopo de ternera con jamón y queso",
       tipo: "plato-unico",
       apta: ["comida", "cena"],
@@ -1639,6 +1700,7 @@ window.E3_RECETAS = {
     },
     {
       id: "empanada-gallega",
+      tematica: "Comida rápida e informal",
       nombre_patron: "Empanada gallega de atún",
       tipo: "plato-unico",
       apta: ["comida", "cena"],
@@ -1664,6 +1726,7 @@ window.E3_RECETAS = {
     },
     {
       id: "porrusalda-con-bacalao",
+      tematica: "Cremas y sopas",
       nombre_patron: "Porrusalda con bacalao",
       tipo: "plato-unico",
       apta: ["comida", "cena"],
@@ -1689,6 +1752,7 @@ window.E3_RECETAS = {
     },
     {
       id: "piperrada-con-huevo",
+      tematica: "Huevos y tortillas",
       nombre_patron: "Piperrada con huevo",
       tipo: "plato-unico",
       apta: ["cena"],
@@ -1714,6 +1778,7 @@ window.E3_RECETAS = {
     },
     {
       id: "zarangollo",
+      tematica: "Verduras y platos de verdura",
       nombre_patron: "Zarangollo murciano de calabacín",
       tipo: "plato-unico",
       apta: ["cena"],
@@ -1738,6 +1803,7 @@ window.E3_RECETAS = {
     },
     {
       id: "ensalada-murciana",
+      tematica: "Ensaladas completas",
       nombre_patron: "Ensalada murciana de tomate y {proteina}",
       tipo: "plantilla",
       apta: ["comida", "cena"],
@@ -1763,6 +1829,7 @@ window.E3_RECETAS = {
     },
     {
       id: "fricando-de-ternera",
+      tematica: "Carnes de cuchara y horno",
       nombre_patron: "Fricandó de ternera con setas",
       tipo: "plato-unico",
       apta: ["comida"],
@@ -1789,6 +1856,7 @@ window.E3_RECETAS = {
     },
     {
       id: "tumbet-mallorquin",
+      tematica: "Verduras y platos de verdura",
       nombre_patron: "Tumbet mallorquín con {proteina}",
       tipo: "plantilla",
       apta: ["cena"],
@@ -1815,6 +1883,7 @@ window.E3_RECETAS = {
     },
     {
       id: "papas-arrugadas-con-mojo",
+      tematica: "Verduras y platos de verdura",
       nombre_patron: "Papas arrugadas con mojo rojo y {proteina}",
       tipo: "plantilla",
       apta: ["comida", "cena"],
@@ -1840,6 +1909,7 @@ window.E3_RECETAS = {
     },
     {
       id: "ropa-vieja-canaria",
+      tematica: "Carnes de cuchara y horno",
       nombre_patron: "Ropa vieja canaria de {proteina}",
       tipo: "plantilla",
       apta: ["comida"],
@@ -1865,6 +1935,7 @@ window.E3_RECETAS = {
     },
     {
       id: "atascaburras",
+      tematica: "Pescado y marisco",
       nombre_patron: "Atascaburras de bacalao y patata",
       tipo: "plato-unico",
       apta: ["comida"],
@@ -1889,6 +1960,7 @@ window.E3_RECETAS = {
     },
     {
       id: "sopa-castellana",
+      tematica: "Cremas y sopas",
       nombre_patron: "Sopa castellana de ajo con huevo",
       tipo: "plato-unico",
       apta: ["cena"],
@@ -1913,6 +1985,7 @@ window.E3_RECETAS = {
     },
     {
       id: "migas-extremenas",
+      tematica: "Carnes de cuchara y horno",
       nombre_patron: "Migas extremeñas con {proteina}",
       tipo: "plantilla",
       apta: ["comida"],
@@ -1939,6 +2012,7 @@ window.E3_RECETAS = {
     },
     {
       id: "bonito-encebollado",
+      tematica: "Pescado y marisco",
       nombre_patron: "Bonito encebollado",
       tipo: "plato-unico",
       apta: ["comida", "cena"],
@@ -1963,6 +2037,7 @@ window.E3_RECETAS = {
     },
     {
       id: "salpicon-de-pollo",
+      tematica: "Ensaladas completas",
       nombre_patron: "Salpicón de pollo con verduras",
       tipo: "plato-unico",
       apta: ["cena"],
@@ -1988,6 +2063,7 @@ window.E3_RECETAS = {
     },
     {
       id: "olleta-alicantina",
+      tematica: "Arroces y fideuà",
       nombre_patron: "Olleta alicantina de legumbres y arroz",
       tipo: "plato-unico",
       apta: ["comida"],
@@ -2014,6 +2090,7 @@ window.E3_RECETAS = {
     },
     {
       id: "soldaditos-de-pavia",
+      tematica: "Pescado y marisco",
       nombre_patron: "Soldaditos de Pavía (bacalao rebozado)",
       tipo: "plato-unico",
       apta: ["cena"],
@@ -2038,6 +2115,7 @@ window.E3_RECETAS = {
     },
     {
       id: "merluza-a-la-sidra",
+      tematica: "Pescado y marisco",
       nombre_patron: "{proteina} a la sidra",
       tipo: "plantilla",
       apta: ["comida", "cena"],
@@ -2063,6 +2141,7 @@ window.E3_RECETAS = {
     },
     {
       id: "trucha-a-la-navarra",
+      tematica: "Pescado y marisco",
       nombre_patron: "Trucha a la navarra con jamón",
       tipo: "plato-unico",
       apta: ["comida", "cena"],
@@ -2090,6 +2169,7 @@ window.E3_RECETAS = {
     // nuevos — son de los platos más comunes del país, no exotismo.
     {
       id: "huevos-fritos-con-patatas",
+      tematica: "Huevos y tortillas",
       nombre_patron: "Huevos fritos con patatas",
       tipo: "plato-unico",
       apta: ["cena"],
@@ -2112,6 +2192,7 @@ window.E3_RECETAS = {
     },
     {
       id: "judias-verdes-con-patatas",
+      tematica: "Verduras y platos de verdura",
       nombre_patron: "Judías verdes con patatas",
       tipo: "plato-unico",
       apta: ["comida", "cena"],
@@ -2138,6 +2219,7 @@ window.E3_RECETAS = {
     // La cuota de carne roja lo dosifica sola; nada de sermones.
     {
       id: "cena-de-tabla",
+      tematica: "Comida rápida e informal",
       nombre_patron: "Tabla de {proteina} y queso con pan con tomate",
       tipo: "plantilla",
       apta: ["cena"],

@@ -220,7 +220,7 @@
     if (vistaActual === 'semana') cont.innerHTML = UI.renderHome(estado, BANCO, diaGlobalActivo(), pagerIdx, obtenerMiembroDispositivo());
     else if (vistaActual === 'recetas') cont.innerHTML = UI.renderRecetasVista(estado, BANCO, filtroRecetas, busquedaRecetas, recetasView);
     else if (vistaActual === 'compra') cont.innerHTML = UI.renderCompraVista(estado, estado.plan, BANCO, rangoCompra);
-    else if (vistaActual === 'descubrir') cont.innerHTML = UI.renderDescubrirVista();
+    else if (vistaActual === 'descubrir') cont.innerHTML = UI.renderDescubrirVista(estado, BANCO);
     else if (vistaActual === 'perfil') cont.innerHTML = (vistaPerfil === 'ficha' && miembroAbierto) ? UI.renderVistaMiembro(estado, BANCO, miembroAbierto, obtenerMiembroDispositivo()) : UI.renderPerfilVista(estado);
     else if (vistaActual === 'receta') cont.innerHTML = !recetaAbierta ? '' :
       (recetaAbierta.plantillaId ? UI.renderVistaRecetaPlantilla(estado, BANCO, recetaAbierta.plantillaId) : UI.renderVistaReceta(estado, BANCO, planActivo(), recetaAbierta.dia, recetaAbierta.tipo));
@@ -835,8 +835,13 @@
   }
 
   // Desde el banco de Recetas (Roger 2026-07-19): sin día ni comensales
-  // concretos detrás — ver renderVistaRecetaPlantilla.
+  // concretos detrás — ver renderVistaRecetaPlantilla. cerrarSheet() primero
+  // porque desde el 2026-07-20 también se llama desde dentro del sheet de
+  // categoría de Descubrir (tarjetaRecetaGrid reutilizada ahí tal cual) — sin
+  // esto el sheet se queda tapando la receta. No-op seguro si no hay sheet
+  // abierto (el llamador original, la pestaña Recetas, nunca lo tiene).
   function abrirRecetaBanco(plantillaId) {
+    cerrarSheet();
     recetaAbierta = { plantillaId: plantillaId };
     vistaAnterior = vistaActual;
     vistaActual = 'receta';
@@ -1149,6 +1154,11 @@
 
     'abrir-receta': function (btn) { abrirRecetaDetalle(Number(btn.dataset.dia), btn.dataset.tipo); },
     'abrir-receta-banco': function (btn) { abrirRecetaBanco(btn.dataset.plantilla); },
+    'descubrir-abrir-categoria': function (btn) {
+      var categorias = E.categoriasDescubrir(BANCO, estado, E.fechaLocalISO(new Date()));
+      var categoria = categorias[Number(btn.dataset.idx)];
+      if (categoria) abrirSheet(UI.renderSheetDescubrirCategoria(categoria, estado, BANCO));
+    },
     'receta-volver': function () { cerrarRecetaDetalle(); },
     'abrir-miembro-ficha': function (btn) { abrirMiembroFicha(btn.dataset.id); },
     'miembro-volver': function () { cerrarMiembroFicha(); },

@@ -668,6 +668,67 @@
   }
 
   // ---------------------------------------------------------------
+  // Descubrir — categorías reales rotando (2026-07-20, Roger: "busca en tu
+  // catálogo... y otras categorías que podamos incluir, no visibles ahora
+  // pero sí en bbdd"). Cada categoría es un filtro sobre datos reales de la
+  // plantilla — desde que existe el campo `tematica` (2026-07-20, una por
+  // cada una de las 82) se filtra por ese campo directamente en vez de
+  // inferirlo por regex sobre el nombre; "rápidas"/"temporada" siguen
+  // filtrando por `esfuerzo`/`temporada`, son otra dimensión, no un tema.
+  // Todas con >=5 candidatas reales salvo "temporada" (varía con el mes; en
+  // abr/may/oct, mes neutro sin verano ni invierno, se cae del pool ese día,
+  // no se fuerza un valor falso). "Para peques" (`ninos`) NO se incluye a
+  // propósito: el campo es true en 68-77 de 82 plantillas según el corte —
+  // no diferencia un subconjunto real, sería una categoría de mentira con
+  // ropaje de dato real. "Otoño" y "extras de Navidad/cena con invitados"
+  // tampoco: no hay tag de otoño ni platos de gran formato en el banco
+  // todavía (visto con Roger, pendiente de un tramo de banco nuevo si se
+  // quiere de verdad — ver UPGRADES.md §3). Rotación determinista por día
+  // (mismo patrón que el postre tradicional de domingo, arriba, y la
+  // portada de index.html): sin Math.random, sin persistir nada, cambia
+  // sola a las 00:00 — recibe `fecha` como parámetro (no Date.now() interno)
+  // para seguir siendo puro y testeable en consola.
+  // ---------------------------------------------------------------
+  var CATEGORIAS_DESCUBRIR = [
+    { id: 'arroces', kicker: 'Arroces', titulo: 'De la paella al arroz caldoso',
+      test: function (p) { return p.tematica === 'Arroces y fideuà'; } },
+    { id: 'potajes', kicker: 'Cuchara de invierno', titulo: 'Potajes y guisos para los días fríos',
+      test: function (p) { return p.tematica === 'Potajes y guisos' && p.temporada === 'invierno'; } },
+    { id: 'ensaladas', kicker: 'Ensaladas completas', titulo: 'Platos únicos que no dan pereza',
+      test: function (p) { return p.tematica === 'Ensaladas completas'; } },
+    { id: 'cremas', kicker: 'Cremas y sopas', titulo: 'Reconfortantes, con cuchara',
+      test: function (p) { return p.tematica === 'Cremas y sopas'; } },
+    { id: 'rapidas', kicker: 'En poco tiempo', titulo: 'Ideas para cuando no hay tiempo',
+      test: function (p) { return p.esfuerzo === 'rapido'; } }
+  ];
+
+  function categoriasDescubrir(banco, estado, fecha) {
+    var disponibles = plantillasDisponibles(banco, estado);
+    var d = new Date(fecha + 'T00:00:00');
+    var estacion = estacionDelMes(d.getMonth() + 1);
+    var pool = CATEGORIAS_DESCUBRIR.slice();
+    if (estacion) {
+      pool.unshift({
+        id: 'temporada', kicker: 'De temporada',
+        titulo: estacion === 'verano' ? 'Recetas fresquitas para el verano' : 'Recetas de cuchara para el invierno',
+        test: function (p) { return p.temporada === estacion; }
+      });
+    }
+    var conCandidatas = pool.map(function (cat) {
+      var candidatas = disponibles.filter(cat.test);
+      return candidatas.length ? { kicker: cat.kicker, titulo: cat.titulo, candidatas: candidatas } : null;
+    }).filter(Boolean);
+    if (!conCandidatas.length) return [];
+    var diaNum = Math.floor(d.getTime() / (24 * 3600 * 1000));
+    var offset = diaNum % conCandidatas.length;
+    var rotado = conCandidatas.slice(offset).concat(conCandidatas.slice(0, offset));
+    return rotado.slice(0, 3).map(function (cat, i) {
+      var elegida = cat.candidatas[(diaNum + i) % cat.candidatas.length];
+      return { kicker: cat.kicker, titulo: cat.titulo, foto: elegida.foto, candidatas: cat.candidatas };
+    });
+  }
+
+  // ---------------------------------------------------------------
   // Elección del mejor plantilla+selección para un hueco (comida o cena de un día)
   // aplicando las 7 restricciones en orden.
   // ---------------------------------------------------------------
@@ -992,7 +1053,9 @@
     resumenCuotasSemana: resumenCuotasSemana,
     // tramo 1 (2026-07-17): rotación entre semanas + postre del día
     historialConPlan: historialConPlan,
-    postreDelDia: postreDelDia
+    postreDelDia: postreDelDia,
+    // Descubrir (2026-07-20): categorías reales rotando
+    categoriasDescubrir: categoriasDescubrir
   };
 
   if (typeof module !== 'undefined' && module.exports) module.exports = E3Engine;

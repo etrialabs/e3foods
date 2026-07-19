@@ -266,6 +266,16 @@
     refrescarIconos();
   }
 
+  // Sync (Roger 2026-07-19/20, tarea #18): tras abrirSheet(), varios estados de
+  // renderSheetSync se re-pintan directamente sobre #sheet-contenido sin pasar
+  // por abrirSheet() ni render() — desde el rediseño esos estados también
+  // llevan <i data-lucide="…"> (refresh-cw/download/trash-2), así que cada
+  // reemplazo necesita su propio refrescarIconos() o el icono se queda vacío.
+  function actualizarSheet(html) {
+    document.getElementById('sheet-contenido').innerHTML = html;
+    refrescarIconos();
+  }
+
   function cerrarSheet() {
     document.getElementById('sheet-overlay').hidden = true;
     document.body.classList.remove('sheet-open');
@@ -397,13 +407,13 @@
     abrirSheet(UI.renderSheetSync({ cargando: true }));
     var familyId = window.E3Sync ? window.E3Sync.getFamilyId() : null;
     if (!familyId) {
-      document.getElementById('sheet-contenido').innerHTML = UI.renderSheetSync({ synced: false });
+      actualizarSheet(UI.renderSheetSync({ synced: false }));
       return;
     }
     window.E3Sync.obtenerInfoFamilia(familyId).then(function (info) {
-      document.getElementById('sheet-contenido').innerHTML = UI.renderSheetSync({ synced: true, nombreFamilia: info.nombreFamilia, code: info.code });
+      actualizarSheet(UI.renderSheetSync({ synced: true, nombreFamilia: info.nombreFamilia, code: info.code }));
     }).catch(function () {
-      document.getElementById('sheet-contenido').innerHTML = UI.renderSheetSync({ synced: false, error: 'No se pudo cargar el estado de sincronización.' });
+      actualizarSheet(UI.renderSheetSync({ synced: false, error: 'No se pudo cargar el estado de sincronización.' }));
     });
   }
 
@@ -426,9 +436,9 @@
       remotoListo = true; // el doc remoto acaba de escribirse con este estado
       iniciarEscuchaRemota();
       mostrarAppPrincipal();
-      document.getElementById('sheet-contenido').innerHTML = UI.renderSheetSync({ synced: true, nombreFamilia: estado.nombreFamilia, code: data.code });
+      actualizarSheet(UI.renderSheetSync({ synced: true, nombreFamilia: estado.nombreFamilia, code: data.code }));
     }).catch(function (err) {
-      document.getElementById('sheet-contenido').innerHTML = UI.renderSheetSync({ synced: false, error: 'No se pudo activar: ' + err.message });
+      actualizarSheet(UI.renderSheetSync({ synced: false, error: 'No se pudo activar: ' + err.message }));
     });
   }
 
@@ -436,15 +446,15 @@
     var btn = document.getElementById('sync-rotar-btn');
     if (btn) { btn.disabled = true; btn.textContent = 'Generando…'; }
     window.E3Sync.rotarCodigo().then(function (data) {
-      document.getElementById('sheet-contenido').innerHTML = UI.renderSheetSync({
+      actualizarSheet(UI.renderSheetSync({
         synced: true, nombreFamilia: estado.nombreFamilia, code: data.code,
         aviso: 'Código nuevo listo. El anterior ya no sirve para unirse.'
-      });
+      }));
     }).catch(function (err) {
-      document.getElementById('sheet-contenido').innerHTML = UI.renderSheetSync({
+      actualizarSheet(UI.renderSheetSync({
         synced: true, nombreFamilia: estado.nombreFamilia, code: '…',
         aviso: 'No se pudo generar: ' + err.message + '. El código anterior sigue siendo válido.'
-      });
+      }));
     });
   }
 
@@ -469,18 +479,18 @@
   }
 
   function pedirConfirmacionBorrado() {
-    document.getElementById('sheet-contenido').innerHTML = UI.renderSheetSync({
+    actualizarSheet(UI.renderSheetSync({
       confirmarBorrado: true, nombreFamilia: estado.nombreFamilia
-    });
+    }));
   }
 
   function confirmarBorrado() {
     var input = document.getElementById('sync-borrar-input');
     if (!input || input.value.trim().toUpperCase() !== 'BORRAR') {
-      document.getElementById('sheet-contenido').innerHTML = UI.renderSheetSync({
+      actualizarSheet(UI.renderSheetSync({
         confirmarBorrado: true, nombreFamilia: estado.nombreFamilia,
         error: 'Escribe BORRAR para confirmar.'
-      });
+      }));
       return;
     }
     var btn = document.getElementById('sync-borrar-confirmar-btn');
@@ -490,15 +500,15 @@
       // que dispare un onChange(null) y app.js crea que el remoto está vacío
       if (desuscribirRemoto) { desuscribirRemoto(); desuscribirRemoto = null; }
       remotoListo = false;
-      document.getElementById('sheet-contenido').innerHTML = UI.sheetHead('Familia borrada') +
+      actualizarSheet(UI.sheetHead('Familia borrada') +
         '<div class="sheet-body"><p class="card-msg">La familia y sus datos ya no están en la nube. ' +
         'Este móvil conserva su copia local: puedes seguir usándolo sin sincronizar, o activar la ' +
-        'sincronización otra vez para crear una familia nueva.</p></div>';
+        'sincronización otra vez para crear una familia nueva.</p></div>');
     }).catch(function (err) {
-      document.getElementById('sheet-contenido').innerHTML = UI.renderSheetSync({
+      actualizarSheet(UI.renderSheetSync({
         confirmarBorrado: true, nombreFamilia: estado.nombreFamilia,
         error: 'No se pudo borrar: ' + err.message
-      });
+      }));
     });
   }
 
@@ -513,11 +523,11 @@
         mostrarAppPrincipal();
         var familyId = window.E3Sync.getFamilyId();
         window.E3Sync.obtenerInfoFamilia(familyId).then(function (info) {
-          document.getElementById('sheet-contenido').innerHTML = UI.renderSheetSync({ synced: true, nombreFamilia: info.nombreFamilia, code: info.code });
+          actualizarSheet(UI.renderSheetSync({ synced: true, nombreFamilia: info.nombreFamilia, code: info.code }));
         });
       });
     }).catch(function (err) {
-      document.getElementById('sheet-contenido').innerHTML = UI.renderSheetSync({ synced: false, error: 'Código no válido o error de red.' });
+      actualizarSheet(UI.renderSheetSync({ synced: false, error: 'Código no válido o error de red.' }));
     });
   }
 

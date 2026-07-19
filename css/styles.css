@@ -26,11 +26,18 @@
   --line-solid: #E4DFD3;
   --accent-ink: #1A1712;
   --navy-ink: #F7F3EC;
-  --gold: oklch(0.6 0.16 55);
-  --gold-soft: oklch(0.94 0.05 80);
-  --gold-grad-a: oklch(0.85 0.15 82);
-  --gold-grad-b: oklch(0.76 0.17 62);
-  --gold-link: oklch(0.68 0.16 55);
+  /* Dorado corporativo Étria (Roger 2026-07-20, ETRIA_BRAND.md — "Dorado/Champagne
+     #C9A96E: Acentos, wordmark parcial, CTAs"), no el oklch(0.6 0.16 55) más
+     naranja que trajo el mock de Claude Design. Derivados con color-mix() en vez
+     de valores oklch inventados a mano, para que las variantes sean coherentes
+     entre sí. Excepción explícita de Roger: el CTA "Me apetece otra cosa" de la
+     card principal (.ph-cta) NO usa estos tokens — conserva su degradado
+     original hardcodeado, ver esa regla. */
+  --gold: #C9A96E;
+  --gold-soft: color-mix(in oklch, var(--gold) 12%, white);
+  --gold-grad-a: color-mix(in oklch, var(--gold) 55%, white);
+  --gold-grad-b: var(--gold);
+  --gold-link: var(--gold);
   --cena-a: #444851;
   --cena-b: #2E3136;
   --cena-ink: #F7F3EC;
@@ -542,33 +549,23 @@ body.wizard-open { overflow: hidden; }
 /* ============================================================
    RECETAS — buscador + filtros colapsables + chips por categoría
    ============================================================ */
-.recetas-buscador-fila, .nevera-buscador-fila { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-3); }
-.buscador-wrap { position: relative; flex: 1; min-width: 0; }
-.input-buscador-icono {
-  position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
-  width: 18px; height: 18px; color: var(--muted); pointer-events: none;
-}
-.input-buscador-icono svg { width: 100%; height: 100%; stroke: currentColor; display: block; }
-.input-buscador {
-  width: 100%; min-height: 44px; border: 1.5px solid var(--line-solid); border-radius: 12px;
-  padding: 0 var(--space-2) 0 40px; background: var(--panel); color: var(--ink);
-  font-size: var(--fs-cuerpo); font-family: inherit;
-}
-.input-buscador::placeholder { color: var(--muted); }
-.input-buscador:focus { outline: none; border-color: var(--gold); }
+.recetas-buscador-fila { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-3); }
 .btn-filtro-icono {
   width: 44px; height: 44px; flex-shrink: 0; border-radius: 12px; border: 1.5px solid var(--line-solid);
   background: var(--panel); color: var(--soft); cursor: pointer;
   display: flex; align-items: center; justify-content: center;
 }
-.btn-filtro-icono svg { width: 20px; height: 20px; stroke: currentColor; display: block; }
 .btn-filtro-icono-activo { background: var(--ink); border-color: var(--ink); color: var(--gold); }
 
 /* ============================================================
    NEVERA — buscador + micro + seleccionados, fijos arriba del sheet
    (bug 2026-07-14: la lista vivía suelta en .sheet-panel sin .sheet-body,
-   por eso no hacía scroll y el botón de confirmar quedaba inalcanzable)
+   por eso no hacía scroll y el botón de confirmar quedaba inalcanzable).
+   Buscador reutiliza .rc-buscador (Recetas, handoff v3) en vez de los
+   .buscador-wrap/.input-buscador propios de antes del rediseño (tarea #18).
    ============================================================ */
+.nevera-buscador-fila { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-3); }
+.nevera-buscador-fila .rc-buscador { flex: 1; min-width: 0; }
 .nevera-top { position: sticky; top: 0; z-index: 1; background: var(--panel); display: flex; flex-direction: column; gap: var(--space-2); }
 .nevera-seleccion { display: flex; flex-wrap: wrap; gap: 6px; }
 .nevera-chip {
@@ -577,7 +574,7 @@ body.wizard-open { overflow: hidden; }
 }
 .nevera-chip-x {
   width: 18px; height: 18px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
-  border-radius: 50%; background: rgba(8, 18, 34, 0.12); font-size: 13px; line-height: 1;
+  border-radius: 50%; background: rgba(26, 23, 18, 0.12); font-size: 13px; line-height: 1;
 }
 .chips-filtro { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-bottom: var(--space-3); }
 .chip-filtro {
@@ -647,7 +644,7 @@ body.wizard-open { overflow: hidden; }
   position: fixed; inset: 0; z-index: 400; /* por encima de wizard(250)/landing(300) —
   necesario desde 2026-07-14: "Sincronizar familia" abre esta sheet también desde
   el wizard, un modal siempre debe quedar por encima de cualquier pantalla */
-  background: rgba(8, 18, 34, 0.45);
+  background: rgba(20, 16, 10, 0.45); /* negro cálido (handoff) — antes navy (8,18,34), resto de v2 */
   display: flex; align-items: flex-end;
 }
 body.sheet-open { overflow: hidden; }
@@ -662,7 +659,11 @@ body.sheet-open { overflow: hidden; }
   display: flex; justify-content: space-between; align-items: center;
   padding: var(--space-3) var(--space-3) var(--space-2); border-bottom: 1px solid var(--line-solid); flex-shrink: 0;
 }
-.sheet-head h2 { font-family: var(--font-display); font-size: 24px; font-weight: 400; }
+/* --fs-titulo (20px) está documentado como "h2 de sheet" en la escala tipográfica
+   de :root; peso 800 en vez del 400 anterior (handoff, tarea #18: los títulos de
+   sheet usan el mismo Playfair bold que el resto del rediseño, no el regular
+   reservado a .wizard-pregunta). */
+.sheet-head h2 { font-family: var(--font-display); font-size: var(--fs-titulo); font-weight: 800; }
 .btn-cerrar {
   width: 44px; height: 44px; border-radius: 50%; border: none; background: var(--elev2);
   color: var(--ink); font-size: 22px; line-height: 1; cursor: pointer; flex-shrink: 0;
@@ -675,8 +676,6 @@ body.sheet-open { overflow: hidden; }
 }
 .sheet-body > *:not(:last-child) { margin-bottom: var(--space-3); }
 
-.btn-sheet-opcion { text-align: center; }
-
 .lista-plantillas, .lista-nevera, .lista-recetas { list-style: none; display: flex; flex-direction: column; gap: var(--space-2); }
 .fila-plantilla {
   width: 100%; text-align: left; background: var(--panel); border: 1px solid var(--line-solid);
@@ -687,8 +686,79 @@ body.sheet-open { overflow: hidden; }
 .fila-plantilla-nombre { font-size: var(--fs-cuerpo); font-weight: 600; }
 .fila-plantilla-meta { display: block; font-size: var(--fs-aux); color: var(--soft); font-weight: 500; }
 
-.fila-nevera { display: flex; align-items: center; gap: var(--space-2); min-height: 44px; font-size: var(--fs-cuerpo); cursor: pointer; }
-.fila-nevera input { width: 22px; height: 22px; accent-color: var(--ink); }
+.lista-nevera li { border-bottom: 1px solid var(--line); }
+.lista-nevera li:last-child { border-bottom: none; }
+.fila-nevera { display: flex; align-items: center; gap: var(--space-2); min-height: 44px; padding: 12px 2px; font-size: var(--fs-cuerpo); cursor: pointer; }
+/* checkbox propio: caja redondeada + relleno verde al marcar (handoff — mismo
+   verde de estado "confirmado/presente" que .avatar-badge-ok, fuera de la
+   paleta dorado/ink a propósito, ver esa regla más abajo). appearance:none +
+   background-image en :checked en vez de tocar el DOM: cero cambios de JS. */
+.fila-nevera input[type="checkbox"] {
+  width: 22px; height: 22px; flex-shrink: 0; margin: 0; cursor: pointer;
+  appearance: none; -webkit-appearance: none;
+  border-radius: 7px; border: 2px solid var(--line-solid); background-color: transparent;
+}
+.fila-nevera input[type="checkbox"]:checked {
+  background-color: oklch(0.72 0.16 150); border-color: oklch(0.72 0.16 150);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: center; background-size: 13px 13px;
+}
+
+/* ============================================================
+   Sheets v3 — fila con icono (cambiar plato), CTA degradado y botón de
+   sync (nevera/cole/sincronizar) — handoff e3Foods.dc.html ~L541-590,
+   tarea #18 del rediseño de 5 pestañas (Roger 2026-07-19/20).
+   ============================================================ */
+.sheet-fila-opcion {
+  width: 100%; text-align: left; background: var(--panel); border: none; cursor: pointer;
+  border-radius: 18px; padding: 15px; display: flex; align-items: center; gap: 14px;
+  box-shadow: 0 4px 14px -10px rgba(26, 23, 18, .3);
+}
+/* 11px entre las 2 filas (handoff), no los 16px genéricos de .sheet-body > * */
+.sheet-body > .sheet-fila-opcion:not(:last-child) { margin-bottom: 11px; }
+.sheet-fila-opcion:active { background: var(--elev2); }
+.sheet-fila-opcion-icono {
+  flex: none; width: 44px; height: 44px; border-radius: 14px; font-size: 21px;
+  display: flex; align-items: center; justify-content: center;
+}
+.sheet-fila-opcion-icono-azul { background: oklch(0.94 0.05 220); color: oklch(0.5 0.11 230); }
+.sheet-fila-opcion-icono-gold { background: var(--gold-soft); color: oklch(0.55 0.16 55); }
+.sheet-fila-opcion-texto { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.sheet-fila-opcion-titulo { font-size: 15.5px; font-weight: 800; color: var(--ink); }
+.sheet-fila-opcion-sub { font-size: 12.5px; font-weight: 600; color: var(--soft); }
+.sheet-fila-opcion-chevron { flex: none; color: rgba(26, 23, 18, .3); }
+
+/* CTA degradado compartido — mismo par gold-grad-a/b que .ph-cta/.rv-cta;
+   sombra con el mismo tono/alpha que el handoff (oklch .../.8), no el
+   gold-grad-b opaco — la variable sirve para el degradado, no para la sombra. */
+.btn-cta-gradiente {
+  width: 100%; min-height: 48px; border: none; cursor: pointer; border-radius: 14px; padding: 14px;
+  background: linear-gradient(180deg, var(--gold-grad-a), var(--gold-grad-b));
+  box-shadow: 0 8px 20px -8px color-mix(in oklch, var(--gold) 80%, transparent);
+  display: flex; align-items: center; justify-content: center; gap: var(--space-1);
+  font-weight: 800; font-size: 15px; color: var(--ink);
+}
+.btn-cta-gradiente:active { filter: brightness(0.96); }
+.btn-cta-gradiente:disabled { opacity: 0.5; box-shadow: none; cursor: not-allowed; }
+
+/* botones secundarios con icono (sync: rotar/exportar/borrar) — mismo par que
+   .btn-secondary, solo más aire entre icono y texto que el gap:4px genérico. */
+.btn-icono-texto { gap: var(--space-2); }
+.btn-danger-outline { color: var(--danger); border-color: var(--danger); }
+
+/* "Activar sincronización" — único CTA sólido (no degradado) del handoff,
+   distinto a propósito del resto (acción menos frecuente/más estructural). */
+.btn-sync-activar {
+  width: 100%; min-height: 48px; border: none; cursor: pointer; border-radius: 15px; padding: var(--space-2) var(--space-4);
+  background: var(--gold); box-shadow: 0 8px 20px -10px color-mix(in oklch, var(--gold) 70%, transparent);
+  display: flex; align-items: center; justify-content: center; gap: var(--space-1);
+  font-weight: 800; font-size: 15px; color: #1E2C4A;
+}
+.btn-sync-activar:active { background: color-mix(in oklch, var(--gold) 85%, black); }
+.btn-sync-activar:disabled { opacity: 0.6; box-shadow: none; cursor: not-allowed; }
+.sync-pregunta { font-size: var(--fs-cuerpo); font-weight: 700; color: var(--ink); margin-top: 8px; }
+.sync-codigo-caja { text-align: center; }
+.sync-codigo { font-family: var(--font-display); font-size: 32px; font-weight: 700; letter-spacing: .06em; color: var(--ink); margin: 4px 0 0; }
 
 .fila-receta { display: flex; justify-content: space-between; align-items: center; gap: var(--space-2); min-height: 48px; padding: var(--space-2) 0; border-bottom: 1px solid var(--line-solid); }
 .fila-receta-nombre { font-size: var(--fs-cuerpo); font-weight: 600; display: flex; flex-direction: column; gap: 2px; }
@@ -857,8 +927,11 @@ body.sheet-open { overflow: hidden; }
 /* Menú del cole (F1): línea informativa sobre las cards del día — mismo rol y
    par de color que .postre-linea (--soft sobre --bg, 6.95:1 AA) */
 .cole-linea { margin: 0 0 var(--space-2); font-size: var(--fs-aux); font-weight: 600; color: var(--soft); }
-/* textarea del sheet de importar: 16px mínimo (iOS hace zoom con menos) */
-.cole-textarea { width: 100%; min-height: 120px; font-size: 16px; font-family: var(--font-ui); color: var(--ink); border: 1px solid var(--muted); border-radius: 8px; padding: 8px; margin: var(--space-2) 0; }
+/* textarea del sheet de importar: 16px mínimo (iOS hace zoom con menos) —
+   caja redondeada v3 (tarea #18) en vez del border fino de antes del rediseño. */
+.cole-textarea { width: 100%; min-height: 120px; font-size: 16px; font-family: var(--font-ui); color: var(--ink); background: var(--panel); border: 1.5px solid var(--line-solid); border-radius: 14px; padding: 12px 14px; margin: 0; }
+.cole-textarea::placeholder { color: var(--muted); }
+.cole-textarea:focus { outline: none; border-color: var(--gold); }
 /* "también con salmón, merluza…" bajo el nombre-ejemplo en Recetas (F1) */
 .fila-receta-variantes { display: block; font-size: var(--fs-aux); font-weight: 500; color: var(--soft); }
 
@@ -1087,10 +1160,16 @@ body.sheet-open { overflow: hidden; }
    con plato lleva badge+avatares encima de la foto, ver .ph-foto-wrap. */
 .ph-cab { display: flex; align-items: center; justify-content: space-between; padding: 0 2px; margin-bottom: 6px; }
 .ph-tipo { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 800; letter-spacing: .8px; }
+/* icono = ICONO_SOL/ICONO_LUNA (SVG a mano, no Lucide) inyectado como hijo
+   directo del span — sin stroke:currentColor el SVG no dibuja nada (el stroke
+   por defecto es "none"), aunque el color sí se heredara bien. Bug real
+   (Roger 2026-07-19/20): faltaba esta regla, el icono existía en el DOM pero
+   era invisible. Selector corregido de "i" (nunca hubo un <i>) a "svg". */
+.ph-tipo svg { width: 14px; height: 14px; stroke: currentColor; display: block; }
 .ph-tipo-comida { color: var(--soft); }
-.ph-tipo-comida i { color: var(--gold); }
+.ph-tipo-comida svg { color: var(--gold); }
 .ph-tipo-cena { color: var(--cena-ink); opacity: .85; }
-.ph-tipo-cena i { color: var(--gold-soft-cena, oklch(0.82 0.13 82)); }
+.ph-tipo-cena svg { color: var(--gold-soft-cena, oklch(0.82 0.13 82)); }
 
 .ph-foto-wrap { position: relative; height: 158px; border-radius: 18px; overflow: hidden; background: var(--elev2); }
 .ph-foto { width: 100%; height: 100%; object-fit: cover; display: block; }
@@ -1101,6 +1180,8 @@ body.sheet-open { overflow: hidden; }
 .ph-badge-comida { background: rgba(255,255,255,.92); backdrop-filter: blur(6px); box-shadow: 0 4px 12px -4px rgba(0,0,0,.25); }
 .ph-badge-cena { background: rgba(30,32,36,.5); backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,.12); }
 .ph-badge-icono { width: 21px; height: 21px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; }
+/* mismo bug que .ph-tipo (arriba): SVG a mano sin stroke:currentColor = invisible. */
+.ph-badge-icono svg { width: 13px; height: 13px; stroke: currentColor; display: block; }
 .ph-badge-comida .ph-badge-icono { background: var(--gold-soft); color: var(--gold); }
 .ph-badge-cena .ph-badge-icono { background: rgba(255,255,255,.1); color: oklch(0.82 0.13 82); }
 .ph-badge-texto { font-size: 10.5px; font-weight: 800; letter-spacing: 1px; }
@@ -1135,7 +1216,11 @@ body.sheet-open { overflow: hidden; }
 .ph-card-comida .ph-postre { color: var(--soft); }
 .ph-card-cena .ph-postre { color: rgba(247,243,236,.55); }
 
-.ph-cta { width: 100%; margin-top: 15px; border-radius: 14px; border: none; cursor: pointer; padding: 7.5px; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 800; font-size: 13.5px; position: relative; background: linear-gradient(180deg, var(--gold-grad-a), var(--gold-grad-b)); color: var(--ink); }
+/* "Me apetece otra cosa" (card principal): excepción explícita de Roger
+   2026-07-20 al dorado corporativo — degradado ORIGINAL hardcodeado (no
+   --gold-grad-a/b, que ahora derivan del dorado corporativo para el resto
+   de la app) para que este botón concreto no cambie de color. */
+.ph-cta { width: 100%; margin-top: 15px; border-radius: 14px; border: none; cursor: pointer; padding: 7.5px; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 800; font-size: 13.5px; position: relative; background: linear-gradient(180deg, oklch(0.85 0.15 82), oklch(0.76 0.17 62)); color: var(--ink); }
 .ph-cta-flecha { position: absolute; right: 14px; }
 .ph-card-comida .ph-cta { box-shadow: 0 8px 20px -8px oklch(0.72 0.17 62 / .8); }
 .ph-card-cena .ph-cta { box-shadow: 0 8px 20px -8px oklch(0.72 0.17 62 / .5); }
@@ -1194,6 +1279,9 @@ body.sheet-open { overflow: hidden; }
 .rv-body-vacia { padding-top: 80px; }
 
 .rv-pill { display: inline-flex; align-items: center; gap: 7px; padding: 6px 12px; border-radius: 999px; font-size: 11.5px; font-weight: 800; letter-spacing: 1px; }
+/* mismo bug que .ph-tipo/.ph-badge-icono: SVG (ICONO_SOL/ICONO_LUNA) sin
+   stroke:currentColor = invisible, aunque el color se heredara bien. */
+.rv-pill svg { width: 12px; height: 12px; stroke: currentColor; display: block; }
 .rv-pill-comida { background: var(--gold-soft); color: var(--gold); }
 .rv-pill-cena { background: #3C4046; color: oklch(0.86 0.1 82); }
 
@@ -1274,6 +1362,20 @@ body.sheet-open { overflow: hidden; }
 .rc-fila-nombre { display: block; font-family: var(--font-display); font-size: 15.5px; font-weight: 700; color: var(--ink); line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rc-fila-meta { display: flex; align-items: center; gap: 5px; margin-top: 4px; color: var(--soft); font-size: 12px; font-weight: 600; }
 .rc-fila .rc-icono-btn { flex: none; padding: 6px; font-size: 19px; }
+
+/* ---------------------------------------------------------------
+   Descubrir — fichas foto+kicker+título (handoff e3Foods.dc.html ~L409-424).
+   Contenido PLACEHOLDER explícito (Roger 2026-07-20), ver comentario en
+   FICHAS_DESCUBRIR_MENTIRA (ui.js) — no inventar datos reales a partir de
+   este componente sin revisar esa decisión primero.
+   --------------------------------------------------------------- */
+.desc-lista { display: flex; flex-direction: column; gap: var(--space-3); }
+.desc-ficha { position: relative; border-radius: 24px; overflow: hidden; height: 190px; box-shadow: 0 14px 32px -20px rgba(60,45,20,.5); }
+.desc-ficha img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.desc-ficha-degradado { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0) 30%, rgba(0,0,0,.75) 100%); }
+.desc-ficha-texto { position: absolute; left: 18px; bottom: 16px; right: 18px; }
+.desc-kicker { display: inline-block; background: var(--gold-grad-a); color: var(--ink); padding: 4px 10px; border-radius: 999px; font-size: 10.5px; font-weight: 800; letter-spacing: .6px; text-transform: uppercase; }
+.desc-titulo { font-family: var(--font-display); font-size: 22px; font-weight: 700; color: #fff; line-height: 1.1; margin-top: 8px; }
 
 /* ---------------------------------------------------------------
    Compra — segmentado Hoy/Próximos 7 días + grupos Frescos/Despensa/

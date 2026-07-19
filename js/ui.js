@@ -107,6 +107,15 @@
   function avatarEstilo(miembro) {
     return miembro.foto ? " style=\"background-image:url('" + miembro.foto + "')\"" : '';
   }
+  // Igual que avatarEstilo pero fusionando un color de fondo (fallback sin foto)
+  // en el MISMO atributo style — bug real (Roger 2026-07-20): los 3 sitios que
+  // necesitan color de fallback + foto concatenaban 'style="background:X"' y
+  // luego avatarEstilo() (que emite su PROPIO style="..."), dos atributos
+  // style en el mismo tag. HTML ignora el segundo duplicado silenciosamente:
+  // el color se veía siempre, la foto nunca. Un solo atributo, sin este bug.
+  function avatarEstiloColor(miembro, color) {
+    return 'style="background:' + color + (miembro.foto ? ";background-image:url('" + miembro.foto + "')" : '') + '"';
+  }
 
   var ICONO_CAMARA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8.5A1.5 1.5 0 0 1 5.5 7h1.6l.9-1.5A1.5 1.5 0 0 1 9.29 4.75h5.42A1.5 1.5 0 0 1 16 5.5L16.9 7h1.6A1.5 1.5 0 0 1 20 8.5v9A1.5 1.5 0 0 1 18.5 19h-13A1.5 1.5 0 0 1 4 17.5z"/><circle cx="12" cy="12.5" r="3.4"/></svg>';
 
@@ -165,10 +174,6 @@
   var ICONO_MENU = '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6.5h16M4 12h16M4 17.5h16"/></svg>';
   var ICONO_CAMPANA = '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 10.5a6 6 0 0 1 12 0c0 4 1.4 5.3 2 6H4c.6-.7 2-2 2-6z"/><path d="M10 19a2.2 2.2 0 0 0 4 0"/></svg>';
 
-  // NEVERA: buscador con reconocimiento de voz (Recetas ya no usa iconos SVG
-  // propios desde el handoff de Claude Design — usa data-lucide como el resto).
-  var ICONO_BUSCAR = '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M20 20l-4.8-4.8"/></svg>';
-  var ICONO_MIC = '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2.5" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0"/><path d="M12 17.5v3.5M9 21h6"/></svg>';
   // flecha circular estándar (reset/vaciar) — arco casi cerrado + flecha en la punta
   var ICONO_VACIAR = '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v4h-4"/></svg>';
 
@@ -225,7 +230,7 @@
       var idx = familia.indexOf(m);
       var estaPresente = mesa.presentes.some(function (p) { return p.id === m.id; });
       return '<span class="ph-avatar-wrap' + (oscuro ? ' ph-avatar-wrap-oscuro' : '') + '">' +
-        '<button type="button" class="ph-avatar" style="background:' + colorMiembro(idx) + '"' + avatarEstilo(m) + ' ' +
+        '<button type="button" class="ph-avatar" ' + avatarEstiloColor(m, colorMiembro(idx)) + ' ' +
         'data-action="toggle-presente" data-dia="' + diaIndex + '" data-tipo="' + meal + '" data-miembro="' + m.id + '" ' +
         'aria-pressed="' + estaPresente + '" aria-label="' + escapeHtml(m.nombre) + (estaPresente ? ', en casa. Toca para marcar que hoy no come.' : ', fuera hoy. Toca para marcar que sí come.') + '">' +
         avatarInner(m) + '</button>' +
@@ -345,7 +350,7 @@
       var idx = familia.indexOf(m);
       var estaPresente = mesa.presentes.some(function (p) { return p.id === m.id; });
       return '<span class="ph-avatar-wrap">' +
-        '<span class="ph-avatar" style="background:' + colorMiembro(idx) + '"' + avatarEstilo(m) + '>' + avatarInner(m) + '</span>' +
+        '<span class="ph-avatar" ' + avatarEstiloColor(m, colorMiembro(idx)) + '>' + avatarInner(m) + '</span>' +
         (estaPresente ? '<span class="ph-avatar-check" aria-hidden="true"><i data-lucide="check"></i></span>' : '') +
         '</span>';
     }).join('');
@@ -944,13 +949,23 @@
   }
 
   // ---------------------------------------------------------------
-  // Sheet: cambiar plato (elegir otro / nevera)
+  // Sheet: cambiar plato (elegir otro / nevera) — lenguaje visual v3
+  // (Roger 2026-07-19/20, handoff e3Foods.dc.html ~L541-554, tarea #18)
   // ---------------------------------------------------------------
   function renderSheetCambiarInicio(estado, banco, dia, tipoComida) {
     return sheetHead('Cambiar ' + (tipoComida === 'comida' ? 'comida' : 'cena')) +
       '<div class="sheet-body">' +
-      '<button type="button" class="btn-secondary btn-sheet-opcion" data-action="modo-elegir-otro" data-dia="' + dia + '" data-tipo="' + tipoComida + '">Elegir otro plato</button>' +
-      '<button type="button" class="btn-secondary btn-sheet-opcion" data-action="modo-nevera" data-dia="' + dia + '" data-tipo="' + tipoComida + '">Con lo que hay en la nevera</button>' +
+      '<p class="card-msg">¿De dónde sacamos la alternativa?</p>' +
+      '<button type="button" class="sheet-fila-opcion" data-action="modo-nevera" data-dia="' + dia + '" data-tipo="' + tipoComida + '">' +
+      '<span class="sheet-fila-opcion-icono sheet-fila-opcion-icono-azul"><i data-lucide="refrigerator"></i></span>' +
+      '<span class="sheet-fila-opcion-texto"><span class="sheet-fila-opcion-titulo">Con lo que hay en la nevera</span><span class="sheet-fila-opcion-sub">Recetas con lo de tu nevera</span></span>' +
+      '<i data-lucide="chevron-right" class="sheet-fila-opcion-chevron"></i>' +
+      '</button>' +
+      '<button type="button" class="sheet-fila-opcion" data-action="modo-elegir-otro" data-dia="' + dia + '" data-tipo="' + tipoComida + '">' +
+      '<span class="sheet-fila-opcion-icono sheet-fila-opcion-icono-gold"><i data-lucide="book-open"></i></span>' +
+      '<span class="sheet-fila-opcion-texto"><span class="sheet-fila-opcion-titulo">Elegir otro plato</span><span class="sheet-fila-opcion-sub">Explora el recetario completo</span></span>' +
+      '<i data-lucide="chevron-right" class="sheet-fila-opcion-chevron"></i>' +
+      '</button>' +
       '</div>';
   }
 
@@ -984,21 +999,19 @@
       return '<li data-buscar="' + escapeHtml(normalizarTexto(ing.nombre)) + '"><label class="fila-nevera"><input type="checkbox" value="' + id + '" data-nombre="' + escapeHtml(ing.nombre) + '"> ' + escapeHtml(ing.nombre) + '</label></li>';
     }).join('');
     var micHtml = TIENE_VOZ
-      ? '<button type="button" class="btn-filtro-icono btn-mic" data-action="nevera-voz" aria-label="Buscar por voz">' + ICONO_MIC + '</button>'
+      ? '<button type="button" class="btn-filtro-icono btn-mic" data-action="nevera-voz" aria-label="Buscar por voz"><i data-lucide="mic"></i></button>'
       : '';
     return sheetHead('Con lo que hay en la nevera') +
       '<div class="sheet-body">' +
       '<p class="card-msg">Marca lo que tienes en casa y buscamos un plato que se pueda montar con eso.</p>' +
       '<div class="nevera-top">' +
       '<div class="nevera-buscador-fila">' +
-      '<div class="buscador-wrap">' +
-      '<span class="input-buscador-icono" aria-hidden="true">' + ICONO_BUSCAR + '</span>' +
-      '<input type="search" id="nevera-buscador" class="input-buscador" placeholder="Buscar ingrediente" autocomplete="off">' +
-      '</div>' +
+      '<label class="rc-buscador"><i data-lucide="search"></i>' +
+      '<input type="search" id="nevera-buscador" placeholder="Buscar ingrediente" autocomplete="off"></label>' +
       micHtml +
       '</div>' +
       '<div class="nevera-seleccion" id="nevera-seleccion" hidden></div>' +
-      '<button type="button" class="btn-primary" id="nevera-confirmar" data-action="confirmar-nevera" data-dia="' + dia + '" data-tipo="' + tipoComida + '">Buscar plato</button>' +
+      '<button type="button" class="btn-cta-gradiente" id="nevera-confirmar" data-action="confirmar-nevera" data-dia="' + dia + '" data-tipo="' + tipoComida + '">Buscar plato</button>' +
       '</div>' +
       '<ul class="lista-nevera" id="lista-nevera-checks">' + filas + '</ul>' +
       '</div>';
@@ -1270,8 +1283,9 @@
       '<div class="sheet-body">' +
       '<p class="card-msg">Pega aquí el menú del cole (formato JSON del asistente — pronto será subir el PDF directamente). Puedes pegar una semana o varias de golpe: se añade a lo que ya tengas cargado, no lo sustituye.</p>' +
       '<p class="card-msg">Con el menú cargado, los peques comen esos mediodías en el cole (no hay que tocar su patrón) y las cenas evitan repetir lo que ya comieron. Al importar o quitar el menú, la semana se recalcula sola.</p>' +
+      '<span class="campo-eyebrow">Menú (JSON)</span>' +
       '<textarea id="cole-json" class="cole-textarea" placeholder=\'{"semanaISO":"2026-07-20","dias":{"2026-07-20":{"resumen":"...","proteina":"...","hidrato":"...","verdura":true}}}\'></textarea>' +
-      '<button type="button" class="btn-primary" data-action="cole-importar">Importar menú</button>' +
+      '<button type="button" class="btn-cta-gradiente" data-action="cole-importar">Importar menú</button>' +
       cargadoHtml +
       '</div>';
   }
@@ -1291,15 +1305,15 @@
       var aviso = opts.aviso ? '<p class="card-msg">' + escapeHtml(opts.aviso) + '</p>' : '';
       return head + '<div class="sheet-body">' +
         '<p class="card-msg">' + escapeHtml(opts.nombreFamilia || 'Tu familia') + ' está sincronizada. Comparte este código con quien quieras que vea y edite el menú desde su móvil:</p>' +
-        '<p class="card-msg" style="font-size:28px;font-weight:700;letter-spacing:.08em;text-align:center;margin:16px 0;">' + escapeHtml(opts.code || '') + '</p>' +
+        '<div class="sync-codigo-caja"><span class="campo-eyebrow">Código</span><p class="sync-codigo">' + escapeHtml(opts.code || '') + '</p></div>' +
         '<p class="card-msg">Cualquier dispositivo con este código ve y edita todo el menú — no hay permisos distintos por persona.</p>' +
         aviso +
-        '<button type="button" class="btn-secondary" id="sync-rotar-btn" data-action="sync-rotar">Generar un código nuevo</button>' +
+        '<button type="button" class="btn-secondary btn-icono-texto" id="sync-rotar-btn" data-action="sync-rotar"><i data-lucide="refresh-cw"></i>Generar un código nuevo</button>' +
         '<p class="card-msg" style="margin-top:8px">Si el código se te ha escapado a quien no debía, genera otro: el viejo deja de servir al instante. Los móviles que ya están dentro siguen dentro.</p>' +
-        '<p class="card-msg" style="margin-top:24px">Tus datos</p>' +
-        '<button type="button" class="btn-secondary" id="sync-exportar-btn" data-action="sync-exportar">Descargar una copia</button>' +
+        '<p class="detalle-subtitulo" style="margin-top:24px">Tus datos</p>' +
+        '<button type="button" class="btn-secondary btn-icono-texto" id="sync-exportar-btn" data-action="sync-exportar"><i data-lucide="download"></i>Descargar una copia</button>' +
         '<p class="card-msg" style="margin-top:8px">Un archivo con todo lo de tu familia: miembros, menús y lista de la compra.</p>' +
-        '<button type="button" class="btn-secondary" id="sync-borrar-btn" data-action="sync-borrar" style="margin-top:16px;color:var(--danger);border-color:var(--danger)">Borrar la familia y sus datos</button>' +
+        '<button type="button" class="btn-secondary btn-icono-texto btn-danger-outline" id="sync-borrar-btn" data-action="sync-borrar"><i data-lucide="trash-2"></i>Borrar la familia y sus datos</button>' +
         '<p class="card-msg" style="margin-top:8px">Borra la familia de la nube para todos los móviles, sin vuelta atrás. Descarga una copia antes si la quieres.</p>' +
         '</div>';
     }
@@ -1308,10 +1322,10 @@
       return head + '<div class="sheet-body">' +
         '<p class="card-msg">Vas a borrar <strong>' + escapeHtml(opts.nombreFamilia || 'tu familia') + '</strong> y todos sus datos de la nube: miembros, menús y lista de la compra. Desaparece para todos los móviles de la familia y <strong>no se puede deshacer</strong>.</p>' +
         (opts.error ? '<p class="card-msg">' + escapeHtml(opts.error) + '</p>' : '') +
-        '<p class="card-msg" style="margin-top:16px">Escribe <strong>BORRAR</strong> para confirmar:</p>' +
-        '<label>Confirmación<input type="text" id="sync-borrar-input" class="input-editorial" placeholder="BORRAR" autocapitalize="characters" autocomplete="off"></label>' +
-        '<button type="button" class="btn-secondary" id="sync-borrar-confirmar-btn" data-action="sync-borrar-confirmar" style="color:var(--danger);border-color:var(--danger)">Borrar definitivamente</button>' +
-        '<button type="button" class="btn-texto" data-action="menu-sync" style="margin-top:8px">Cancelar</button>' +
+        '<p class="card-msg">Escribe <strong>BORRAR</strong> para confirmar:</p>' +
+        '<label><span class="campo-eyebrow">Confirmación</span><input type="text" id="sync-borrar-input" class="input-editorial" placeholder="BORRAR" autocapitalize="characters" autocomplete="off"></label>' +
+        '<button type="button" class="btn-secondary btn-icono-texto btn-danger-outline" id="sync-borrar-confirmar-btn" data-action="sync-borrar-confirmar"><i data-lucide="trash-2"></i>Borrar definitivamente</button>' +
+        '<button type="button" class="btn-texto" data-action="menu-sync">Cancelar</button>' +
         '</div>';
     }
 
@@ -1320,9 +1334,9 @@
     return head + '<div class="sheet-body">' +
       '<p class="card-msg">Activa la sincronización para ver y editar el menú desde varios móviles a la vez.</p>' +
       errorHtml +
-      '<button type="button" class="btn-primary" id="sync-activar-btn" data-action="sync-activar">Activar sincronización</button>' +
-      '<p class="card-msg" style="margin-top:24px">¿Ya tienes un código de otra familia?</p>' +
-      '<label>Código<input type="text" id="sync-code-input" class="input-editorial" placeholder="8 caracteres" maxlength="8" autocapitalize="characters" autocomplete="off"></label>' +
+      '<button type="button" class="btn-sync-activar" id="sync-activar-btn" data-action="sync-activar">Activar sincronización</button>' +
+      '<p class="sync-pregunta">¿Ya tienes un código de otra familia?</p>' +
+      '<label><span class="campo-eyebrow">Código</span><input type="text" id="sync-code-input" class="input-editorial" placeholder="8 caracteres" maxlength="8" autocapitalize="characters" autocomplete="off"></label>' +
       '<button type="button" class="btn-secondary" id="sync-unirse-btn" data-action="sync-unirse">Unirme con el código</button>' +
       '</div>';
   }
@@ -1332,11 +1346,29 @@
   // lenguaje visual nuevo (coherente con Recetas/Compra/Familia); el cuerpo es
   // un mensaje honesto, no cards de recomendación simuladas — eso es contenido
   // real pendiente de construir, no una pieza de UI que se pueda maquetar sola.
+  // Fichas de Descubrir — PLACEHOLDER explícito (Roger 2026-07-20, revisando la
+  // decisión de la sesión anterior de no mostrar nada): no hay banco de
+  // contenido real de Descubrir todavía, así que se muestran tal cual las 3
+  // ideas fijas del mock (mismo kicker/título/foto de e3Foods.dc.html) como
+  // marcador visual — no son datos reales, sustituir en cuanto exista ese banco.
+  var FICHAS_DESCUBRIR_MENTIRA = [
+    { kicker: 'De temporada', titulo: '5 recetas fresquitas para el verano', foto: 'assets/banco-fotos/salteado-wok.jpg' },
+    { kicker: 'En 15 minutos', titulo: 'Cenas rápidas cuando no hay tiempo', foto: 'assets/banco-fotos/ensalada-lentejas.jpg' },
+    { kicker: 'Para peques', titulo: 'Verduras que sí se comen', foto: 'assets/banco-fotos/crema-zanahoria.jpg' }
+  ];
+
   function renderDescubrirVista() {
+    var fichasHtml = FICHAS_DESCUBRIR_MENTIRA.map(function (d) {
+      return '<div class="desc-ficha">' +
+        '<img src="' + d.foto + '" alt="">' +
+        '<div class="desc-ficha-degradado"></div>' +
+        '<div class="desc-ficha-texto">' +
+        '<span class="desc-kicker">' + escapeHtml(d.kicker) + '</span>' +
+        '<div class="desc-titulo">' + escapeHtml(d.titulo) + '</div>' +
+        '</div></div>';
+    }).join('');
     return '<div class="rc-cabecera"><div><h1 class="rc-titulo">Descubrir</h1><p class="cp-resumen">Ideas nuevas para tu familia</p></div></div>' +
-      '<div class="vista-body rc-body">' +
-      '<p class="card-msg">Muy pronto: ideas de temporada y recetas nuevas para probar.</p>' +
-      '</div>';
+      '<div class="vista-body rc-body"><div class="desc-lista">' + fichasHtml + '</div></div>';
   }
 
   // Familia — lista de miembros (Roger 2026-07-19, handoff): tarjeta por
@@ -1349,7 +1381,7 @@
     var filasHtml = familia.map(function (m, idx) {
       var edad = E.edadEnAnios(m.anioNacimiento);
       return '<button type="button" class="pf-fila" data-action="abrir-miembro-ficha" data-id="' + m.id + '">' +
-        '<span class="pf-avatar" style="background:' + colorMiembro(idx) + '"' + avatarEstilo(m) + '>' + avatarInner(m) + '</span>' +
+        '<span class="pf-avatar" ' + avatarEstiloColor(m, colorMiembro(idx)) + '>' + avatarInner(m) + '</span>' +
         '<span class="pf-info"><span class="pf-nombre">' + escapeHtml(m.nombre) + '</span><span class="pf-meta">' + edad + ' años · ' + escapeHtml(etiquetaDieta(m.dieta)) + '</span></span>' +
         '<i data-lucide="chevron-right"></i>' +
         '</button>';

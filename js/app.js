@@ -84,26 +84,28 @@
   var estado = cargarEstado();
   var vistaActual = 'semana';
 
-  // Modo de la vista Semana (Roger 2026-07-17, 2ª iteración): 'foco' (home
-  // tipo informe: equilibrio + HOY + compra + semana de un vistazo) | 'semana'
-  // (clásica, píldoras). Variable de SESIÓN, no localStorage — el tab Semana
-  // siempre aterriza en la home Foco (ver irAVista); "Ver semana" es un
-  // drill-in puntual a la clásica, no una preferencia que deba persistir.
-  var vistaSemanaModo = 'foco';
-  // Qué comida enseña la card HOY de Foco: null = automático por hora
-  // (comidaProximaPorHora), o 'comida'/'cena' si el usuario tocó la flecha
-  // lateral o hizo swipe — se resetea a null al reentrar en Semana.
-  var focoComida = null;
+  // Rediseño Home (Roger 2026-07-19, handoff Claude Design e3Foods.dc.html):
+  // Foco y la vista clásica se funden en UNA sola Home — tira continua de 14
+  // días (vigente + siguiente concatenados) + pager swipeable comida/cena.
+  // diaGlobal: índice 0-13 en esa tira; null = "hoy" (auto). 0-6 = estado.plan,
+  // 7-13 = estado.planSiguiente (ver diaGlobalActivo/planActivo más abajo).
+  var diaGlobal = null;
+  // pagerIdx: 0 = comida, 1 = cena — qué card del pager está centrada.
+  // Por defecto según la hora (mismo criterio que antes en Foco), no fijo.
   function comidaProximaPorHora() { return new Date().getHours() < 16 ? 'comida' : 'cena'; }
+  var pagerIdx = comidaProximaPorHora() === 'cena' ? 1 : 0;
   var filtroRecetas = 'todas'; // estado de UI, no persistido (SPEC: filtroRecetas)
   var busquedaRecetas = ''; // estado de UI, no persistido
-  var filtrosRecetasVisibles = false; // colapsados por defecto (Roger 2026-07-14)
   var rangoCompra = '7d'; // '7d' | 'hoy' — estado de UI, no persistido (SPEC: rangoCompra)
-  var semanaDiaSeleccionado = null; // índice 0-6 en la vista Semana — estado de UI, no persistido; null = hoy
-  // horizonte 2 semanas (Roger 2026-07-18): 'vigente' | 'siguiente' — qué semana se ve en la
-  // vista clásica (píldoras + flechas). Foco ignora esto siempre (planActivo() lo fuerza a
-  // 'vigente' en modo foco) — Foco es un dashboard de HOY, no tiene sentido para una semana futura.
-  var semanaSeleccionada = 'vigente';
+  var recetasView = 'grid'; // 'grid' | 'list' — toggle nuevo del handoff, solo visual
+  var vistaPerfil = 'lista'; // 'lista' | futuro detalle-miembro — estado de UI, no persistido
+  // Receta a pantalla completa (Roger 2026-07-19, sustituye al sheet): dia/tipo
+  // del slot abierto + a qué vista volver con la flecha atrás. planActivo() ya
+  // resuelve plan vigente/siguiente vía diaGlobal (sincronizado antes del click
+  // por data-dia-global), igual que hacía el sheet — no hace falta duplicarlo.
+  var recetaAbierta = null; // { dia, tipo } | null
+  var vistaAnterior = 'semana';
+  var miembroAbierto = null; // id del miembro cuya ficha está abierta, o null
   var pendienteCambiar = null; // {dia, tipoComida} mientras el sheet de "cambiar" está abierto
   var pendienteRegenerar = null; // {dia, tipoComida} tras un cambio, a la espera de sí/no
   // Onboarding con familia demo (P1, 2026-07-16): mientras modoDemo es true, `estado`
@@ -131,18 +133,28 @@
   }
 
   // ---------------------------------------------------------------
-  // Horizonte 2 semanas (Roger 2026-07-18) — qué plan está "en pantalla" ahora
-  // mismo, para que render() y los handlers de mutación (cambiar plato, marcar
-  // presente, valorar…) lean y escriban siempre en el mismo sitio. Foco fuerza
-  // vigente: es un dashboard de HOY, no existe "HOY" de una semana futura.
+  // Horizonte 2 semanas + Home única (Roger 2026-07-18/19) — qué plan y qué día
+  // local está "en pantalla" ahora mismo, para que render() y los handlers de
+  // mutación (cambiar plato, marcar presente, valorar…) lean y escriban siempre
+  // en el mismo sitio. diaGlobal 0-6 → estado.plan; 7-13 → estado.planSiguiente.
   // ---------------------------------------------------------------
+  function diaGlobalDeHoy() {
+    var hoyISOStr = E.fechaLocalISO(new Date());
+    if (estado.plan) { var i = E.diaIndexDesdeFecha(estado.plan, hoyISOStr); if (i !== -1) return i; }
+    if (estado.planSiguiente) { var j = E.diaIndexDesdeFecha(estado.planSiguiente, hoyISOStr); if (j !== -1) return j + 7; }
+    return null;
+  }
+  function diaGlobalActivo() {
+    if (diaGlobal != null) return diaGlobal;
+    var hoy = diaGlobalDeHoy();
+    return hoy != null ? hoy : 0;
+  }
+  function diaLocalActivo() { return diaGlobalActivo() % 7; }
   function planActivo() {
-    if (vistaSemanaModo === 'foco') return estado.plan;
-    return semanaSeleccionada === 'siguiente' ? estado.planSiguiente : estado.plan;
+    return diaGlobalActivo() < 7 ? estado.plan : estado.planSiguiente;
   }
   function setPlanActivo(nuevoPlan) {
-    if (vistaSemanaModo !== 'foco' && semanaSeleccionada === 'siguiente') estado.planSiguiente = nuevoPlan;
-    else estado.plan = nuevoPlan;
+    if (diaGlobalActivo() < 7) estado.plan = nuevoPlan; else estado.planSiguiente = nuevoPlan;
   }
 
   // Genera (o regenera) la semana siguiente a partir de estado.plan — con
@@ -193,7 +205,8 @@
   }
 
   // ---------------------------------------------------------------
-  // Render de las 4 vistas de primer nivel
+  // Render de las 5 vistas de primer nivel (Roger 2026-07-19: Semana, Recetas,
+  // Descubrir, Compra, Familia — Descubrir y Familia son pestañas nuevas)
   // ---------------------------------------------------------------
   function render() {
     var cont = document.getElementById('vista-' + vistaActual);
@@ -204,32 +217,53 @@
     var cursorBuscador = focoBuscador ? document.activeElement.selectionStart : 0;
     document.querySelectorAll('.vista').forEach(function (v) { v.hidden = (v.id !== 'vista-' + vistaActual); });
     document.querySelectorAll('.nav-btn').forEach(function (b) { b.classList.toggle('active', b.dataset.vista === vistaActual); b.setAttribute('aria-current', b.dataset.vista === vistaActual ? 'page' : 'false'); });
-    if (vistaActual === 'semana') cont.innerHTML = UI.renderSemana(estado, planActivo(), BANCO, semanaDiaSeleccionado, obtenerMiembroDispositivo(), vistaSemanaModo, focoComida || comidaProximaPorHora(), semanaSeleccionada);
-    else if (vistaActual === 'recetas') cont.innerHTML = UI.renderRecetasVista(estado, BANCO, filtroRecetas, busquedaRecetas, filtrosRecetasVisibles);
-    else if (vistaActual === 'compra') cont.innerHTML = UI.renderCompraVista(estado, rangoCompra === 'siguiente' ? estado.planSiguiente : estado.plan, BANCO, rangoCompra);
+    if (vistaActual === 'semana') cont.innerHTML = UI.renderHome(estado, BANCO, diaGlobalActivo(), pagerIdx, obtenerMiembroDispositivo());
+    else if (vistaActual === 'recetas') cont.innerHTML = UI.renderRecetasVista(estado, BANCO, filtroRecetas, busquedaRecetas, recetasView);
+    else if (vistaActual === 'compra') cont.innerHTML = UI.renderCompraVista(estado, estado.plan, BANCO, rangoCompra);
+    else if (vistaActual === 'descubrir') cont.innerHTML = UI.renderDescubrirVista();
+    else if (vistaActual === 'perfil') cont.innerHTML = (vistaPerfil === 'ficha' && miembroAbierto) ? UI.renderVistaMiembro(estado, BANCO, miembroAbierto, obtenerMiembroDispositivo()) : UI.renderPerfilVista(estado);
+    else if (vistaActual === 'receta') cont.innerHTML = !recetaAbierta ? '' :
+      (recetaAbierta.plantillaId ? UI.renderVistaRecetaPlantilla(estado, BANCO, recetaAbierta.plantillaId) : UI.renderVistaReceta(estado, BANCO, planActivo(), recetaAbierta.dia, recetaAbierta.tipo));
     aplicarDetallesAbiertos(cont);
     if (focoBuscador) {
       var buscador = document.getElementById('recetas-buscador');
       if (buscador) { buscador.focus(); buscador.setSelectionRange(cursorBuscador, cursorBuscador); }
     }
+    // el scroll-snap nativo del pager se resetea a 0 en cada innerHTML nuevo —
+    // saltar (sin animación, esto es re-render, no navegación) a pagerIdx=1
+    // si tocaba estar en cena. Sin setTimeout: el layout ya existe tras innerHTML.
+    if (vistaActual === 'semana' && pagerIdx === 1) {
+      var pagerEl = document.getElementById('home-pager');
+      if (pagerEl) pagerEl.scrollLeft = pagerEl.clientWidth + 12;
+    }
+    refrescarIconos();
   }
 
-  // Ir a 'semana' siempre aterriza en la home Foco (Roger 2026-07-17, 2ª
-  // iteración) — "Ver semana"/"Ver informe" son drill-ins puntuales, no deben
-  // quedar pegados al volver a tocar el tab.
+  // Ir a 'semana' siempre aterriza en HOY (Roger 2026-07-19) — vuelve al día
+  // actual y a la comida que toque por hora, no deja pegada la última mirada.
   function irAVista(nombre) {
     vistaActual = nombre;
-    if (nombre === 'semana') { vistaSemanaModo = 'foco'; focoComida = null; semanaSeleccionada = 'vigente'; }
+    recetaAbierta = null;
+    if (nombre === 'semana') { diaGlobal = null; pagerIdx = comidaProximaPorHora() === 'cena' ? 1 : 0; }
+    if (nombre === 'perfil') { vistaPerfil = 'lista'; miembroAbierto = null; }
     render();
   }
 
   // ---------------------------------------------------------------
   // Sheet genérico (bottom sheet reutilizado para familia/compra/cambiar/confirmar)
   // ---------------------------------------------------------------
+  // Lucide (Roger 2026-07-19): los iconos se inyectan como <i data-lucide="…">
+  // y hace falta pedirle a la librería que los convierta a SVG tras CADA
+  // inyección de HTML nueva — idempotente, solo toca los que aún no lo son.
+  function refrescarIconos() {
+    if (window.lucide) window.lucide.createIcons();
+  }
+
   function abrirSheet(html) {
     document.getElementById('sheet-contenido').innerHTML = html;
     document.getElementById('sheet-overlay').hidden = false;
     document.body.classList.add('sheet-open');
+    refrescarIconos();
   }
 
   function cerrarSheet() {
@@ -241,14 +275,9 @@
     render(); // por si se marcó compra o se cambió algo mientras el sheet estaba abierto
   }
 
-  function abrirSheetFamilia() {
-    abrirSheet(UI.renderSheetFamilia(estado, BANCO, obtenerMiembroDispositivo()));
-    aplicarDetallesAbiertos(document.getElementById('sheet-contenido'));
-  }
-
   function marcarYoDispositivo(id) {
     fijarMiembroDispositivo(id);
-    abrirSheetFamilia(); // re-pinta la sheet con el badge/chip actualizados
+    render(); // re-pinta la ficha con el badge/chip actualizados
   }
 
   // Menú hamburguesa (Roger 2026-07-14, rehecho igual día): dropdown pequeño
@@ -266,6 +295,7 @@
     dropdown.style.left = Math.round(r.left) + 'px';
     dropdown.hidden = false;
     overlay.hidden = false;
+    refrescarIconos();
   }
 
   function cerrarMenuHamburguesa() {
@@ -554,7 +584,7 @@
     document.body.classList.remove('wizard-open');
     document.getElementById('demo-banner').hidden = false;
     vistaActual = 'semana';
-    semanaDiaSeleccionado = null;
+    diaGlobal = null;
     render();
   }
 
@@ -677,13 +707,13 @@
         estado.familia.push(Object.assign({ id: generarId('m'), vetos: [], patron: patronPorDefecto() }, datos));
       }
       guardarEstado();
-      abrirSheetFamilia();
+      cerrarSheet();
     }
   }
 
   function cancelarFormMiembro() {
     if (formContexto === 'wizard') mostrarWizardHub();
-    else abrirSheetFamilia();
+    else cerrarSheet();
   }
 
   function abrirFormMiembroEnSheet(miembroId) {
@@ -716,7 +746,7 @@
     if (!m) return;
     delete m.foto;
     guardarEstado();
-    abrirSheetFamilia();
+    render();
   }
 
   // ---------------------------------------------------------------
@@ -788,7 +818,37 @@
   }
 
   function abrirRecetaDetalle(dia, tipoComida) {
-    abrirSheet(UI.renderSheetReceta(estado, BANCO, planActivo(), dia, tipoComida));
+    recetaAbierta = { dia: dia, tipo: tipoComida };
+    vistaAnterior = vistaActual;
+    vistaActual = 'receta';
+    render();
+  }
+
+  // Desde el banco de Recetas (Roger 2026-07-19): sin día ni comensales
+  // concretos detrás — ver renderVistaRecetaPlantilla.
+  function abrirRecetaBanco(plantillaId) {
+    recetaAbierta = { plantillaId: plantillaId };
+    vistaAnterior = vistaActual;
+    vistaActual = 'receta';
+    render();
+  }
+
+  function cerrarRecetaDetalle() {
+    vistaActual = vistaAnterior;
+    recetaAbierta = null;
+    render();
+  }
+
+  function abrirMiembroFicha(id) {
+    miembroAbierto = id;
+    vistaPerfil = 'ficha';
+    render();
+  }
+
+  function cerrarMiembroFicha() {
+    vistaPerfil = 'lista';
+    miembroAbierto = null;
+    render();
   }
 
   // Feedback loop (P1, 2026-07-16): toque post-comida por slot. Toggle — tocar la
@@ -804,7 +864,7 @@
     if (actual && actual.valor === valor) delete estado.valoraciones[clave];
     else estado.valoraciones[clave] = { plantillaId: slot.plantillaId, valor: valor };
     guardarEstado();
-    abrirSheet(UI.renderSheetReceta(estado, BANCO, planActivo(), dia, tipoComida)); // re-pinta con el estado nuevo
+    render(); // vistaActual ya es 'receta' — repinta con el estado nuevo
   }
 
   function abrirResumenSemana() {
@@ -918,7 +978,9 @@
     if (!confirm('¿Eliminar a este miembro de la familia?')) return;
     estado.familia = estado.familia.filter(function (m) { return m.id !== id; });
     guardarEstado();
-    abrirSheetFamilia();
+    vistaPerfil = 'lista';
+    miembroAbierto = null;
+    render();
   }
 
   function togglePatron(id, tipo, diaIdx, btn) {
@@ -932,7 +994,7 @@
     // (con vetos de 57 ingredientes × miembro) hacía lag en taps consecutivos
     var grid = btn && btn.closest('.patron-grid');
     if (grid) grid.outerHTML = UI.renderPatronGrid(m, tipo);
-    else abrirSheetFamilia();
+    else render();
   }
 
   function toggleVeto(miembroId, ingredienteId) {
@@ -986,16 +1048,20 @@
     'ver-demo': function () { mostrarDemo(); },
     'salir-demo': function () { salirDemo(); },
     'ir-vista': function (btn) { irAVista(btn.dataset.vista); },
-    'abrir-familia': function () { abrirSheetFamilia(); },
     'abrir-menu-hamburguesa': function (btn) { abrirMenuHamburguesa(btn); },
-    'menu-ir-familia': function () { abrirSheetFamilia(); },
+    'menu-ir-familia': function () { irAVista('perfil'); },
     'menu-regenerar-semana': function () { regenerarSemanaCompleta(); },
     'menu-importar-cole': function () { abrirImportarCole(); },
     'cole-importar': function () { importarCole(); },
     'cole-borrar': function () { borrarCole(); },
-    'ver-semana-clasica': function () { vistaSemanaModo = 'semana'; render(); },
-    'ver-informe-foco': function () { vistaSemanaModo = 'foco'; focoComida = null; semanaSeleccionada = 'vigente'; render(); },
-    'foco-flip-comida': function (btn) { focoComida = btn.dataset.comida; render(); },
+    // línea "…en el cole" (banner de despensa, próximos días): no hay pantalla
+    // dedicada de cole todavía, abre el sheet real que ya lista los días
+    // cargados (Roger 2026-07-19: reutilizar, no construir una pantalla nueva
+    // para esto sin que lo pida).
+    'ir-cole': function () { abrirImportarCole(); },
+    // pager comida/cena de la Home (Roger 2026-07-19, reemplaza foco-flip-comida):
+    // el scroll real lo lleva onPagerScroll (gesto), esto es para el segmentado y los puntos.
+    'pager-ir': function (btn) { irPager(Number(btn.dataset.pager)); },
     'menu-sync': function () { abrirSheetSync(); },
     'landing-unirse': function () { abrirSheetSync(); },
     'sync-activar': function () { activarSincronizacion(); },
@@ -1039,14 +1105,10 @@
       if (input) input.click();
     },
     'miembro-quitar-foto': function (btn) { quitarFotoMiembro(btn.dataset.id); },
-    // chip de sexo/actividad/dieta en la card de edición del sheet Familia:
-    // guarda y refresca solo las clases activas del grupo (como mf-set-campo).
-    // Excepción dieta: su valor aparece también en la línea-resumen del miembro,
-    // así que ahí sí se re-renderiza el sheet completo (los <details> abiertos
-    // se conservan vía el registro detallesAbiertos).
+    // chip de sexo/actividad/dieta en la ficha de miembro: guarda y refresca
+    // solo las clases activas del grupo, sin repintar toda la pantalla.
     'miembro-set-campo': function (btn) {
       actualizarCampoMiembro(btn.dataset.id, btn.dataset.campo, btn.dataset.valor);
-      if (btn.dataset.campo === 'dieta') { abrirSheetFamilia(); return; }
       var grupo = btn.parentElement;
       if (grupo) {
         grupo.querySelectorAll('.chip-toggle').forEach(function (b) {
@@ -1056,26 +1118,18 @@
         });
       }
     },
-    'ir-recetas-ocultas': function () { vistaActual = 'recetas'; cerrarSheet(); },
     'ir-compra-hoy': function () { rangoCompra = 'hoy'; irAVista('compra'); },
 
     'toggle-presente': function (btn) { togglePresente(Number(btn.dataset.dia), btn.dataset.tipo, btn.dataset.miembro); },
     'toggle-compra-item': function (btn) { toggleCompraItem(btn.dataset.id); },
     'vaciar-compra': function () { vaciarCompra(); },
     'segmento-compra': function (btn) { rangoCompra = btn.dataset.rango; render(); },
-    'semana-elegir-dia': function (btn) {
-      semanaDiaSeleccionado = parseInt(btn.dataset.dia, 10);
-      // Tocar un día del vistazo de Foco mientras se mira "semana que viene":
-      // Foco no tiene HOY de una semana futura, así que en vez de intentar
-      // reflejarlo ahí, se hace drill-in directo a la vista clásica (que ya
-      // respeta semanaSeleccionada) — mismo comportamiento que "Ver semana
-      // completa" pero aterrizando ya en el día tocado.
-      if (vistaSemanaModo === 'foco' && semanaSeleccionada === 'siguiente') vistaSemanaModo = 'semana';
-      render();
-    },
-    'semana-pag': function (btn) { semanaSeleccionada = btn.dataset.semana; semanaDiaSeleccionado = null; render(); },
+    // tira de 14 días de la Home (Roger 2026-07-19): data-dia-global ya
+    // sincronizó diaGlobal antes de llegar aquí (ver dispatcher), así que
+    // solo hace falta re-renderizar.
+    'semana-elegir-dia': function () { render(); },
     'filtro-receta': function (btn) { filtroRecetas = btn.dataset.categoria; render(); },
-    'toggle-filtros-receta': function () { filtrosRecetasVisibles = !filtrosRecetasVisibles; render(); },
+    'recetas-vista': function (btn) { recetasView = btn.dataset.vista; render(); },
     'abrir-form-receta-propia': function () {
       var det = document.querySelector('.receta-propia-form');
       if (!det) return;
@@ -1084,6 +1138,10 @@
     },
 
     'abrir-receta': function (btn) { abrirRecetaDetalle(Number(btn.dataset.dia), btn.dataset.tipo); },
+    'abrir-receta-banco': function (btn) { abrirRecetaBanco(btn.dataset.plantilla); },
+    'receta-volver': function () { cerrarRecetaDetalle(); },
+    'abrir-miembro-ficha': function (btn) { abrirMiembroFicha(btn.dataset.id); },
+    'miembro-volver': function () { cerrarMiembroFicha(); },
     'abrir-resumen-semana': function () { abrirResumenSemana(); },
     'valorar-plato': function (btn) { valorarPlato(E.diaIndexDesdeFecha(planActivo(), btn.dataset.fecha), btn.dataset.tipo, btn.dataset.valor); },
     'abrir-cambiar': function (btn) { abrirCambiar(Number(btn.dataset.dia), btn.dataset.tipo); },
@@ -1109,6 +1167,11 @@
   document.addEventListener('click', function (e) {
     var btn = e.target.closest('[data-action]');
     if (!btn) return;
+    // Home única (2026-07-19): cualquier control que se refiera a un día concreto de
+    // la tira de 14 lleva data-dia-global — sincroniza diaGlobal ANTES de despachar,
+    // así planActivo() resuelve el plan correcto aunque el control esté en una card
+    // de "próximos días" distinta a la actualmente seleccionada.
+    if (btn.dataset.diaGlobal != null) diaGlobal = parseInt(btn.dataset.diaGlobal, 10);
     var accion = ACCIONES[btn.dataset.action];
     if (accion) accion(btn, e);
     // cualquier ítem del dropdown del hamburguesa cierra el dropdown al elegirlo
@@ -1137,7 +1200,7 @@
       if (!file) return;
       resizeImageToDataURL(file).then(function (dataUrl) {
         var m = estado.familia.find(function (x) { return x.id === miembroId; });
-        if (m) { m.foto = dataUrl; guardarEstado(); abrirSheetFamilia(); }
+        if (m) { m.foto = dataUrl; guardarEstado(); render(); }
       }).catch(function (err) { alert('No se pudo procesar la imagen: ' + err.message); });
       return;
     }
@@ -1187,37 +1250,36 @@
     }
   });
 
-  // Swipe horizontal sobre la card HOY de Foco (Roger 2026-07-17, 2ª
-  // iteración) — cambia comida↔cena, alternativa táctil a la flecha lateral.
-  // Umbral de 8px antes de decidir la dirección del gesto (no robar el tap,
-  // UI_MOBILE §5 incidente 1); no se hace preventDefault hasta confirmar
-  // gesto horizontal, para no romper el scroll vertical de la página.
-  var hoyTouch = null;
-  document.addEventListener('touchstart', function (e) {
-    var sw = e.target.closest && e.target.closest('#hoy-swipe');
-    if (!sw) { hoyTouch = null; return; }
-    var t = e.touches[0];
-    hoyTouch = { x: t.clientX, y: t.clientY, dir: null, dx: 0 };
-  }, { passive: true });
-  document.addEventListener('touchmove', function (e) {
-    if (!hoyTouch) return;
-    var t = e.touches[0];
-    var dx = t.clientX - hoyTouch.x, dy = t.clientY - hoyTouch.y;
-    if (hoyTouch.dir === null) {
-      if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
-      hoyTouch.dir = Math.abs(dx) > Math.abs(dy) ? 'h' : 'v';
-    }
-    if (hoyTouch.dir === 'h') { e.preventDefault(); hoyTouch.dx = dx; }
-  }, { passive: false });
-  document.addEventListener('touchend', function () {
-    if (hoyTouch && hoyTouch.dir === 'h' && Math.abs(hoyTouch.dx) > 45) {
-      var sw = document.getElementById('hoy-swipe');
-      var actual = sw ? sw.dataset.meal : comidaProximaPorHora();
-      focoComida = actual === 'comida' ? 'cena' : 'comida';
-      render();
-    }
-    hoyTouch = null;
-  });
+  // Pager comida/cena de la Home (Roger 2026-07-19) — scroll-snap NATIVO
+  // (CSS scroll-snap-type, sin math de gesto manual: el navegador hace el
+  // swipe). Solo hace falta: (a) botón/segmentado que haga scrollTo, (b) un
+  // listener de scroll que mantenga pagerIdx al día para el segmentado y los
+  // puntos. Delegado en fase de captura porque 'scroll' no burbujea en todos
+  // los navegadores — la captura sí ve el evento del contenedor con overflow.
+  function irPager(i) {
+    var el = document.getElementById('home-pager');
+    if (!el) { pagerIdx = i; render(); return; }
+    var paso = el.clientWidth + 12;
+    el.scrollTo({ left: i * paso, behavior: 'smooth' });
+    pagerIdx = i;
+    actualizarSegmentadoPager();
+  }
+  // Actualiza SOLO las clases del segmentado (sin render() completo) — un
+  // render a mitad de gesto de scroll reconstruiría el contenedor y cortaría
+  // la animación nativa.
+  function actualizarSegmentadoPager() {
+    var seg = document.getElementById('pager-seg-comida');
+    var sec = document.getElementById('pager-seg-cena');
+    if (seg) { seg.classList.toggle('pager-seg-activo', pagerIdx === 0); }
+    if (sec) { sec.classList.toggle('pager-seg-activo', pagerIdx === 1); }
+  }
+  document.addEventListener('scroll', function (e) {
+    var el = e.target;
+    if (!el || el.id !== 'home-pager') return;
+    var paso = el.clientWidth + 12;
+    var idx = Math.round(el.scrollLeft / Math.max(1, paso));
+    if (idx !== pagerIdx && (idx === 0 || idx === 1)) { pagerIdx = idx; actualizarSegmentadoPager(); }
+  }, true);
 
   // ---------------------------------------------------------------
   // Init
@@ -1262,34 +1324,5 @@
       }, { passive: true });
     })();
 
-    // Swipe horizontal entre días en SEMANA (Roger 2026-07-14: v2 nunca lo
-    // tuvo — codebase nueva, sin relación con el swipe de e3foods.html v1).
-    // Delegado a nivel documento porque .vista-body se reconstruye entera en
-    // cada render(). Cambia de semana queda fuera (pendiente diseño motor).
-    (function setupSwipeDias() {
-      var startX = 0, startY = 0, activo = false;
-      document.addEventListener('touchstart', function (e) {
-        activo = !!e.target.closest('#vista-semana .vista-body') && e.touches.length === 1;
-        if (!activo) return;
-        startX = e.touches[0].clientX;
-        startY = e.touches[0].clientY;
-      }, { passive: true });
-      document.addEventListener('touchend', function (e) {
-        if (!activo) return;
-        activo = false;
-        var zona = document.querySelector('#vista-semana .vista-body');
-        if (!zona || !e.changedTouches.length) return;
-        var dx = e.changedTouches[0].clientX - startX;
-        var dy = e.changedTouches[0].clientY - startY;
-        if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
-        var idx = parseInt(zona.dataset.diaIdx, 10);
-        if (isNaN(idx)) return;
-        var siguiente = dx < 0 ? idx + 1 : idx - 1;
-        var plan = planActivo();
-        if (siguiente < 0 || siguiente > 6 || !plan || !plan.dias[siguiente]) return;
-        semanaDiaSeleccionado = siguiente;
-        render();
-      }, { passive: true });
-    })();
   });
 })();

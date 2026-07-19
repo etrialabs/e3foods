@@ -20,7 +20,7 @@
   --elev2: #F6F2EA;
   --elev3: #EFE9DE;
   --ink: #1A1712;
-  --soft: rgba(26, 23, 18, .55);
+  --soft: rgba(26, 23, 18, .62); /* .55→.62 audit 2026-07-20: 4.78:1 sobre --bg (AA texto normal); en v3 con .55 daba 3.83:1 (UPGRADES §10) */
   --muted: rgba(26, 23, 18, .45);
   --line: rgba(26, 23, 18, .08);
   --line-solid: #E4DFD3;
@@ -106,7 +106,10 @@ body {
    en Chrome/desktop (por eso no se veía en las verificaciones), visible en el
    móvil real. Afecta a todos los botones, no solo a "Quiero otra cosa". */
 button { touch-action: manipulation; -webkit-tap-highlight-color: transparent; font-family: inherit; appearance: none; -webkit-appearance: none; }
-input, select { font-family: inherit; font-size: var(--fs-cuerpo); }
+/* 16px mínimo en campos enfocables (iOS hace zoom al enfocar con menos — mismo
+   criterio ya aplicado en .cole-textarea); idem .input-corto, .form-miembro,
+   .rc-buscador input y .mf-campo .input-editorial más abajo (audit 2026-07-20). */
+input, select { font-family: inherit; font-size: 16px; }
 
 :focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 
@@ -218,7 +221,7 @@ body.wizard-open { overflow: hidden; }
 }
 .input-editorial::placeholder { color: var(--muted); font-weight: 400; }
 .input-editorial:focus { outline: none; border-bottom-color: var(--gold); border-bottom-width: 2px; }
-.input-corto { font-size: var(--fs-cuerpo); font-weight: 500; }
+.input-corto { font-size: 16px; font-weight: 500; }
 
 .campo-nombre-familia, .campo-nombre-miembro { display: block; margin-bottom: var(--space-1); }
 .campo-nombre-familia .input-editorial { font-family: var(--font-display); font-size: 28px; font-weight: 400; }
@@ -881,7 +884,7 @@ body.sheet-open { overflow: hidden; }
 }
 .form-miembro input, .form-miembro select {
   min-height: 44px; border: 1.5px solid var(--line-solid); border-radius: 10px; padding: var(--space-2);
-  color: var(--ink); background: var(--panel); font-size: var(--fs-cuerpo); font-weight: 400;
+  color: var(--ink); background: var(--panel); font-size: 16px; font-weight: 400;
 }
 
 .receta-propia-form { background: var(--panel); border: 1.5px dashed var(--line-solid); border-radius: 14px; padding: var(--space-2) var(--space-3); margin-top: var(--space-3); }
@@ -1226,7 +1229,9 @@ body.sheet-open { overflow: hidden; }
 .ph-card-cena .ph-cta { box-shadow: 0 8px 20px -8px oklch(0.72 0.17 62 / .5); }
 
 .ph-seg { display: flex; gap: 6px; background: rgba(26,23,18,.06); border-radius: 13px; padding: 4px; margin-top: 13px; }
-.ph-seg-btn { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; border: none; cursor: pointer; border-radius: 11px; padding: 10px; font-size: 13.5px; font-weight: 700; background: none; color: rgba(26,23,18,.5); }
+/* color del inactivo: llevaba rgba(26,23,18,.5) hardcodeado fuera de token
+   (3.31:1 sobre su track, fallaba AA) — al token --soft (audit 2026-07-20). */
+.ph-seg-btn { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; border: none; cursor: pointer; border-radius: 11px; padding: 10px; font-size: 13.5px; font-weight: 700; background: none; color: var(--soft); }
 .ph-seg-btn.pager-seg-activo { background: var(--panel); color: var(--ink); font-weight: 800; box-shadow: 0 2px 6px -2px rgba(26,23,18,.15); }
 
 .ph-cole-card { width: 100%; background: var(--panel); border: 1px solid var(--line); cursor: pointer; border-radius: 17px; padding: 13px 14px; display: flex; align-items: center; gap: 12px; box-shadow: 0 4px 14px -10px rgba(26,23,18,.3); margin-top: 16px; }
@@ -1304,7 +1309,9 @@ body.sheet-open { overflow: hidden; }
 .rv-ingrediente:last-child { border-bottom: none; }
 .rv-ingrediente-bullet { width: 7px; height: 7px; border-radius: 50%; background: var(--gold); flex: none; }
 .rv-ingrediente-nombre { flex: 1; font-size: 14.5px; color: var(--ink); font-weight: 500; }
-.rv-ingrediente-g { font-size: 12.5px; color: var(--muted); font-weight: 600; }
+/* gramos = información real, no decoración: --muted daba 2.93:1 sobre --panel,
+   fallaba AA — a --soft (audit 2026-07-20). */
+.rv-ingrediente-g { font-size: 12.5px; color: var(--soft); font-weight: 600; }
 
 .rv-pasos { display: flex; flex-direction: column; gap: 12px; }
 .rv-paso { display: flex; gap: 13px; background: var(--panel); border-radius: 16px; padding: 15px; box-shadow: 0 4px 14px -10px rgba(26,23,18,.3); }
@@ -1329,7 +1336,7 @@ body.sheet-open { overflow: hidden; }
 .rc-body { padding-top: var(--space-3); }
 .rc-buscador { display: flex; align-items: center; gap: 10px; background: var(--panel); border-radius: 16px; padding: 13px 15px; box-shadow: 0 4px 14px -10px rgba(26,23,18,.3); }
 .rc-buscador i { color: var(--muted); flex: none; }
-.rc-buscador input { flex: 1; min-width: 0; border: none; background: none; font: inherit; font-size: 14.5px; color: var(--ink); outline: none; }
+.rc-buscador input { flex: 1; min-width: 0; border: none; background: none; font: inherit; font-size: 16px; color: var(--ink); outline: none; }
 .rc-buscador input::placeholder { color: var(--muted); }
 
 .rc-chips { display: flex; gap: 8px; overflow-x: auto; margin: 16px calc(var(--space-3) * -1) 4px; padding: 0 var(--space-3) 4px; }
@@ -1419,7 +1426,7 @@ body.sheet-open { overflow: hidden; }
 .mf-foto-fila { display: flex; flex-direction: column; align-items: center; margin-bottom: var(--space-4); }
 .mf-nombre-titulo { font-family: var(--font-display); font-size: 22px; font-weight: 800; color: var(--ink); margin-top: 10px; }
 .mf-campo { background: var(--panel); border-radius: 16px; padding: 12px 14px; margin-bottom: 10px; box-shadow: 0 4px 14px -10px rgba(26,23,18,.3); }
-.mf-campo .input-editorial { border: none; padding: 0; min-height: 0; font-size: var(--fs-cuerpo); font-weight: 600; }
+.mf-campo .input-editorial { border: none; padding: 0; min-height: 0; font-size: 16px; font-weight: 600; }
 .mf-fila-2 { display: flex; gap: 10px; }
 .mf-fila-2 .mf-campo { flex: 1; min-width: 0; }
 .mf-dispositivo { width: 100%; margin-top: 8px; justify-content: center; display: flex; }

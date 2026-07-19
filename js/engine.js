@@ -284,18 +284,26 @@
   // ---------------------------------------------------------------
   // Presencia — restricción 1 (estructural por patrón + puntual del día)
   // ---------------------------------------------------------------
+  // Menú del cole cargado (F1, Roger 2026-07-17): los niños comen SIEMPRE en
+  // casa salvo que haya menú importado para esa fecha — ese mediodía comen en
+  // el cole. Va al revés que el patrón: subir el menú desmarca a los menores
+  // de esas comidas, sin tocar nada más; sin menú (verano), vuelven solos.
+  // Exportado (audit 2026-07-20): app.js lo usa para que el avatar de un menor
+  // excluido por cole no escriba una "ausencia fantasma" en ausenciasPuntuales
+  // (un toggle ahí no puede cambiar el resultado — la exclusión vive en cole).
+  function excluidoPorCole(estado, miembro, fecha, tipoComida) {
+    return tipoComida === 'comida' &&
+      !!(estado.cole && estado.cole.dias && estado.cole.dias[fecha]) &&
+      edadEnAnios(miembro.anioNacimiento) < EDAD_MENOR;
+  }
+
   function presentesEnComida(estado, fecha, diaIndex, tipoComida) {
     var ausenciasDia = (estado.ausenciasPuntuales && estado.ausenciasPuntuales[fecha] && estado.ausenciasPuntuales[fecha][tipoComida]) || [];
     return (estado.familia || []).filter(function (m) {
       var patronDia = (m.patron && m.patron[tipoComida]) ? m.patron[tipoComida][diaIndex] : 'casa';
       if (patronDia !== 'casa') return false; // ausencia estructural (fuera/cole)
       if (ausenciasDia.indexOf(m.id) !== -1) return false; // ausencia puntual
-      // Menú del cole cargado (F1, Roger 2026-07-17): los niños comen SIEMPRE en
-      // casa salvo que haya menú importado para esa fecha — ese mediodía comen en
-      // el cole. Va al revés que el patrón: subir el menú desmarca a los menores
-      // de esas comidas, sin tocar nada más; sin menú (verano), vuelven solos.
-      if (tipoComida === 'comida' && estado.cole && estado.cole.dias && estado.cole.dias[fecha] &&
-          edadEnAnios(m.anioNacimiento) < EDAD_MENOR) return false;
+      if (excluidoPorCole(estado, m, fecha, tipoComida)) return false; // menú del cole (ver arriba)
       return true;
     });
   }
@@ -428,6 +436,36 @@
       });
     });
     return contador;
+  }
+
+  // días del plan con un hueco concreto vaciado — base del contador de cuotas
+  // (y de usosSemana en cambiarPlato) cuando se evalúa el cambio de ese hueco:
+  // el plato saliente no debe contarse a sí mismo.
+  function diasSinSlot(plan, dia, tipoComida) {
+    return plan.dias.map(function (d, i) {
+      if (i !== dia) return d;
+      var copia = { fecha: d.fecha, comida: d.comida, cena: d.cena };
+      copia[tipoComida] = null;
+      return copia;
+    });
+  }
+
+  function contadorSemanaSinSlot(plan, dia, tipoComida, banco) {
+    return contadorInicialDesdeDias(diasSinSlot(plan, dia, tipoComida), banco);
+  }
+
+  // ¿Tiene la plantilla ALGÚN combo (respetando vetos) que no viole cuotas
+  // máximas con ese contador? Espejo exacto del modo manual de cambiarPlato,
+  // que mantiene las cuotas máximas (protegen salud): pre-filtra la lista de
+  // "Elegir otro plato" para no ofrecer platos que el motor vetará después.
+  // Misma paridad lista↔motor que el filtro por plantillaViableParaMesa del
+  // 2026-07-16 — aquel fix dejó las cuotas sin pre-filtrar (documentado en
+  // ui.js) y el hueco se cerró en el audit del 2026-07-20.
+  function plantillaPasaCuotas(plantilla, vetosUnion, contador, cuotas, banco) {
+    return combinacionesEjes(plantilla, vetosUnion).some(function (seleccion) {
+      if (!Object.keys(seleccion).length && Object.keys(plantilla.ejes || {}).length) return false;
+      return !violaMaximoCuota(seleccion, contador, cuotas, banco);
+    });
   }
 
   // Semáforo de equilibrio semanal (P1, feedback externo 2026-07-16): reutiliza
@@ -724,7 +762,12 @@
     var rotado = conCandidatas.slice(offset).concat(conCandidatas.slice(0, offset));
     return rotado.slice(0, 3).map(function (cat, i) {
       var elegida = cat.candidatas[(diaNum + i) % cat.candidatas.length];
-      return { kicker: cat.kicker, titulo: cat.titulo, foto: elegida.foto, candidatas: cat.candidatas };
+      // las recetas propias no llevan foto — si la rotación cae en una, la
+      // portada de la ficha usa la primera candidata con foto para no pintar
+      // un <img src="undefined"> roto (audit 2026-07-20); si ninguna tiene,
+      // null y ui.js omite la imagen (el degradado + texto siguen legibles).
+      var foto = elegida.foto || (cat.candidatas.filter(function (p) { return p.foto; })[0] || {}).foto || null;
+      return { kicker: cat.kicker, titulo: cat.titulo, foto: foto, candidatas: cat.candidatas };
     });
   }
 
@@ -791,7 +834,12 @@
   // ---------------------------------------------------------------
   // 4. Generación de la semana completa
   // ---------------------------------------------------------------
-  function generarSemana(estado, banco, desde, planExistente) {
+  // diaPrevio (audit 2026-07-20): día anterior al día 0 de esta semana — el
+  // domingo del plan vigente cuando se genera la semana siguiente. Sin él, la
+  // variedad dura (restricción 4, "ningún ingrediente en días consecutivos")
+  // arrancaba ciega en la frontera dom→lun: 10 de 12 rollovers simulados
+  // repetían ingrediente, visible en la tira continua de 14 días de la Home.
+  function generarSemana(estado, banco, desde, planExistente, diaPrevio) {
     desde = desde || 0;
     var semanaISO = (planExistente && planExistente.semanaISO) || lunesDeEstaSemana(new Date());
     var cuotas = (banco && banco.categorias_cuota) || {};
@@ -812,7 +860,7 @@
         continue;
       }
       var fecha = fechaISO(semanaISO, i);
-      var usadosAyer = usadosEnDia(dias[i - 1]);
+      var usadosAyer = i === 0 ? usadosEnDia(diaPrevio) : usadosEnDia(dias[i - 1]);
       var diaActual = { fecha: fecha, comida: null, cena: null };
 
       ['comida', 'cena'].forEach(function (tipoComida) {
@@ -889,12 +937,7 @@
 
     var cuotas = (banco && banco.categorias_cuota) || {};
     // cuotas de toda la semana salvo el propio hueco que se está cambiando
-    var diasParaContar = plan.dias.map(function (d, i) {
-      if (i !== dia) return d;
-      var copia = { fecha: d.fecha, comida: d.comida, cena: d.cena };
-      copia[tipoComida] = null;
-      return copia;
-    });
+    var diasParaContar = diasSinSlot(plan, dia, tipoComida);
     var contadorCuotas = contadorInicialDesdeDias(diasParaContar, banco);
 
     var candidatas = plantillasDisponibles(banco, estado).filter(function (p) { return (p.apta || []).indexOf(tipoComida) !== -1; });
@@ -972,8 +1015,10 @@
     return -1;
   }
 
-  function listaCompra(estado, plan, rango, banco) {
-    var hoyISO = fechaLocalISO(new Date());
+  // `hoy` opcional (audit 2026-07-20): inyectable para tests deterministas del
+  // rango 'hoy' — en producción se omite y usa la fecha real, como siempre.
+  function listaCompra(estado, plan, rango, banco, hoy) {
+    var hoyISO = hoy || fechaLocalISO(new Date());
     var diasRango;
     if (rango === 'hoy') {
       var idx = diaIndexDesdeFecha(plan, hoyISO);
@@ -1040,6 +1085,9 @@
     // helpers reutilizados por ui.js / app.js
     edadEnAnios: edadEnAnios,
     presentesEnComida: presentesEnComida,
+    excluidoPorCole: excluidoPorCole,
+    contadorSemanaSinSlot: contadorSemanaSinSlot,
+    plantillaPasaCuotas: plantillaPasaCuotas,
     lunesDeEstaSemana: lunesDeEstaSemana,
     fechaLocalISO: fechaLocalISO,
     fechaISO: fechaISO,

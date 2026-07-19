@@ -99,13 +99,24 @@
     return nombre.trim().charAt(0).toUpperCase();
   }
 
+  // Solo se aceptan dataURLs de imagen — lo único que produce la app
+  // (resizeImageToDataURL). La foto viaja por Firestore: un valor manipulado
+  // desde otro dispositivo, interpolado en el atributo style, podía escapar de
+  // la url('…') e inyectar atributos en el tag (audit 2026-07-20). Un dataURL
+  // legítimo no contiene comillas ni backslash — quitarlas no rompe ninguno.
+  function fotoSegura(foto) {
+    if (!foto || typeof foto !== 'string' || foto.indexOf('data:image/') !== 0) return null;
+    return foto.replace(/["'\\]/g, '');
+  }
+
   // avatar con foto (dataURL) si existe, con fallback a iniciales — mismo patrón que el
   // motor viejo (e3foods.html): la foto sustituye el avatar de letra cuando hay una subida.
   function avatarInner(miembro) {
-    return miembro.foto ? '' : escapeHtml(iniciales(miembro.nombre));
+    return fotoSegura(miembro.foto) ? '' : escapeHtml(iniciales(miembro.nombre));
   }
   function avatarEstilo(miembro) {
-    return miembro.foto ? " style=\"background-image:url('" + miembro.foto + "')\"" : '';
+    var foto = fotoSegura(miembro.foto);
+    return foto ? " style=\"background-image:url('" + foto + "')\"" : '';
   }
   // Igual que avatarEstilo pero fusionando un color de fondo (fallback sin foto)
   // en el MISMO atributo style — bug real (Roger 2026-07-20): los 3 sitios que
@@ -114,7 +125,8 @@
   // style en el mismo tag. HTML ignora el segundo duplicado silenciosamente:
   // el color se veía siempre, la foto nunca. Un solo atributo, sin este bug.
   function avatarEstiloColor(miembro, color) {
-    return 'style="background:' + color + (miembro.foto ? ";background-image:url('" + miembro.foto + "')" : '') + '"';
+    var foto = fotoSegura(miembro.foto);
+    return 'style="background:' + color + (foto ? ";background-image:url('" + foto + "')" : '') + '"';
   }
 
   var ICONO_CAMARA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8.5A1.5 1.5 0 0 1 5.5 7h1.6l.9-1.5A1.5 1.5 0 0 1 9.29 4.75h5.42A1.5 1.5 0 0 1 16 5.5L16.9 7h1.6A1.5 1.5 0 0 1 20 8.5v9A1.5 1.5 0 0 1 18.5 19h-13A1.5 1.5 0 0 1 4 17.5z"/><circle cx="12" cy="12.5" r="3.4"/></svg>';
@@ -626,7 +638,7 @@
         '<button type="button" class="ph-proximo-linea" data-action="abrir-receta" data-dia="' + pLocal + '" data-tipo="comida" data-dia-global="' + p + '"><i data-lucide="sun"></i><span>' + escapeHtml(pComidaNombre) + '</span></button>' +
         '<button type="button" class="ph-proximo-linea ph-proximo-cena" data-action="abrir-receta" data-dia="' + pLocal + '" data-tipo="cena" data-dia-global="' + p + '"><i data-lucide="moon"></i><span>' + escapeHtml(pCenaNombre) + '</span></button>' +
         '</div>' +
-        (pFotoPl && pFotoPl.foto ? '<img class="ph-proximo-foto" src="' + escapeHtml(pFotoPl.foto) + '" alt="">' : '') +
+        (pFotoPl && pFotoPl.foto ? '<img class="ph-proximo-foto" src="' + escapeHtml(pFotoPl.foto) + '" alt="" loading="lazy" decoding="async">' : '') +
         '</div>';
     }
     var proximosHtml = proximosItems
@@ -738,7 +750,9 @@
   var ETIQUETA_CHIP_ESPECIAL = { todas: 'Todas', rapidas: 'Rápidas', favoritas: 'Favoritas' };
 
   function tarjetaRecetaGrid(p, banco, oculta, favorita) {
-    var fotoHtml = p.foto ? '<img src="' + escapeHtml(p.foto) + '" alt="">' : '<div class="rc-foto-vacia"></div>';
+    // lazy (audit 2026-07-20): el grid pinta hasta 82 <img> de golpe — hoy son 4
+    // ficheros únicos, pero con fotos por receta (UPGRADES §3) serían 82 requests
+    var fotoHtml = p.foto ? '<img src="' + escapeHtml(p.foto) + '" alt="" loading="lazy" decoding="async">' : '<div class="rc-foto-vacia"></div>';
     var tag = ETIQUETA_ESFUERZO[p.esfuerzo] || '';
     return '<div class="rc-tarjeta' + (oculta ? ' rc-oculta' : '') + '">' +
       '<button type="button" class="rc-tarjeta-abrir" data-action="abrir-receta-banco" data-plantilla="' + p.id + '">' +
@@ -753,7 +767,7 @@
   }
 
   function filaRecetaLista(p, banco, oculta, favorita) {
-    var fotoHtml = p.foto ? '<img src="' + escapeHtml(p.foto) + '" alt="">' : '<div class="rc-fila-foto-vacia"></div>';
+    var fotoHtml = p.foto ? '<img src="' + escapeHtml(p.foto) + '" alt="" loading="lazy" decoding="async">' : '<div class="rc-fila-foto-vacia"></div>';
     var tag = ETIQUETA_ESFUERZO[p.esfuerzo] || '';
     return '<div class="rc-fila' + (oculta ? ' rc-oculta' : '') + '">' +
       '<button type="button" class="rc-fila-abrir" data-action="abrir-receta-banco" data-plantilla="' + p.id + '">' +
@@ -973,19 +987,25 @@
     // Solo plantillas que el motor puede aceptar de verdad para ESTA mesa (dieta/
     // mesa mixta y vetos) — antes se listaba todo lo 'apta' y el tap acababa en
     // "no encontramos un plato" para opciones imposibles (bug 2026-07-16). Las
-    // cuotas máximas semanales no se pre-filtran: cambian con la propia elección.
+    // cuotas máximas también se pre-filtran desde el audit 2026-07-20: el modo
+    // manual las mantiene (protegen salud) y ofrecer un plato que solo computa
+    // una categoría ya saturada (p.ej. tabla de embutido con carne-roja al máximo)
+    // repetía la misma clase de alert sin explicación.
     var diaObj = plan && plan.dias[dia];
     var presentes = diaObj ? E.presentesEnComida(estado, diaObj.fecha, dia, tipoComida) : [];
     var vetosUnion = E.vetosDe(presentes);
+    var contadorCuotas = diaObj ? E.contadorSemanaSinSlot(plan, dia, tipoComida, banco) : {};
+    var cuotas = (banco && banco.categorias_cuota) || {};
     var candidatas = E.plantillasDisponibles(banco, estado).filter(function (p) {
       return (p.apta || []).indexOf(tipoComida) !== -1 &&
-        E.plantillaViableParaMesa(p, presentes, vetosUnion, banco);
+        E.plantillaViableParaMesa(p, presentes, vetosUnion, banco) &&
+        E.plantillaPasaCuotas(p, vetosUnion, contadorCuotas, cuotas, banco);
     });
     var listaHtml = candidatas.length
       ? '<ul class="lista-plantillas">' + candidatas.map(function (p) {
           return '<li><button type="button" class="fila-plantilla" data-action="elegir-plantilla" data-dia="' + dia + '" data-tipo="' + tipoComida + '" data-plantilla="' + p.id + '">' +
             '<span class="fila-plantilla-nombre">' + escapeHtml(capitaliza(nombreEjemplo(p, banco))) + '</span>' +
-            '<span class="fila-plantilla-meta">' + (p.tiempo_min || '?') + ' min · ' + escapeHtml(p.esfuerzo || '') + '</span>' +
+            '<span class="fila-plantilla-meta">' + (p.tiempo_min || '?') + ' min · ' + escapeHtml(ETIQUETA_ESFUERZO[p.esfuerzo] || p.esfuerzo || '') + '</span>' +
             '</button></li>';
         }).join('') + '</ul>'
       : '<p class="card-msg">No hay recetas disponibles para esta comida.</p>';
@@ -1349,10 +1369,15 @@
   // no pasaba nada — las candidatas ya las calculaba el motor, solo faltaba
   // exponerlas y pintarlas en un sheet).
   function renderDescubrirVista(estado, banco) {
-    var categorias = E.categoriasDescubrir(banco, estado, hoyISO());
+    // la fecha del render viaja en data-fecha (audit 2026-07-20): el handler
+    // reabre la MISMA rotación aunque la medianoche cruce entre pintar y tocar.
+    // d.foto puede ser null (categoría sin ninguna candidata con foto) — la
+    // ficha tiene altura fija y el degradado + texto siguen legibles sin <img>.
+    var fecha = hoyISO();
+    var categorias = E.categoriasDescubrir(banco, estado, fecha);
     var fichasHtml = categorias.map(function (d, idx) {
-      return '<button type="button" class="desc-ficha" data-action="descubrir-abrir-categoria" data-idx="' + idx + '">' +
-        '<img src="' + d.foto + '" alt="">' +
+      return '<button type="button" class="desc-ficha" data-action="descubrir-abrir-categoria" data-idx="' + idx + '" data-fecha="' + fecha + '">' +
+        (d.foto ? '<img src="' + escapeHtml(d.foto) + '" alt="" loading="lazy" decoding="async">' : '') +
         '<div class="desc-ficha-degradado"></div>' +
         '<div class="desc-ficha-texto">' +
         '<span class="desc-kicker">' + escapeHtml(d.kicker) + '</span>' +

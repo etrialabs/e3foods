@@ -26,6 +26,18 @@
     return;
   }
 
+  // Mismo criterio para engine/ui (audit 2026-07-20): un 404 o error de sintaxis
+  // en engine.js/ui.js dejaba pantalla blanca con el error solo en consola —
+  // exactamente el fallo silencioso que el guard del banco quiso evitar.
+  if (!E || !UI) {
+    document.addEventListener('DOMContentLoaded', function () {
+      document.body.innerHTML = '<div style="padding:32px 24px;font-family:sans-serif;max-width:480px;margin:0 auto">' +
+        '<h1 style="font-size:20px;margin-bottom:12px">No se pudo cargar la aplicación</h1>' +
+        '<p>Recarga la página. Si el problema sigue, es un fallo del despliegue (engine.js o ui.js no responden).</p></div>';
+    });
+    return;
+  }
+
   // ---------------------------------------------------------------
   // Estado
   // ---------------------------------------------------------------
@@ -46,7 +58,10 @@
 
   function guardarEstado() {
     if (modoDemo) return; // vista de ejemplo — nunca se persiste ni sincroniza
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(estado));
+    // try/catch (audit 2026-07-20): en modo privado de Safari/Firefox o con la
+    // cuota llena, setItem lanza — la excepción abortaba el handler a medias
+    // (sheet sin cerrar, sin render). El resto de accesos ya iban guardados.
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(estado)); } catch (e) { /* sin caché local — el push remoto de abajo sigue */ }
     // No empujar a remoto hasta haber visto el primer snapshot (remotoListo):
     // un push anterior al snapshot inicial machacaría en Firestore lo que otro
     // dispositivo escribió mientras este estaba cerrado. El getter se evalúa al
@@ -96,6 +111,7 @@
   var pagerIdx = comidaProximaPorHora() === 'cena' ? 1 : 0;
   var filtroRecetas = 'todas'; // estado de UI, no persistido (SPEC: filtroRecetas)
   var busquedaRecetas = ''; // estado de UI, no persistido
+  var busquedaTimer = null; // debounce del buscador de Recetas (audit 2026-07-20)
   var rangoCompra = '7d'; // '7d' | 'hoy' — estado de UI, no persistido (SPEC: rangoCompra)
   var recetasView = 'grid'; // 'grid' | 'list' — toggle nuevo del handoff, solo visual
   var vistaPerfil = 'lista'; // 'lista' | futuro detalle-miembro — estado de UI, no persistido
@@ -108,12 +124,17 @@
   var miembroAbierto = null; // id del miembro cuya ficha está abierta, o null
   var pendienteCambiar = null; // {dia, tipoComida} mientras el sheet de "cambiar" está abierto
   var pendienteRegenerar = null; // {dia, tipoComida} tras un cambio, a la espera de sí/no
+  var descubrirAbierto = null; // {fecha, idx} mientras el sheet de categoría de Descubrir está abierto (audit 2026-07-20)
   // Onboarding con familia demo (P1, 2026-07-16): mientras modoDemo es true, `estado`
   // apunta a una familia de ejemplo en memoria — guardarEstado() no-opea (ver arriba) y
   // el snapshot remoto se ignora (ver iniciarEscuchaRemota) para que nada de la demo
   // toque localStorage/Firestore. estadoAntesDemo guarda la referencia real para volver.
   var modoDemo = false;
   var estadoAntesDemo = null;
+  // snapshot remoto recibido DURANTE la demo (audit 2026-07-20): antes se
+  // descartaba y remotoListo quedaba false — al salir de la demo ningún cambio
+  // volvía a subir a Firestore hasta recargar. Se bufferiza y se aplica al salir.
+  var snapshotDuranteDemo = null;
 
   // qué <details> están abiertos (miembros del sheet Familia, receta propia) — un
   // re-render reconstruye el HTML entero; sin esto, cada toque colapsaría el panel abierto.
@@ -167,7 +188,10 @@
     var lunesSiguiente = E.fechaISO(estado.plan.semanaISO, 7);
     var historialTemp = E.historialConPlan(estado, estado.plan, lunesSiguiente);
     var estadoParaSiguiente = Object.assign({}, estado, { historialPlantillas: historialTemp });
-    estado.planSiguiente = E.generarSemana(estadoParaSiguiente, BANCO, 0, { semanaISO: lunesSiguiente, dias: [] });
+    // diaPrevio = domingo del plan vigente: la variedad dura ahora cruza la
+    // frontera dom→lun (audit 2026-07-20 — antes el lunes de la semana siguiente
+    // podía repetir ingredientes del domingo, visible en la tira de 14 días).
+    estado.planSiguiente = E.generarSemana(estadoParaSiguiente, BANCO, 0, { semanaISO: lunesSiguiente, dias: [] }, estado.plan.dias[6]);
   }
 
   // ---------------------------------------------------------------
@@ -184,6 +208,20 @@
       // novedad del scoring (engine.puntuarRecencia/puntuarNovedad).
       if (estado.plan && estado.plan.semanaISO) {
         estado.historialPlantillas = E.historialConPlan(estado, estado.plan, lunesActual);
+      }
+      // poda de datos fechados ya consumidos (audit 2026-07-20): fechas anteriores
+      // al lunes vigente no alimentan nada (presencia y cole solo miran el plan en
+      // curso) y sin poda crecían para siempre, engordando cada push/snapshot del
+      // sync. valoraciones y cambios NO se tocan: son memoria del motor (rechazos/
+      // rotación) — recortarlos es decisión de producto, no de higiene.
+      Object.keys(estado.ausenciasPuntuales || {}).forEach(function (f) {
+        if (f < lunesActual) delete estado.ausenciasPuntuales[f];
+      });
+      if (estado.cole && estado.cole.dias) {
+        Object.keys(estado.cole.dias).forEach(function (f) {
+          if (f < lunesActual) delete estado.cole.dias[f];
+        });
+        if (!Object.keys(estado.cole.dias).length) estado.cole = null;
       }
       // si la semana siguiente ya estaba generada y ahora es la vigente,
       // ASCENDER en vez de regenerar (ya está calculada — cero espera) y
@@ -203,6 +241,23 @@
       guardarEstado();
     }
   }
+
+  // La pestaña/PWA que sobrevive la medianoche o el fin de semana (audit
+  // 2026-07-20): asegurarPlanVigente solo corría en init/snapshot — una pestaña
+  // viva cruzaba el lunes con la semana caducada (Compra calculaba sobre el plan
+  // viejo) y "hoy" quedaba clavado en el día anterior hasta recargar. Al volver
+  // a ser visible, re-evaluar; solo re-renderiza si de verdad cambió el día.
+  var ultimoHoyISO = E.fechaLocalISO(new Date());
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState !== 'visible' || modoDemo) return;
+    var hoyISOAhora = E.fechaLocalISO(new Date());
+    if (hoyISOAhora === ultimoHoyISO) return;
+    ultimoHoyISO = hoyISOAhora;
+    if (!estado.familia.length) return;
+    asegurarPlanVigente();
+    diaGlobal = null; // re-ancla la Home en el "hoy" nuevo
+    render();
+  });
 
   // ---------------------------------------------------------------
   // Render de las 5 vistas de primer nivel (Roger 2026-07-19: Semana, Recetas,
@@ -247,6 +302,9 @@
     if (nombre === 'semana') { diaGlobal = null; pagerIdx = comidaProximaPorHora() === 'cena' ? 1 : 0; }
     if (nombre === 'perfil') { vistaPerfil = 'lista'; miembroAbierto = null; }
     render();
+    // cada vista empieza arriba — sin esto heredaba el scroll de la anterior y
+    // una receta abierta desde media Home aparecía "empezada" (audit 2026-07-20)
+    window.scrollTo(0, 0);
   }
 
   // ---------------------------------------------------------------
@@ -259,10 +317,17 @@
     if (window.lucide) window.lucide.createIcons();
   }
 
+  var focoAntesDeSheet = null; // a quién devolver el foco al cerrar el sheet (a11y, audit 2026-07-20)
+
   function abrirSheet(html) {
+    if (document.getElementById('sheet-overlay').hidden) focoAntesDeSheet = document.activeElement;
     document.getElementById('sheet-contenido').innerHTML = html;
     document.getElementById('sheet-overlay').hidden = false;
     document.body.classList.add('sheet-open');
+    // mover el foco DENTRO del dialog: aria-modal sin foco dentro deja a
+    // VoiceOver navegando un árbol vacío (el panel lleva tabindex=-1, ver init)
+    var panel = document.querySelector('#sheet-overlay .sheet-panel');
+    if (panel) panel.focus();
     refrescarIconos();
   }
 
@@ -282,7 +347,12 @@
     document.getElementById('sheet-contenido').innerHTML = '';
     pendienteCambiar = null;
     pendienteRegenerar = null;
+    descubrirAbierto = null;
     render(); // por si se marcó compra o se cambió algo mientras el sheet estaba abierto
+    // devolver el foco a quien abrió el sheet — best effort: si el render lo
+    // reconstruyó (innerHTML nuevo), el nodo viejo ya no está en el documento
+    if (focoAntesDeSheet && document.contains(focoAntesDeSheet)) focoAntesDeSheet.focus();
+    focoAntesDeSheet = null;
   }
 
   function marcarYoDispositivo(id) {
@@ -339,8 +409,27 @@
     var fechasMal = Object.keys(datos.dias).filter(function (f) { return !/^\d{4}-\d{2}-\d{2}$/.test(f); });
     if (fechasMal.length) { alert('Hay fechas con formato raro: ' + fechasMal.join(', ')); return; }
     if (!estado.cole || !estado.cole.dias) estado.cole = { dias: {} };
-    Object.keys(datos.dias).forEach(function (f) { estado.cole.dias[f] = datos.dias[f]; });
+    // Normalización + validación de vocabulario (audit 2026-07-20): puntuarCole
+    // compara proteina contra la CATEGORÍA del ingrediente e hidrato contra un
+    // vocabulario cerrado, en minúsculas exactas. Un JSON con "Pasta" o "pollo"
+    // importaba "bien" pero la señal moría en silencio — la cena podía repetir
+    // lo del cole sin que nadie lo notara. No reconocido → null + aviso.
+    var PROTEINAS_COLE = { 'carne-blanca': 1, 'carne-roja': 1, 'pescado-blanco': 1, 'pescado-azul': 1, marisco: 1, huevo: 1, legumbre: 1, lacteo: 1 };
+    var HIDRATOS_COLE = { pasta: 1, arroz: 1, patata: 1, pan: 1, legumbre: 1 };
+    var desconocidos = [];
+    Object.keys(datos.dias).forEach(function (f) {
+      var d = datos.dias[f] || {};
+      var prot = d.proteina ? String(d.proteina).toLowerCase().trim() : null;
+      var hid = d.hidrato ? String(d.hidrato).toLowerCase().trim() : null;
+      if (prot && !PROTEINAS_COLE[prot]) { desconocidos.push(f + ': proteína "' + d.proteina + '"'); prot = null; }
+      if (hid && !HIDRATOS_COLE[hid]) { desconocidos.push(f + ': hidrato "' + d.hidrato + '"'); hid = null; }
+      estado.cole.dias[f] = { resumen: d.resumen || '', proteina: prot, hidrato: hid, verdura: d.verdura || null };
+    });
     guardarEstado();
+    if (desconocidos.length) {
+      alert('Menú importado. Aviso: hay valores que el motor no reconoce y no influirán en las cenas:\n' +
+        desconocidos.slice(0, 6).join('\n') + (desconocidos.length > 6 ? '\n…' : ''));
+    }
     regenerarSemanaCompleta(); // siempre, sin preguntar — cierra el sheet y re-renderiza (vigente + siguiente)
   }
 
@@ -379,15 +468,15 @@
     if (!familyId) return;
     var primera = true;
     desuscribirRemoto = window.E3Sync.suscribirEstado(familyId, function (remoto) {
-      if (modoDemo) return; // no clobbear la vista de ejemplo con datos reales
       // un push local pendiente serializaría un estado anterior a este snapshot
       // y lo escribiría encima en Firestore — se cancela: el remoto es la verdad,
       // y cualquier edición posterior re-dispara su propio push.
       window.E3Sync.cancelarPendiente();
-      remotoListo = true;
+      remotoListo = true; // también durante la demo — el gate no debe quedarse cerrado (audit 2026-07-20)
+      if (modoDemo) { if (remoto) snapshotDuranteDemo = remoto; return; } // no clobbear el ejemplo; se aplica al salir
       if (remoto) {
         estado = Object.assign(estadoVacio(), remoto);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(estado)); // caché local, sin re-disparar guardarRemotoDebounced
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(estado)); } catch (e) { /* sin caché local */ } // sin re-disparar guardarRemotoDebounced
       }
       if (primera && onPrimerSnapshot) { primera = false; onPrimerSnapshot(); }
       else if (remoto) { asegurarPlanVigente(); render(); }
@@ -418,6 +507,13 @@
   }
 
   function activarSincronizacion() {
+    // sin los scripts de Firebase (CDN bloqueado, file:// sin red) E3Sync no
+    // existe — sin este guard el botón moría en "Activando…" con un TypeError
+    // solo en consola (audit 2026-07-20). Mismo guard en unirseSincronizacion.
+    if (!window.E3Sync) {
+      actualizarSheet(UI.renderSheetSync({ synced: false, error: 'No hay conexión con el servicio de sincronización. Revisa la red y vuelve a intentarlo.' }));
+      return;
+    }
     var btn = document.getElementById('sync-activar-btn');
     if (btn) { btn.disabled = true; btn.textContent = 'Activando…'; }
     // Si ya hay familyId (p.ej. la creación anterior falló a medias al subir el
@@ -513,6 +609,10 @@
   }
 
   function unirseSincronizacion() {
+    if (!window.E3Sync) {
+      actualizarSheet(UI.renderSheetSync({ synced: false, error: 'No hay conexión con el servicio de sincronización. Revisa la red y vuelve a intentarlo.' }));
+      return;
+    }
     var input = document.getElementById('sync-code-input');
     var code = input ? input.value.trim() : '';
     if (!code) return;
@@ -602,6 +702,13 @@
     modoDemo = false;
     estado = estadoAntesDemo || estadoVacio();
     estadoAntesDemo = null;
+    // si llegó un snapshot remoto mientras se miraba el ejemplo, aplicarlo ahora
+    // (mismo tratamiento que en iniciarEscuchaRemota — el remoto es la verdad)
+    if (snapshotDuranteDemo) {
+      estado = Object.assign(estadoVacio(), snapshotDuranteDemo);
+      snapshotDuranteDemo = null;
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(estado)); } catch (e) { /* sin caché local */ }
+    }
     document.getElementById('demo-banner').hidden = true;
     aterrizarSegunFamilia();
   }
@@ -693,8 +800,9 @@
       actividad: val('mf-actividad') || 'media', dieta: val('mf-dieta') || 'omnivora',
       foto: formFotoActual || null
     };
-    var altura = val('mf-altura'); if (altura) datos.altura = Number(altura);
-    var peso = val('mf-peso'); if (peso) datos.peso = Number(peso);
+    // coma decimal (teclado iOS) → punto; '' o NaN quedan fuera (audit 2026-07-20)
+    var altura = Number(String(val('mf-altura')).replace(',', '.')); if (altura) datos.altura = altura;
+    var peso = Number(String(val('mf-peso')).replace(',', '.')); if (peso) datos.peso = peso;
     return datos;
   }
 
@@ -789,7 +897,14 @@
   // HOY / SEMANA — presencia, compra, cambiar plato
   // ---------------------------------------------------------------
   function togglePresente(dia, tipoComida, miembroId) {
-    var fecha = planActivo().dias[dia].fecha;
+    var plan = planActivo();
+    if (!plan || !plan.dias[dia]) return; // defensa: snapshot antiguo sin planSiguiente con diaGlobal 7-13
+    var fecha = plan.dias[dia].fecha;
+    // Menor excluido por menú del cole: su ausencia vive en estado.cole, no en
+    // ausenciasPuntuales — el toggle no podía cambiar el resultado y solo dejaba
+    // una "ausencia fantasma" que reaparecía al quitar el menú (audit 2026-07-20).
+    var m = estado.familia.find(function (x) { return x.id === miembroId; });
+    if (m && E.excluidoPorCole(estado, m, fecha, tipoComida)) return;
     if (!estado.ausenciasPuntuales[fecha]) estado.ausenciasPuntuales[fecha] = { comida: [], cena: [] };
     var lista = estado.ausenciasPuntuales[fecha][tipoComida] || [];
     var idx = lista.indexOf(miembroId);
@@ -832,6 +947,7 @@
     vistaAnterior = vistaActual;
     vistaActual = 'receta';
     render();
+    window.scrollTo(0, 0); // ver irAVista
   }
 
   // Desde el banco de Recetas (Roger 2026-07-19): sin día ni comensales
@@ -846,24 +962,28 @@
     vistaAnterior = vistaActual;
     vistaActual = 'receta';
     render();
+    window.scrollTo(0, 0); // ver irAVista
   }
 
   function cerrarRecetaDetalle() {
     vistaActual = vistaAnterior;
     recetaAbierta = null;
     render();
+    window.scrollTo(0, 0); // ver irAVista
   }
 
   function abrirMiembroFicha(id) {
     miembroAbierto = id;
     vistaPerfil = 'ficha';
     render();
+    window.scrollTo(0, 0); // ver irAVista
   }
 
   function cerrarMiembroFicha() {
     vistaPerfil = 'lista';
     miembroAbierto = null;
     render();
+    window.scrollTo(0, 0); // ver irAVista
   }
 
   // Feedback loop (P1, 2026-07-16): toque post-comida por slot. Toggle — tocar la
@@ -984,8 +1104,23 @@
   function actualizarCampoMiembro(id, campo, valor) {
     var m = estado.familia.find(function (x) { return x.id === id; });
     if (!m) return;
-    if (campo === 'peso' || campo === 'altura' || campo === 'anioNacimiento') m[campo] = valor ? Number(valor) : undefined;
-    else m[campo] = valor;
+    if (campo === 'peso' || campo === 'altura' || campo === 'anioNacimiento') {
+      // Sin undefined (audit 2026-07-20): asignar undefined rompía el push a
+      // Firestore en silencio (el SDK compat lo rechaza) hasta recargar — vaciar
+      // un campo ahora BORRA la clave, como ya hacía quitarFotoMiembro. La coma
+      // decimal del teclado iOS ("62,5") se normaliza a punto. El año usa el
+      // mismo rango que el form modal: un typo aquí invertía Mifflin (kcal
+      // negativas que hundían el objetivo familiar sin ningún NaN visible).
+      var n = Number(String(valor).replace(',', '.'));
+      if (!valor || isNaN(n)) {
+        if (campo === 'anioNacimiento') return; // obligatorio — vacío/typo no pisa el valor bueno
+        delete m[campo];
+      } else if (campo === 'anioNacimiento' && (n < 1920 || n > new Date().getFullYear())) {
+        return;
+      } else {
+        m[campo] = n;
+      }
+    } else m[campo] = valor;
     guardarEstado();
   }
 
@@ -1020,11 +1155,23 @@
     guardarEstado();
   }
 
+  // el sheet de categoría de Descubrir vive fuera de render() — si el corazón/
+  // ojo se toca ahí dentro, re-pintar el contenido del sheet para que el icono
+  // responda: antes el estado cambiaba sin feedback visual y el usuario
+  // re-tapeaba deshaciéndolo sin saberlo (audit 2026-07-20).
+  function refrescarSheetDescubrir() {
+    if (!descubrirAbierto) return;
+    var categorias = E.categoriasDescubrir(BANCO, estado, descubrirAbierto.fecha);
+    var categoria = categorias[descubrirAbierto.idx];
+    if (categoria) actualizarSheet(UI.renderSheetDescubrirCategoria(categoria, estado, BANCO));
+  }
+
   function toggleOcultaReceta(plantillaId) {
     var idx = estado.ocultas.indexOf(plantillaId);
     if (idx === -1) estado.ocultas.push(plantillaId); else estado.ocultas.splice(idx, 1);
     guardarEstado();
     render();
+    refrescarSheetDescubrir();
   }
 
   function toggleFavoritaReceta(plantillaId) {
@@ -1032,6 +1179,7 @@
     if (idx === -1) estado.favoritas.push(plantillaId); else estado.favoritas.splice(idx, 1);
     guardarEstado();
     render();
+    refrescarSheetDescubrir();
   }
 
   function anadirRecetaPropia() {
@@ -1065,10 +1213,34 @@
     'ir-vista': function (btn) { irAVista(btn.dataset.vista); },
     'abrir-menu-hamburguesa': function (btn) { abrirMenuHamburguesa(btn); },
     'menu-ir-familia': function () { irAVista('perfil'); },
-    'menu-regenerar-semana': function () { regenerarSemanaCompleta(); },
+    // confirmación (audit 2026-07-20): regenera las DOS semanas y pierde todos
+    // los cambios manuales de plato, sin undo — un tap accidental en el dropdown
+    // (el ítem va pegado a "Familia") no debe destruir el menú ya pactado.
+    'menu-regenerar-semana': function () {
+      abrirSheet(UI.sheetHead('Regenerar menús') +
+        '<div class="sheet-body">' +
+        '<p class="card-msg">Se recalculan la semana en curso y la siguiente. Los platos que hayáis cambiado a mano se pierden.</p>' +
+        '<div class="fila-botones">' +
+        '<button type="button" class="btn-secondary" data-action="cerrar-sheet">Cancelar</button>' +
+        '<button type="button" class="btn-primary" data-action="regenerar-semana-confirmar">Sí, regenerar</button>' +
+        '</div></div>');
+    },
+    'regenerar-semana-confirmar': function () { regenerarSemanaCompleta(); },
     'menu-importar-cole': function () { abrirImportarCole(); },
     'cole-importar': function () { importarCole(); },
-    'cole-borrar': function () { borrarCole(); },
+    // confirmación (audit 2026-07-20): descarta el acumulado de importaciones —
+    // un dato caro de reproducir (cada JSON sale del prompt de ChatGPT) — y
+    // además regenera las dos semanas.
+    'cole-borrar': function () {
+      abrirSheet(UI.sheetHead('Quitar el menú del cole') +
+        '<div class="sheet-body">' +
+        '<p class="card-msg">Se quitan todos los días de cole cargados y se recalcula el menú. Para recuperarlos habría que volver a importar el JSON.</p>' +
+        '<div class="fila-botones">' +
+        '<button type="button" class="btn-secondary" data-action="cerrar-sheet">Cancelar</button>' +
+        '<button type="button" class="btn-primary" data-action="cole-borrar-confirmar">Sí, quitarlo</button>' +
+        '</div></div>');
+    },
+    'cole-borrar-confirmar': function () { borrarCole(); },
     // línea "…en el cole" (banner de despensa, próximos días): no hay pantalla
     // dedicada de cole todavía, abre el sheet real que ya lista los días
     // cargados (Roger 2026-07-19: reutilizar, no construir una pantalla nueva
@@ -1155,15 +1327,22 @@
     'abrir-receta': function (btn) { abrirRecetaDetalle(Number(btn.dataset.dia), btn.dataset.tipo); },
     'abrir-receta-banco': function (btn) { abrirRecetaBanco(btn.dataset.plantilla); },
     'descubrir-abrir-categoria': function (btn) {
-      var categorias = E.categoriasDescubrir(BANCO, estado, E.fechaLocalISO(new Date()));
-      var categoria = categorias[Number(btn.dataset.idx)];
-      if (categoria) abrirSheet(UI.renderSheetDescubrirCategoria(categoria, estado, BANCO));
+      // la fecha viene estampada en la ficha (data-fecha): recalcular con la
+      // fecha del TAP abría la categoría equivocada si la medianoche cruzaba
+      // entre el render y el toque (rotación diaria, audit 2026-07-20).
+      var fecha = btn.dataset.fecha || E.fechaLocalISO(new Date());
+      var idx = Number(btn.dataset.idx);
+      var categorias = E.categoriasDescubrir(BANCO, estado, fecha);
+      var categoria = categorias[idx];
+      if (!categoria) return;
+      descubrirAbierto = { fecha: fecha, idx: idx };
+      abrirSheet(UI.renderSheetDescubrirCategoria(categoria, estado, BANCO));
     },
     'receta-volver': function () { cerrarRecetaDetalle(); },
     'abrir-miembro-ficha': function (btn) { abrirMiembroFicha(btn.dataset.id); },
     'miembro-volver': function () { cerrarMiembroFicha(); },
     'abrir-resumen-semana': function () { abrirResumenSemana(); },
-    'valorar-plato': function (btn) { valorarPlato(E.diaIndexDesdeFecha(planActivo(), btn.dataset.fecha), btn.dataset.tipo, btn.dataset.valor); },
+    'valorar-plato': function (btn) { var plan = planActivo(); if (!plan) return; valorarPlato(E.diaIndexDesdeFecha(plan, btn.dataset.fecha), btn.dataset.tipo, btn.dataset.valor); },
     'abrir-cambiar': function (btn) { abrirCambiar(Number(btn.dataset.dia), btn.dataset.tipo); },
     'cerrar-sheet': function () { cerrarSheet(); },
     'modo-elegir-otro': function (btn) { abrirSheet(UI.renderListaElegirOtro(estado, BANCO, planActivo(), Number(btn.dataset.dia), btn.dataset.tipo)); },
@@ -1202,6 +1381,14 @@
   // porque contiene botones anidados de avatares — un <button> real no puede
   // envolver otros botones). Los <button> normales ya tienen esto gratis.
   document.addEventListener('keydown', function (e) {
+    // Escape cierra dropdown/sheet (a11y + teclado externo en iPad, audit 2026-07-20)
+    if (e.key === 'Escape') {
+      var dropdown = document.getElementById('menu-dropdown');
+      if (dropdown && !dropdown.hidden) { cerrarMenuHamburguesa(); return; }
+      var overlay = document.getElementById('sheet-overlay');
+      if (overlay && !overlay.hidden) { cerrarSheet(); }
+      return;
+    }
     if (e.key !== 'Enter' && e.key !== ' ') return;
     var btn = e.target.closest('[role="button"][data-action]');
     if (!btn) return;
@@ -1256,9 +1443,13 @@
     if (t.id === 'wz-nombre-familia') wizardNombreFamilia = t.value;
     else if (t.id === 'mf-nombre' && !formFotoActual) actualizarPreviewFotoForm();
     else if (t.id === 'recetas-buscador') {
-      // render() restaura por sí mismo el foco/cursor del buscador
+      // render() restaura por sí mismo el foco/cursor del buscador. Debounce
+      // corto (audit 2026-07-20): reconstruir el grid entero (82 tarjetas + sus
+      // iconos lucide) por CADA pulsación rozaba el jank en móvil y empeora al
+      // crecer el banco — 120ms agrupa la ráfaga de tecleo sin sensación de lag.
       busquedaRecetas = t.value;
-      render();
+      clearTimeout(busquedaTimer);
+      busquedaTimer = setTimeout(render, 120);
     } else if (t.id === 'nevera-buscador') {
       // filtro directo sobre el DOM del sheet (no pasa por render()) — el
       // sheet vive fuera de las 3 vistas principales y así el input nunca
@@ -1311,6 +1502,10 @@
       sheetOverlayEl.addEventListener('click', function (e) {
         if (e.target === e.currentTarget) cerrarSheet();
       });
+      // focable para recibir el foco al abrir (a11y, ver abrirSheet) sin entrar
+      // en el orden de tabulación normal
+      var panelSheet = sheetOverlayEl.querySelector('.sheet-panel');
+      if (panelSheet) panelSheet.setAttribute('tabindex', '-1');
     }
     // catcher transparente a pantalla completa: tocar fuera del dropdown del
     // hamburguesa lo cierra (el propio dropdown no es hijo suyo, es hermano)

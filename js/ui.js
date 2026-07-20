@@ -27,7 +27,10 @@
   var ORDEN_CATEGORIA = ['pescado-blanco', 'pescado-azul', 'marisco', 'carne-blanca', 'carne-roja', 'legumbre', 'huevo', 'lacteo', 'cereal', 'tuberculo', 'verdura', 'fruta', 'otro'];
   // claves de categorias_cuota que no son una categoría de ingrediente real (agregado
   // pescado-total) — ETIQUETAS_CATEGORIA no las cubre, etiqueta aparte para el resumen semanal
-  var ETIQUETAS_CUOTA = { 'pescado-total': 'Pescado (total)' };
+  // renombrada de ETIQUETAS_CUOTA (audit 2026-07-20): casi-colisión con la
+  // ETIQUETA_CUOTA (singular) de más abajo — mismo prefijo, contenidos
+  // distintos, riesgo real de editar la equivocada por error.
+  var ETIQUETA_CUOTA_AGREGADA = { 'pescado-total': 'Pescado (total)' };
 
   function escapeHtml(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
@@ -154,40 +157,9 @@
     return 'Buenas noches';
   }
 
-  // ---------------------------------------------------------------
-  // Cabecera midnight compartida por HOY / SEMANA / RECETAS / COMPRA
-  // ---------------------------------------------------------------
-  function renderCabecera(opts) {
-    opts = opts || {};
-    var titulo = '<h1 class="cabecera-titulo">' + escapeHtml(opts.tituloPlain || '') +
-      (opts.tituloItalico ? ' <em>' + escapeHtml(opts.tituloItalico) + '</em>' : '') + '</h1>';
-    var derecha = opts.contador ? '<span class="cabecera-contador">' + escapeHtml(opts.contador) + '</span>' : '';
-    var extras = '';
-    if (opts.botonAnadir) {
-      extras += '<button type="button" class="cabecera-btn-anadir" data-action="' + opts.botonAnadir + '" aria-label="Añadir receta">+</button>';
-    }
-    if (opts.linkVaciar) {
-      extras += '<button type="button" class="cabecera-btn-vaciar" data-action="' + opts.linkVaciar + '" aria-label="Vaciar la lista de la compra">' + ICONO_VACIAR + '</button>';
-    }
-    if (extras) derecha = '<div class="cabecera-derecha-grupo">' + derecha + extras + '</div>';
-    return '<header class="cabecera-midnight"><div class="cabecera-fila">' + titulo + derecha + '</div>' + (opts.extra || '') + '</header>';
-  }
-
   // iconos de sol/luna — mismo estilo de línea que el nav (24x24, stroke)
   var ICONO_SOL = '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.6M12 18.9v2.6M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M2.5 12h2.6M18.9 12h2.6M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8"/></svg>';
   var ICONO_LUNA = '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 14.8A8.5 8.5 0 1 1 9.2 3.5a6.8 6.8 0 0 0 11.3 11.3z"/></svg>';
-  // meta de la card (kcal/tiempo) — silueta gris, no emoji a color (Roger 2026-07-14)
-  var ICONO_FUEGO = '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c1 3-3 4-3 7.5a3 3 0 0 0 6 0c0-1.5-1-2-1-3.5 1.5 1 3 3 3 5.5a5 5 0 0 1-10 0C7 8 10 6 12 3z"/></svg>';
-  var ICONO_RELOJ = '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>';
-
-  // app-bar de SEMANA (Roger 2026-07-14, referencia visual externa): el menú
-  // reutiliza abrir-familia (única acción real ya existente), la campana
-  // queda decorativa — no hay sistema de notificaciones construido todavía.
-  var ICONO_MENU = '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6.5h16M4 12h16M4 17.5h16"/></svg>';
-  var ICONO_CAMPANA = '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 10.5a6 6 0 0 1 12 0c0 4 1.4 5.3 2 6H4c.6-.7 2-2 2-6z"/><path d="M10 19a2.2 2.2 0 0 0 4 0"/></svg>';
-
-  // flecha circular estándar (reset/vaciar) — arco casi cerrado + flecha en la punta
-  var ICONO_VACIAR = '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v4h-4"/></svg>';
 
   // soporte de reconocimiento de voz del navegador (nevera) — si no existe, el
   // botón de micro ni se pinta (degradación silenciosa, cero rotura)
@@ -319,10 +291,6 @@
       '</div>' +
       '<button type="button" class="ph-cta" data-action="abrir-cambiar" data-dia="' + diaIndex + '" data-tipo="' + meal + '"><i data-lucide="sparkles"></i>Me apetece otra cosa<i data-lucide="arrow-right" class="ph-cta-flecha"></i></button>' +
       '</div>';
-  }
-
-  function renderSlot(estado, banco, plan, diaIndex, tipoComida) {
-    return renderCardPager(estado, banco, plan, diaIndex, tipoComida);
   }
 
   // Feedback loop (P1, 2026-07-16): "¿qué tal?" post-comida, un toque por slot
@@ -480,32 +448,6 @@
   // (Roger 2026-07-14: reutiliza la vista existente, sin pieza nueva de estado).
   var ETIQUETA_CUOTA = { legumbre: 'Legumbres', 'pescado-total': 'Pescado', 'carne-roja': 'Carne roja', huevo: 'Huevos' };
 
-  // Icono representativo de un plato resuelto — ya no se usa en Home (la tira
-  // de 14 días del handoff solo lleva el indicador de cole), se conserva por
-  // si otra vista lo necesita (p.ej. Recetas).
-  var ICONO_CATEGORIA = {
-    'pescado-blanco': '🐟', 'pescado-azul': '🐟', marisco: '🦐',
-    huevo: '🥚', 'carne-roja': '🥩', 'carne-blanca': '🍗',
-    legumbre: '🌱', otro: '🍽️'
-  };
-  function iconoDePlato(seleccion, banco) {
-    var ids = idsUnicosSeleccionOrdenados(seleccion);
-    for (var i = 0; i < ids.length; i++) {
-      var ing = banco.ingredientes[ids[i]];
-      if (ing && ICONO_CATEGORIA[ing.categoria]) return ICONO_CATEGORIA[ing.categoria];
-    }
-    return ICONO_CATEGORIA.otro;
-  }
-  function idsUnicosSeleccionOrdenados(seleccion) {
-    var orden = ['proteina', 'hidrato', 'verdura'];
-    var vistos = {}, lista = [];
-    orden.concat(Object.keys(seleccion || {})).forEach(function (eje) {
-      var id = seleccion && seleccion[eje];
-      if (id && !vistos[id]) { vistos[id] = true; lista.push(id); }
-    });
-    return lista;
-  }
-
   // Aviso de equilibrio (Roger 2026-07-17, reubicado 2026-07-19 al pie de la
   // Home nueva): SOLO si una cuota real no está cumplida esta semana — nunca
   // un swap inventado. Línea discreta + link al informe completo — decisión
@@ -522,15 +464,6 @@
     return '<button type="button" class="ph-equilibrio-link" data-action="abrir-resumen-semana">' +
       '<i data-lucide="sparkles"></i><span>' + escapeHtml(texto) + '</span><i data-lucide="chevron-right"></i>' +
       '</button>';
-  }
-
-  // Menú del cole (F1): la cara visible del dato — sin esta línea el "cena
-  // pensada contra el cole" pierde la mitad del valor percibido (research).
-  function renderColeLinea(estado, fecha, esHoy) {
-    var coleDia = estado.cole && estado.cole.dias && estado.cole.dias[fecha];
-    if (!coleDia || !coleDia.resumen) return '';
-    var prefijo = esHoy ? 'Hoy en el cole: ' : 'En el cole: ';
-    return '<p class="cole-linea">' + escapeHtml(prefijo + coleDia.resumen) + '</p>';
   }
 
   // ---------------------------------------------------------------
@@ -663,7 +596,7 @@
     if (!resumen.length) return '';
     var cumplidas = resumen.filter(function (r) { return r.cumplido; }).length;
     var filas = resumen.map(function (r) {
-      var etiqueta = ETIQUETAS_CUOTA[r.categoria] || ETIQUETAS_CATEGORIA[r.categoria] || capitaliza(r.categoria.replace(/-/g, ' '));
+      var etiqueta = ETIQUETA_CUOTA_AGREGADA[r.categoria] || ETIQUETAS_CATEGORIA[r.categoria] || capitaliza(r.categoria.replace(/-/g, ' '));
       // min_sem=0 (p.ej. carne-roja) significa "sin mínimo, solo techo" — mostrar
       // "N de 0" leería como un objetivo incumplido cuando en realidad no hay suelo;
       // el dato relevante ahí es el máximo, no el mínimo trivial.

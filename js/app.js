@@ -914,12 +914,14 @@
     render();
   }
 
-  // horizonte 2 semanas (Roger 2026-07-18): marcados vive por semana —
-  // 'marcados' (vigente, comparte hoy/7d como siempre) vs 'marcadosSiguiente'
-  // (mismos ids de ingrediente pueden repetirse entre semanas; sin escopar,
-  // marcar "pollo" en la lista de esta semana lo marcaría también en la de
-  // la que viene).
-  function campoMarcados() { return rangoCompra === 'siguiente' ? 'marcadosSiguiente' : 'marcados'; }
+  // horizonte 2 semanas (Roger 2026-07-18): 'marcados' es siempre el segmento
+  // de la semana VIGENTE (hoy/7d comparten array); 'marcadosSiguiente' vive
+  // aparte (mismos ids de ingrediente pueden repetirse entre semanas; sin
+  // escopar, marcar "pollo" en la lista de esta semana lo marcaría también en
+  // la de la que viene) y se promueve solo al rollover (asegurarPlanVigente) —
+  // hoy no hay control de UI para marcar directamente sobre la semana
+  // siguiente, así que este helper es un alias fijo a 'marcados'.
+  function campoMarcados() { return 'marcados'; }
 
   function toggleCompraItem(ingredienteId) {
     var campo = campoMarcados();
@@ -1317,12 +1319,6 @@
     'semana-elegir-dia': function () { render(); },
     'filtro-receta': function (btn) { filtroRecetas = btn.dataset.categoria; render(); },
     'recetas-vista': function (btn) { recetasView = btn.dataset.vista; render(); },
-    'abrir-form-receta-propia': function () {
-      var det = document.querySelector('.receta-propia-form');
-      if (!det) return;
-      det.open = true;
-      det.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    },
 
     'abrir-receta': function (btn) { abrirRecetaDetalle(Number(btn.dataset.dia), btn.dataset.tipo); },
     'abrir-receta-banco': function (btn) { abrirRecetaBanco(btn.dataset.plantilla); },

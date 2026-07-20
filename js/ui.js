@@ -127,9 +127,20 @@
   // luego avatarEstilo() (que emite su PROPIO style="..."), dos atributos
   // style en el mismo tag. HTML ignora el segundo duplicado silenciosamente:
   // el color se veía siempre, la foto nunca. Un solo atributo, sin este bug.
+  //
+  // Segundo bug real, mismo sitio (Roger 2026-07-20, hallado al reportar que la
+  // foto se ve con zoom en un lateral en vez de la cara centrada): el shorthand
+  // `background:COLOR` resetea IMPLÍCITAMENTE background-size/position a sus
+  // valores iniciales (auto / 0% 0%) — confirmado con getComputedStyle. Al ser
+  // inline, ese reset implícito gana por especificidad sobre `.ph-avatar {
+  // background-size:cover; background-position:center}` del CSS externo: la
+  // foto (200×200) se pintaba a tamaño nativo desde la esquina superior-
+  // izquierda del círculo, no recortada ni centrada — la cara quedaba fuera
+  // del recorte visible aunque estuviera centrada en la foto guardada.
+  // `background-color` es longhand: no toca ningún otro sub-valor.
   function avatarEstiloColor(miembro, color) {
     var foto = fotoSegura(miembro.foto);
-    return 'style="background:' + color + (foto ? ";background-image:url('" + foto + "')" : '') + '"';
+    return 'style="background-color:' + color + (foto ? ";background-image:url('" + foto + "')" : '') + '"';
   }
 
   var ICONO_CAMARA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8.5A1.5 1.5 0 0 1 5.5 7h1.6l.9-1.5A1.5 1.5 0 0 1 9.29 4.75h5.42A1.5 1.5 0 0 1 16 5.5L16.9 7h1.6A1.5 1.5 0 0 1 20 8.5v9A1.5 1.5 0 0 1 18.5 19h-13A1.5 1.5 0 0 1 4 17.5z"/><circle cx="12" cy="12.5" r="3.4"/></svg>';

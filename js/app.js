@@ -871,22 +871,40 @@
   // Foto de miembro — recorte cuadrado centrado + resize + JPEG comprimido
   // (canibalizado de e3foods.html líneas ~1591-1610, adaptado a ES5 sin dependencias)
   // ============================================================
+  // Bug real (Roger 2026-07-20): fotos de cámara con orientación EXIF (típico
+  // en iPhone — sobre todo apaisadas guardadas con tag de rotación 90°) se
+  // veían con la cara desplazada a un lateral. <img>+canvas ignora el EXIF y
+  // dibuja el buffer CRUDO sin rotar; el recorte centrado (correcto sobre la
+  // foto tal como se VE) caía sobre el encuadre sin rotar, no sobre la cara.
+  // createImageBitmap({imageOrientation:'from-image'}) corrige la orientación
+  // antes de que el recorte la toque — soportado en Safari/Chrome/Firefox
+  // modernos desde 2021; el <img>+FileReader de antes queda como único
+  // respaldo si el navegador no lo soporta (mismo resultado que antes, sin
+  // el fix, mejor que nada).
   function resizeImageToDataURL(file, maxSize, quality) {
     maxSize = maxSize || 200; quality = quality || 0.7;
+    function recortarYExportar(source, w, h) {
+      var side = Math.min(w, h);
+      var sx = (w - side) / 2, sy = (h - side) / 2;
+      var canvas = document.createElement('canvas');
+      canvas.width = maxSize; canvas.height = maxSize;
+      canvas.getContext('2d').drawImage(source, sx, sy, side, side, 0, 0, maxSize, maxSize);
+      if (source.close) source.close(); // libera el ImageBitmap decodificado
+      return canvas.toDataURL('image/jpeg', quality);
+    }
     return new Promise(function (resolve, reject) {
+      if (window.createImageBitmap) {
+        createImageBitmap(file, { imageOrientation: 'from-image' }).then(function (bitmap) {
+          resolve(recortarYExportar(bitmap, bitmap.width, bitmap.height));
+        }).catch(function () { reject(new Error('El archivo no es una imagen válida.')); });
+        return;
+      }
       var reader = new FileReader();
       reader.onerror = function () { reject(new Error('No se pudo leer el archivo.')); };
       reader.onload = function () {
         var img = new Image();
         img.onerror = function () { reject(new Error('El archivo no es una imagen válida.')); };
-        img.onload = function () {
-          var side = Math.min(img.width, img.height);
-          var sx = (img.width - side) / 2, sy = (img.height - side) / 2;
-          var canvas = document.createElement('canvas');
-          canvas.width = maxSize; canvas.height = maxSize;
-          canvas.getContext('2d').drawImage(img, sx, sy, side, side, 0, 0, maxSize, maxSize);
-          resolve(canvas.toDataURL('image/jpeg', quality));
-        };
+        img.onload = function () { resolve(recortarYExportar(img, img.width, img.height)); };
         img.src = reader.result;
       };
       reader.readAsDataURL(file);

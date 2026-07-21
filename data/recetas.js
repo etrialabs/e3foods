@@ -770,6 +770,12 @@
       "fuente": "HUECO en el eje calórico — únicas citas encontradas (SENC25 p.7 mercurio pescado azul crudo, AC25 p.38 alergenicidad huevo crudo) son de seguridad alimentaria, no de salubridad calórica",
       "factor_kcal": null,
       "kcal_extra_racion": null
+    },
+    "ensalada": {
+      "salubridad": 1,
+      "fuente": "AC25 (2025) p.31: verdura cruda aliñada con aceite de oliva = ideal saludable (misma cita que plancha/horno/vapor/hervido). Preparación PROPIA, distinta de \"crudo\" (Roger 2026-07-21): la ensalada siempre lleva ≥2 verduras salvo tomate/pepino que valen solos, y SIEMPRE va aliñada",
+      "factor_kcal": null,
+      "kcal_extra_racion": 45
     }
   },
   "acabados": {
@@ -4702,13 +4708,13 @@
       "familia": "verdura-horno"
     },
     {
-      "id": "ensalada-cruda",
+      "id": "ensalada-solo",
       "nombre": "Ensalada de {verdura}",
       "roles": [
         "complementaria"
       ],
       "origen": "nativo",
-      "tecnicaCoccion": "crudo",
+      "tecnicaCoccion": "ensalada",
       "acabado": null,
       "grupos": [
         "verdura"
@@ -4716,15 +4722,40 @@
       "ingredientes": {
         "eje": "verdura",
         "opciones": [
-          "lechuga",
           "tomate",
-          "pimiento",
-          "zanahoria",
           "pepino"
         ],
         "fijos": null
       },
-      "familia": "ensalada-cruda"
+      "familia": "ensalada"
+    },
+    {
+      "id": "ensalada-verde",
+      "nombre": "Ensalada de lechuga y {verdura}",
+      "roles": [
+        "complementaria"
+      ],
+      "origen": "nativo",
+      "tecnicaCoccion": "ensalada",
+      "acabado": null,
+      "grupos": [
+        "verdura"
+      ],
+      "ingredientes": {
+        "eje": "verdura",
+        "opciones": [
+          "tomate",
+          "pepino",
+          "zanahoria",
+          "pimiento"
+        ],
+        "fijos": {
+          "verdura": [
+            "lechuga"
+          ]
+        }
+      },
+      "familia": "ensalada"
     }
   ],
   "compatibilidad": [
@@ -4766,7 +4797,11 @@
     },
     {
       "principalId": "tortilla-patata",
-      "complementariaFamilia": "ensalada-cruda"
+      "complementariaFamilia": "ensalada-solo"
+    },
+    {
+      "principalId": "tortilla-patata",
+      "complementariaFamilia": "ensalada-verde"
     },
     {
       "principalId": "tortilla-francesa-verdura",
@@ -4782,11 +4817,19 @@
     },
     {
       "principalId": "ensalada-completa",
-      "complementariaFamilia": "ensalada-cruda"
+      "complementariaFamilia": "ensalada-solo"
+    },
+    {
+      "principalId": "ensalada-completa",
+      "complementariaFamilia": "ensalada-verde"
     },
     {
       "principalId": "ensalada-pasta",
-      "complementariaFamilia": "ensalada-cruda"
+      "complementariaFamilia": "ensalada-solo"
+    },
+    {
+      "principalId": "ensalada-pasta",
+      "complementariaFamilia": "ensalada-verde"
     },
     {
       "principalId": "ensalada-cesar-casera",
@@ -4794,11 +4837,19 @@
     },
     {
       "principalId": "ensalada-cesar-casera",
-      "complementariaFamilia": "ensalada-cruda"
+      "complementariaFamilia": "ensalada-solo"
+    },
+    {
+      "principalId": "ensalada-cesar-casera",
+      "complementariaFamilia": "ensalada-verde"
     },
     {
       "principalId": "quinoa-ensalada",
-      "complementariaFamilia": "ensalada-cruda"
+      "complementariaFamilia": "ensalada-solo"
+    },
+    {
+      "principalId": "quinoa-ensalada",
+      "complementariaFamilia": "ensalada-verde"
     },
     {
       "principalId": "merluza-salsa-verde",
@@ -4822,7 +4873,11 @@
     },
     {
       "principalId": "pescaditos-plancha",
-      "complementariaFamilia": "ensalada-cruda"
+      "complementariaFamilia": "ensalada-solo"
+    },
+    {
+      "principalId": "pescaditos-plancha",
+      "complementariaFamilia": "ensalada-verde"
     },
     {
       "principalId": "gallo-plancha",
@@ -4838,7 +4893,11 @@
     },
     {
       "principalId": "gambas-ajillo",
-      "complementariaFamilia": "ensalada-cruda"
+      "complementariaFamilia": "ensalada-solo"
+    },
+    {
+      "principalId": "gambas-ajillo",
+      "complementariaFamilia": "ensalada-verde"
     },
     {
       "principalId": "mejillones-marinera",
@@ -4846,7 +4905,11 @@
     },
     {
       "principalId": "empanadillas-caseras",
-      "complementariaFamilia": "ensalada-cruda"
+      "complementariaFamilia": "ensalada-solo"
+    },
+    {
+      "principalId": "empanadillas-caseras",
+      "complementariaFamilia": "ensalada-verde"
     },
     {
       "principalId": "hummus-plato",
@@ -4854,7 +4917,11 @@
     },
     {
       "principalId": "hummus-plato",
-      "complementariaFamilia": "ensalada-cruda"
+      "complementariaFamilia": "ensalada-solo"
+    },
+    {
+      "principalId": "hummus-plato",
+      "complementariaFamilia": "ensalada-verde"
     },
     {
       "principalId": "tofu-plancha-verduras",
@@ -4878,7 +4945,11 @@
     },
     {
       "principalId": "croquetas-caseras",
-      "complementariaFamilia": "ensalada-cruda"
+      "complementariaFamilia": "ensalada-solo"
+    },
+    {
+      "principalId": "croquetas-caseras",
+      "complementariaFamilia": "ensalada-verde"
     },
     {
       "principalId": "pollo-al-chilindron",
@@ -4886,11 +4957,19 @@
     },
     {
       "principalId": "fabada-asturiana",
-      "complementariaFamilia": "ensalada-cruda"
+      "complementariaFamilia": "ensalada-solo"
+    },
+    {
+      "principalId": "fabada-asturiana",
+      "complementariaFamilia": "ensalada-verde"
     },
     {
       "principalId": "cachopo",
-      "complementariaFamilia": "ensalada-cruda"
+      "complementariaFamilia": "ensalada-solo"
+    },
+    {
+      "principalId": "cachopo",
+      "complementariaFamilia": "ensalada-verde"
     },
     {
       "principalId": "piperrada-con-huevo",
@@ -4906,11 +4985,19 @@
     },
     {
       "principalId": "atascaburras",
-      "complementariaFamilia": "ensalada-cruda"
+      "complementariaFamilia": "ensalada-solo"
+    },
+    {
+      "principalId": "atascaburras",
+      "complementariaFamilia": "ensalada-verde"
     },
     {
       "principalId": "sopa-castellana",
-      "complementariaFamilia": "ensalada-cruda"
+      "complementariaFamilia": "ensalada-solo"
+    },
+    {
+      "principalId": "sopa-castellana",
+      "complementariaFamilia": "ensalada-verde"
     },
     {
       "principalId": "bonito-encebollado",
@@ -4934,11 +5021,19 @@
     },
     {
       "principalId": "trucha-a-la-navarra",
-      "complementariaFamilia": "ensalada-cruda"
+      "complementariaFamilia": "ensalada-solo"
+    },
+    {
+      "principalId": "trucha-a-la-navarra",
+      "complementariaFamilia": "ensalada-verde"
     },
     {
       "principalId": "huevos-fritos-con-patatas",
-      "complementariaFamilia": "ensalada-cruda"
+      "complementariaFamilia": "ensalada-solo"
+    },
+    {
+      "principalId": "huevos-fritos-con-patatas",
+      "complementariaFamilia": "ensalada-verde"
     },
     {
       "principalId": "cena-de-tabla",

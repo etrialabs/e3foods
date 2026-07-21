@@ -375,7 +375,7 @@
       return na.localeCompare(nb);
     }).map(function (item) {
       var ing = banco.ingredientes[item.id];
-      return '<div class="rv-ingrediente"><span class="rv-ingrediente-bullet"></span><span class="rv-ingrediente-nombre">' + escapeHtml(ing ? ing.nombre : item.id) + '</span><span class="rv-ingrediente-g">' + item.gramos + ' g</span></div>';
+      return '<div class="rv-ingrediente"><span class="rv-ingrediente-bullet"></span><span class="rv-ingrediente-nombre">' + escapeHtml(ing ? ing.nombre : item.id) + '</span><span class="rv-ingrediente-g">' + E.redondearCantidad(item.gramos) + ' g</span></div>';
     }).join('');
 
     // v3: el menú es principal + complementarias, cada una con su propia

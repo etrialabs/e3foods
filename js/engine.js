@@ -456,7 +456,12 @@
       principal.ingredientes.fijos[g].forEach(function (id) { agrega(id, g, principal.tecnicaCoccion, principal.acabado); });
     });
     (complementarias || []).forEach(function (c) {
-      agrega(c.seleccionEje, c.elaboracion.ingredientes.eje, c.elaboracion.tecnicaCoccion, c.elaboracion.acabado);
+      if (c.elaboracion.ingredientes.eje) agrega(c.seleccionEje, c.elaboracion.ingredientes.eje, c.elaboracion.tecnicaCoccion, c.elaboracion.acabado);
+      // fijos de la complementaria (p.ej. la lechuga base de una ensalada de 2 verduras) — cuentan
+      // para kcal/compra/variedad igual que los del principal, no solo el ingrediente variable.
+      Object.keys(c.elaboracion.ingredientes.fijos || {}).forEach(function (g) {
+        c.elaboracion.ingredientes.fijos[g].forEach(function (id) { agrega(id, g, c.elaboracion.tecnicaCoccion, c.elaboracion.acabado); });
+      });
     });
     return lista;
   }
@@ -862,6 +867,23 @@
   function pasosComplementaria(complementaria, idElegido, banco) {
     var ing = banco.ingredientes[idElegido];
     var nombre = ing ? ing.nombre.toLowerCase() : idElegido;
+    // Ensalada (Roger 2026-07-21): preparación propia, SIEMPRE aliñada y como plato de verdura, no
+    // un ingrediente crudo suelto. Enumera todas sus verduras (fijas + la variable) y termina en el
+    // aliño — nadie come una ensalada sin aliñar.
+    if (complementaria.tecnicaCoccion === 'ensalada') {
+      var verduras = [];
+      Object.keys(complementaria.ingredientes.fijos || {}).forEach(function (g) {
+        (complementaria.ingredientes.fijos[g] || []).forEach(function (fid) { var f = banco.ingredientes[fid]; verduras.push((f ? f.nombre : fid).toLowerCase()); });
+      });
+      if (idElegido) verduras.push(nombre);
+      verduras = verduras.filter(function (v, i) { return verduras.indexOf(v) === i; });
+      var listaTxt = verduras.length > 1 ? verduras.slice(0, -1).join(', ') + ' y ' + verduras[verduras.length - 1] : verduras[0];
+      var matizZanahoria = verduras.indexOf('zanahoria') !== -1 ? ' (la zanahoria, rallada)' : '';
+      return [
+        'Lavar y cortar ' + listaTxt + matizZanahoria + '.',
+        'Aliñar con aceite de oliva, sal y un chorrito de vinagre, y servir.'
+      ];
+    }
     if (!complementaria.tecnicaCoccion) return ['Servir ' + nombre + ' tal cual, sin cocinar.'];
     var plantillaPaso = PASOS_GENERICOS_COMPLEMENTARIA[complementaria.tecnicaCoccion] || 'Preparar {ingrediente}.';
     return [plantillaPaso.split('{ingrediente}').join(capitaliza(nombre))];
@@ -1372,6 +1394,18 @@
     return -1;
   }
 
+  // Redondeo "de cocina": nunca decimales y a números redondos que una persona usa de verdad al
+  // comprar/servir (248 g -> 250 g, no 248). Es PRESENTACIONAL: no realimenta el kcal (que se
+  // calcula siempre sobre los gramos reales, banda con margen) — solo lo que se muestra. Tramos:
+  // <10 g al gramo, 10-99 g a múltiplos de 5, >=100 g a múltiplos de 10.
+  function redondearCantidad(g) {
+    var n = Math.round(g || 0);
+    if (n <= 0) return 0;
+    if (n < 10) return n;
+    if (n < 100) return Math.round(n / 5) * 5;
+    return Math.round(n / 10) * 10;
+  }
+
   function listaCompra(estado, plan, rango, banco, hoy) {
     var hoyISO = hoy || fechaLocalISO();
     var diasRango;
@@ -1424,7 +1458,7 @@
     ((estado.compra && estado.compra.marcados) || []).forEach(function (id) { marcados[id] = 1; });
     return Object.keys(acumulado).map(function (id) {
       var linea = acumulado[id];
-      return { id: linea.id, nombre: linea.nombre, categoria: linea.categoria, gramos: Math.round(linea.gramos), marcado: !!marcados[id] };
+      return { id: linea.id, nombre: linea.nombre, categoria: linea.categoria, gramos: redondearCantidad(linea.gramos), marcado: !!marcados[id] };
     }).sort(function (a, b) { if (a.categoria !== b.categoria) return a.categoria.localeCompare(b.categoria); return a.nombre.localeCompare(b.nombre); });
   }
 
@@ -1552,7 +1586,8 @@
     categoriaExcluidaPorDieta: categoriaExcluidaPorDieta, opcionAptaParaDieta: opcionAptaParaDieta,
     elaboracionViableParaMesa: elaboracionViableParaMesa, calcularAdaptaciones: calcularAdaptaciones,
     kcalIngredienteConTecnica: kcalIngredienteConTecnica, kcalAlinioPorRacion: kcalAlinioPorRacion,
-    calcularKcalYFactor: calcularKcalYFactor, reescalarMenuParaPresentes: reescalarMenuParaPresentes
+    calcularKcalYFactor: calcularKcalYFactor, reescalarMenuParaPresentes: reescalarMenuParaPresentes,
+    redondearCantidad: redondearCantidad
   };
 
   if (typeof module !== 'undefined' && module.exports) module.exports = E3Engine;

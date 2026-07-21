@@ -42,7 +42,7 @@
   // Estado
   // ---------------------------------------------------------------
   function estadoVacio() {
-    return { nombreFamilia: '', familiaRegion: null, familia: [], ausenciasPuntuales: {}, plan: null, planSiguiente: null, ocultas: [], favoritas: [], propias: [], compra: { marcados: [], marcadosSiguiente: [] }, valoraciones: {}, historialPlantillas: {}, cambios: {}, cole: null };
+    return { nombreFamilia: '', familiaRegion: null, familia: [], ausenciasPuntuales: {}, plan: null, planSiguiente: null, ocultas: [], favoritas: [], propias: [], compra: { marcados: [], marcadosSiguiente: [] }, valoraciones: {}, historialPrincipales: {}, cambios: {}, paresComplementariaCambiados: {}, cole: null };
   }
 
   function cargarEstado() {
@@ -124,6 +124,7 @@
   var miembroAbierto = null; // id del miembro cuya ficha está abierta, o null
   var pendienteCambiar = null; // {dia, tipoComida} mientras el sheet de "cambiar" está abierto
   var pendienteRegenerar = null; // {dia, tipoComida} tras un cambio, a la espera de sí/no
+  var neveraOpcionesActuales = []; // hasta 3 menús resueltos del último "buscar plato" de nevera, para poder elegir uno sin recalcular
   var descubrirAbierto = null; // {fecha, idx} mientras el sheet de categoría de Descubrir está abierto (audit 2026-07-20)
   // Onboarding con familia demo (P1, 2026-07-16): mientras modoDemo es true, `estado`
   // apunta a una familia de ejemplo en memoria — guardarEstado() no-opea (ver arriba) y
@@ -181,17 +182,17 @@
   // Genera (o regenera) la semana siguiente a partir de estado.plan — con
   // historial TEMPORAL que incluye las elecciones de la semana vigente, para
   // que la rotación (puntuarRecencia/puntuarNovedad) no repita en exceso de
-  // una semana a la siguiente. No muta estado.historialPlantillas (ese solo se
+  // una semana a la siguiente. No muta estado.historialPrincipales (ese solo se
   // actualiza de verdad al archivar una semana ya pasada, en asegurarPlanVigente).
   function generarPlanSiguiente() {
     if (!estado.plan || !estado.plan.semanaISO) { estado.planSiguiente = null; return; }
     var lunesSiguiente = E.fechaISO(estado.plan.semanaISO, 7);
     var historialTemp = E.historialConPlan(estado, estado.plan, lunesSiguiente);
-    var estadoParaSiguiente = Object.assign({}, estado, { historialPlantillas: historialTemp });
+    var estadoParaSiguiente = Object.assign({}, estado, { historialPrincipales: historialTemp });
     // diaPrevio = domingo del plan vigente: la variedad dura ahora cruza la
     // frontera dom→lun (audit 2026-07-20 — antes el lunes de la semana siguiente
     // podía repetir ingredientes del domingo, visible en la tira de 14 días).
-    estado.planSiguiente = E.generarSemana(estadoParaSiguiente, BANCO, 0, { semanaISO: lunesSiguiente, dias: [] }, estado.plan.dias[6]);
+    estado.planSiguiente = E.generarSemana(estadoParaSiguiente, BANCO, BANCO, 0, { semanaISO: lunesSiguiente, dias: [] }, estado.plan.dias[6], E.fechaLocalISO(new Date()));
   }
 
   // ---------------------------------------------------------------
@@ -207,7 +208,7 @@
       // plantillas en el historial — alimenta la rotación entre semanas y la
       // novedad del scoring (engine.puntuarRecencia/puntuarNovedad).
       if (estado.plan && estado.plan.semanaISO) {
-        estado.historialPlantillas = E.historialConPlan(estado, estado.plan, lunesActual);
+        estado.historialPrincipales = E.historialConPlan(estado, estado.plan, lunesActual);
       }
       // poda de datos fechados ya consumidos (audit 2026-07-20): fechas anteriores
       // al lunes vigente no alimentan nada (presencia y cole solo miran el plan en
@@ -230,7 +231,7 @@
         estado.plan = estado.planSiguiente;
         estado.compra.marcados = estado.compra.marcadosSiguiente || [];
       } else {
-        estado.plan = E.generarSemana(estado, BANCO);
+        estado.plan = E.generarSemana(estado, BANCO, BANCO, 0, null, null, E.fechaLocalISO(new Date()));
         estado.compra.marcados = [];
       }
       estado.compra.marcadosSiguiente = [];
@@ -633,7 +634,7 @@
 
   function regenerarSemanaCompleta() {
     if (!estado.familia.length) { cerrarSheet(); return; }
-    estado.plan = E.generarSemana(estado, BANCO);
+    estado.plan = E.generarSemana(estado, BANCO, BANCO, 0, null, null, E.fechaLocalISO(new Date()));
     generarPlanSiguiente(); // datos de familia/cole cambiaron — la siguiente no puede quedarse obsoleta
     guardarEstado();
     cerrarSheet(); // ya re-renderiza
@@ -684,7 +685,7 @@
   function mostrarDemo() {
     estadoAntesDemo = estado;
     var estadoDemo = Object.assign(estadoVacio(), { nombreFamilia: 'Familia Ejemplo', familia: crearFamiliaDemo() });
-    estadoDemo.plan = E.generarSemana(estadoDemo, BANCO);
+    estadoDemo.plan = E.generarSemana(estadoDemo, BANCO, BANCO, 0, null, null, E.fechaLocalISO(new Date()));
     estado = estadoDemo;
     generarPlanSiguiente(); // horizonte 2 semanas también en la demo — es interactiva de verdad
     modoDemo = true;
@@ -776,7 +777,7 @@
     estado.nombreFamilia = wizardNombreFamilia.trim();
     estado.familiaRegion = wizardRegion || null;
     estado.familia = wizardMiembros.slice();
-    estado.plan = E.generarSemana(estado, BANCO);
+    estado.plan = E.generarSemana(estado, BANCO, BANCO, 0, null, null, E.fechaLocalISO(new Date()));
     generarPlanSiguiente();
     guardarEstado();
     document.getElementById('wizard-screen').hidden = true;
@@ -1011,13 +1012,13 @@
   function valorarPlato(dia, tipoComida, valor) {
     var plan = planActivo();
     var slot = plan && plan.dias[dia] && plan.dias[dia][tipoComida];
-    if (!slot) return;
+    if (!slot || !slot.menu) return;
     var fecha = plan.dias[dia].fecha;
     var clave = fecha + '_' + tipoComida;
     if (!estado.valoraciones) estado.valoraciones = {};
     var actual = estado.valoraciones[clave];
     if (actual && actual.valor === valor) delete estado.valoraciones[clave];
-    else estado.valoraciones[clave] = { plantillaId: slot.plantillaId, valor: valor };
+    else estado.valoraciones[clave] = { principalId: slot.menu.principalId, valor: valor };
     guardarEstado();
     render(); // vistaActual ya es 'receta' — repinta con el estado nuevo
   }
@@ -1031,36 +1032,94 @@
     abrirSheet(UI.renderSheetCambiarInicio(estado, BANCO, dia, tipoComida));
   }
 
-  function trasCambiarPlato(resultado) {
-    if (!resultado) { alert('No encontramos un plato que encaje con esas condiciones.'); cerrarSheet(); render(); return; }
-    setPlanActivo(resultado.plan);
+  // Inserta un menú YA RESUELTO en el slot (dia,tipoComida) del plan activo.
+  // v3: E.cambiarPlato ya no devuelve el plan completo reconstruido (v2 sí) —
+  // aquí se hace el reemplazo mínimo del único slot que cambió.
+  function insertarMenuEnSlot(dia, tipoComida, menu) {
+    var plan = planActivo();
+    var diaObj = plan.dias[dia];
+    var nuevoDia = { fecha: diaObj.fecha, comida: diaObj.comida, cena: diaObj.cena };
+    nuevoDia[tipoComida] = { menu: menu };
+    var nuevoPlan = { semanaISO: plan.semanaISO, dias: plan.dias.slice() };
+    nuevoPlan.dias[dia] = nuevoDia;
+    setPlanActivo(nuevoPlan);
     guardarEstado();
-    pendienteRegenerar = { dia: pendienteCambiar.dia, tipoComida: pendienteCambiar.tipoComida };
-    abrirSheet(UI.renderConfirmarRegenerar(resultado.resuelto.nombre));
+  }
+
+  function trasElegirMenuUnico(menu, dia, tipoComida) {
+    if (!menu) { alert('No encontramos un plato que encaje con esas condiciones.'); cerrarSheet(); render(); return; }
+    insertarMenuEnSlot(dia, tipoComida, menu);
+    pendienteRegenerar = { dia: dia, tipoComida: tipoComida };
+    abrirSheet(UI.renderConfirmarRegenerar(menu.nombre));
     render();
   }
 
-  function elegirPlantilla(dia, tipoComida, plantillaId) {
+  // (a) "Otro menú" — el motor reensambla directo, sin lista que navegar a
+  // mano (borrador §6, última hora: 3 opciones planas, no una lista + modo).
+  function cambiarOtroMenu(dia, tipoComida) {
     var plan = planActivo();
     var slotPrevio = plan && plan.dias[dia] && plan.dias[dia][tipoComida];
-    var previoId = slotPrevio && slotPrevio.plantillaId;
-    var resultado = E.cambiarPlato(estado, plan, dia, tipoComida, { modo: 'manual', plantillaId: plantillaId }, BANCO);
+    var previoId = slotPrevio && slotPrevio.menu && slotPrevio.menu.principalId;
+    var resultado = E.cambiarPlato(estado, plan, dia, tipoComida, { modo: 'otro-menu' }, BANCO, BANCO, E.fechaLocalISO(new Date()));
+    var menu = resultado && resultado.menu;
     // Registro de cambios (F1, MOTOR_RECETAS §2): el plato REEMPLAZADO acumula
     // señal suave de "me apetece otra cosa". SOLO en cambios por elección — el
     // modo nevera no registra jamás (necesidad ≠ preferencia, Roger 2026-07-17).
-    if (resultado && previoId && previoId !== plantillaId) {
+    if (menu && previoId && previoId !== menu.principalId) {
       if (!estado.cambios) estado.cambios = {};
       estado.cambios[previoId] = (estado.cambios[previoId] || 0) + 1;
     }
-    trasCambiarPlato(resultado);
+    trasElegirMenuUnico(menu, dia, tipoComida);
   }
 
+  // (c) "Cambiar solo el acompañamiento" — mantiene el principal. Captura el
+  // par (principal, complementaria) cambiado DESDE EL DÍA 1 (borrador §6:
+  // "señal futura, solo se captura" — se activa como señal de scoring más
+  // adelante, cuando haya datos reales; aquí solo se acumula el contador).
+  function cambiarSoloComplementaria(dia, tipoComida) {
+    var slotPrevio = planActivo().dias[dia][tipoComida];
+    var resultado = E.cambiarPlato(estado, planActivo(), dia, tipoComida, { modo: 'solo-complementaria' }, BANCO, BANCO, E.fechaLocalISO(new Date()));
+    var menu = resultado && resultado.menu;
+    if (menu && slotPrevio && slotPrevio.menu) {
+      if (!estado.paresComplementariaCambiados) estado.paresComplementariaCambiados = {};
+      (menu.complementarias || []).forEach(function (cNueva, idx) {
+        var cVieja = (slotPrevio.menu.complementarias || [])[idx];
+        if (cVieja && cVieja.id !== cNueva.id) {
+          var clave = menu.principalId + '|' + cNueva.id;
+          estado.paresComplementariaCambiados[clave] = (estado.paresComplementariaCambiados[clave] || 0) + 1;
+        }
+      });
+    }
+    trasElegirMenuUnico(menu, dia, tipoComida);
+  }
+
+  // (b) Nevera — top-N nativo: hasta 3 menús montables/casi-montables, la
+  // familia elige (borrador §6: "enseña, no decide"). Cambios nevera NUNCA
+  // se registran (necesidad ≠ preferencia).
   function confirmarNevera(dia, tipoComida) {
     var checks = document.querySelectorAll('#lista-nevera-checks input:checked');
     var disponibles = Array.prototype.map.call(checks, function (c) { return c.value; });
     if (!disponibles.length) { alert('Marca al menos un ingrediente disponible.'); return; }
-    var resultado = E.cambiarPlato(estado, planActivo(), dia, tipoComida, { modo: 'nevera', disponibles: disponibles }, BANCO);
-    trasCambiarPlato(resultado);
+    var resultado = E.cambiarPlato(estado, planActivo(), dia, tipoComida, { modo: 'nevera', disponibles: disponibles }, BANCO, BANCO, E.fechaLocalISO(new Date()));
+    neveraOpcionesActuales = (resultado && resultado.opciones) || [];
+    pendienteCambiar = { dia: dia, tipoComida: tipoComida };
+    abrirSheet(UI.renderOpcionesNevera(BANCO, neveraOpcionesActuales, dia, tipoComida));
+  }
+
+  function elegirOpcionNevera(idx, dia, tipoComida) {
+    trasElegirMenuUnico(neveraOpcionesActuales[idx], dia, tipoComida);
+  }
+
+  // "¿lo añado a la compra?" de una opción de nevera casi-montable — añade el
+  // ingrediente que falta como marcado-pendiente en la lista (mismo mecanismo
+  // que cualquier línea de compra, solo que forzada aunque el plan no la pida
+  // todavía; el usuario ya expresó la intención de comprarlo).
+  function neveraAnadirCompra(idIngrediente) {
+    if (!estado.compra) estado.compra = { marcados: [] };
+    if (!estado.compra.pendientesManual) estado.compra.pendientesManual = [];
+    if (estado.compra.pendientesManual.indexOf(idIngrediente) === -1) estado.compra.pendientesManual.push(idIngrediente);
+    guardarEstado();
+    alert('Añadido a la lista de la compra.');
   }
 
   // chips de seleccionados + contador en el botón, arriba del todo (sheet nevera)
@@ -1112,7 +1171,7 @@
 
   function regenerarSiguientes(si) {
     if (si && pendienteRegenerar) {
-      setPlanActivo(E.regenerarDesde(estado, planActivo(), pendienteRegenerar.dia + 1, BANCO));
+      setPlanActivo(E.regenerarDesde(estado, planActivo(), pendienteRegenerar.dia + 1, BANCO, BANCO, E.fechaLocalISO(new Date())));
       guardarEstado();
     }
     cerrarSheet(); // ya re-renderiza
@@ -1202,21 +1261,24 @@
     refrescarSheetDescubrir();
   }
 
+  // v3 (tramo 6): una receta propia es una elaboración PRINCIPAL — identidad =
+  // su ingrediente principal. Hidrato/verdura ya NO se preguntan (el modelo de
+  // 3 ejes fijos desaparece); el ensamblador los añade solo vía compatibilidad
+  // (genérica por defecto para propias, ver complementariasCompatibles en
+  // engine.js). Sin campo de técnica nuevo — 'plancha' por defecto, la más
+  // neutra (cero mandos nuevos de usuario).
   function anadirRecetaPropia() {
     var val = function (id) { return document.getElementById(id).value; };
     var nombre = val('rp-nombre').trim();
     if (!nombre) { alert('Ponle un nombre al plato.'); return; }
-    var ejes = {};
-    ['proteina', 'hidrato', 'verdura'].forEach(function (eje) {
-      var v = val('rp-' + eje);
-      if (v) ejes[eje] = [v];
-    });
-    if (!Object.keys(ejes).length) { alert('Elige al menos un ingrediente.'); return; }
+    var idProteina = val('rp-proteina');
+    if (!idProteina) { alert('Elige un ingrediente principal.'); return; }
     var apta = val('rp-apta').split(',');
     var receta = {
-      id: generarId('propia'), nombre_patron: nombre, tipo: 'plantilla', apta: apta,
-      tiempo_min: 30, esfuerzo: val('rp-esfuerzo') || 'rapido', ninos: true,
-      ejes: ejes, kcal_extra: 100, pasos: [], notas: 'Receta propia'
+      id: generarId('propia'), nombre: nombre, roles: ['principal'], origen: 'propia', apta: apta,
+      tiempo_min: 30, esfuerzo: val('rp-esfuerzo') || 'rapido', ninos: true, tecnicaCoccion: 'plancha', acabado: null,
+      grupos: ['proteina'], ingredientes: { eje: 'proteina', opciones: [idProteina], fijos: null },
+      pasos: [], foto: null
     };
     estado.propias.push(receta);
     guardarEstado();
@@ -1359,10 +1421,12 @@
     'valorar-plato': function (btn) { var plan = planActivo(); if (!plan) return; valorarPlato(E.diaIndexDesdeFecha(plan, btn.dataset.fecha), btn.dataset.tipo, btn.dataset.valor); },
     'abrir-cambiar': function (btn) { abrirCambiar(Number(btn.dataset.dia), btn.dataset.tipo); },
     'cerrar-sheet': function () { cerrarSheet(); },
-    'modo-elegir-otro': function (btn) { abrirSheet(UI.renderListaElegirOtro(estado, BANCO, planActivo(), Number(btn.dataset.dia), btn.dataset.tipo)); },
+    'modo-otro-menu': function (btn) { cerrarSheet(); cambiarOtroMenu(Number(btn.dataset.dia), btn.dataset.tipo); },
     'modo-nevera': function (btn) { abrirSheet(UI.renderNevera(estado, BANCO, Number(btn.dataset.dia), btn.dataset.tipo)); },
-    'elegir-plantilla': function (btn) { elegirPlantilla(Number(btn.dataset.dia), btn.dataset.tipo, btn.dataset.plantilla); },
+    'modo-solo-complementaria': function (btn) { cerrarSheet(); cambiarSoloComplementaria(Number(btn.dataset.dia), btn.dataset.tipo); },
     'confirmar-nevera': function (btn) { confirmarNevera(Number(btn.dataset.dia), btn.dataset.tipo); },
+    'elegir-opcion-nevera': function (btn) { elegirOpcionNevera(Number(btn.dataset.idx), Number(btn.dataset.dia), btn.dataset.tipo); },
+    'nevera-anadir-compra': function (btn) { neveraAnadirCompra(btn.dataset.id); },
     'nevera-quitar': function (btn) { quitarIngredienteNevera(btn.dataset.id); },
     'nevera-voz': function (btn) { activarVozNevera(btn); },
     'regenerar-si': function () { regenerarSiguientes(true); },

@@ -1,76 +1,60 @@
 /* ============================================================
-   e3Foods — engine.js
-   Motor determinista puro: sin DOM, sin lectura de localStorage,
-   sin globals mutables. Testeable en consola / node.
+   e3Foods — engine.js (v3)
 
-   Todas las funciones que necesitan el banco de recetas/ingredientes
-   lo reciben como parámetro explícito `banco` ({ingredientes, plantillas,
-   categorias_cuota}) — la SPEC muestra firmas abreviadas
-   (p.ej. `resolverPlato(plantilla, seleccion, presentes)`); aquí se añade
-   `banco` (y `estado` donde hace falta leer familia/patrón) como parámetro
-   explícito adicional en vez de leerlo de un global, para que el motor
-   siga siendo puro y comprobable fuera del navegador.
+   Motor determinista puro: ensamblaje de MENÚS por ELABORACIONES (principal
+   + complementarias + postre), banda de kcal AGREGADA de mesa, fases puras
+   (generar candidatos válidos → puntuar solo válidos → elegir determinista
+   top-N — nunca un solver CSP formal, ver borrador §15/§16). Sin DOM, sin
+   Date.now()/new Date() interno (fechaReferencia siempre inyectada), sin
+   Math.random(). Convención de índice de día: 0=lunes…6=domingo.
 
-   Convención de índice de día: 0=lunes … 6=domingo (semana ISO, empieza
-   en lunes). `patron.comida[i]` / `patron.cena[i]` usan el mismo índice.
+   Sustituye al motor v2 (plantillas monoliticas de 3 ejes) — ver
+   02_APP/_REVISION_MOTOR_borrador.md para el diseño completo y
+   00_Decisiones_Log/ para la crónica de la obra.
    ============================================================ */
 (function (global) {
   'use strict';
 
   // ---------------------------------------------------------------
-  // Constantes del modelo nutricional (ver SPEC.md y RESEARCH_ALIMENTACION_ESPANA.md)
+  // Constantes (ver 01_Research/2026-07-20_RESEARCH_REPARTO_KCAL_COMIDA_CENA.md
+  // y borrador §3 punto 8 + §14 matiz)
   // ---------------------------------------------------------------
+  var REPARTO_KCAL = {
+    // entre semana: comida 35% / cena 30%, simétrico ±margen
+    entresemana: { comida: 0.35, cena: 0.30 },
+    // finde: rango directo, no banda simétrica — comida 35-40% (copiosa), cena 25-30% (ligera)
+    finde: { comida: { min: 0.35, max: 0.40 }, cena: { min: 0.25, max: 0.30 } }
+  };
+  var MARGEN_KCAL_DEFECTO = 0.10; // ±10% de trabajo (borrador §14 matiz, corrige el ±5% original — a calibrar en tramo 5
 
-  // § reparto de kcal diarias entre comidas — SPEC: comida 35%, cena 30% del día de cada presente
-  var REPARTO_KCAL = { comida: 0.35, cena: 0.30 };
-
-  // Factor de actividad para Mifflin-St Jeor (adultos/adolescentes con peso+altura) — SPEC literal
   var FACTOR_ACTIVIDAD_MIFFLIN = { baja: 1.2, media: 1.55, alta: 1.725 };
-
-  // Factor de actividad para la banda orientativa (menores, o adultos sin peso/altura) —
-  // canibalizado de e3foods.html; deliberadamente más suave que el de Mifflin porque la
-  // banda ya parte de un valor "actividad media" de referencia (WHO/DRI), no de un BMR puro.
   var FACTOR_ACTIVIDAD_BANDA = { baja: 1.0, media: 1.2, alta: 1.4 };
-
-  // SPEC (resolverPlato): "ración niño si <12" — mismo umbral se reutiliza para decidir si
-  // se aplica Mifflin-St Jeor o banda en necesidadKcalDia (banda siempre para <12).
   var EDAD_MENOR = 12;
 
-  // aptitud dietética derivada de categoría — SPEC: "vegetariana: legumbre/huevo/lacteo/
-  // cereal/tuberculo/verdura/fruta" (+ 'otro' para asimilados tipo tofu/seitán)
+  var FACTOR_PERSONA_MIN = 0.75, FACTOR_PERSONA_MAX = 1.25; // borrador §12 INGREDIENTES: escalado por persona
+
   var CATEGORIAS_VEGETARIANA_OK = { legumbre: 1, huevo: 1, lacteo: 1, cereal: 1, tuberculo: 1, verdura: 1, fruta: 1, otro: 1 };
   var CATEGORIAS_SIN_PESCADO_EXCLUIDAS = { 'pescado-blanco': 1, 'pescado-azul': 1, marisco: 1 };
-  // 'sin-cerdo' no tiene categoría propia en el esquema (carne-blanca/carne-roja no distinguen
-  // especie) — heurística mínima por id/nombre de ingrediente, documentada como limitación.
   var IDS_CERDO_CONOCIDOS = ['cerdo', 'lomo', 'panceta', 'jamon', 'chorizo', 'salchicha', 'beicon', 'morcilla', 'costillas-cerdo', 'secreto', 'presa', 'solomillo-cerdo', 'lacon', 'compango', 'ternera-rellena'];
 
-  // ---------------------------------------------------------------
-  // Utilidades
-  // ---------------------------------------------------------------
+  var MAX_COMPLEMENTARIAS_POR_MENU = 2; // proteína ya cubierta por principal; hidrato+verdura como mucho (borrador §15 punto 2, límite duro)
 
-  // anioNacimiento sustituye a la fecha completa (Roger 2026-07-13, alta más ágil) — edad
-  // aproximada anioActual - anioNacimiento, orientativo (ver SPEC.md § Estado).
-  function edadEnAnios(anioNacimiento, hoy) {
-    if (!anioNacimiento) return 30; // defensivo — año de nacimiento es obligatorio en el alta de miembro
-    var anioActual = (hoy ? new Date(hoy) : new Date()).getFullYear();
+  // ---------------------------------------------------------------
+  // Utilidades (idénticas a engine.js v2 — sin cambios, se re-declaran aquí
+  // para que este fichero sea autocontenido durante la obra; se deduplican
+  // al fusionar en el cambio atómico final)
+  // ---------------------------------------------------------------
+  function edadEnAnios(anioNacimiento, hoyISO) {
+    if (!anioNacimiento) return 30;
+    var anioActual = parseInt((hoyISO || fechaLocalISO()).slice(0, 4), 10);
     return anioActual - anioNacimiento;
   }
 
-  function capitaliza(s) {
-    if (!s) return s;
-    return s.charAt(0).toUpperCase() + s.slice(1);
-  }
+  function capitaliza(s) { if (!s) return s; return s.charAt(0).toUpperCase() + s.slice(1); }
 
-  // Formatea un Date como YYYY-MM-DD usando componentes LOCALES (getFullYear/
-  // getMonth/getDate), nunca toISOString().slice(0,10) — toISOString() convierte
-  // a UTC, y medianoche local en una zona adelantada a UTC (p.ej. CEST, UTC+2)
-  // cae en el día UTC ANTERIOR, desplazando toda la semana un día. Bug real
-  // encontrado y corregido en verificación (2026-07-13, ver STATUS/resumen).
   function fechaLocalISO(d) {
-    d = d || new Date();
-    var y = d.getFullYear();
-    var m = String(d.getMonth() + 1).padStart(2, '0');
-    var day = String(d.getDate()).padStart(2, '0');
+    d = d || new Date(); // única función que puede tocar reloj real — solo si no se inyecta fechaReferencia (uso en navegador real)
+    var y = d.getFullYear(), m = String(d.getMonth() + 1).padStart(2, '0'), day = String(d.getDate()).padStart(2, '0');
     return y + '-' + m + '-' + day;
   }
 
@@ -80,56 +64,35 @@
     return fechaLocalISO(d);
   }
 
-  function lunesDeEstaSemana(hoy) {
-    var d = new Date(hoy || new Date());
-    var diaJs = d.getDay(); // 0=domingo … 6=sábado
+  function lunesDeEstaSemana(fechaISOStr) {
+    var d = new Date((fechaISOStr || fechaLocalISO()) + 'T00:00:00');
+    var diaJs = d.getDay();
     var offsetALunes = diaJs === 0 ? -6 : 1 - diaJs;
     d.setDate(d.getDate() + offsetALunes);
     return fechaLocalISO(d);
   }
 
-  function esFinDeSemana(diaIndex) { return diaIndex >= 5; } // 5=sábado, 6=domingo
-
+  function esFinDeSemana(diaIndex) { return diaIndex >= 5; }
+  function estaEn(set, id) { return !!set[id]; }
   function vetosDe(miembros) {
     var set = {};
     (miembros || []).forEach(function (m) { (m.vetos || []).forEach(function (id) { set[id] = 1; }); });
     return set;
   }
 
-  function estaEn(set, id) { return !!set[id]; }
-
-  // Ids de ingrediente ÚNICOS de una selección — un plato-único de legumbre ocupa
-  // eje proteína e hidrato A LA VEZ con el MISMO id (p.ej. {proteina:'alubias-blancas',
-  // hidrato:'alubias-blancas'}, ver SPEC.md). Sin deduplicar, kcal/gramos/cuotas
-  // contarían esa ración dos veces (bug real encontrado en verificación con el
-  // banco de datos/recetas.js: "alubias-guiso" define ambos ejes con el mismo id).
-  function idsUnicosDeSeleccion(seleccion) {
-    var vistos = {};
-    var lista = [];
-    Object.keys(seleccion || {}).forEach(function (eje) {
-      var id = seleccion[eje];
-      if (id && !vistos[id]) { vistos[id] = true; lista.push(id); }
-    });
-    return lista;
-  }
-
   // ---------------------------------------------------------------
-  // 1. Necesidad calórica individual — Mifflin-St Jeor × actividad, o
-  //    banda orientativa por edad/sexo para menores / sin peso+altura.
+  // 1. Necesidad calórica individual — IDÉNTICO a v2 (borrador §7: "Intacta")
   // ---------------------------------------------------------------
-  function necesidadKcalDia(miembro) {
-    var edad = edadEnAnios(miembro.anioNacimiento);
+  function necesidadKcalDia(miembro, fechaReferencia) {
+    var edad = edadEnAnios(miembro.anioNacimiento, fechaReferencia);
     var sexo = miembro.sexo || 'mujer';
     var actividad = miembro.actividad || 'media';
     var esMenor = edad < EDAD_MENOR;
 
     if (!esMenor && miembro.peso && miembro.altura) {
       var bmr = 10 * miembro.peso + 6.25 * miembro.altura - 5 * edad + (sexo === 'hombre' ? 5 : -161);
-      var factor = FACTOR_ACTIVIDAD_MIFFLIN[actividad] || FACTOR_ACTIVIDAD_MIFFLIN.media;
-      return Math.round(bmr * factor);
+      return Math.round(bmr * (FACTOR_ACTIVIDAD_MIFFLIN[actividad] || FACTOR_ACTIVIDAD_MIFFLIN.media));
     }
-
-    // banda orientativa (WHO/DRI aprox.) — canibalizada de e3foods.html
     var base;
     if (edad < 4) base = 1000;
     else if (edad < 9) base = 1200;
@@ -139,108 +102,106 @@
     else if (edad < 51) base = sexo === 'hombre' ? 2200 : 1800;
     else if (edad < 71) base = sexo === 'hombre' ? 2000 : 1600;
     else base = sexo === 'hombre' ? 1800 : 1600;
-
-    var factorBanda = FACTOR_ACTIVIDAD_BANDA[actividad] || FACTOR_ACTIVIDAD_BANDA.media;
-    return Math.round(base * factorBanda);
+    return Math.round(base * (FACTOR_ACTIVIDAD_BANDA[actividad] || FACTOR_ACTIVIDAD_BANDA.media));
   }
 
   // ---------------------------------------------------------------
-  // 2. Agregado familiar por comida — SPEC: comida 35%, cena 30% de cada presente, sumado.
+  // 2. Banda kcal AGREGADA de mesa (§14 punto 1 — EL cambio central de v3)
   // ---------------------------------------------------------------
-  function kcalObjetivo(miembrosPresentes, tipoComida) {
-    var reparto = REPARTO_KCAL[tipoComida];
-    if (!reparto || !miembrosPresentes || !miembrosPresentes.length) return 0;
-    var total = 0;
-    miembrosPresentes.forEach(function (m) { total += necesidadKcalDia(m) * reparto; });
-    return Math.round(total);
-  }
-
-  // ---------------------------------------------------------------
-  // 3. Resolución de un plato concreto: nombre, kcal por comensal e
-  //    ingredientes con cantidades (para la lista de la compra).
-  // ---------------------------------------------------------------
-
-  // nombre + pasos resueltos para UNA selección de ejes dada — extraído para
-  // reutilizarlo tal cual con la selección adaptada de cada miembro (mesa
-  // mixta), no solo con la compartida.
-  function resolverNombreYPasos(plantilla, seleccionUsada, banco) {
-    var nombre = plantilla.nombre_patron;
-    var sustituciones = {};
-    Object.keys(plantilla.ejes || {}).forEach(function (eje) {
-      var id = seleccionUsada[eje];
-      var ing = banco.ingredientes[id];
-      var texto = ing ? capitaliza(ing.nombre) : (id || ('{' + eje + '}'));
-      sustituciones[eje] = texto;
-      nombre = nombre.split('{' + eje + '}').join(texto);
-    });
-    var pasos = (plantilla.pasos || []).map(function (paso) {
-      var texto = paso;
-      Object.keys(sustituciones).forEach(function (eje) { texto = texto.split('{' + eje + '}').join(sustituciones[eje]); });
-      return texto;
-    });
-    return { nombre: nombre, pasos: pasos, sustituciones: sustituciones };
-  }
-
-  // adaptaciones (Roger 2026-07-14, bug real encontrado por Roger: un miembro
-  // con tofu asignado por mesa mixta no aparecía en la lista de la compra).
-  // ANTES: se ignoraban aquí por completo — todo el mundo se contaba con la
-  // selección compartida, aunque algún presente tuviera un sustituto por
-  // dieta. Resultado: el ingrediente adaptado nunca se compraba y el
-  // compartido se compraba de más (ración de gente que no lo iba a comer).
-  // AHORA: cada miembro cuenta con SU propia selección efectiva (compartida,
-  // salvo el eje adaptado si lo tiene) tanto para gramos/kcal como para los
-  // pasos — la receta explica las dos cocciones, no solo la compartida.
-  function resolverPlato(plantilla, seleccion, presentes, banco, adaptaciones) {
-    adaptaciones = adaptaciones || [];
-    var base = resolverNombreYPasos(plantilla, seleccion, banco);
-
-    var mapaAdaptaciones = {};
-    adaptaciones.forEach(function (a) { mapaAdaptaciones[a.miembroId] = a; });
-
-    function seleccionEfectiva(miembroId) {
-      var a = mapaAdaptaciones[miembroId];
-      if (!a) return seleccion;
-      var copia = {};
-      Object.keys(seleccion).forEach(function (eje) { copia[eje] = seleccion[eje]; });
-      copia[a.eje] = a.valor;
-      return copia;
+  // objetivoBandaPersona: [min, max] de kcal para ESTA persona en este slot,
+  // ya con el margen de trabajo aplicado. esFinde usa rango directo (no
+  // simétrico); entresemana usa % fijo ±margen.
+  function objetivoBandaPersona(miembro, tipoComida, esFinde, fechaReferencia, margen) {
+    margen = margen == null ? MARGEN_KCAL_DEFECTO : margen;
+    var kcalDia = necesidadKcalDia(miembro, fechaReferencia);
+    var reparto = esFinde ? REPARTO_KCAL.finde[tipoComida] : REPARTO_KCAL.entresemana[tipoComida];
+    if (!reparto) return null;
+    if (esFinde) {
+      // rango directo del reparto + margen de trabajo aplicado a cada extremo
+      return [Math.round(kcalDia * reparto.min * (1 - margen)), Math.round(kcalDia * reparto.max * (1 + margen))];
     }
+    var objetivo = kcalDia * reparto;
+    return [Math.round(objetivo * (1 - margen)), Math.round(objetivo * (1 + margen))];
+  }
 
-    var pasosAdaptados = []; // [{miembroId, ingrediente, pasos}] — la "segunda cocción"
-    (presentes || []).forEach(function (m) {
-      var a = mapaAdaptaciones[m.id];
-      if (!a) return;
-      var alt = resolverNombreYPasos(plantilla, seleccionEfectiva(m.id), banco);
-      pasosAdaptados.push({ miembroId: m.id, ingrediente: alt.sustituciones[a.eje], pasos: alt.pasos });
+  // banda agregada de TODA la mesa: suma de mínimos, suma de máximos (§14.1)
+  function bandaAgregadaMesa(presentes, tipoComida, esFinde, fechaReferencia, margen) {
+    var sumaMin = 0, sumaMax = 0;
+    presentes.forEach(function (m) {
+      var b = objetivoBandaPersona(m, tipoComida, esFinde, fechaReferencia, margen);
+      if (!b) return;
+      sumaMin += b[0]; sumaMax += b[1];
     });
-
-    var ingredientesCompra = []; // [{id, gramos}] — estable por id (para checks persistentes)
-    var kcalPorComensal = [];
-    var kcalTotal = 0;
-
-    (presentes || []).forEach(function (miembro) {
-      var esNino = edadEnAnios(miembro.anioNacimiento) < EDAD_MENOR;
-      var kcalMiembro = plantilla.kcal_extra || 0;
-      idsUnicosDeSeleccion(seleccionEfectiva(miembro.id)).forEach(function (id) {
-        var ing = banco.ingredientes[id];
-        if (!ing) return;
-        var gramos = esNino ? ing.racion_nino_g : ing.racion_adulto_g;
-        kcalMiembro += gramos * ing.kcal_100g / 100;
-        var linea = null;
-        for (var i = 0; i < ingredientesCompra.length; i++) { if (ingredientesCompra[i].id === id) { linea = ingredientesCompra[i]; break; } }
-        if (!linea) { linea = { id: id, gramos: 0 }; ingredientesCompra.push(linea); }
-        linea.gramos += gramos;
-      });
-      kcalMiembro = Math.round(kcalMiembro);
-      kcalPorComensal.push({ miembroId: miembro.id, kcal: kcalMiembro });
-      kcalTotal += kcalMiembro;
-    });
-
-    return { nombre: base.nombre, kcalPorComensal: kcalPorComensal, kcalTotal: Math.round(kcalTotal), ingredientes: ingredientesCompra, pasos: base.pasos, pasosAdaptados: pasosAdaptados };
+    return { min: Math.round(sumaMin), max: Math.round(sumaMax) };
   }
 
   // ---------------------------------------------------------------
-  // Dieta / mesa mixta — helpers
+  // 3. Presencia — IDÉNTICO a v2 (borrador §7: "Intacta")
+  // ---------------------------------------------------------------
+  function excluidoPorCole(estado, miembro, fecha, tipoComida) {
+    return tipoComida === 'comida' &&
+      !!(estado.cole && estado.cole.dias && estado.cole.dias[fecha]) &&
+      edadEnAnios(miembro.anioNacimiento, fecha) < EDAD_MENOR;
+  }
+
+  function presentesEnComida(estado, fecha, diaIndex, tipoComida) {
+    var ausenciasDia = (estado.ausenciasPuntuales && estado.ausenciasPuntuales[fecha] && estado.ausenciasPuntuales[fecha][tipoComida]) || [];
+    return (estado.familia || []).filter(function (m) {
+      var patronDia = (m.patron && m.patron[tipoComida]) ? m.patron[tipoComida][diaIndex] : 'casa';
+      if (patronDia !== 'casa') return false;
+      if (ausenciasDia.indexOf(m.id) !== -1) return false;
+      if (excluidoPorCole(estado, m, fecha, tipoComida)) return false;
+      return true;
+    });
+  }
+
+  // ---------------------------------------------------------------
+  // 4. Elaboraciones — catálogo, disponibilidad, compatibilidad
+  // ---------------------------------------------------------------
+  function todasLasElaboraciones(bancoV3, estado) {
+    return (bancoV3.elaboraciones || []).concat((estado && estado.propias) || []);
+  }
+
+  function elaboracionesDisponibles(bancoV3, estado) {
+    var ocultas = {};
+    (estado.ocultas || []).forEach(function (id) { ocultas[id] = 1; });
+    return todasLasElaboraciones(bancoV3, estado).filter(function (e) { return !ocultas[e.id]; });
+  }
+
+  function elaboracionPorId(bancoV3, estado, id) {
+    var todas = todasLasElaboraciones(bancoV3, estado);
+    for (var i = 0; i < todas.length; i++) { if (todas[i].id === id) return todas[i]; }
+    return null;
+  }
+
+  function principalesMixtas(bancoV3, estado, tipoComida) {
+    return elaboracionesDisponibles(bancoV3, estado).filter(function (e) {
+      return e.roles.indexOf('principal') !== -1 && (e.apta || []).indexOf(tipoComida) !== -1;
+    });
+  }
+
+  // familia genérica por defecto cuando un principal no tiene entrada en
+  // COMPATIBILIDAD (recetas propias del usuario, tramo 6: no forman parte del
+  // banco curado — sin este fallback nunca generarían un combo válido, ningún
+  // grupo faltante tendría complementaria candidata).
+  var COMPLEMENTARIA_DEFECTO = { hidrato: 'hidrato-cocido', verdura: 'verdura-salteada-vapor' };
+
+  function complementariasCompatibles(bancoV3, principalId, grupo) {
+    var entradas = bancoV3.compatibilidad.filter(function (c) { return c.principalId === principalId; });
+    var familias = entradas.length
+      ? entradas.map(function (c) { return c.complementariaFamilia; })
+      : [COMPLEMENTARIA_DEFECTO[grupo]].filter(Boolean);
+    return bancoV3.elaboraciones.filter(function (e) {
+      return e.roles.indexOf('complementaria') !== -1 && familias.indexOf(e.id) !== -1 && e.grupos.indexOf(grupo) !== -1;
+    });
+  }
+
+  // ---------------------------------------------------------------
+  // Dieta / mesa mixta — sobre el eje paramétrico de la elaboración (mismo
+  // mecanismo que v2 `calcularAdaptaciones`/`plantillaViableParaMesa`; la
+  // auditoría externa confirmó que NO hace falta flag `descomponible` nuevo
+  // — borrador §14 "corregidos": si la elaboración no expone eje proteína
+  // intercambiable, simplemente no es viable para esa mesa, se descarta).
   // ---------------------------------------------------------------
   function categoriaExcluidaPorDieta(categoria, dieta, ingredienteId) {
     if (!dieta || dieta === 'omnivora') return false;
@@ -266,125 +227,113 @@
     return encontrada;
   }
 
-  function calcularAdaptaciones(plantilla, seleccion, presentes, banco, vetosUnion) {
+  // ¿Es esta elaboración PRINCIPAL/MIXTA viable para la mesa (vetos + dieta),
+  // considerando solo su eje paramétrico (si lo tiene) y sus ids fijos?
+  function elaboracionViableParaMesa(elaboracion, presentes, vetosUnion, banco) {
+    var idsAEvaluar = [];
+    if (elaboracion.ingredientes.eje) idsAEvaluar = elaboracion.ingredientes.opciones.slice();
+    Object.keys(elaboracion.ingredientes.fijos || {}).forEach(function (g) { idsAEvaluar = idsAEvaluar.concat(elaboracion.ingredientes.fijos[g]); });
+
+    // restricción de vetos: al menos una opción del eje paramétrico (si existe) debe sobrevivir a los vetos;
+    // los ids fijos NO tienen alternativa — si alguno está vetado, la elaboración entera es inviable para esta mesa.
+    if (elaboracion.ingredientes.eje) {
+      var quedaAlguna = elaboracion.ingredientes.opciones.some(function (id) { return !estaEn(vetosUnion, id); });
+      if (!quedaAlguna) return false;
+    }
+    var fijosOk = Object.keys(elaboracion.ingredientes.fijos || {}).every(function (g) {
+      return elaboracion.ingredientes.fijos[g].every(function (id) { return !estaEn(vetosUnion, id); });
+    });
+    if (!fijosOk) return false;
+
+    // dieta/mesa mixta: solo aplica si el grupo paramétrico es 'proteina' (única adaptación soportada, §14 confirmado)
+    if (elaboracion.ingredientes.eje !== 'proteina') return true;
+    return (presentes || []).every(function (m) {
+      var dieta = m.dieta || 'omnivora';
+      if (dieta === 'omnivora') return true;
+      return !!opcionAptaParaDieta(elaboracion.ingredientes.opciones, dieta, banco, vetosUnion);
+    });
+  }
+
+  function calcularAdaptaciones(elaboracion, seleccionEje, presentes, banco, vetosUnion) {
     var adaptaciones = [];
-    if (!plantilla.ejes || !plantilla.ejes.proteina) return adaptaciones;
-    var idPrincipal = seleccion.proteina;
-    var ingPrincipal = banco.ingredientes[idPrincipal];
+    if (elaboracion.ingredientes.eje !== 'proteina' || !seleccionEje) return adaptaciones;
+    var ingPrincipal = banco.ingredientes[seleccionEje];
     (presentes || []).forEach(function (m) {
       var dieta = m.dieta || 'omnivora';
       if (dieta === 'omnivora') return;
-      if (ingPrincipal && !categoriaExcluidaPorDieta(ingPrincipal.categoria, dieta, idPrincipal)) return; // ya le vale la opción común
-      var alt = opcionAptaParaDieta(plantilla.ejes.proteina, dieta, banco, vetosUnion);
-      if (alt && alt !== idPrincipal) adaptaciones.push({ miembroId: m.id, eje: 'proteina', valor: alt });
+      if (ingPrincipal && !categoriaExcluidaPorDieta(ingPrincipal.categoria, dieta, seleccionEje)) return;
+      var alt = opcionAptaParaDieta(elaboracion.ingredientes.opciones, dieta, banco, vetosUnion);
+      if (alt && alt !== seleccionEje) adaptaciones.push({ miembroId: m.id, eje: 'proteina', valor: alt });
     });
     return adaptaciones;
   }
 
   // ---------------------------------------------------------------
-  // Presencia — restricción 1 (estructural por patrón + puntual del día)
+  // Kcal de un ingrediente con factor de TÉCNICA (§14 punto 2 + tramo 1
+  // research: factor por GRUPO, nunca constante global — hallazgo del
+  // factor frito no-uniforme x3.8 patata vs x1.3 huevo). Sin factor
+  // sourced (null) → sin ajuste, se usa el kcal_100g base tal cual
+  // (principio 9: sin dato, no se inventa multiplicador).
   // ---------------------------------------------------------------
-  // Menú del cole cargado (F1, Roger 2026-07-17): los niños comen SIEMPRE en
-  // casa salvo que haya menú importado para esa fecha — ese mediodía comen en
-  // el cole. Va al revés que el patrón: subir el menú desmarca a los menores
-  // de esas comidas, sin tocar nada más; sin menú (verano), vuelven solos.
-  // Exportado (audit 2026-07-20): app.js lo usa para que el avatar de un menor
-  // excluido por cole no escriba una "ausencia fantasma" en ausenciasPuntuales
-  // (un toggle ahí no puede cambiar el resultado — la exclusión vive en cole).
-  function excluidoPorCole(estado, miembro, fecha, tipoComida) {
-    return tipoComida === 'comida' &&
-      !!(estado.cole && estado.cole.dias && estado.cole.dias[fecha]) &&
-      edadEnAnios(miembro.anioNacimiento) < EDAD_MENOR;
-  }
-
-  function presentesEnComida(estado, fecha, diaIndex, tipoComida) {
-    var ausenciasDia = (estado.ausenciasPuntuales && estado.ausenciasPuntuales[fecha] && estado.ausenciasPuntuales[fecha][tipoComida]) || [];
-    return (estado.familia || []).filter(function (m) {
-      var patronDia = (m.patron && m.patron[tipoComida]) ? m.patron[tipoComida][diaIndex] : 'casa';
-      if (patronDia !== 'casa') return false; // ausencia estructural (fuera/cole)
-      if (ausenciasDia.indexOf(m.id) !== -1) return false; // ausencia puntual
-      if (excluidoPorCole(estado, m, fecha, tipoComida)) return false; // menú del cole (ver arriba)
-      return true;
-    });
+  function kcalIngredienteConTecnica(ing, grupo, tecnicaCoccion, acabado, bancoV3) {
+    var kcal = ing.kcal_100g;
+    var tec = bancoV3.tecnicas_coccion[tecnicaCoccion];
+    if (tec && tec.factor_kcal && tec.factor_kcal[grupo]) kcal = kcal * tec.factor_kcal[grupo];
+    if (acabado) {
+      var ac = bancoV3.acabados[acabado];
+      if (ac && ac.factor_kcal && ac.factor_kcal[grupo]) kcal = ing.kcal_100g * ac.factor_kcal[grupo]; // el acabado (rebozado) sustituye al factor de cocción base, no se multiplican ambos
+    }
+    return kcal;
   }
 
   // ---------------------------------------------------------------
-  // Plantillas: catálogo disponible, viabilidad de mesa, combinatoria de ejes
+  // Variedad dura — restricción 5: ningún ingrediente de elaboración repetido
+  // el mismo día ni en días consecutivos (intacta) + NUEVA: misma CATEGORÍA
+  // de proteína no dos veces el mismo día (borrador §3.5, absorbe §11.2 de
+  // MOTOR_RECETAS — cierra "pescado comida y cena").
   // ---------------------------------------------------------------
-  // banco + recetas propias de la familia, sin filtrar — base común de
-  // plantillasDisponibles/plantillaPorId y del banco de Recetas en ui.js
-  function todasLasPlantillas(banco, estado) {
-    return (banco.plantillas || []).concat((estado && estado.propias) || []);
+  function idsDeMenu(menu) {
+    var ids = [];
+    if (menu.seleccionEje) ids.push(menu.seleccionEje);
+    Object.keys((menu.ingredientesFijos) || {}).forEach(function (g) { ids = ids.concat(menu.ingredientesFijos[g]); });
+    (menu.complementarias || []).forEach(function (c) { if (c.seleccionEje) ids.push(c.seleccionEje); ids = ids.concat(c.fijos || []); });
+    return ids;
   }
 
-  function plantillasDisponibles(banco, estado) {
-    var ocultas = {};
-    (estado.ocultas || []).forEach(function (id) { ocultas[id] = 1; });
-    return todasLasPlantillas(banco, estado).filter(function (p) { return !ocultas[p.id]; });
-  }
-
-  function plantillaPorId(banco, estado, id) {
-    var todas = todasLasPlantillas(banco, estado);
-    for (var i = 0; i < todas.length; i++) { if (todas[i].id === id) return todas[i]; }
-    return null;
-  }
-
-  // restricción 2 (vetos) + restricción 3 (mesa mixta): ¿esta plantilla es viable para
-  // los presentes dados, una vez descontados los ingredientes vetados por cualquiera?
-  function plantillaViableParaMesa(plantilla, presentes, vetosUnion, banco) {
-    var ejeOk = Object.keys(plantilla.ejes || {}).every(function (eje) {
-      return (plantilla.ejes[eje] || []).some(function (id) { return !estaEn(vetosUnion, id); });
-    });
-    if (!ejeOk) return false;
-    if (!plantilla.ejes || !plantilla.ejes.proteina) return true;
-    return (presentes || []).every(function (m) {
-      var dieta = m.dieta || 'omnivora';
-      if (dieta === 'omnivora') return true;
-      return !!opcionAptaParaDieta(plantilla.ejes.proteina, dieta, banco, vetosUnion);
-    });
-  }
-
-  function combinacionesEjes(plantilla, vetosUnion) {
-    var ejes = Object.keys(plantilla.ejes || {});
-    var combos = [{}];
-    ejes.forEach(function (eje) {
-      var opciones = (plantilla.ejes[eje] || []).filter(function (id) { return !estaEn(vetosUnion, id); });
-      var nuevas = [];
-      combos.forEach(function (c) {
-        opciones.forEach(function (id) {
-          var copia = {};
-          Object.keys(c).forEach(function (k) { copia[k] = c[k]; });
-          copia[eje] = id;
-          nuevas.push(copia);
-        });
-      });
-      combos = nuevas;
-    });
-    return combos;
-  }
-
-  // ---------------------------------------------------------------
-  // Variedad dura — restricción 4: ningún ingrediente de eje repetido el
-  // mismo día ni en días consecutivos.
-  // ---------------------------------------------------------------
   function usadosEnDia(dia) {
     var set = {};
     if (!dia) return set;
     ['comida', 'cena'].forEach(function (tipo) {
       var slot = dia[tipo];
-      if (slot && slot.seleccion) Object.keys(slot.seleccion).forEach(function (eje) { set[slot.seleccion[eje]] = 1; });
+      if (slot && slot.menu) idsDeMenu(slot.menu).forEach(function (id) { set[id] = 1; });
     });
     return set;
   }
 
-  function violaVariedad(seleccion, usadosHoy, usadosAyer) {
-    return idsUnicosDeSeleccion(seleccion).some(function (id) {
-      return estaEn(usadosHoy, id) || estaEn(usadosAyer, id);
+  function categoriasProteinaEnDia(dia, banco) {
+    var set = {};
+    if (!dia) return set;
+    ['comida', 'cena'].forEach(function (tipo) {
+      var slot = dia[tipo];
+      if (!slot || !slot.menu) return;
+      var idProteina = slot.menu.seleccionEje && slot.menu.grupoEje === 'proteina' ? slot.menu.seleccionEje : (slot.menu.ingredientesFijos && slot.menu.ingredientesFijos.proteina && slot.menu.ingredientesFijos.proteina[0]);
+      var ing = idProteina && banco.ingredientes[idProteina];
+      if (ing) set[ing.categoria] = 1;
     });
+    return set;
+  }
+
+  function violaVariedad(idsCandidato, usadosHoy, usadosAyer) {
+    return idsCandidato.some(function (id) { return estaEn(usadosHoy, id) || estaEn(usadosAyer, id); });
+  }
+
+  function violaProteinaMismaCategoriaMismoDia(categoriaProteinaCandidata, categoriasHoy) {
+    return !!categoriaProteinaCandidata && estaEn(categoriasHoy, categoriaProteinaCandidata);
   }
 
   // ---------------------------------------------------------------
-  // Cuotas semanales — restricción 5 (§6.1 del funcional / RESEARCH_ALIMENTACION_ESPANA)
+  // Cuotas semanales — restricción 6: categorias_cuota (intactas) + fritos
+  // (nueva, dura). Mismo mecanismo que v2 (categoriasQueSuma/contador).
   // ---------------------------------------------------------------
   function categoriasQueSuma(categoria) {
     var claves = [categoria];
@@ -392,8 +341,8 @@
     return claves;
   }
 
-  function violaMaximoCuota(seleccion, contador, cuotas, banco) {
-    return idsUnicosDeSeleccion(seleccion).some(function (id) {
+  function violaMaximoCuota(idsCandidato, contador, cuotas, banco) {
+    return idsCandidato.some(function (id) {
       var ing = banco.ingredientes[id];
       if (!ing) return false;
       return categoriasQueSuma(ing.categoria).some(function (clave) {
@@ -404,9 +353,265 @@
     });
   }
 
-  function puntuarCuotas(seleccion, contador, cuotas, banco, slotsRestantes) {
+  function actualizarContadorCuotas(contador, idsCandidato, banco) {
+    idsCandidato.forEach(function (id) {
+      var ing = banco.ingredientes[id];
+      if (!ing) return;
+      categoriasQueSuma(ing.categoria).forEach(function (clave) { contador[clave] = (contador[clave] || 0) + 1; });
+    });
+  }
+
+  // fritos: cuenta por tecnicaCoccion==='frito' de la elaboración PRINCIPAL del
+  // menú (tramo 2, decisión documentada: la técnica de cocción real determina
+  // absorción de aceite, no el acabado/recubrimiento)
+  function violaCuotaFritos(tecnicaPrincipal, contadorFritos, cuotaFritos) {
+    if (tecnicaPrincipal !== 'frito') return false;
+    if (!cuotaFritos || cuotaFritos.max_sem == null) return false;
+    return (contadorFritos.n || 0) + 1 > cuotaFritos.max_sem;
+  }
+
+  // ---------------------------------------------------------------
+  // Estructura del menú — restricción 2 (NUEVA, borrador §3.2 + §15 punto 4):
+  // los 3 grupos cubiertos (verificado por construcción de COMPATIBILIDAD,
+  // pero se re-verifica aquí como guardarraíl) + máx 1 hidrato/menú + no 2
+  // fritos en el mismo menú (además de la cuota semanal de fritos).
+  // ---------------------------------------------------------------
+  function verificarEstructura(principal, complementariasElegidas) {
+    var grupos = {};
+    principal.grupos.forEach(function (g) { grupos[g] = (grupos[g] || 0) + 1; });
+    var fritosEnMenu = principal.tecnicaCoccion === 'frito' ? 1 : 0;
+    var hidratosEnMenu = principal.grupos.indexOf('hidrato') !== -1 ? 1 : 0;
+
+    var ok = complementariasElegidas.every(function (c) {
+      c.elaboracion.grupos.forEach(function (g) { grupos[g] = (grupos[g] || 0) + 1; });
+      if (c.elaboracion.grupos.indexOf('hidrato') !== -1) hidratosEnMenu++;
+      if (c.elaboracion.tecnicaCoccion === 'frito') fritosEnMenu++;
+      return true;
+    });
+    if (!ok) return { valido: false, motivo: 'error interno' };
+    if (hidratosEnMenu > 1) return { valido: false, motivo: 'más de 1 hidrato en el menú' };
+    if (fritosEnMenu > 1) return { valido: false, motivo: '2 fritos en el mismo menú' };
+    if (!grupos.proteina || !grupos.hidrato || !grupos.verdura) return { valido: false, motivo: 'no cubre los 3 grupos: ' + JSON.stringify(grupos) };
+    return { valido: true };
+  }
+
+  // ---------------------------------------------------------------
+  // DecisionTrace (§15 punto 1): por qué se descarta cada candidato. Se
+  // genera durante la búsqueda, se devuelve con el resultado, NUNCA se
+  // persiste (no rompe pureza ni infla memoria) — alimenta debug/tests y la
+  // transparencia "por qué este plato" (MOTOR_RECETAS §7 P2) leyendo el
+  // trace real en vez de inventar prosa.
+  // ---------------------------------------------------------------
+  function nuevoTrace() {
+    return { evaluados: 0, descartados: [], sobrevivientes: 0 };
+  }
+  function traceDescarta(trace, principalId, motivo, detalle) {
+    trace.evaluados++;
+    trace.descartados.push({ principalId: principalId, motivo: motivo, detalle: detalle || null });
+  }
+  function traceSobrevive(trace) { trace.evaluados++; trace.sobrevivientes++; }
+
+  // ---------------------------------------------------------------
+  // Construcción de candidatos: combos de complementarias para los grupos
+  // que el principal NO cubre (0, 1 o 2 grupos faltantes — nunca más,
+  // proteína siempre la cubre el principal).
+  // ---------------------------------------------------------------
+  function opcionesDeComplementaria(complementaria, vetosUnion) {
+    return (complementaria.ingredientes.opciones || []).filter(function (id) { return !estaEn(vetosUnion, id); });
+  }
+
+  function generarCombosComplementarias(bancoV3, principalId, gruposFaltantes, vetosUnion) {
+    if (!gruposFaltantes.length) return [[]];
+    var porGrupo = gruposFaltantes.map(function (grupo) {
+      var compatibles = complementariasCompatibles(bancoV3, principalId, grupo);
+      var opciones = [];
+      compatibles.forEach(function (comp) {
+        opcionesDeComplementaria(comp, vetosUnion).forEach(function (id) { opciones.push({ elaboracion: comp, seleccionEje: id }); });
+      });
+      return opciones;
+    });
+    // producto cartesiano (como mucho 2 grupos faltantes, MAX_COMPLEMENTARIAS_POR_MENU) — espacio pequeño, sin necesidad de poda avanzada (§16)
+    var combos = [[]];
+    porGrupo.forEach(function (opciones) {
+      var nuevas = [];
+      combos.forEach(function (combo) { opciones.forEach(function (o) { nuevas.push(combo.concat([o])); }); });
+      combos = nuevas;
+    });
+    return combos;
+  }
+
+  // ids únicos + metadata (grupo/tecnica/acabado) de TODOS los componentes de
+  // un candidato (principal + complementarias) — base para kcal y para
+  // idsDeMenu/variedad/cuotas, dedup por id (legumbre proteína=hidrato mismo id).
+  function componentesDeCandidato(principal, seleccionEje, complementarias) {
+    var vistos = {};
+    var lista = [];
+    function agrega(id, grupo, tecnicaCoccion, acabado) {
+      if (!id || vistos[id]) return;
+      vistos[id] = 1;
+      lista.push({ id: id, grupo: grupo, tecnicaCoccion: tecnicaCoccion, acabado: acabado });
+    }
+    if (principal.ingredientes.eje) agrega(seleccionEje, principal.ingredientes.eje, principal.tecnicaCoccion, principal.acabado);
+    Object.keys(principal.ingredientes.fijos || {}).forEach(function (g) {
+      principal.ingredientes.fijos[g].forEach(function (id) { agrega(id, g, principal.tecnicaCoccion, principal.acabado); });
+    });
+    (complementarias || []).forEach(function (c) {
+      agrega(c.seleccionEje, c.elaboracion.ingredientes.eje, c.elaboracion.tecnicaCoccion, c.elaboracion.acabado);
+    });
+    return lista;
+  }
+
+  // ---------------------------------------------------------------
+  // Cierre de banda kcal (§15 punto 2): ESCALAR raciones dentro de la
+  // estructura primero (factor por persona, acotado 0.75-1.25, derivado de
+  // SU propia necesidad Mifflin — nunca "ración H/M" inventada, principio 9).
+  // Solo si escalar no basta (corto incluso al factor máximo), añadir UN
+  // componente extra acotado: pan de acompañamiento (realista en mesa
+  // española, simple, sin búsqueda — evita sobre-ingeniería, §16).
+  // ---------------------------------------------------------------
+  var ID_PAN_EXTRA = 'pan'; // único componente extra posible — bounded a propósito, no una búsqueda
+
+  // Aliño/sofrito por técnica (addendum research 2026-07-21 §7): suma FIJA por ración, no
+  // multiplicativa — el aceite de un guisado/salteado se reparte en el plato entero, no se
+  // absorbe en un ingrediente concreto (a diferencia del factor de frito, que sí sube por
+  // ingrediente). Se cuenta UNA VEZ por cada elaboración realmente usada en el menú (principal +
+  // cada complementaria), nunca por línea de ingrediente — un guisado con 3 fijos no triplica el
+  // aceite. Compartida entre cerrarBandaKcal (decide viabilidad) y resolverMenu (kcal final) para
+  // que ambos coincidan siempre.
+  function kcalAlinioPorRacion(principal, complementarias, bancoV3) {
+    var tecnicas = [principal.tecnicaCoccion].concat((complementarias || []).map(function (c) { return c.elaboracion.tecnicaCoccion; }));
+    return tecnicas.reduce(function (suma, tec) {
+      var t = bancoV3.tecnicas_coccion[tec];
+      return suma + ((t && t.kcal_extra_racion) || 0);
+    }, 0);
+  }
+
+  function calcularKcalYFactor(componentes, presentes, bandaPersonaFn, banco, bancoV3, kcalAlinio) {
+    var factorRacion = {};
+    var kcalTotal = 0;
+    presentes.forEach(function (persona) {
+      var esNino = edadEnAnios(persona.anioNacimiento) < EDAD_MENOR;
+      var kcalBase = kcalAlinio || 0;
+      componentes.forEach(function (comp) {
+        var ing = banco.ingredientes[comp.id];
+        if (!ing) return;
+        var gramos = esNino ? ing.racion_nino_g : ing.racion_adulto_g;
+        var kcal100 = kcalIngredienteConTecnica(ing, comp.grupo, comp.tecnicaCoccion, comp.acabado, bancoV3);
+        kcalBase += gramos * kcal100 / 100;
+      });
+      var bandaPersona = bandaPersonaFn(persona);
+      var objetivoPersona = bandaPersona ? (bandaPersona[0] + bandaPersona[1]) / 2 : kcalBase;
+      var factorNecesario = kcalBase > 0 ? objetivoPersona / kcalBase : 1;
+      var factorClamp = Math.min(FACTOR_PERSONA_MAX, Math.max(FACTOR_PERSONA_MIN, factorNecesario));
+      factorRacion[persona.id] = factorClamp;
+      kcalTotal += kcalBase * factorClamp;
+    });
+    return { kcalTotal: Math.round(kcalTotal), factorRacion: factorRacion };
+  }
+
+  function cerrarBandaKcal(principal, seleccionEje, complementarias, presentes, banda, bandaPersonaFn, banco, bancoV3) {
+    var componentes = componentesDeCandidato(principal, seleccionEje, complementarias);
+    var kcalAlinio = kcalAlinioPorRacion(principal, complementarias, bancoV3);
+    var r = calcularKcalYFactor(componentes, presentes, bandaPersonaFn, banco, bancoV3, kcalAlinio);
+    if (r.kcalTotal >= banda.min && r.kcalTotal <= banda.max) {
+      return { viable: true, kcalTotal: r.kcalTotal, factorRacion: r.factorRacion, componenteExtra: null };
+    }
+    if (r.kcalTotal > banda.max) return { viable: false, motivo: 'excede banda incluso al factor mínimo (' + r.kcalTotal + '>' + banda.max + ')' };
+
+    // corto incluso escalando al máximo — probar el único extra permitido (pan), salvo que el
+    // menú ya tenga pan como hidrato (no duplicar el mismo ingrediente como "extra")
+    var yaTienePan = componentes.some(function (c) { return c.id === ID_PAN_EXTRA; });
+    if (yaTienePan) return { viable: false, motivo: 'corto (' + r.kcalTotal + '<' + banda.min + ') y ya incluye pan, sin más extra posible' };
+
+    var componentesConExtra = componentes.concat([{ id: ID_PAN_EXTRA, grupo: 'hidrato', tecnicaCoccion: null, acabado: null }]);
+    var r2 = calcularKcalYFactor(componentesConExtra, presentes, bandaPersonaFn, banco, bancoV3, kcalAlinio);
+    if (r2.kcalTotal >= banda.min && r2.kcalTotal <= banda.max) {
+      return { viable: true, kcalTotal: r2.kcalTotal, factorRacion: r2.factorRacion, componenteExtra: ID_PAN_EXTRA };
+    }
+    return { viable: false, motivo: 'corto ni escalando ni con pan extra (' + r2.kcalTotal + ' vs [' + banda.min + ',' + banda.max + '])' };
+  }
+
+  // ---------------------------------------------------------------
+  // Generación de candidatos para UN slot (comida o cena de un día) — fase
+  // pura "generar candidatos válidos" (§15): enumeración con poda temprana,
+  // NO un solver CSP (§16). Devuelve {candidatos, trace, banda}.
+  // ---------------------------------------------------------------
+  function generarCandidatosSlot(ctx) {
+    // ctx: { bancoV3, banco, estado, presentes, tipoComida, esFinde, fechaReferencia,
+    //        vetosUnion, vetosViabilidad, usadosHoy, usadosAyer, categoriasProteinaHoy,
+    //        contadorCuotas, cuotas, contadorFritos, cuotaFritos, margenKcal,
+    //        ignorarEsfuerzo, disponibles (modo nevera, opcional), principalExcluido (opcional) }
+    var trace = nuevoTrace();
+    var candidatos = [];
+    var banda = bandaAgregadaMesa(ctx.presentes, ctx.tipoComida, ctx.esFinde, ctx.fechaReferencia, ctx.margenKcal);
+    var bandaPersonaFn = function (persona) { return objetivoBandaPersona(persona, ctx.tipoComida, ctx.esFinde, ctx.fechaReferencia, ctx.margenKcal); };
+
+    principalesMixtas(ctx.bancoV3, ctx.estado, ctx.tipoComida).forEach(function (principal) {
+      if (ctx.principalExcluido && principal.id === ctx.principalExcluido) { traceDescarta(trace, principal.id, 'excluido: es el principal ya mostrado en este slot (otro menú)'); return; }
+      if (!ctx.ignorarEsfuerzo && !ctx.esFinde && principal.esfuerzo === 'elaborado') { traceDescarta(trace, principal.id, 'esfuerzo: elaborado solo finde'); return; }
+      if (!elaboracionViableParaMesa(principal, ctx.presentes, ctx.vetosViabilidad || ctx.vetosUnion, ctx.banco)) { traceDescarta(trace, principal.id, 'mesa mixta/dieta inviable'); return; }
+
+      var opcionesEje = principal.ingredientes.eje ? principal.ingredientes.opciones.filter(function (id) { return !estaEn(ctx.vetosUnion, id); }) : [null];
+      if (principal.ingredientes.eje && !opcionesEje.length) { traceDescarta(trace, principal.id, 'todas las opciones del eje vetadas'); return; }
+
+      opcionesEje.forEach(function (opcionEje) {
+        var idsPrincipal = [];
+        if (opcionEje) idsPrincipal.push(opcionEje);
+        Object.values(principal.ingredientes.fijos || {}).forEach(function (lista) { idsPrincipal = idsPrincipal.concat(lista); });
+
+        if (violaVariedad(idsPrincipal, ctx.usadosHoy, ctx.usadosAyer)) { traceDescarta(trace, principal.id, 'variedad (día actual/anterior)'); return; }
+
+        var idProteinaCandidata = principal.ingredientes.eje === 'proteina' ? opcionEje : (principal.ingredientes.fijos && principal.ingredientes.fijos.proteina && principal.ingredientes.fijos.proteina[0]);
+        var ingProteina = idProteinaCandidata && ctx.banco.ingredientes[idProteinaCandidata];
+        if (violaProteinaMismaCategoriaMismoDia(ingProteina && ingProteina.categoria, ctx.categoriasProteinaHoy)) { traceDescarta(trace, principal.id, 'misma categoría de proteína ya usada hoy'); return; }
+
+        if (violaMaximoCuota(idsPrincipal, ctx.contadorCuotas, ctx.cuotas, ctx.banco)) { traceDescarta(trace, principal.id, 'cuota máxima semanal'); return; }
+        if (violaCuotaFritos(principal.tecnicaCoccion, ctx.contadorFritos, ctx.cuotaFritos)) { traceDescarta(trace, principal.id, 'cuota máxima de fritos'); return; }
+
+        var gruposFaltantes = ['proteina', 'hidrato', 'verdura'].filter(function (g) { return principal.grupos.indexOf(g) === -1; });
+        var combos = generarCombosComplementarias(ctx.bancoV3, principal.id, gruposFaltantes, ctx.vetosUnion);
+
+        combos.forEach(function (combo) {
+          var idsCombo = [];
+          combo.forEach(function (c) { idsCombo.push(c.seleccionEje); });
+
+          if (violaVariedad(idsCombo, ctx.usadosHoy, ctx.usadosAyer)) { traceDescarta(trace, principal.id, 'complementaria viola variedad'); return; }
+          if (violaMaximoCuota(idsCombo, ctx.contadorCuotas, ctx.cuotas, ctx.banco)) { traceDescarta(trace, principal.id, 'complementaria viola cuota máxima'); return; }
+
+          var estructura = verificarEstructura(principal, combo.map(function (c) { return { elaboracion: c.elaboracion }; }));
+          if (!estructura.valido) { traceDescarta(trace, principal.id, 'estructura: ' + estructura.motivo); return; }
+
+          var idsTotal = idsPrincipal.concat(idsCombo);
+          var faltantesNevera = [];
+          if (ctx.disponibles) {
+            faltantesNevera = idsTotal.filter(function (id) { return ctx.disponibles.indexOf(id) === -1; });
+            if (faltantesNevera.length > 1) { traceDescarta(trace, principal.id, 'nevera: faltan ' + faltantesNevera.length + ' ingredientes'); return; }
+          }
+
+          var cierre = cerrarBandaKcal(principal, opcionEje, combo, ctx.presentes, banda, bandaPersonaFn, ctx.banco, ctx.bancoV3);
+          if (!cierre.viable) { traceDescarta(trace, principal.id, 'banda kcal: ' + cierre.motivo); return; }
+
+          traceSobrevive(trace);
+          candidatos.push({
+            principal: principal, seleccionEje: opcionEje, complementarias: combo,
+            kcalTotal: cierre.kcalTotal, factorRacion: cierre.factorRacion, componenteExtra: cierre.componenteExtra,
+            faltantesNevera: faltantesNevera
+          });
+        });
+      });
+    });
+
+    return { candidatos: candidatos, trace: trace, banda: banda };
+  }
+
+  // ---------------------------------------------------------------
+  // Señales SUAVES (§2 MOTOR_RECETAS + §4 borrador v3) — desempatan entre
+  // candidatos YA válidos (todas las restricciones duras cumplidas). Todas
+  // re-ancladas a la elaboración PRINCIPAL, mismo mecanismo que v2.
+  // ---------------------------------------------------------------
+  function puntuarCuotasPendientes(idsCandidato, contador, cuotas, banco, slotsRestantes) {
     var bonus = 0;
-    idsUnicosDeSeleccion(seleccion).forEach(function (id) {
+    idsCandidato.forEach(function (id) {
       var ing = banco.ingredientes[id];
       if (!ing) return;
       categoriasQueSuma(ing.categoria).forEach(function (clave) {
@@ -419,278 +624,214 @@
     return bonus;
   }
 
-  function actualizarContadorCuotas(contador, seleccion, banco) {
-    idsUnicosDeSeleccion(seleccion).forEach(function (id) {
-      var ing = banco.ingredientes[id];
-      if (!ing) return;
-      categoriasQueSuma(ing.categoria).forEach(function (clave) { contador[clave] = (contador[clave] || 0) + 1; });
-    });
+  // centrado dentro de la banda ya aprobada (restricción dura §8 cumplida) — más cerca del
+  // centro, mejor. Reemplaza puntuarKcal de v2 (allí era la restricción; aquí es desempate).
+  function puntuarCentradoBanda(kcalTotal, banda) {
+    var centro = (banda.min + banda.max) / 2;
+    var mitadRango = Math.max(1, (banda.max - banda.min) / 2);
+    var desvio = Math.abs(kcalTotal - centro) / mitadRango; // 0 en el centro, 1 en el borde
+    return -desvio * 8;
   }
 
-  function contadorInicialDesdeDias(diasPrevios, banco) {
-    var contador = {};
-    (diasPrevios || []).forEach(function (dia) {
-      ['comida', 'cena'].forEach(function (tipo) {
-        var slot = dia && dia[tipo];
-        if (slot && slot.seleccion) actualizarContadorCuotas(contador, slot.seleccion, banco);
-      });
-    });
-    return contador;
-  }
-
-  // días del plan con un hueco concreto vaciado — base del contador de cuotas
-  // (y de usosSemana en cambiarPlato) cuando se evalúa el cambio de ese hueco:
-  // el plato saliente no debe contarse a sí mismo.
-  function diasSinSlot(plan, dia, tipoComida) {
-    return plan.dias.map(function (d, i) {
-      if (i !== dia) return d;
-      var copia = { fecha: d.fecha, comida: d.comida, cena: d.cena };
-      copia[tipoComida] = null;
-      return copia;
-    });
-  }
-
-  function contadorSemanaSinSlot(plan, dia, tipoComida, banco) {
-    return contadorInicialDesdeDias(diasSinSlot(plan, dia, tipoComida), banco);
-  }
-
-  // ¿Tiene la plantilla ALGÚN combo (respetando vetos) que no viole cuotas
-  // máximas con ese contador? Espejo exacto del modo manual de cambiarPlato,
-  // que mantiene las cuotas máximas (protegen salud): pre-filtra la lista de
-  // "Elegir otro plato" para no ofrecer platos que el motor vetará después.
-  // Misma paridad lista↔motor que el filtro por plantillaViableParaMesa del
-  // 2026-07-16 — aquel fix dejó las cuotas sin pre-filtrar (documentado en
-  // ui.js) y el hueco se cerró en el audit del 2026-07-20.
-  function plantillaPasaCuotas(plantilla, vetosUnion, contador, cuotas, banco) {
-    return combinacionesEjes(plantilla, vetosUnion).some(function (seleccion) {
-      if (!Object.keys(seleccion).length && Object.keys(plantilla.ejes || {}).length) return false;
-      return !violaMaximoCuota(seleccion, contador, cuotas, banco);
-    });
-  }
-
-  // Semáforo de equilibrio semanal (P1, feedback externo 2026-07-16): reutiliza
-  // el mismo contador que ya usa el generador — solo lo expone por categoría de
-  // cuota en vez de mantenerlo interno. Sin lógica nueva, cero riesgo de divergir
-  // de lo que el motor realmente decide.
-  function resumenCuotasSemana(plan, banco) {
-    var cuotas = (banco && banco.categorias_cuota) || {};
-    var contador = contadorInicialDesdeDias((plan && plan.dias) || [], banco);
-    return Object.keys(cuotas).map(function (clave) {
-      var cuota = cuotas[clave];
-      var cuenta = contador[clave] || 0;
-      var minOk = cuota.min_sem == null || cuenta >= cuota.min_sem;
-      var maxOk = cuota.max_sem == null || cuenta <= cuota.max_sem;
-      return { categoria: clave, cuenta: cuenta, min_sem: cuota.min_sem, max_sem: cuota.max_sem, cumplido: minOk && maxOk };
-    });
-  }
-
-  // ---------------------------------------------------------------
-  // Ajuste kcal — restricción 7 (±15%, orientativo)
-  // ---------------------------------------------------------------
-  function puntuarKcal(kcalTotal, objetivoKcal) {
-    if (!objetivoKcal) return 0;
-    var desvio = Math.abs(kcalTotal - objetivoKcal) / objetivoKcal;
-    return -desvio * 20; // penalización suave — las cuotas pesan más que el ajuste fino de kcal
-  }
-
-  // ---------------------------------------------------------------
-  // Feedback loop (P1, 2026-07-16): "capturar, no modelar" — un toque post-comida
-  // por slot (fecha+tipoComida) en estado.valoraciones. Aquí solo se agrega el
-  // conteo de rechazos por plantilla, para sesgar el scoring; el gusto/neutro no
-  // puntúa (con 3 opciones simétricas, sesgar también hacia "le gustó" repetiría
-  // el mismo plato más de la cuenta — lo pedido es evitar lo rechazado, no más).
-  // ---------------------------------------------------------------
-  function contarRechazosPorPlantilla(estado) {
-    var contador = {};
-    var valoraciones = (estado && estado.valoraciones) || {};
-    Object.keys(valoraciones).forEach(function (clave) {
-      var v = valoraciones[clave];
-      if (v && v.valor === 'no-gusta' && v.plantillaId) contador[v.plantillaId] = (contador[v.plantillaId] || 0) + 1;
-    });
-    return contador;
-  }
-
-  // penalización suave y acotada — nunca debe pesar más que una restricción dura
-  // (cuotas/dieta), solo desempata entre plantillas ya viables. Techo en 3 rechazos:
-  // más allá no hace falta hundir más el score, ya perdió cualquier empate real.
-  function puntuarRechazos(plantillaId, rechazosPorPlantilla) {
-    var n = Math.min((rechazosPorPlantilla && rechazosPorPlantilla[plantillaId]) || 0, 3);
+  function puntuarRechazos(principalId, rechazosPorPrincipal) {
+    var n = Math.min((rechazosPorPrincipal && rechazosPorPrincipal[principalId]) || 0, 3);
     return -n * 6;
   }
 
-  // ---------------------------------------------------------------
-  // Señales suaves del scoring (tramo 1, 2026-07-17): rotación entre semanas,
-  // novedad, temporada y región. Regla fija (Roger 2026-07-16): señales
-  // internas del motor, nunca mandos del usuario. Desempatan entre plantillas
-  // ya viables — mismo orden de magnitud que puntuarRechazos, siempre por
-  // debajo de cuotas/dieta/variedad. Diseño → 01_Research/2026-07-17_RESEARCH_BANCO_AMPLIACION.md §7.
-  // ---------------------------------------------------------------
-
-  // estado.historialPlantillas = { plantillaId: semanaISO del último uso }.
-  // Lo escribe app.js con historialConPlan() al pasar de semana; más viejo que
-  // HISTORIAL_SEMANAS se poda (y ese plato vuelve a contar como "novedad").
   var HISTORIAL_SEMANAS = 6;
-
   function semanasEntre(semanaISOAntigua, semanaISONueva) {
-    var a = new Date(semanaISOAntigua + 'T00:00:00');
-    var b = new Date(semanaISONueva + 'T00:00:00');
+    var a = new Date(semanaISOAntigua + 'T00:00:00'), b = new Date(semanaISONueva + 'T00:00:00');
     return Math.round((b - a) / (7 * 24 * 3600 * 1000));
   }
 
-  // Devuelve el historial actualizado con el plan saliente (NO muta estado —
-  // el motor sigue puro; app.js asigna el resultado antes de generar la semana nueva).
-  function historialConPlan(estado, plan, lunesActualISO) {
-    var historial = {};
-    var previo = (estado && estado.historialPlantillas) || {};
-    Object.keys(previo).forEach(function (id) { historial[id] = previo[id]; });
-    if (plan && plan.dias) {
-      plan.dias.forEach(function (dia) {
-        ['comida', 'cena'].forEach(function (tipo) {
-          var slot = dia && dia[tipo];
-          if (slot && slot.plantillaId) historial[slot.plantillaId] = plan.semanaISO;
-        });
-      });
-    }
-    Object.keys(historial).forEach(function (id) {
-      if (semanasEntre(historial[id], lunesActualISO) > HISTORIAL_SEMANAS) delete historial[id];
-    });
-    return historial;
-  }
-
-  // Rotación: usada hace 1 semana −12, hace 2 −6, ≥3 libre. Un plato con
-  // "me gusta" repetido (≥2) vuelve un escalón antes — protección, no refuerzo:
-  // el feedback loop sigue sin premiar el 👍 para no repetir en bucle.
-  function puntuarRecencia(plantillaId, historial, semanaISO, gustasPorPlantilla) {
-    var ultimo = historial && historial[plantillaId];
+  function puntuarRecencia(principalId, historial, semanaISO, gustasPorPrincipal) {
+    var ultimo = historial && historial[principalId];
     if (!ultimo) return 0;
     var distancia = semanasEntre(ultimo, semanaISO);
-    if (gustasPorPlantilla && gustasPorPlantilla[plantillaId] >= 2) distancia += 1;
+    if (gustasPorPrincipal && gustasPorPrincipal[principalId] >= 2) distancia += 1;
     if (distancia <= 1) return -12;
     if (distancia === 2) return -6;
     return 0;
   }
 
-  // Novedad acotada: sin rastro en el historial (nunca probada, o hace >6
-  // semanas) → bonus pequeño. Cada semana tienden a colarse 1-2 platos nuevos.
-  function puntuarNovedad(plantillaId, historial) {
-    return historial && historial[plantillaId] ? 0 : 4;
-  }
+  function puntuarNovedad(principalId, historial) { return historial && historial[principalId] ? 0 : 4; }
 
-  // Repetición DENTRO de la semana: la variedad dura (restricción 4) solo mira
-  // ingredientes en días consecutivos — sin esto, el mismo plato top-score se
-  // repetía lunes/viernes/domingo (visto en verificación 2026-07-17: la señal
-  // estacional concentra candidatos y lo agrava). Penalización suave por cada
-  // uso previo esta semana: si no queda alternativa viable (cuotas/dieta), el
-  // plato aún puede repetir — mejor repetir que dejar el hueco vacío.
-  function puntuarRepeticionSemana(plantillaId, usosSemana) {
-    var n = Math.min((usosSemana && usosSemana[plantillaId]) || 0, 3);
+  function puntuarRepeticionSemana(principalId, usosSemana) {
+    var n = Math.min((usosSemana && usosSemana[principalId]) || 0, 3);
     return -n * 8;
   }
 
-  function usosDePlan(dias) {
-    var usos = {};
-    (dias || []).forEach(function (dia) {
-      ['comida', 'cena'].forEach(function (tipo) {
-        var slot = dia && dia[tipo];
-        if (slot && slot.plantillaId) usos[slot.plantillaId] = (usos[slot.plantillaId] || 0) + 1;
-      });
-    });
-    return usos;
-  }
-
-  function contarGustasPorPlantilla(estado) {
-    var contador = {};
-    var valoraciones = (estado && estado.valoraciones) || {};
-    Object.keys(valoraciones).forEach(function (clave) {
-      var v = valoraciones[clave];
-      if (v && v.valor === 'gusta' && v.plantillaId) contador[v.plantillaId] = (contador[v.plantillaId] || 0) + 1;
-    });
-    return contador;
-  }
-
-  // Temporada del año por mes — versión sin API del clima→menú (UPGRADES §8):
-  // verano jun-sep, invierno nov-mar, abr/may/oct neutro (research 2026-07-17,
-  // AEMET + picos del calendario MAPA).
   function estacionDelMes(mes) {
     if (mes >= 6 && mes <= 9) return 'verano';
     if (mes >= 11 || mes <= 3) return 'invierno';
     return null;
   }
-
-  function puntuarTemporada(plantilla, estacion) {
-    if (!plantilla.temporada || !estacion) return 0;
-    return plantilla.temporada === estacion ? 5 : -5;
+  function puntuarTemporada(principal, estacion) {
+    if (!principal.temporada || !estacion) return 0;
+    return principal.temporada === estacion ? 5 : -5;
+  }
+  function puntuarRegion(principal, familiaRegion) { return (familiaRegion && principal.region === familiaRegion) ? 4 : 0; }
+  function puntuarCambios(principalId, cambiosPorPrincipal) {
+    var n = Math.min((cambiosPorPrincipal && cambiosPorPrincipal[principalId]) || 0, 3);
+    return -n * 3;
   }
 
-  // Región de la familia (estado.familiaRegion, dato opcional de Ajustes/alta):
-  // empujón a los platos de tu tierra; sin dato, sin sesgo.
-  function puntuarRegion(plantilla, familiaRegion) {
-    return (familiaRegion && plantilla.region === familiaRegion) ? 4 : 0;
-  }
-
-  // ---------------------------------------------------------------
-  // Menú del cole (F1, 2026-07-17 — versión manual del P1 #2, MOTOR_RECETAS §2).
-  // estado.cole = { semanaISO, dias: { "YYYY-MM-DD": {resumen, proteina, hidrato,
-  // verdura} } }, importado pegando el JSON del prompt de ChatGPT hasta que
-  // exista /ai/cole-menu. Señal SOLO en la cena de ese día: evitar repetir la
-  // proteína y el hidrato que los niños ya comieron a mediodía. Suave — nunca
-  // por encima de cuotas/dieta/variedad, como todas las señales.
-  // ---------------------------------------------------------------
+  // Cole → cena, AMPLIADA y SCOPED (§14 punto 5 + borrador §4): compara
+  // contra D y D+1 (calendario real del cole) — regla única: cena del día D
+  // evita comidas de cole de D y D+1. SCOPING: el malus solo se aplica si
+  // ALGÚN presente en esta cena es un menor (<12) — si todos los menores
+  // están ausentes de esta cena concreta, no hay a quién "complementar" y
+  // el malus no debe penalizar la cena de los adultos.
   var TIPOS_HIDRATO_COLE = {
-    pasta: { 'pasta': 1, 'fideos': 1, 'placas-lasana': 1 },
-    arroz: { 'arroz': 1 },
-    patata: { 'patata': 1, 'boniato': 1 },
-    pan: { 'pan': 1, 'pan-integral': 1, 'pan-pita': 1, 'pan-hamburguesa': 1, 'tortilla-trigo': 1, 'masa-pizza': 1, 'masa-empanadilla': 1 }
-    // 'legumbre' se detecta por categoría del ingrediente, no por lista
+    pasta: { pasta: 1, fideos: 1, 'placas-lasana': 1 }, arroz: { arroz: 1 }, patata: { patata: 1, boniato: 1 },
+    pan: { pan: 1, 'pan-integral': 1, 'pan-pita': 1, 'pan-hamburguesa': 1, 'tortilla-trigo': 1, 'masa-pizza': 1, 'masa-empanadilla': 1 }
   };
-
-  function puntuarCole(seleccion, coleDia, banco) {
-    if (!coleDia) return 0;
+  function puntuarCole(idsCandidato, coleDiaD, coleDiaDMas1, presentes, banco) {
+    var hayMenorPresente = (presentes || []).some(function (m) { return edadEnAnios(m.anioNacimiento) < EDAD_MENOR; });
+    if (!hayMenorPresente) return 0; // SCOPING — sin menor en esta cena, sin señal
     var malus = 0;
-    idsUnicosDeSeleccion(seleccion).forEach(function (id) {
-      var ing = banco.ingredientes[id];
-      if (!ing) return;
-      if (coleDia.proteina && ing.categoria === coleDia.proteina) malus -= 8;
-      if (coleDia.hidrato) {
-        var esTipo = coleDia.hidrato === 'legumbre'
-          ? ing.categoria === 'legumbre'
-          : !!(TIPOS_HIDRATO_COLE[coleDia.hidrato] && TIPOS_HIDRATO_COLE[coleDia.hidrato][id]);
-        if (esTipo) malus -= 8;
-      }
+    [coleDiaD, coleDiaDMas1].forEach(function (coleDia) {
+      if (!coleDia) return;
+      idsCandidato.forEach(function (id) {
+        var ing = banco.ingredientes[id];
+        if (!ing) return;
+        if (coleDia.proteina && ing.categoria === coleDia.proteina) malus -= 8;
+        if (coleDia.hidrato) {
+          var esTipo = coleDia.hidrato === 'legumbre' ? ing.categoria === 'legumbre' : !!(TIPOS_HIDRATO_COLE[coleDia.hidrato] && TIPOS_HIDRATO_COLE[coleDia.hidrato][id]);
+          if (esTipo) malus -= 8;
+        }
+      });
     });
     return malus;
   }
 
-  // "Me apetece otra cosa" repetido (F1, MOTOR_RECETAS §2): app.js incrementa
-  // estado.cambios[plantillaId] SOLO en cambios por elección — los de modo nevera
-  // no se registran jamás (necesidad ≠ preferencia, Roger 2026-07-17). Señal más
-  // débil que el rechazo explícito (−6): cambiar no siempre es "no nos gusta".
-  function contarCambiosPorPlantilla(estado) {
-    return (estado && estado.cambios) || {};
+  // Preferencia de técnica saludable (NUEVA v3, borrador §4): bonus/malus por
+  // salubridad de la técnica del PRINCIPAL. Blando a propósito (dosifica, no
+  // excluye — principio 8). Técnicas sin cita (salubridad null: guisado/
+  // salteado/crudo) NO puntúan — ausencia de señal, no cita positiva (mismo
+  // criterio que el research documentó, nunca inventar un nivel neutro).
+  function puntuarSalubridadTecnica(principal, bancoV3) {
+    var tec = bancoV3.tecnicas_coccion[principal.tecnicaCoccion];
+    if (!tec || tec.salubridad == null) return 0;
+    if (tec.salubridad === 1) return 3;
+    if (tec.salubridad === 3) return -3;
+    return 0;
   }
 
-  function puntuarCambios(plantillaId, cambiosPorPlantilla) {
-    var n = Math.min((cambiosPorPlantilla && cambiosPorPlantilla[plantillaId]) || 0, 3);
-    return -n * 3;
+  // Favoritas (NUEVA v3 con efecto real — MOTOR_RECETAS §11.3 resuelto:
+  // hoy decorativo, aquí señal real sobre principales). Peso >+8 (más que
+  // repertorio +8, por ser explícita y no inferida) — valor de partida,
+  // calibrable.
+  var PESO_FAVORITA = 10;
+  function puntuarFavorita(principalId, favoritas) { return (favoritas && favoritas.indexOf(principalId) !== -1) ? PESO_FAVORITA : 0; }
+
+  // Ausencia estructural (NUEVA v3): bonus a ingredientes vetados por un
+  // miembro que estructuralmente NO está en casa hoy (patrón, no presente) —
+  // compensa que hoy esos ingredientes están infra-representados toda la
+  // semana solo por la presencia de quien los veta.
+  function puntuarAusenciaEstructural(idsCandidato, familiaCompleta, presentesIds, tipoComida, diaIndex, banco) {
+    var bonus = 0;
+    (familiaCompleta || []).forEach(function (m) {
+      if (presentesIds.indexOf(m.id) !== -1) return; // está presente, no aplica
+      var patronDia = (m.patron && m.patron[tipoComida]) ? m.patron[tipoComida][diaIndex] : 'casa';
+      if (patronDia === 'casa') return; // ausencia puntual solamente cuenta como "fuera" a efectos de esta señal si el patrón ya lo marca fuera
+      (m.vetos || []).forEach(function (idVetado) { if (idsCandidato.indexOf(idVetado) !== -1) bonus += 4; });
+    });
+    return bonus;
+  }
+
+  function puntuarCandidato(candidato, ctx, senales) {
+    var idsCombo = candidato.complementarias.map(function (c) { return c.seleccionEje; });
+    var idsPrincipal = [];
+    if (candidato.seleccionEje) idsPrincipal.push(candidato.seleccionEje);
+    Object.values(candidato.principal.ingredientes.fijos || {}).forEach(function (l) { idsPrincipal = idsPrincipal.concat(l); });
+    var idsTotal = idsPrincipal.concat(idsCombo);
+    var presentesIds = ctx.presentes.map(function (p) { return p.id; });
+
+    return puntuarCuotasPendientes(idsTotal, ctx.contadorCuotas, ctx.cuotas, ctx.banco, senales.slotsRestantes)
+      + puntuarCentradoBanda(candidato.kcalTotal, ctx.bandaSlot)
+      + puntuarRechazos(candidato.principal.id, senales.rechazosPorPrincipal)
+      + puntuarRecencia(candidato.principal.id, senales.historialPrincipales, senales.semanaISO, senales.gustasPorPrincipal)
+      + puntuarNovedad(candidato.principal.id, senales.historialPrincipales)
+      + puntuarRepeticionSemana(candidato.principal.id, senales.usosSemana)
+      + puntuarTemporada(candidato.principal, senales.estacion)
+      + puntuarRegion(candidato.principal, senales.familiaRegion)
+      + puntuarCambios(candidato.principal.id, senales.cambiosPorPrincipal)
+      + puntuarCole(idsTotal, senales.coleDiaD, senales.coleDiaDMas1, ctx.presentes, ctx.banco)
+      + puntuarSalubridadTecnica(candidato.principal, ctx.bancoV3)
+      + puntuarFavorita(candidato.principal.id, senales.favoritas)
+      + puntuarAusenciaEstructural(idsTotal, senales.familiaCompleta, presentesIds, ctx.tipoComida, senales.diaIndex, ctx.banco);
   }
 
   // ---------------------------------------------------------------
-  // Postre del día (tramo 1, 2026-07-17) — modelo AESAN trasladado a la semana
-  // familiar (consenso comedores escolares 2010; research §4): L-V fruta de
-  // temporada rotada por mes (calendario MAPA), sábado lácteo sencillo,
-  // domingo dulce tradicional como sugerencia (receta aparte, no entra en
-  // compra). Determinista — no pasa por el scoring ni toca kcal del plato.
+  // Elegir determinista top-N (§14 punto 4 + §15): tie-breaker TOTAL
+  // score DESC, id-canónico ASC — nunca desempate implícito de motor de JS.
+  // ---------------------------------------------------------------
+  function idCanonicoCandidato(candidato) {
+    var idsCombo = candidato.complementarias.map(function (c) { return c.elaboracion.id + ':' + c.seleccionEje; }).sort();
+    return candidato.principal.id + '|' + (candidato.seleccionEje || '') + '|' + idsCombo.join(',') + (candidato.componenteExtra ? '|+' + candidato.componenteExtra : '');
+  }
+
+  function ordenarDeterminista(puntuados) {
+    return puntuados.slice().sort(function (a, b) {
+      if (b.score !== a.score) return b.score - a.score;
+      return a.idCanonico < b.idCanonico ? -1 : (a.idCanonico > b.idCanonico ? 1 : 0);
+    });
+  }
+
+  function elegirTopN(candidatos, ctx, senales, n) {
+    var puntuados = candidatos.map(function (c) { return { candidato: c, score: puntuarCandidato(c, ctx, senales), idCanonico: idCanonicoCandidato(c) }; });
+    return ordenarDeterminista(puntuados).slice(0, n);
+  }
+
+  // ---------------------------------------------------------------
+  // Jerarquía de RELAJACIÓN ante 0 soluciones (§15 punto 3): distinto del
+  // orden de APLICACIÓN de restricciones (solo poda, no cambia qué
+  // sobrevive) — esto SÍ es lógica de producto, orden decidido y explícito.
+  // Vetos y dieta/mesa-mixta NUNCA se relajan (foso #1 + posible alergia).
+  // Orden: (1) tal cual → (2) esfuerzo → (3) variedad → (4) banda kcal más
+  // ancha → (5) cuotas máximas (último recurso, protegen salud) → (6) vacío.
+  // ---------------------------------------------------------------
+  var NIVELES_RELAJACION = [
+    { id: 'estricto', ignorarEsfuerzo: false, ignorarVariedad: false, margenKcal: null, ignorarCuotas: false },
+    { id: 'esfuerzo', ignorarEsfuerzo: true, ignorarVariedad: false, margenKcal: null, ignorarCuotas: false },
+    { id: 'variedad', ignorarEsfuerzo: true, ignorarVariedad: true, margenKcal: null, ignorarCuotas: false },
+    { id: 'banda-ancha', ignorarEsfuerzo: true, ignorarVariedad: true, margenKcal: 0.20, ignorarCuotas: false },
+    { id: 'cuotas', ignorarEsfuerzo: true, ignorarVariedad: true, margenKcal: 0.20, ignorarCuotas: true }
+  ];
+
+  function generarCandidatosConRelajacion(ctxBase, margenDefecto) {
+    for (var i = 0; i < NIVELES_RELAJACION.length; i++) {
+      var nivel = NIVELES_RELAJACION[i];
+      var ctx = Object.assign({}, ctxBase, {
+        ignorarEsfuerzo: ctxBase.ignorarEsfuerzo || nivel.ignorarEsfuerzo,
+        usadosHoy: nivel.ignorarVariedad ? {} : ctxBase.usadosHoy,
+        usadosAyer: nivel.ignorarVariedad ? {} : ctxBase.usadosAyer,
+        principalExcluido: nivel.ignorarVariedad ? null : ctxBase.principalExcluido,
+        margenKcal: nivel.margenKcal != null ? nivel.margenKcal : (margenDefecto == null ? MARGEN_KCAL_DEFECTO : margenDefecto),
+        contadorCuotas: nivel.ignorarCuotas ? {} : ctxBase.contadorCuotas,
+        cuotaFritos: nivel.ignorarCuotas ? null : ctxBase.cuotaFritos
+      });
+      var r = generarCandidatosSlot(ctx);
+      if (r.candidatos.length) return { candidatos: r.candidatos, trace: r.trace, banda: r.banda, nivelRelajacion: nivel.id, ctxUsado: ctx };
+    }
+    return { candidatos: [], trace: nuevoTrace(), banda: bandaAgregadaMesa(ctxBase.presentes, ctxBase.tipoComida, ctxBase.esFinde, ctxBase.fechaReferencia, margenDefecto), nivelRelajacion: 'vacio', ctxUsado: ctxBase };
+  }
+
+  // ---------------------------------------------------------------
+  // Postre del día — IDÉNTICO a v2 (borrador §7: modelo AESAN sin cambios,
+  // componente del menú pero determinista, fuera del scoring).
   // ---------------------------------------------------------------
   function postreDelDia(banco, fecha, diaIndex) {
     var postres = banco && banco.postres;
     if (!postres) return null;
     var d = new Date(fecha + 'T00:00:00');
     var mes = d.getMonth() + 1;
-    if (diaIndex === 5 && postres.lacteo) { // sábado
+    if (diaIndex === 5 && postres.lacteo) {
       var ingL = banco.ingredientes[postres.lacteo];
       return { tipo: 'lacteo', id: postres.lacteo, nombre: (ingL ? ingL.nombre : 'Yogur natural') + ' con fruta' };
     }
-    if (diaIndex === 6 && (postres.tradicionales || []).length) { // domingo — sugerencia
+    if (diaIndex === 6 && (postres.tradicionales || []).length) {
       var estacion = estacionDelMes(mes);
       var aptos = postres.tradicionales.filter(function (p) { return !p.temporada || !estacion || p.temporada === estacion; });
       if (!aptos.length) aptos = postres.tradicionales;
@@ -706,42 +847,616 @@
   }
 
   // ---------------------------------------------------------------
-  // Descubrir — categorías reales rotando (2026-07-20, Roger: "busca en tu
-  // catálogo... y otras categorías que podamos incluir, no visibles ahora
-  // pero sí en bbdd"). Cada categoría es un filtro sobre datos reales de la
-  // plantilla — desde que existe el campo `tematica` (2026-07-20, una por
-  // cada una de las 82) se filtra por ese campo directamente en vez de
-  // inferirlo por regex sobre el nombre; "rápidas"/"temporada" siguen
-  // filtrando por `esfuerzo`/`temporada`, son otra dimensión, no un tema.
-  // Todas con >=5 candidatas reales salvo "temporada" (varía con el mes; en
-  // abr/may/oct, mes neutro sin verano ni invierno, se cae del pool ese día,
-  // no se fuerza un valor falso). "Para peques" (`ninos`) NO se incluye a
-  // propósito: el campo es true en 68-77 de 82 plantillas según el corte —
-  // no diferencia un subconjunto real, sería una categoría de mentira con
-  // ropaje de dato real. "Otoño" y "extras de Navidad/cena con invitados"
-  // tampoco: no hay tag de otoño ni platos de gran formato en el banco
-  // todavía (visto con Roger, pendiente de un tramo de banco nuevo si se
-  // quiere de verdad — ver UPGRADES.md §3). Rotación determinista por día
-  // (mismo patrón que el postre tradicional de domingo, arriba, y la
-  // portada de index.html): sin Math.random, sin persistir nada, cambia
-  // sola a las 00:00 — recibe `fecha` como parámetro (no Date.now() interno)
-  // para seguir siendo puro y testeable en consola.
+  // Resolución de un candidato a menú completo (nombre, pasos, kcal por
+  // comensal, ingredientes para la compra) — el paso CARO que el iterator
+  // lazy difiere hasta que el caller realmente lo consume (1 o top-3 nevera).
+  // ---------------------------------------------------------------
+  var PASOS_GENERICOS_COMPLEMENTARIA = {
+    hervido: 'Cocer {ingrediente} en agua con sal hasta que esté tierno/a.',
+    horno: 'Hornear {ingrediente} a 200°C hasta que esté hecho/a.',
+    frito: 'Freír {ingrediente} en aceite bien caliente hasta dorar.',
+    salteado: 'Saltear {ingrediente} en una sartén con un poco de aceite.',
+    crudo: 'Lavar y preparar {ingrediente} en crudo.',
+    vapor: 'Cocer {ingrediente} al vapor hasta que esté tierno/a.'
+  };
+  function pasosComplementaria(complementaria, idElegido, banco) {
+    var ing = banco.ingredientes[idElegido];
+    var nombre = ing ? ing.nombre.toLowerCase() : idElegido;
+    if (!complementaria.tecnicaCoccion) return ['Servir ' + nombre + ' tal cual, sin cocinar.'];
+    var plantillaPaso = PASOS_GENERICOS_COMPLEMENTARIA[complementaria.tecnicaCoccion] || 'Preparar {ingrediente}.';
+    return [plantillaPaso.split('{ingrediente}').join(capitaliza(nombre))];
+  }
+
+  function minuscula(s) { if (!s) return s; return s.charAt(0).toLowerCase() + s.slice(1); }
+
+  function resolverNombre(elaboracion, seleccionEje, banco) {
+    if (!elaboracion.ingredientes.eje || !seleccionEje) return elaboracion.nombre;
+    var ing = banco.ingredientes[seleccionEje];
+    var nombreIng = ing ? ing.nombre : seleccionEje;
+    // los nombres de ingrediente en el banco vienen SIEMPRE capitalizados ("Arroz") — v2
+    // solo sustituía al inicio de frase. A mitad de frase ("Guarnición de {hidrato}") hay
+    // que minuscular explícitamente, no basta con no capitalizar (la fuente ya lo está).
+    var placeholder = '{' + elaboracion.ingredientes.eje + '}';
+    var texto = elaboracion.nombre.indexOf(placeholder) === 0 ? capitaliza(nombreIng) : minuscula(nombreIng);
+    return elaboracion.nombre.split(placeholder).join(texto);
+  }
+
+  // Pasos de una elaboración resueltos para SU propio eje — filtra líneas que
+  // mencionen un placeholder de un grupo que ya NO es interno (v2 describía
+  // proteína+hidrato+verdura como un solo texto; en v3 hidrato/verdura externos
+  // tienen su PROPIA elaboración con sus propios pasos vía pasosComplementaria,
+  // así que esas líneas del principal ya no aplican — se descartan, no se dejan
+  // con el placeholder colgado).
+  function pasosDeElaboracion(elaboracion, seleccionEje, banco) {
+    var eje = elaboracion.ingredientes.eje;
+    return (elaboracion.pasos || [])
+      .filter(function (paso) {
+        var placeholders = (paso.match(/\{(\w+)\}/g) || []).map(function (p) { return p.slice(1, -1); });
+        return placeholders.every(function (p) { return p === eje; });
+      })
+      .map(function (paso) {
+        if (!eje || !seleccionEje) return paso;
+        var ing = banco.ingredientes[seleccionEje];
+        return paso.split('{' + eje + '}').join(ing ? capitaliza(ing.nombre) : seleccionEje);
+      });
+  }
+
+  function resolverMenu(candidato, ctx) {
+    var banco = ctx.banco, bancoV3 = ctx.bancoV3;
+    var nombrePrincipal = resolverNombre(candidato.principal, candidato.seleccionEje, banco);
+    var pasosPrincipal = pasosDeElaboracion(candidato.principal, candidato.seleccionEje, banco);
+
+    var complementariasResueltas = candidato.complementarias.map(function (c) {
+      return { id: c.elaboracion.id, nombre: resolverNombre(c.elaboracion, c.seleccionEje, banco), seleccionEje: c.seleccionEje, pasos: pasosComplementaria(c.elaboracion, c.seleccionEje, banco) };
+    });
+
+    var adaptaciones = calcularAdaptaciones(candidato.principal, candidato.seleccionEje, ctx.presentes, banco, ctx.vetosViabilidad || ctx.vetosUnion);
+    var mapaAdaptaciones = {};
+    adaptaciones.forEach(function (a) { mapaAdaptaciones[a.miembroId] = a; });
+
+    var componentes = componentesDeCandidato(candidato.principal, candidato.seleccionEje, candidato.complementarias);
+    if (candidato.componenteExtra) componentes = componentes.concat([{ id: candidato.componenteExtra, grupo: 'hidrato', tecnicaCoccion: null, acabado: null }]);
+
+    var kcalAlinioBase = kcalAlinioPorRacion(candidato.principal, candidato.complementarias, bancoV3);
+
+    var ingredientesCompra = []; // [{id, gramos}]
+    var kcalPorComensal = [];
+    var kcalTotalReal = 0;
+
+    ctx.presentes.forEach(function (miembro) {
+      var esNino = edadEnAnios(miembro.anioNacimiento) < EDAD_MENOR;
+      var factor = candidato.factorRacion[miembro.id] || 1;
+      var adapt = mapaAdaptaciones[miembro.id];
+      var kcalMiembro = kcalAlinioBase * factor;
+      componentes.forEach(function (comp) {
+        var idEfectivo = (adapt && comp.id === candidato.seleccionEje) ? adapt.valor : comp.id;
+        var ing = banco.ingredientes[idEfectivo];
+        if (!ing) return;
+        var gramosBase = esNino ? ing.racion_nino_g : ing.racion_adulto_g;
+        var gramos = gramosBase * factor;
+        var kcal100 = kcalIngredienteConTecnica(ing, comp.grupo, comp.tecnicaCoccion, comp.acabado, bancoV3);
+        kcalMiembro += gramos * kcal100 / 100;
+        var linea = null;
+        for (var i = 0; i < ingredientesCompra.length; i++) { if (ingredientesCompra[i].id === idEfectivo) { linea = ingredientesCompra[i]; break; } }
+        if (!linea) { linea = { id: idEfectivo, gramos: 0 }; ingredientesCompra.push(linea); }
+        linea.gramos += gramos;
+      });
+      kcalMiembro = Math.round(kcalMiembro);
+      kcalPorComensal.push({ miembroId: miembro.id, kcal: kcalMiembro });
+      kcalTotalReal += kcalMiembro;
+    });
+
+    // "Segunda cocción" por mesa mixta (Roger 2026-07-14, v2): los pasos del
+    // PRINCIPAL re-resueltos con el ingrediente adaptado de cada miembro — la
+    // receta explica la variación, no solo la selección compartida.
+    var pasosAdaptados = adaptaciones.map(function (a) {
+      return { miembroId: a.miembroId, ingrediente: (banco.ingredientes[a.valor] || {}).nombre || a.valor, pasos: pasosDeElaboracion(candidato.principal, a.valor, banco) };
+    });
+
+    return {
+      principalId: candidato.principal.id, seleccionEje: candidato.seleccionEje,
+      complementarias: candidato.complementarias.map(function (c) { return { id: c.elaboracion.id, seleccionEje: c.seleccionEje }; }),
+      componenteExtra: candidato.componenteExtra, factorRacion: candidato.factorRacion, adaptaciones: adaptaciones,
+      nombre: nombrePrincipal, pasos: pasosPrincipal, pasosAdaptados: pasosAdaptados, complementariasResueltas: complementariasResueltas,
+      kcalPorComensal: kcalPorComensal, kcalTotal: Math.round(kcalTotalReal), ingredientes: ingredientesCompra
+    };
+  }
+
+  // ---------------------------------------------------------------
+  // Función LAZY: generator que produce menús YA ORDENADOS por score; el
+  // caller consume 1 (flujo normal) o hasta 3 (modo nevera, top-N nativo,
+  // §14 punto 7 + §12 borrador "salida top-N desde el principio"). El
+  // resolverMenu (caro: nombres, pasos, ingredientes) solo corre para lo
+  // que realmente se consume.
+  // ---------------------------------------------------------------
+  function iterarMenus(candidatosOrdenados, ctx) {
+    var i = 0;
+    return {
+      next: function () {
+        if (i >= candidatosOrdenados.length) return { done: true, value: undefined };
+        var candidato = candidatosOrdenados[i++].candidato;
+        return { done: false, value: resolverMenu(candidato, ctx) };
+      }
+    };
+  }
+
+  // ---------------------------------------------------------------
+  // Memoria — contadores re-anclados a PRINCIPAL (borrador §7: "re-anclado a
+  // principal", mismo mecanismo que v2 sobre plantillaId).
+  // ---------------------------------------------------------------
+  function contarRechazosPorPrincipal(estado) {
+    var contador = {};
+    var valoraciones = (estado && estado.valoraciones) || {};
+    Object.keys(valoraciones).forEach(function (clave) {
+      var v = valoraciones[clave];
+      if (v && v.valor === 'no-gusta' && v.principalId) contador[v.principalId] = (contador[v.principalId] || 0) + 1;
+    });
+    return contador;
+  }
+  function contarGustasPorPrincipal(estado) {
+    var contador = {};
+    var valoraciones = (estado && estado.valoraciones) || {};
+    Object.keys(valoraciones).forEach(function (clave) {
+      var v = valoraciones[clave];
+      if (v && v.valor === 'gusta' && v.principalId) contador[v.principalId] = (contador[v.principalId] || 0) + 1;
+    });
+    return contador;
+  }
+  function contarCambiosPorPrincipal(estado) { return (estado && estado.cambios) || {}; }
+
+  function historialConPlan(estado, plan, lunesActualISO) {
+    var historial = {};
+    var previo = (estado && estado.historialPrincipales) || {};
+    Object.keys(previo).forEach(function (id) { historial[id] = previo[id]; });
+    if (plan && plan.dias) {
+      plan.dias.forEach(function (dia) {
+        ['comida', 'cena'].forEach(function (tipo) {
+          var slot = dia && dia[tipo];
+          if (slot && slot.menu && slot.menu.principalId) historial[slot.menu.principalId] = plan.semanaISO;
+        });
+      });
+    }
+    Object.keys(historial).forEach(function (id) { if (semanasEntre(historial[id], lunesActualISO) > HISTORIAL_SEMANAS) delete historial[id]; });
+    return historial;
+  }
+
+  function usosDePlan(dias) {
+    var usos = {};
+    (dias || []).forEach(function (dia) {
+      ['comida', 'cena'].forEach(function (tipo) {
+        var slot = dia && dia[tipo];
+        if (slot && slot.menu && slot.menu.principalId) usos[slot.menu.principalId] = (usos[slot.menu.principalId] || 0) + 1;
+      });
+    });
+    return usos;
+  }
+
+  function contadorInicialDesdeDias(diasPrevios, banco) {
+    var contador = {};
+    (diasPrevios || []).forEach(function (dia) {
+      ['comida', 'cena'].forEach(function (tipo) {
+        var slot = dia && dia[tipo];
+        if (slot && slot.menu) actualizarContadorCuotas(contador, idsDeMenuGuardado(slot.menu), banco);
+      });
+    });
+    return contador;
+  }
+
+  function contadorFritosInicialDesdeDias(diasPrevios, bancoV3) {
+    var n = 0;
+    (diasPrevios || []).forEach(function (dia) {
+      ['comida', 'cena'].forEach(function (tipo) {
+        var slot = dia && dia[tipo];
+        if (slot && slot.menu && slot.menu.tecnicaPrincipal === 'frito') n++;
+      });
+    });
+    return { n: n };
+  }
+
+  // ids de un menú YA GUARDADO en el plan (shape persistido, distinto del
+  // candidato en memoria durante la búsqueda) — usado para reconstruir
+  // contadores desde días previos.
+  function idsDeMenuGuardado(menu) {
+    var ids = [];
+    if (menu.seleccionEje) ids.push(menu.seleccionEje);
+    (menu.complementarias || []).forEach(function (c) { if (c.seleccionEje) ids.push(c.seleccionEje); });
+    if (menu.componenteExtra) ids.push(menu.componenteExtra);
+    return ids;
+  }
+
+  function usadosEnDiaGuardado(dia) {
+    var set = {};
+    if (!dia) return set;
+    ['comida', 'cena'].forEach(function (tipo) { var slot = dia[tipo]; if (slot && slot.menu) idsDeMenuGuardado(slot.menu).forEach(function (id) { set[id] = 1; }); });
+    return set;
+  }
+
+  function categoriasProteinaEnDiaGuardado(dia, banco) {
+    var set = {};
+    if (!dia) return set;
+    ['comida', 'cena'].forEach(function (tipo) {
+      var slot = dia[tipo];
+      if (slot && slot.menu && slot.menu.categoriaProteina) set[slot.menu.categoriaProteina] = 1;
+    });
+    return set;
+  }
+
+  // ---------------------------------------------------------------
+  // 5. Generación de la semana completa — orquesta generarCandidatosSlot +
+  // relajación + top-1 + resolverMenu, día a día, slot a slot. fechaReferencia
+  // SIEMPRE inyectada (nunca new Date() interno — fuga de determinismo real
+  // confirmada en v2 línea 844, corregida aquí, §14 punto 4).
+  // ---------------------------------------------------------------
+  function generarSemana(estado, bancoV3, banco, desde, planExistente, diaPrevio, fechaReferencia) {
+    desde = desde || 0;
+    var semanaISO = (planExistente && planExistente.semanaISO) || lunesDeEstaSemana(fechaReferencia);
+    var cuotas = (banco && banco.categorias_cuota) || {};
+    var diasAnteriores = planExistente ? planExistente.dias.slice(0, desde) : [];
+    var contadorCuotas = contadorInicialDesdeDias(diasAnteriores, banco);
+    var contadorFritos = contadorFritosInicialDesdeDias(diasAnteriores, bancoV3);
+    var rechazosPorPrincipal = contarRechazosPorPrincipal(estado);
+    var historialPrincipales = (estado && estado.historialPrincipales) || null;
+    var gustasPorPrincipal = contarGustasPorPrincipal(estado);
+    var cambiosPorPrincipal = contarCambiosPorPrincipal(estado);
+    var estacion = estacionDelMes(new Date(semanaISO + 'T00:00:00').getMonth() + 1);
+    var familiaRegion = (estado && estado.familiaRegion) || null;
+    var usosSemana = usosDePlan(diasAnteriores);
+    var favoritas = (estado && estado.favoritas) || [];
+    var dias = [];
+    var nivelesRelajacionUsados = [];
+    var slotsConAlternativaNueva = []; // para la garantía de novedad, ver post-pase tras el bucle
+
+    for (var i = 0; i < 7; i++) {
+      if (i < desde && planExistente && planExistente.dias[i]) { dias.push(planExistente.dias[i]); continue; }
+      var fecha = fechaISO(semanaISO, i);
+      var esFinde = esFinDeSemana(i);
+      var usadosAyer = i === 0 ? usadosEnDiaGuardado(diaPrevio) : usadosEnDiaGuardado(dias[i - 1]);
+      var categoriasProteinaAyer = i === 0 ? {} : categoriasProteinaEnDiaGuardado(dias[i - 1], banco); // solo mismo día, no ayer — ver violaProteinaMismaCategoriaMismoDia
+      var diaActual = { fecha: fecha, comida: null, cena: null };
+      var usadosHoyAcumulado = {};
+      var categoriasProteinaHoyAcumulado = {};
+
+      ['comida', 'cena'].forEach(function (tipoComida) {
+        var presentes = presentesEnComida(estado, fecha, i, tipoComida);
+        if (!presentes.length) { diaActual[tipoComida] = null; return; }
+
+        var coleDiaD = tipoComida === 'cena' ? ((estado.cole && estado.cole.dias && estado.cole.dias[fecha]) || null) : null;
+        var coleDiaDMas1 = tipoComida === 'cena' ? ((estado.cole && estado.cole.dias && estado.cole.dias[fechaISO(fecha, 1)]) || null) : null;
+
+        var ctxBase = {
+          bancoV3: bancoV3, banco: banco, estado: estado, presentes: presentes, tipoComida: tipoComida, esFinde: esFinde,
+          fechaReferencia: fechaReferencia, vetosUnion: vetosDe(presentes), vetosViabilidad: vetosDe(presentes),
+          usadosHoy: usadosHoyAcumulado, usadosAyer: usadosAyer, categoriasProteinaHoy: categoriasProteinaHoyAcumulado,
+          contadorCuotas: contadorCuotas, cuotas: cuotas, contadorFritos: contadorFritos, cuotaFritos: bancoV3.cuota_fritos,
+          ignorarEsfuerzo: false
+        };
+
+        var resultado = generarCandidatosConRelajacion(ctxBase);
+        nivelesRelajacionUsados.push(resultado.nivelRelajacion);
+        if (!resultado.candidatos.length) { diaActual[tipoComida] = null; return; }
+
+        var slotsRestantes = Math.max(1, (7 - i) * 2);
+        var senales = {
+          slotsRestantes: slotsRestantes, rechazosPorPrincipal: rechazosPorPrincipal, historialPrincipales: historialPrincipales,
+          semanaISO: semanaISO, gustasPorPrincipal: gustasPorPrincipal, usosSemana: usosSemana, estacion: estacion,
+          familiaRegion: familiaRegion, cambiosPorPrincipal: cambiosPorPrincipal, coleDiaD: coleDiaD, coleDiaDMas1: coleDiaDMas1,
+          favoritas: favoritas, familiaCompleta: estado.familia, diaIndex: i
+        };
+        resultado.ctxUsado.bandaSlot = resultado.banda;
+        // candidatos "nuevos" (sin rastro en historialPrincipales) de ESTE slot, ya válidos
+        // (restricciones duras cumplidas) — alimenta la garantía de novedad tras el bucle.
+        var candidatosNuevosSlot = resultado.candidatos.filter(function (c) { return !estaEn(historialPrincipales || {}, c.principal.id); });
+        if (candidatosNuevosSlot.length) {
+          slotsConAlternativaNueva.push({ diaIndex: i, tipoComida: tipoComida, candidatos: candidatosNuevosSlot, ctxUsado: resultado.ctxUsado, senales: senales });
+        }
+        var top1 = elegirTopN(resultado.candidatos, resultado.ctxUsado, senales, 1);
+        var menuResuelto = resolverMenu(top1[0].candidato, resultado.ctxUsado);
+
+        var ingProteina = menuResuelto.seleccionEje ? banco.ingredientes[menuResuelto.seleccionEje] : null;
+        var slotGuardado = {
+          menu: Object.assign({}, menuResuelto, {
+            categoriaProteina: ingProteina ? ingProteina.categoria : null,
+            tecnicaPrincipal: top1[0].candidato.principal.tecnicaCoccion
+          })
+        };
+        diaActual[tipoComida] = slotGuardado;
+
+        idsDeMenuGuardado(slotGuardado.menu).forEach(function (id) { usadosHoyAcumulado[id] = 1; });
+        if (ingProteina) categoriasProteinaHoyAcumulado[ingProteina.categoria] = 1;
+        actualizarContadorCuotas(contadorCuotas, idsDeMenuGuardado(slotGuardado.menu), banco);
+        if (slotGuardado.menu.tecnicaPrincipal === 'frito') contadorFritos.n = (contadorFritos.n || 0) + 1;
+        usosSemana[slotGuardado.menu.principalId] = (usosSemana[slotGuardado.menu.principalId] || 0) + 1;
+      });
+
+      dias.push(diaActual);
+    }
+
+    // Garantía v3 (borrador §5 "Garantías v3", absorbe el pendiente §11.4 de MOTOR_RECETAS.md):
+    // "1 elaboración PRINCIPAL nueva por semana — hueco reservado" (antes la novedad era señal
+    // de desempate sin garantía). Si NINGÚN slot de la semana completa (incluidos los días
+    // copiados de planExistente, i < desde) tiene ya un principal sin rastro en historial, se
+    // fuerza EL PRIMER slot recién generado que tuviera una alternativa nueva entre sus propios
+    // candidatos YA válidos — nunca rompe cuotas/mesa mixta/variedad porque sale del mismo pool,
+    // solo se prefiere la novedad sobre el resto del scoring para ese slot. Si ningún slot
+    // recién generado tenía alternativa nueva viable, no se fuerza nada — no se puede garantizar
+    // lo que no existe (p. ej. familia que ya agotó su repertorio viable).
+    var yaHayNovedad = dias.some(function (d) {
+      return ['comida', 'cena'].some(function (t) {
+        var s = d[t];
+        return s && s.menu && !estaEn(historialPrincipales || {}, s.menu.principalId);
+      });
+    });
+    if (!yaHayNovedad && slotsConAlternativaNueva.length) {
+      var elegido = slotsConAlternativaNueva[0];
+      var topNuevo = elegirTopN(elegido.candidatos, elegido.ctxUsado, elegido.senales, 1);
+      var menuNuevo = resolverMenu(topNuevo[0].candidato, elegido.ctxUsado);
+      var ingProteinaNuevo = menuNuevo.seleccionEje ? banco.ingredientes[menuNuevo.seleccionEje] : null;
+      dias[elegido.diaIndex][elegido.tipoComida] = {
+        menu: Object.assign({}, menuNuevo, {
+          categoriaProteina: ingProteinaNuevo ? ingProteinaNuevo.categoria : null,
+          tecnicaPrincipal: topNuevo[0].candidato.principal.tecnicaCoccion
+        })
+      };
+    }
+
+    return { semanaISO: semanaISO, dias: dias, nivelesRelajacionUsados: nivelesRelajacionUsados };
+  }
+
+  function regenerarDesde(estado, plan, diaIndex, bancoV3, banco, fechaReferencia) {
+    return generarSemana(estado, bancoV3, banco, diaIndex, plan, null, fechaReferencia);
+  }
+
+  // ---------------------------------------------------------------
+  // 6. Cambiar plato — 3 modos del flujo "otra cosa" (borrador §6, última
+  // hora): (a) 'otro-menu' — reensambla el slot entero; (b) 'nevera' —
+  // construye con lo disponible, TOP-N nativo (hasta 3, modo nevera invierte
+  // el filtro); (c) 'solo-complementaria' — mantiene el principal, re-elige
+  // solo hidrato/verdura.
+  // ---------------------------------------------------------------
+  function cambiarPlato(estado, plan, dia, tipoComida, opciones, bancoV3, banco, fechaReferencia) {
+    var diaObj = plan.dias[dia];
+    if (!diaObj) return null;
+    var fecha = diaObj.fecha;
+    var presentes = presentesEnComida(estado, fecha, dia, tipoComida);
+    if (!presentes.length) return null;
+
+    var otraComida = tipoComida === 'comida' ? diaObj.cena : diaObj.comida;
+    var usadosHoy = otraComida && otraComida.menu ? usadosEnDiaGuardado({ comida: otraComida, cena: null }.comida ? { comida: otraComida } : {}) : {};
+    // (recalculado abajo de forma más simple)
+    usadosHoy = {};
+    if (otraComida && otraComida.menu) idsDeMenuGuardado(otraComida.menu).forEach(function (id) { usadosHoy[id] = 1; });
+    var usadosAyer = usadosEnDiaGuardado(plan.dias[dia - 1]);
+
+    var cuotas = (banco && banco.categorias_cuota) || {};
+    var diasParaContar = plan.dias.map(function (d, i) { if (i !== dia) return d; var copia = { fecha: d.fecha, comida: d.comida, cena: d.cena }; copia[tipoComida] = null; return copia; });
+    var contadorCuotas = contadorInicialDesdeDias(diasParaContar, banco);
+    var contadorFritos = contadorFritosInicialDesdeDias(diasParaContar, bancoV3);
+    var esFinde = esFinDeSemana(dia);
+
+    var coleDiaD = tipoComida === 'cena' ? ((estado.cole && estado.cole.dias && estado.cole.dias[fecha]) || null) : null;
+    var coleDiaDMas1 = tipoComida === 'cena' ? ((estado.cole && estado.cole.dias && estado.cole.dias[fechaISO(fecha, 1)]) || null) : null;
+    var senales = {
+      slotsRestantes: Math.max(1, (7 - dia) * 2), rechazosPorPrincipal: contarRechazosPorPrincipal(estado),
+      historialPrincipales: (estado && estado.historialPrincipales) || null, semanaISO: plan.semanaISO,
+      gustasPorPrincipal: contarGustasPorPrincipal(estado), usosSemana: usosDePlan(diasParaContar),
+      estacion: estacionDelMes(new Date(fecha + 'T00:00:00').getMonth() + 1), familiaRegion: (estado && estado.familiaRegion) || null,
+      cambiosPorPrincipal: contarCambiosPorPrincipal(estado), coleDiaD: coleDiaD, coleDiaDMas1: coleDiaDMas1,
+      favoritas: (estado && estado.favoritas) || [], familiaCompleta: estado.familia, diaIndex: dia
+    };
+
+    var ctxBase = {
+      bancoV3: bancoV3, banco: banco, estado: estado, presentes: presentes, tipoComida: tipoComida, esFinde: esFinde,
+      fechaReferencia: fechaReferencia, vetosUnion: vetosDe(presentes), vetosViabilidad: vetosDe(presentes),
+      usadosHoy: usadosHoy, usadosAyer: usadosAyer, categoriasProteinaHoy: {},
+      contadorCuotas: contadorCuotas, cuotas: cuotas, contadorFritos: contadorFritos, cuotaFritos: bancoV3.cuota_fritos,
+      ignorarEsfuerzo: false
+    };
+
+    if (opciones && opciones.modo === 'solo-complementaria') {
+      // mantiene el principal actual, solo pide combos de complementarias nuevos — variedad
+      // relajada a propósito (es un cambio deliberado, no busca evitar repetición)
+      var slotActual = diaObj[tipoComida];
+      if (!slotActual || !slotActual.menu) return null;
+      var principalActual = elaboracionPorId(bancoV3, estado, slotActual.menu.principalId);
+      if (!principalActual) return null;
+      var gruposFaltantes = ['proteina', 'hidrato', 'verdura'].filter(function (g) { return principalActual.grupos.indexOf(g) === -1; });
+      var ctxSolo = Object.assign({}, ctxBase, { usadosHoy: {}, usadosAyer: {} });
+      var banda = bandaAgregadaMesa(presentes, tipoComida, esFinde, fechaReferencia, MARGEN_KCAL_DEFECTO);
+      var bandaPersonaFn = function (p) { return objetivoBandaPersona(p, tipoComida, esFinde, fechaReferencia, MARGEN_KCAL_DEFECTO); };
+      var combos = generarCombosComplementarias(bancoV3, principalActual.id, gruposFaltantes, ctxBase.vetosUnion);
+      var idComboActual = (slotActual.menu.complementarias || []).map(function (c) { return c.seleccionEje; }).sort().join(',');
+      var candidatosSolo = [];
+      combos.forEach(function (combo) {
+        var estructura = verificarEstructura(principalActual, combo.map(function (c) { return { elaboracion: c.elaboracion }; }));
+        if (!estructura.valido) return;
+        var cierre = cerrarBandaKcal(principalActual, slotActual.menu.seleccionEje, combo, presentes, banda, bandaPersonaFn, banco, bancoV3);
+        if (!cierre.viable) return;
+        var idCombo = combo.map(function (c) { return c.seleccionEje; }).sort().join(',');
+        candidatosSolo.push({ principal: principalActual, seleccionEje: slotActual.menu.seleccionEje, complementarias: combo, kcalTotal: cierre.kcalTotal, factorRacion: cierre.factorRacion, componenteExtra: cierre.componenteExtra, faltantesNevera: [], idCombo: idCombo });
+      });
+      if (!candidatosSolo.length) return null;
+      // no repetir la MISMA combinación de complementarias ya mostrada — si no hay otra
+      // combinación viable, se acepta repetir (bug real, verificación de navegador
+      // 2026-07-21: sin esto "cambiar solo el acompañamiento" podía devolver el mismo
+      // arroz+verdura de antes, sin exclusión alguna).
+      var candidatosSoloDistintos = candidatosSolo.filter(function (c) { return c.idCombo !== idComboActual; });
+      var poolSolo = candidatosSoloDistintos.length ? candidatosSoloDistintos : candidatosSolo;
+      ctxSolo.bandaSlot = banda;
+      var topSolo = elegirTopN(poolSolo, ctxSolo, senales, 1);
+      var menuSolo = resolverMenu(topSolo[0].candidato, ctxSolo);
+      return { menu: menuSolo, opciones: null };
+    }
+
+    if (opciones && opciones.modo === 'nevera' && opciones.disponibles) {
+      var ctxNevera = Object.assign({}, ctxBase, { disponibles: opciones.disponibles, usadosHoy: {}, usadosAyer: {}, ignorarEsfuerzo: true });
+      var rNevera = generarCandidatosSlot(ctxNevera);
+      // montables primero, luego casi-montables (falta 1) — nunca se descartan, se marcan
+      var candidatosOrdenadosPorDisponibilidad = rNevera.candidatos.slice().sort(function (a, b) { return a.faltantesNevera.length - b.faltantesNevera.length; });
+      ctxNevera.bandaSlot = rNevera.banda;
+      var puntuadosNevera = candidatosOrdenadosPorDisponibilidad.map(function (c) { return { candidato: c, score: puntuarCandidato(c, ctxNevera, senales) - c.faltantesNevera.length * 1000, idCanonico: idCanonicoCandidato(c) }; });
+      var top3Nevera = ordenarDeterminista(puntuadosNevera).slice(0, 3);
+      if (!top3Nevera.length) return { menu: null, opciones: [] };
+      var menusNevera = top3Nevera.map(function (p) { var m = resolverMenu(p.candidato, ctxNevera); m.faltaIngrediente = p.candidato.faltantesNevera[0] || null; return m; });
+      return { menu: null, opciones: menusNevera };
+    }
+
+    if (opciones && opciones.modo === 'manual' && opciones.principalId) {
+      var ctxManual = Object.assign({}, ctxBase, { usadosHoy: {}, usadosAyer: {}, ignorarEsfuerzo: true });
+      var rManual = generarCandidatosSlot(ctxManual);
+      var soloEste = rManual.candidatos.filter(function (c) { return c.principal.id === opciones.principalId; });
+      if (!soloEste.length) return null;
+      ctxManual.bandaSlot = rManual.banda;
+      var topManual = elegirTopN(soloEste, ctxManual, senales, 1);
+      return { menu: resolverMenu(topManual[0].candidato, ctxManual), opciones: null };
+    }
+
+    // 'otro-menu' (defecto): reensambla el slot entero con variedad activa (no repetir lo de hoy);
+    // tampoco repite el propio principal ya mostrado en ESTE slot — si no tiene eje paramétrico
+    // (p.ej. legumbre fija) usadosHoy no lo capta y "otra cosa" podía devolver el mismo plato
+    // (bug real, hallado en verificación de navegador 2026-07-21). Se relaja junto con variedad
+    // si de verdad no hay alternativa (mejor repetir que dejar el slot sin nada).
+    var slotActualOtro = diaObj[tipoComida];
+    ctxBase.principalExcluido = (slotActualOtro && slotActualOtro.menu) ? slotActualOtro.menu.principalId : null;
+    var resultadoOtro = generarCandidatosConRelajacion(ctxBase);
+    if (!resultadoOtro.candidatos.length) return null;
+    resultadoOtro.ctxUsado.bandaSlot = resultadoOtro.banda;
+    var topOtro = elegirTopN(resultadoOtro.candidatos, resultadoOtro.ctxUsado, senales, 1);
+    return { menu: resolverMenu(topOtro[0].candidato, resultadoOtro.ctxUsado), opciones: null };
+  }
+
+  // ---------------------------------------------------------------
+  // 7. Lista de la compra — agregada por ingrediente-id (idéntico espíritu a
+  // v2: estable frente a regeneraciones parciales).
+  // ---------------------------------------------------------------
+  function diaIndexDesdeFecha(plan, fechaISOStr) {
+    for (var i = 0; i < plan.dias.length; i++) { if (plan.dias[i].fecha === fechaISOStr) return i; }
+    return -1;
+  }
+
+  function listaCompra(estado, plan, rango, banco, hoy) {
+    var hoyISO = hoy || fechaLocalISO();
+    var diasRango;
+    if (rango === 'hoy') {
+      var idx = diaIndexDesdeFecha(plan, hoyISO);
+      diasRango = idx === -1 ? [] : [{ dia: plan.dias[idx], idx: idx }];
+    } else {
+      diasRango = plan.dias.map(function (d, idx) { return { dia: d, idx: idx }; });
+    }
+
+    var acumulado = {};
+    diasRango.forEach(function (entry) {
+      var dia = entry.dia, idx = entry.idx;
+      ['comida', 'cena'].forEach(function (tipoComida) {
+        var slot = dia[tipoComida];
+        if (!slot || !slot.menu) return;
+        (slot.menu.ingredientes || []).forEach(function (linea) {
+          var ing = banco.ingredientes[linea.id];
+          if (!acumulado[linea.id]) acumulado[linea.id] = { id: linea.id, nombre: ing ? ing.nombre : linea.id, categoria: ing ? ing.categoria : 'otro', gramos: 0 };
+          acumulado[linea.id].gramos += linea.gramos;
+        });
+      });
+      var postre = postreDelDia(banco, dia.fecha, idx);
+      if (postre && postre.id) {
+        var ingPostre = banco.ingredientes[postre.id];
+        if (ingPostre) {
+          presentesEnComida(estado, dia.fecha, idx, 'cena').forEach(function (miembro) {
+            var esNino = edadEnAnios(miembro.anioNacimiento) < EDAD_MENOR;
+            var gramos = esNino ? ingPostre.racion_nino_g : ingPostre.racion_adulto_g;
+            if (!acumulado[postre.id]) acumulado[postre.id] = { id: postre.id, nombre: ingPostre.nombre, categoria: ingPostre.categoria, gramos: 0 };
+            acumulado[postre.id].gramos += gramos;
+          });
+        }
+      }
+    });
+
+    // "¿lo añado a la compra?" de una opción de nevera casi-montable (borrador
+    // §6): entrada manual, ración estándar de adulto (no hay mesa real que
+    // calcular aquí, es un recordatorio de compra, no un ingrediente de un
+    // menú planificado) — se añade en CUALQUIER rango, es una intención
+    // explícita del usuario, no algo que dependa de qué días se estén mirando.
+    ((estado.compra && estado.compra.pendientesManual) || []).forEach(function (id) {
+      var ing = banco.ingredientes[id];
+      if (!ing) return;
+      if (!acumulado[id]) acumulado[id] = { id: id, nombre: ing.nombre, categoria: ing.categoria, gramos: 0 };
+      acumulado[id].gramos += ing.racion_adulto_g;
+    });
+
+    var marcados = {};
+    ((estado.compra && estado.compra.marcados) || []).forEach(function (id) { marcados[id] = 1; });
+    return Object.keys(acumulado).map(function (id) {
+      var linea = acumulado[id];
+      return { id: linea.id, nombre: linea.nombre, categoria: linea.categoria, gramos: Math.round(linea.gramos), marcado: !!marcados[id] };
+    }).sort(function (a, b) { if (a.categoria !== b.categoria) return a.categoria.localeCompare(b.categoria); return a.nombre.localeCompare(b.nombre); });
+  }
+
+  // ---------------------------------------------------------------
+  // Semáforo de equilibrio semanal — IDÉNTICO espíritu a v2 (P1, feedback
+  // externo 2026-07-16): reutiliza el mismo contador que el generador.
+  // fritos aparte (no es una categoría de ingrediente, es la técnica del
+  // principal — no pasa por actualizarContadorCuotas).
+  // ---------------------------------------------------------------
+  function resumenCuotasSemana(plan, banco) {
+    var cuotas = (banco && banco.categorias_cuota) || {};
+    var contador = {};
+    var fritos = 0;
+    ((plan && plan.dias) || []).forEach(function (dia) {
+      ['comida', 'cena'].forEach(function (tipo) {
+        var slot = dia && dia[tipo];
+        if (!slot || !slot.menu) return;
+        actualizarContadorCuotas(contador, idsDeMenuGuardado(slot.menu), banco);
+        if (slot.menu.tecnicaPrincipal === 'frito') fritos++;
+      });
+    });
+    contador.fritos = fritos;
+    return Object.keys(cuotas).map(function (clave) {
+      var cuota = cuotas[clave];
+      var cuenta = contador[clave] || 0;
+      var minOk = cuota.min_sem == null || cuenta >= cuota.min_sem;
+      var maxOk = cuota.max_sem == null || cuenta <= cuota.max_sem;
+      return { categoria: clave, cuenta: cuenta, min_sem: cuota.min_sem, max_sem: cuota.max_sem, cumplido: minOk && maxOk };
+    });
+  }
+
+  // ---------------------------------------------------------------
+  // Previsualización de una elaboración SIN plan real detrás (pestañas
+  // Recetas/Descubrir) — sustituye a "resolverPlato con la primera opción de
+  // cada eje" de v2. Devuelve nombre + pasos resueltos con la 1ª opción de su
+  // eje paramétrico (si tiene), variantes (para "también con X, Y, Z") y un
+  // ejemplo de complementarias compatibles (para menús de principales con
+  // grupos externos) — 1 comensal sintético, no hay mesa real que resolver.
+  // ---------------------------------------------------------------
+  function previsualizarElaboracion(elaboracion, banco) {
+    var seleccionEje = elaboracion.ingredientes.eje ? elaboracion.ingredientes.opciones[0] : null;
+    var nombre = resolverNombre(elaboracion, seleccionEje, banco);
+    var pasos = pasosDeElaboracion(elaboracion, seleccionEje, banco);
+    var variantes = elaboracion.ingredientes.eje
+      ? elaboracion.ingredientes.opciones.slice(1, 4).map(function (id) { var ing = banco.ingredientes[id]; return ing ? ing.nombre : id; })
+      : [];
+    var complementariasEjemplo = [];
+    (banco.compatibilidad || []).filter(function (c) { return c.principalId === elaboracion.id; }).forEach(function (c) {
+      var comp = (banco.elaboraciones || []).filter(function (e) { return e.id === c.complementariaFamilia; })[0];
+      if (!comp) return;
+      var idEjemplo = comp.ingredientes.opciones[0];
+      complementariasEjemplo.push({ id: comp.id, nombre: resolverNombre(comp, idEjemplo, banco), seleccionEje: idEjemplo });
+    });
+    return { id: elaboracion.id, nombre: nombre, pasos: pasos, variantes: variantes, complementariasEjemplo: complementariasEjemplo, seleccionEje: seleccionEje };
+  }
+
+  // ---------------------------------------------------------------
+  // Descubrir — IDÉNTICO espíritu a v2 (categorías reales rotando por día),
+  // sobre elaboraciones con roles principal/mixta (las complementarias no
+  // son "recetas" navegables). Mismos campos: tematica/esfuerzo/temporada/foto.
   // ---------------------------------------------------------------
   var CATEGORIAS_DESCUBRIR = [
-    { id: 'arroces', kicker: 'Arroces', titulo: 'De la paella al arroz caldoso',
-      test: function (p) { return p.tematica === 'Arroces y fideuà'; } },
-    { id: 'potajes', kicker: 'Cuchara de invierno', titulo: 'Potajes y guisos para los días fríos',
-      test: function (p) { return p.tematica === 'Potajes y guisos' && p.temporada === 'invierno'; } },
-    { id: 'ensaladas', kicker: 'Ensaladas completas', titulo: 'Platos únicos que no dan pereza',
-      test: function (p) { return p.tematica === 'Ensaladas completas'; } },
-    { id: 'cremas', kicker: 'Cremas y sopas', titulo: 'Reconfortantes, con cuchara',
-      test: function (p) { return p.tematica === 'Cremas y sopas'; } },
-    { id: 'rapidas', kicker: 'En poco tiempo', titulo: 'Ideas para cuando no hay tiempo',
-      test: function (p) { return p.esfuerzo === 'rapido'; } }
+    { id: 'arroces', kicker: 'Arroces', titulo: 'De la paella al arroz caldoso', test: function (p) { return p.tematica === 'Arroces y fideuà'; } },
+    { id: 'potajes', kicker: 'Cuchara de invierno', titulo: 'Potajes y guisos para los días fríos', test: function (p) { return p.tematica === 'Potajes y guisos' && p.temporada === 'invierno'; } },
+    { id: 'ensaladas', kicker: 'Ensaladas completas', titulo: 'Platos únicos que no dan pereza', test: function (p) { return p.tematica === 'Ensaladas completas'; } },
+    { id: 'cremas', kicker: 'Cremas y sopas', titulo: 'Reconfortantes, con cuchara', test: function (p) { return p.tematica === 'Cremas y sopas'; } },
+    { id: 'rapidas', kicker: 'En poco tiempo', titulo: 'Ideas para cuando no hay tiempo', test: function (p) { return p.esfuerzo === 'rapido'; } }
   ];
 
   function categoriasDescubrir(banco, estado, fecha) {
-    var disponibles = plantillasDisponibles(banco, estado);
+    var disponibles = elaboracionesDisponibles(banco, estado).filter(function (e) { return e.roles.indexOf('principal') !== -1; });
     var d = new Date(fecha + 'T00:00:00');
     var estacion = estacionDelMes(d.getMonth() + 1);
     var pool = CATEGORIAS_DESCUBRIR.slice();
@@ -762,348 +1477,42 @@
     var rotado = conCandidatas.slice(offset).concat(conCandidatas.slice(0, offset));
     return rotado.slice(0, 3).map(function (cat, i) {
       var elegida = cat.candidatas[(diaNum + i) % cat.candidatas.length];
-      // las recetas propias no llevan foto — si la rotación cae en una, la
-      // portada de la ficha usa la primera candidata con foto para no pintar
-      // un <img src="undefined"> roto (audit 2026-07-20); si ninguna tiene,
-      // null y ui.js omite la imagen (el degradado + texto siguen legibles).
       var foto = elegida.foto || (cat.candidatas.filter(function (p) { return p.foto; })[0] || {}).foto || null;
       return { kicker: cat.kicker, titulo: cat.titulo, foto: foto, candidatas: cat.candidatas };
     });
   }
 
-  // ---------------------------------------------------------------
-  // Elección del mejor plantilla+selección para un hueco (comida o cena de un día)
-  // aplicando las 7 restricciones en orden.
-  // ---------------------------------------------------------------
-
-  // kcal totales de una selección — mismo cálculo (y mismos redondeos) que
-  // resolverPlato, sin construir nombre/pasos/lista de compra: es lo único que
-  // necesita el scoring, que se ejecuta por CADA combo de CADA plantilla.
-  function kcalTotalSeleccion(plantilla, seleccion, presentes, banco) {
-    var total = 0;
-    (presentes || []).forEach(function (miembro) {
-      var esNino = edadEnAnios(miembro.anioNacimiento) < EDAD_MENOR;
-      var kcalMiembro = plantilla.kcal_extra || 0;
-      idsUnicosDeSeleccion(seleccion).forEach(function (id) {
-        var ing = banco.ingredientes[id];
-        if (!ing) return;
-        var gramos = esNino ? ing.racion_nino_g : ing.racion_adulto_g;
-        kcalMiembro += gramos * ing.kcal_100g / 100;
-      });
-      total += Math.round(kcalMiembro);
-    });
-    return Math.round(total);
-  }
-
-  function elegirParaSlot(opts) {
-    var mejor = null;
-    var mejorScore = -Infinity;
-    // vetosViabilidad: vetos reales de los presentes, para mesa mixta. En modo
-    // nevera vetosUnion llega contaminado con "no está en la nevera", pero la
-    // adaptación de dieta es una ración extra que va a la compra — no tiene por
-    // qué estar en la nevera, así que la viabilidad se evalúa con los vetos limpios.
-    var vetosViabilidad = opts.vetosViabilidad || opts.vetosUnion;
-    opts.plantillasCandidatas.forEach(function (plantilla) {
-      if (!opts.esFinde && !opts.ignorarEsfuerzo && plantilla.esfuerzo === 'elaborado') return; // restricción 6: tiempo
-      if (!plantillaViableParaMesa(plantilla, opts.presentes, vetosViabilidad, opts.banco)) return; // restricciones 2+3
-      var combos = combinacionesEjes(plantilla, opts.vetosUnion);
-      combos.forEach(function (seleccion) {
-        if (!Object.keys(seleccion).length && Object.keys(plantilla.ejes || {}).length) return; // sin combo viable (todo vetado)
-        if (violaVariedad(seleccion, opts.usadosHoy, opts.usadosAyer)) return; // restricción 4
-        if (violaMaximoCuota(seleccion, opts.contadorCuotas, opts.cuotas, opts.banco)) return; // restricción 5 (máx.)
-        var score = puntuarCuotas(seleccion, opts.contadorCuotas, opts.cuotas, opts.banco, opts.slotsRestantes) // restricción 5 (mín.)
-                  + puntuarKcal(kcalTotalSeleccion(plantilla, seleccion, opts.presentes, opts.banco), opts.objetivoKcal) // restricción 7
-                  + puntuarRechazos(plantilla.id, opts.rechazosPorPlantilla) // feedback loop, sesgo suave
-                  + puntuarRecencia(plantilla.id, opts.historialPlantillas, opts.semanaISO, opts.gustasPorPlantilla) // rotación entre semanas
-                  + puntuarNovedad(plantilla.id, opts.historialPlantillas) // novedad acotada
-                  + puntuarRepeticionSemana(plantilla.id, opts.usosSemana) // no repetir plato dentro de la semana
-                  + puntuarTemporada(plantilla, opts.estacion) // señal estacional (mes)
-                  + puntuarRegion(plantilla, opts.familiaRegion) // señal de región de la familia
-                  + puntuarCambios(plantilla.id, opts.cambiosPorPlantilla) // "me apetece otra cosa" repetido
-                  + puntuarCole(seleccion, opts.coleDia, opts.banco); // cena: no repetir lo del cole
-        if (score > mejorScore) {
-          mejorScore = score;
-          mejor = { plantilla: plantilla, seleccion: seleccion };
-        }
-      });
-    });
-    if (mejor) mejor.resuelto = resolverPlato(mejor.plantilla, mejor.seleccion, opts.presentes, opts.banco);
-    return mejor;
-  }
-
-  // ---------------------------------------------------------------
-  // 4. Generación de la semana completa
-  // ---------------------------------------------------------------
-  // diaPrevio (audit 2026-07-20): día anterior al día 0 de esta semana — el
-  // domingo del plan vigente cuando se genera la semana siguiente. Sin él, la
-  // variedad dura (restricción 4, "ningún ingrediente en días consecutivos")
-  // arrancaba ciega en la frontera dom→lun: 10 de 12 rollovers simulados
-  // repetían ingrediente, visible en la tira continua de 14 días de la Home.
-  function generarSemana(estado, banco, desde, planExistente, diaPrevio) {
-    desde = desde || 0;
-    var semanaISO = (planExistente && planExistente.semanaISO) || lunesDeEstaSemana(new Date());
-    var cuotas = (banco && banco.categorias_cuota) || {};
-    var contadorCuotas = contadorInicialDesdeDias(planExistente ? planExistente.dias.slice(0, desde) : [], banco);
-    var rechazosPorPlantilla = contarRechazosPorPlantilla(estado);
-    // señales suaves del scoring (rotación/novedad/temporada/región/cambios) — se calculan una vez por semana
-    var historialPlantillas = (estado && estado.historialPlantillas) || null;
-    var gustasPorPlantilla = contarGustasPorPlantilla(estado);
-    var cambiosPorPlantilla = contarCambiosPorPlantilla(estado);
-    var estacion = estacionDelMes(new Date(semanaISO + 'T00:00:00').getMonth() + 1);
-    var familiaRegion = (estado && estado.familiaRegion) || null;
-    var usosSemana = usosDePlan(planExistente ? planExistente.dias.slice(0, desde) : []);
-    var dias = [];
-
-    for (var i = 0; i < 7; i++) {
-      if (i < desde && planExistente && planExistente.dias[i]) {
-        dias.push(planExistente.dias[i]);
-        continue;
-      }
-      var fecha = fechaISO(semanaISO, i);
-      var usadosAyer = i === 0 ? usadosEnDia(diaPrevio) : usadosEnDia(dias[i - 1]);
-      var diaActual = { fecha: fecha, comida: null, cena: null };
-
-      ['comida', 'cena'].forEach(function (tipoComida) {
-        var presentes = presentesEnComida(estado, fecha, i, tipoComida);
-        if (!presentes.length) { diaActual[tipoComida] = null; return; }
-        var vetosUnion = vetosDe(presentes);
-        var objetivoKcal = kcalObjetivo(presentes, tipoComida);
-        var usadosHoy = usadosEnDia(diaActual);
-        var candidatas = plantillasDisponibles(banco, estado).filter(function (p) { return (p.apta || []).indexOf(tipoComida) !== -1; });
-        var slotsRestantes = Math.max(1, (7 - i) * 2);
-
-        var elegido = elegirParaSlot({
-          plantillasCandidatas: candidatas, presentes: presentes, vetosUnion: vetosUnion,
-          objetivoKcal: objetivoKcal, usadosHoy: usadosHoy, usadosAyer: usadosAyer,
-          contadorCuotas: contadorCuotas, cuotas: cuotas, banco: banco,
-          esFinde: esFinDeSemana(i), slotsRestantes: slotsRestantes,
-          rechazosPorPlantilla: rechazosPorPlantilla,
-          historialPlantillas: historialPlantillas, semanaISO: semanaISO,
-          gustasPorPlantilla: gustasPorPlantilla, estacion: estacion, familiaRegion: familiaRegion,
-          usosSemana: usosSemana, cambiosPorPlantilla: cambiosPorPlantilla,
-          // el cole solo condiciona la CENA del día (los niños ya comieron eso a mediodía)
-          coleDia: tipoComida === 'cena' ? ((estado.cole && estado.cole.dias && estado.cole.dias[fecha]) || null) : null
-        });
-
-        if (!elegido) { diaActual[tipoComida] = null; return; }
-
-        var adaptaciones = calcularAdaptaciones(elegido.plantilla, elegido.seleccion, presentes, banco, vetosUnion);
-        diaActual[tipoComida] = { plantillaId: elegido.plantilla.id, seleccion: elegido.seleccion, adaptaciones: adaptaciones };
-        actualizarContadorCuotas(contadorCuotas, elegido.seleccion, banco);
-        usosSemana[elegido.plantilla.id] = (usosSemana[elegido.plantilla.id] || 0) + 1;
-      });
-
-      dias.push(diaActual);
-    }
-
-    return { semanaISO: semanaISO, dias: dias };
-  }
-
-  // ---------------------------------------------------------------
-  // 5. Regenerar desde un día concreto, conservando lo anterior como
-  //    restricción de variedad/cuotas.
-  // ---------------------------------------------------------------
-  function regenerarDesde(estado, plan, diaIndex, banco) {
-    return generarSemana(estado, banco, diaIndex, plan);
-  }
-
-  // ---------------------------------------------------------------
-  // 6. Cambiar un plato concreto — manual o "con lo que hay en la nevera"
-  // ---------------------------------------------------------------
-  function plantillasMontables(disponibles, plantillasCandidatas) {
-    var disponiblesSet = {};
-    (disponibles || []).forEach(function (id) { disponiblesSet[id] = 1; });
-    return plantillasCandidatas.filter(function (p) {
-      return Object.keys(p.ejes || {}).every(function (eje) {
-        return (p.ejes[eje] || []).some(function (id) { return disponiblesSet[id]; });
-      });
-    });
-  }
-
-  function cambiarPlato(estado, plan, dia, tipoComida, opciones, banco) {
-    var diaObj = plan.dias[dia];
-    if (!diaObj) return null;
-    var fecha = diaObj.fecha;
-    var presentes = presentesEnComida(estado, fecha, dia, tipoComida);
-    if (!presentes.length) return null;
-
-    var vetosUnion = vetosDe(presentes);
-    var vetosViabilidad = vetosDe(presentes); // copia limpia: mesa mixta/adaptaciones no ven el filtro de nevera
-    var objetivoKcal = kcalObjetivo(presentes, tipoComida);
-    var usadosAyer = usadosEnDia(plan.dias[dia - 1]);
-    var otraComida = tipoComida === 'comida' ? diaObj.cena : diaObj.comida;
-    var usadosHoy = {};
-    if (otraComida && otraComida.seleccion) Object.keys(otraComida.seleccion).forEach(function (eje) { usadosHoy[otraComida.seleccion[eje]] = 1; });
-
-    var cuotas = (banco && banco.categorias_cuota) || {};
-    // cuotas de toda la semana salvo el propio hueco que se está cambiando
-    var diasParaContar = diasSinSlot(plan, dia, tipoComida);
-    var contadorCuotas = contadorInicialDesdeDias(diasParaContar, banco);
-
-    var candidatas = plantillasDisponibles(banco, estado).filter(function (p) { return (p.apta || []).indexOf(tipoComida) !== -1; });
-
-    var esManual = !!(opciones && opciones.modo === 'manual' && opciones.plantillaId);
-    if (esManual) {
-      candidatas = candidatas.filter(function (p) { return p.id === opciones.plantillaId; });
-      // El usuario ha elegido ESTA plantilla a mano: la elección explícita manda
-      // sobre las preferencias (mismo criterio ya fijado para nevera, Roger
-      // 2026-07-15). Variedad y el bloqueo de "elaborado entre semana" se
-      // relajan; cuotas máximas y dieta/mesa mixta se mantienen — protegen salud.
-      // Sin esto, la lista de "Elegir otro plato" ofrecía plantillas que el motor
-      // luego vetaba (18/43 caían solo por variedad) → alert de "no encontramos
-      // un plato", el bug real reportado el 2026-07-16.
-      usadosHoy = {};
-      usadosAyer = {};
-    } else if (opciones && opciones.modo === 'nevera' && opciones.disponibles) {
-      candidatas = plantillasMontables(opciones.disponibles, candidatas);
-      // fuerza a que sólo se elijan ids disponibles: se vetan (para esta operación) todos los
-      // ids de esos ejes que NO estén en la lista de "lo que hay" — reutiliza el mismo mecanismo
-      // de filtrado por vetos ya usado en el resto del motor.
-      var disponiblesSet = {};
-      opciones.disponibles.forEach(function (id) { disponiblesSet[id] = 1; });
-      candidatas.forEach(function (p) {
-        Object.keys(p.ejes || {}).forEach(function (eje) {
-          (p.ejes[eje] || []).forEach(function (id) { if (!disponiblesSet[id]) vetosUnion[id] = 1; });
-        });
-      });
-      // la variedad (restricción 4) es una preferencia de "no comer lo mismo" — cuando el
-      // usuario dice explícitamente qué tiene disponible ahora mismo, esa realidad manda:
-      // si lo único disponible ya se usó hoy o ayer, bloquear en vez de proponerlo deja la
-      // función sin poder resolver nada (bug real, Roger 2026-07-15). Cuotas máximas y
-      // mesa mixta/dieta sí se mantienen — esas protegen salud, no varidad.
-      usadosHoy = {};
-      usadosAyer = {};
-    }
-
-    if (!candidatas.length) return null;
-
-    var elegido = elegirParaSlot({
-      plantillasCandidatas: candidatas, presentes: presentes, vetosUnion: vetosUnion,
-      vetosViabilidad: vetosViabilidad, ignorarEsfuerzo: esManual,
-      objetivoKcal: objetivoKcal, usadosHoy: usadosHoy, usadosAyer: usadosAyer,
-      contadorCuotas: contadorCuotas, cuotas: cuotas, banco: banco,
-      esFinde: esFinDeSemana(dia), slotsRestantes: Math.max(1, (7 - dia) * 2),
-      rechazosPorPlantilla: contarRechazosPorPlantilla(estado),
-      historialPlantillas: (estado && estado.historialPlantillas) || null,
-      semanaISO: plan.semanaISO,
-      gustasPorPlantilla: contarGustasPorPlantilla(estado),
-      estacion: estacionDelMes(new Date(diaObj.fecha + 'T00:00:00').getMonth() + 1),
-      familiaRegion: (estado && estado.familiaRegion) || null,
-      usosSemana: usosDePlan(diasParaContar),
-      cambiosPorPlantilla: contarCambiosPorPlantilla(estado),
-      coleDia: tipoComida === 'cena' ? ((estado.cole && estado.cole.dias && estado.cole.dias[diaObj.fecha]) || null) : null
-    });
-    if (!elegido) return null;
-
-    var adaptaciones = calcularAdaptaciones(elegido.plantilla, elegido.seleccion, presentes, banco, vetosViabilidad);
-    var nuevoSlot = { plantillaId: elegido.plantilla.id, seleccion: elegido.seleccion, adaptaciones: adaptaciones };
-
-    var nuevoPlan = { semanaISO: plan.semanaISO, dias: plan.dias.slice() };
-    var nuevoDia = { fecha: diaObj.fecha, comida: diaObj.comida, cena: diaObj.cena };
-    nuevoDia[tipoComida] = nuevoSlot;
-    nuevoPlan.dias[dia] = nuevoDia;
-
-    return { plan: nuevoPlan, slot: nuevoSlot, resuelto: elegido.resuelto };
-  }
-
-  // ---------------------------------------------------------------
-  // 7. Lista de la compra — agregada por ingrediente-id, estable frente a
-  //    regeneraciones parciales (los marcados se guardan por ingrediente-id).
-  // ---------------------------------------------------------------
-  function diaIndexDesdeFecha(plan, fechaISOStr) {
-    for (var i = 0; i < plan.dias.length; i++) { if (plan.dias[i].fecha === fechaISOStr) return i; }
-    return -1;
-  }
-
-  // `hoy` opcional (audit 2026-07-20): inyectable para tests deterministas del
-  // rango 'hoy' — en producción se omite y usa la fecha real, como siempre.
-  function listaCompra(estado, plan, rango, banco, hoy) {
-    var hoyISO = hoy || fechaLocalISO(new Date());
-    var diasRango;
-    if (rango === 'hoy') {
-      var idx = diaIndexDesdeFecha(plan, hoyISO);
-      diasRango = idx === -1 ? [] : [{ dia: plan.dias[idx], idx: idx }];
-    } else {
-      diasRango = plan.dias.map(function (d, idx) { return { dia: d, idx: idx }; });
-    }
-
-    var acumulado = {};
-    diasRango.forEach(function (entry) {
-      var dia = entry.dia, idx = entry.idx;
-      ['comida', 'cena'].forEach(function (tipoComida) {
-        var slot = dia[tipoComida];
-        if (!slot) return;
-        var plantilla = plantillaPorId(banco, estado, slot.plantillaId);
-        if (!plantilla) return;
-        var presentes = presentesEnComida(estado, dia.fecha, idx, tipoComida);
-        var resuelto = resolverPlato(plantilla, slot.seleccion, presentes, banco, slot.adaptaciones);
-        resuelto.ingredientes.forEach(function (linea) {
-          var ing = banco.ingredientes[linea.id];
-          if (!acumulado[linea.id]) acumulado[linea.id] = { id: linea.id, nombre: ing ? ing.nombre : linea.id, categoria: ing ? ing.categoria : 'otro', gramos: 0 };
-          acumulado[linea.id].gramos += linea.gramos;
-        });
-      });
-
-      // postre del día (tramo 1, 2026-07-17): la fruta de L-V y el yogur del
-      // sábado entran en la compra por ración de los presentes en la cena; el
-      // dulce del domingo es sugerencia con receta aparte — no se compra solo.
-      var postre = postreDelDia(banco, dia.fecha, idx);
-      if (postre && postre.id) {
-        var ingPostre = banco.ingredientes[postre.id];
-        if (ingPostre) {
-          presentesEnComida(estado, dia.fecha, idx, 'cena').forEach(function (miembro) {
-            var esNino = edadEnAnios(miembro.anioNacimiento) < EDAD_MENOR;
-            var gramos = esNino ? ingPostre.racion_nino_g : ingPostre.racion_adulto_g;
-            if (!acumulado[postre.id]) acumulado[postre.id] = { id: postre.id, nombre: ingPostre.nombre, categoria: ingPostre.categoria, gramos: 0 };
-            acumulado[postre.id].gramos += gramos;
-          });
-        }
-      }
-    });
-
-    var marcados = {};
-    ((estado.compra && estado.compra.marcados) || []).forEach(function (id) { marcados[id] = 1; });
-
-    return Object.keys(acumulado).map(function (id) {
-      var linea = acumulado[id];
-      return { id: linea.id, nombre: linea.nombre, categoria: linea.categoria, gramos: Math.round(linea.gramos), marcado: !!marcados[id] };
-    }).sort(function (a, b) {
-      if (a.categoria !== b.categoria) return a.categoria.localeCompare(b.categoria);
-      return a.nombre.localeCompare(b.nombre);
-    });
-  }
-
-  // ---------------------------------------------------------------
-  // Export — UMD mínimo: window en navegador, module.exports en node (tests)
-  // ---------------------------------------------------------------
   var E3Engine = {
-    resolverPlato: resolverPlato,
-    generarSemana: generarSemana,
-    regenerarDesde: regenerarDesde,
-    cambiarPlato: cambiarPlato,
-    listaCompra: listaCompra,
-    // helpers reutilizados por ui.js / app.js
-    edadEnAnios: edadEnAnios,
-    presentesEnComida: presentesEnComida,
-    excluidoPorCole: excluidoPorCole,
-    contadorSemanaSinSlot: contadorSemanaSinSlot,
-    plantillaPasaCuotas: plantillaPasaCuotas,
-    lunesDeEstaSemana: lunesDeEstaSemana,
-    fechaLocalISO: fechaLocalISO,
-    fechaISO: fechaISO,
+    resumenCuotasSemana: resumenCuotasSemana, previsualizarElaboracion: previsualizarElaboracion,
+    categoriasDescubrir: categoriasDescubrir,
+    idsDeMenu: idsDeMenu, usadosEnDia: usadosEnDia, categoriasProteinaEnDia: categoriasProteinaEnDia,
+    generarCombosComplementarias: generarCombosComplementarias, componentesDeCandidato: componentesDeCandidato,
+    cerrarBandaKcal: cerrarBandaKcal, generarCandidatosSlot: generarCandidatosSlot,
+    estacionDelMes: estacionDelMes, puntuarCandidato: puntuarCandidato, puntuarSalubridadTecnica: puntuarSalubridadTecnica,
+    puntuarFavorita: puntuarFavorita, puntuarCole: puntuarCole, puntuarAusenciaEstructural: puntuarAusenciaEstructural,
+    idCanonicoCandidato: idCanonicoCandidato, ordenarDeterminista: ordenarDeterminista, elegirTopN: elegirTopN,
+    generarCandidatosConRelajacion: generarCandidatosConRelajacion, NIVELES_RELAJACION: NIVELES_RELAJACION,
+    postreDelDia: postreDelDia, resolverMenu: resolverMenu, iterarMenus: iterarMenus,
+    contarRechazosPorPrincipal: contarRechazosPorPrincipal, contarGustasPorPrincipal: contarGustasPorPrincipal,
+    contarCambiosPorPrincipal: contarCambiosPorPrincipal, historialConPlan: historialConPlan, usosDePlan: usosDePlan,
+    generarSemana: generarSemana, regenerarDesde: regenerarDesde, cambiarPlato: cambiarPlato, listaCompra: listaCompra,
     diaIndexDesdeFecha: diaIndexDesdeFecha,
-    plantillaPorId: plantillaPorId,
-    plantillasDisponibles: plantillasDisponibles,
-    todasLasPlantillas: todasLasPlantillas,
-    plantillaViableParaMesa: plantillaViableParaMesa,
-    vetosDe: vetosDe,
-    capitaliza: capitaliza,
-    resumenCuotasSemana: resumenCuotasSemana,
-    // tramo 1 (2026-07-17): rotación entre semanas + postre del día
-    historialConPlan: historialConPlan,
-    postreDelDia: postreDelDia,
-    // Descubrir (2026-07-20): categorías reales rotando
-    categoriasDescubrir: categoriasDescubrir
+    violaVariedad: violaVariedad, violaProteinaMismaCategoriaMismoDia: violaProteinaMismaCategoriaMismoDia,
+    categoriasQueSuma: categoriasQueSuma, violaMaximoCuota: violaMaximoCuota,
+    actualizarContadorCuotas: actualizarContadorCuotas, violaCuotaFritos: violaCuotaFritos,
+    verificarEstructura: verificarEstructura,
+    nuevoTrace: nuevoTrace, traceDescarta: traceDescarta, traceSobrevive: traceSobrevive,
+    edadEnAnios: edadEnAnios, fechaLocalISO: fechaLocalISO, fechaISO: fechaISO,
+    lunesDeEstaSemana: lunesDeEstaSemana, esFinDeSemana: esFinDeSemana, vetosDe: vetosDe,
+    necesidadKcalDia: necesidadKcalDia, objetivoBandaPersona: objetivoBandaPersona,
+    bandaAgregadaMesa: bandaAgregadaMesa, capitaliza: capitaliza,
+    excluidoPorCole: excluidoPorCole, presentesEnComida: presentesEnComida,
+    todasLasElaboraciones: todasLasElaboraciones, elaboracionesDisponibles: elaboracionesDisponibles,
+    elaboracionPorId: elaboracionPorId, principalesMixtas: principalesMixtas,
+    complementariasCompatibles: complementariasCompatibles,
+    categoriaExcluidaPorDieta: categoriaExcluidaPorDieta, opcionAptaParaDieta: opcionAptaParaDieta,
+    elaboracionViableParaMesa: elaboracionViableParaMesa, calcularAdaptaciones: calcularAdaptaciones,
+    kcalIngredienteConTecnica: kcalIngredienteConTecnica, kcalAlinioPorRacion: kcalAlinioPorRacion
   };
 
   if (typeof module !== 'undefined' && module.exports) module.exports = E3Engine;

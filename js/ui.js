@@ -63,38 +63,28 @@
       '</div>';
   }
 
-  var NOMBRES_EJE = { proteina: 'proteína', hidrato: 'hidrato', verdura: 'verdura' };
-
-  // nombre de plantilla sin comprometer ingrediente concreto — para listas de elección
-  // ("Elegir otro plato", banco de Recetas) donde aún no hay una selección de ejes.
-  function nombreGenerico(nombrePatron) {
-    return nombrePatron.replace(/\{([a-z]+)\}/g, function (_, eje) { return NOMBRES_EJE[eje] || eje; });
-  }
-
   function nombreCortoIngrediente(nombre) {
     return (nombre || '').split(' (')[0];
   }
 
-  // F1 (Roger 2026-07-17, MOTOR_RECETAS §7): el usuario nunca ve el álgebra
-  // "{proteína} con hidrato". Cada plantilla se presenta por su combinación más
-  // icónica — la primera opción de cada eje, que en el banco es la canónica a
-  // propósito. La variabilidad se cuenta aparte (variantesProteina), en llano.
-  function nombreEjemplo(p, banco) {
-    return p.nombre_patron.replace(/\{([a-z]+)\}/g, function (_, eje) {
-      var id = p.ejes && p.ejes[eje] && p.ejes[eje][0];
-      var ing = id && banco.ingredientes[id];
-      return ing ? nombreCortoIngrediente(ing.nombre).toLowerCase() : (NOMBRES_EJE[eje] || eje);
-    });
+  // v3: el motor ya resuelve nombre/pasos/variantes de una elaboración sin plan
+  // real detrás (E.previsualizarElaboracion) — sustituye a nombreEjemplo/
+  // variantesProteina de v2 (que leían plantilla.ejes/nombre_patron a mano).
+  // Cachea por id dentro de una misma pasada de render (varias tarjetas piden
+  // la misma elaboración: grid + chips + búsqueda).
+  var _cachePrevisualizacion = {};
+  function previsualizar(p, banco) {
+    if (!_cachePrevisualizacion[p.id]) _cachePrevisualizacion[p.id] = E.previsualizarElaboracion(p, banco);
+    return _cachePrevisualizacion[p.id];
   }
 
-  function variantesProteina(p, banco) {
-    var ops = (p.ejes && p.ejes.proteina) || [];
-    if (p.tipo !== 'plantilla' || ops.length < 2) return '';
-    var otras = ops.slice(1, 4).map(function (id) {
-      var ing = banco.ingredientes[id];
-      return ing ? nombreCortoIngrediente(ing.nombre).toLowerCase() : id;
-    });
-    return 'también con ' + otras.join(', ') + (ops.length > 4 ? '…' : '');
+  function nombreEjemplo(p, banco) { return previsualizar(p, banco).nombre; }
+
+  function variantesTexto(p, banco) {
+    var variantes = previsualizar(p, banco).variantes;
+    if (!variantes.length) return '';
+    var opciones = p.ingredientes && p.ingredientes.opciones;
+    return 'también con ' + variantes.map(function (n) { return nombreCortoIngrediente(n).toLowerCase(); }).join(', ') + (opciones && opciones.length > 4 ? '…' : '');
   }
 
   function iniciales(nombre) {
@@ -258,7 +248,10 @@
     var badge = '<span class="ph-badge ph-badge-' + (esCena ? 'cena' : 'comida') + '"><span class="ph-badge-icono">' + icono + '</span><span class="ph-badge-texto">' + etiqueta + '</span></span>';
     var cabeceraVacia = '<div class="ph-cab"><span class="ph-tipo ph-tipo-' + (esCena ? 'cena' : 'comida') + '">' + icono + etiqueta + '</span>' + avataresSpan + '</div>';
 
-    var plantilla = slot ? E.plantillaPorId(banco, estado, slot.plantillaId) : null;
+    // v3: el slot ya trae el menú COMPLETO resuelto (nombre/kcal/complementarias)
+    // desde que se generó — no hace falta volver a llamar al motor en cada render
+    // (antes resolverPlato se invocaba aquí cada vez; ahora es un simple read).
+    var principal = slot ? E.elaboracionPorId(banco, estado, slot.menu.principalId) : null;
     // postreDelDia() es del DÍA, no de la comida — sin filtro por esCena
     // (handoff líneas 105/142: "De postre" aparece igual en las dos cards).
     var postre = E.postreDelDia(banco, dia.fecha, diaIndex);
@@ -268,21 +261,20 @@
       return '<div class="' + claseCard + ' ph-card-vacia" data-dia="' + diaIndex + '" data-tipo="' + meal + '">' + cabeceraVacia +
         '<p class="card-msg">Nadie come en casa (' + (esCena ? 'noche' : 'mediodía') + ').</p></div>';
     }
-    if (!slot || !plantilla) {
+    if (!slot || !principal) {
       return '<div class="' + claseCard + ' ph-card-vacia" data-dia="' + diaIndex + '" data-tipo="' + meal + '">' + cabeceraVacia +
         '<p class="card-msg">No encontramos un plato que encaje con los gustos/vetos actuales.</p>' +
         '<button type="button" class="btn-secondary" data-action="abrir-cambiar" data-dia="' + diaIndex + '" data-tipo="' + meal + '">Elegir plato</button></div>';
     }
 
-    var resuelto = E.resolverPlato(plantilla, slot.seleccion, mesa.comensales, banco, slot.adaptaciones);
-    var nombreSplit = splitNombrePlato(resuelto.nombre);
-    var kcalMedio = mesa.presentes.length ? Math.round(resuelto.kcalTotal / mesa.presentes.length) : 0;
-    var tag = ETIQUETA_ESFUERZO[plantilla.esfuerzo] || '';
-    var fotoHtml = plantilla.foto ? '<img class="ph-foto" src="' + escapeHtml(plantilla.foto) + '" alt="">' : '<div class="ph-foto ph-foto-vacia"></div>';
+    var subtitulo = (slot.menu.complementariasResueltas || []).map(function (c) { return c.nombre; }).join(' · ');
+    var kcalMedio = mesa.presentes.length ? Math.round(slot.menu.kcalTotal / mesa.presentes.length) : 0;
+    var tag = ETIQUETA_ESFUERZO[principal.esfuerzo] || '';
+    var fotoHtml = principal.foto ? '<img class="ph-foto" src="' + escapeHtml(principal.foto) + '" alt="">' : '<div class="ph-foto ph-foto-vacia"></div>';
 
     var metaHtml = '<div class="ph-meta">' +
       (mesa.presentes.length ? '<span class="ph-meta-item"><i data-lucide="flame"></i>~' + kcalMedio + ' kcal<span class="ph-meta-sub">/pers</span></span><span class="ph-meta-punto"></span>' : '') +
-      '<span class="ph-meta-item"><i data-lucide="clock"></i>' + (plantilla.tiempo_min || '?') + ' min</span>' +
+      '<span class="ph-meta-item"><i data-lucide="clock"></i>' + (principal.tiempo_min || '?') + ' min</span>' +
       (tag ? '<span class="ph-meta-punto"></span><span class="ph-meta-item"><i data-lucide="leaf"></i>' + tag + '</span>' : '') +
       '</div>';
 
@@ -294,8 +286,8 @@
       '<div role="button" tabindex="0" class="ph-abrir" data-action="abrir-receta" data-dia="' + diaIndex + '" data-tipo="' + meal + '" aria-label="Ver receta completa">' +
       '<div class="ph-foto-wrap">' + fotoHtml + badge + avataresSpan + '</div>' +
       '<div class="ph-info">' +
-      '<p class="ph-titulo">' + escapeHtml(nombreSplit.titulo) + '</p>' +
-      (nombreSplit.subtitulo ? '<p class="ph-subtitulo">' + escapeHtml(nombreSplit.subtitulo) + '</p>' : '') +
+      '<p class="ph-titulo">' + escapeHtml(slot.menu.nombre) + '</p>' +
+      (subtitulo ? '<p class="ph-subtitulo">' + escapeHtml(subtitulo) + '</p>' : '') +
       metaHtml +
       (postreTexto ? '<p class="ph-postre">De postre: ' + escapeHtml(postreTexto) + '</p>' : '') +
       '</div>' +
@@ -354,25 +346,30 @@
     return 'Comen: ' + nombres.join(', ') + '.';
   }
 
+  function pasosCards(lista) {
+    return lista.map(function (p, i) {
+      return '<div class="rv-paso"><span class="rv-paso-num">' + (i + 1) + '</span><span class="rv-paso-texto">' + escapeHtml(p) + '</span></div>';
+    }).join('');
+  }
+
   function renderVistaReceta(estado, banco, plan, diaIndex, tipoComida) {
     var dia = plan && plan.dias[diaIndex];
     var slot = dia ? dia[tipoComida] : null;
-    var plantilla = slot ? E.plantillaPorId(banco, estado, slot.plantillaId) : null;
-    if (!dia || !slot || !plantilla) {
+    var principal = slot ? E.elaboracionPorId(banco, estado, slot.menu.principalId) : null;
+    if (!dia || !slot || !principal) {
       return '<button type="button" class="rv-flotante rv-volver" data-action="receta-volver" aria-label="Volver"><i data-lucide="arrow-left"></i></button>' +
         '<div class="rv-body rv-body-vacia"><p class="card-msg">No encontramos esta receta.</p></div>';
     }
     var mesa = comensalesDeSlot(estado, plan, diaIndex, tipoComida);
-    var resuelto = E.resolverPlato(plantilla, slot.seleccion, mesa.comensales, banco, slot.adaptaciones);
-    var nombreSplit = splitNombrePlato(resuelto.nombre);
+    var menu = slot.menu;
     var esCena = tipoComida === 'cena';
-    var kcalMedio = mesa.presentes.length ? Math.round(resuelto.kcalTotal / mesa.presentes.length) : 0;
-    var tag = ETIQUETA_ESFUERZO[plantilla.esfuerzo] || '—';
-    var favorita = (estado.favoritas || []).indexOf(plantilla.id) !== -1;
-    var oculta = (estado.ocultas || []).indexOf(plantilla.id) !== -1;
-    var fotoHtml = plantilla.foto ? '<img src="' + escapeHtml(plantilla.foto) + '" alt="">' : '<div class="rv-foto-vacia"></div>';
+    var kcalMedio = mesa.presentes.length ? Math.round(menu.kcalTotal / mesa.presentes.length) : 0;
+    var tag = ETIQUETA_ESFUERZO[principal.esfuerzo] || '—';
+    var favorita = (estado.favoritas || []).indexOf(principal.id) !== -1;
+    var oculta = (estado.ocultas || []).indexOf(principal.id) !== -1;
+    var fotoHtml = principal.foto ? '<img src="' + escapeHtml(principal.foto) + '" alt="">' : '<div class="rv-foto-vacia"></div>';
 
-    var ingredientesHtml = resuelto.ingredientes.slice().sort(function (a, b) {
+    var ingredientesHtml = menu.ingredientes.slice().sort(function (a, b) {
       var na = banco.ingredientes[a.id] ? banco.ingredientes[a.id].nombre : a.id;
       var nb = banco.ingredientes[b.id] ? banco.ingredientes[b.id].nombre : b.id;
       return na.localeCompare(nb);
@@ -381,21 +378,20 @@
       return '<div class="rv-ingrediente"><span class="rv-ingrediente-bullet"></span><span class="rv-ingrediente-nombre">' + escapeHtml(ing ? ing.nombre : item.id) + '</span><span class="rv-ingrediente-g">' + item.gramos + ' g</span></div>';
     }).join('');
 
-    function pasosCards(lista) {
-      return lista.map(function (p, i) {
-        return '<div class="rv-paso"><span class="rv-paso-num">' + (i + 1) + '</span><span class="rv-paso-texto">' + escapeHtml(p) + '</span></div>';
-      }).join('');
-    }
-
-    var pasosHtml = resuelto.pasos.length
-      ? '<div class="rv-pasos">' + pasosCards(resuelto.pasos) + '</div>'
+    // v3: el menú es principal + complementarias, cada una con su propia
+    // preparación — ya no un único bloque "X con Y y Z" (borrador §2).
+    var pasosHtml = menu.pasos.length
+      ? '<div class="rv-pasos">' + pasosCards(menu.pasos) + '</div>'
       : '<p class="card-msg">Sin pasos detallados para esta receta.</p>';
+    var complementariasHtml = (menu.complementariasResueltas || []).map(function (c) {
+      return '<p class="detalle-subtitulo" style="margin-top:18px">' + escapeHtml(c.nombre) + '</p>' +
+        '<div class="rv-pasos">' + pasosCards(c.pasos) + '</div>';
+    }).join('');
 
     // Segunda (o tercera...) cocción por mesa mixta (Roger 2026-07-14): si a
     // alguien le toca un ingrediente distinto en el eje proteína, sus pasos
-    // van aparte — el handoff no conocía esta pieza (foso #1 del producto),
-    // se preserva tal cual con el mismo estilo de card que el resto.
-    var pasosAdaptadosHtml = (resuelto.pasosAdaptados || []).map(function (pa) {
+    // van aparte — foso #1 del producto, se preserva tal cual.
+    var pasosAdaptadosHtml = (menu.pasosAdaptados || []).map(function (pa) {
       var m = (estado.familia || []).find(function (mm) { return mm.id === pa.miembroId; });
       return '<p class="detalle-subtitulo" style="margin-top:18px">Para ' + escapeHtml(m ? m.nombre : '?') + ' (' + escapeHtml(pa.ingrediente) + ')</p>' +
         '<div class="rv-pasos">' + pasosCards(pa.pasos) + '</div>';
@@ -404,15 +400,15 @@
     return '<div class="rv-hero">' + fotoHtml + '<div class="rv-hero-gradiente"></div>' +
       '<button type="button" class="rv-flotante rv-volver" data-action="receta-volver" aria-label="Volver"><i data-lucide="arrow-left"></i></button>' +
       '<div class="rv-acciones">' +
-      '<button type="button" class="rv-flotante' + (oculta ? ' rv-flotante-activo' : '') + '" data-action="toggle-oculta-receta" data-plantilla="' + plantilla.id + '" aria-label="' + (oculta ? 'Mostrar receta' : 'Ocultar receta') + '" aria-pressed="' + oculta + '"><i data-lucide="eye-off"></i></button>' +
-      '<button type="button" class="rv-flotante' + (favorita ? ' rv-flotante-activo' : '') + '" data-action="toggle-favorita-receta" data-plantilla="' + plantilla.id + '" aria-label="' + (favorita ? 'Quitar de favoritas' : 'Marcar como favorita') + '" aria-pressed="' + favorita + '"><i data-lucide="heart"' + (favorita ? ' style="fill:currentColor"' : '') + '></i></button>' +
+      '<button type="button" class="rv-flotante' + (oculta ? ' rv-flotante-activo' : '') + '" data-action="toggle-oculta-receta" data-plantilla="' + principal.id + '" aria-label="' + (oculta ? 'Mostrar receta' : 'Ocultar receta') + '" aria-pressed="' + oculta + '"><i data-lucide="eye-off"></i></button>' +
+      '<button type="button" class="rv-flotante' + (favorita ? ' rv-flotante-activo' : '') + '" data-action="toggle-favorita-receta" data-plantilla="' + principal.id + '" aria-label="' + (favorita ? 'Quitar de favoritas' : 'Marcar como favorita') + '" aria-pressed="' + favorita + '"><i data-lucide="heart"' + (favorita ? ' style="fill:currentColor"' : '') + '></i></button>' +
       '</div></div>' +
       '<div class="rv-body">' +
       '<span class="rv-pill rv-pill-' + (esCena ? 'cena' : 'comida') + '">' + (esCena ? ICONO_LUNA : ICONO_SOL) + (esCena ? 'CENA' : 'COMIDA') + '</span>' +
-      '<h1 class="rv-titulo">' + escapeHtml(nombreSplit.titulo) + '</h1>' +
-      (nombreSplit.subtitulo ? '<p class="rv-subtitulo">' + escapeHtml(nombreSplit.subtitulo) + '</p>' : '') +
+      '<h1 class="rv-titulo">' + escapeHtml(menu.nombre) + '</h1>' +
+      (menu.complementariasResueltas.length ? '<p class="rv-subtitulo">' + escapeHtml(menu.complementariasResueltas.map(function (c) { return c.nombre; }).join(' · ')) + '</p>' : '') +
       '<div class="rv-stats">' +
-      '<div class="rv-stat"><i data-lucide="clock"></i><span class="rv-stat-valor">' + (plantilla.tiempo_min || '?') + ' min</span></div>' +
+      '<div class="rv-stat"><i data-lucide="clock"></i><span class="rv-stat-valor">' + (principal.tiempo_min || '?') + ' min</span></div>' +
       (mesa.presentes.length ? '<div class="rv-stat"><i data-lucide="flame"></i><span class="rv-stat-valor">~' + kcalMedio + ' kcal</span></div>' : '') +
       '<div class="rv-stat"><i data-lucide="leaf"></i><span class="rv-stat-valor">' + tag + '</span></div>' +
       '</div>' +
@@ -421,6 +417,7 @@
       '<div class="rv-ingredientes">' + ingredientesHtml + '</div>' +
       '<p class="rv-seccion-titulo">Preparación</p>' +
       pasosHtml +
+      complementariasHtml +
       pasosAdaptadosHtml +
       renderValoracion(estado, dia.fecha, tipoComida) +
       '<button type="button" class="rv-cta" data-action="ir-vista" data-vista="compra"><i data-lucide="shopping-basket"></i>Ver en la lista de la compra</button>' +
@@ -569,10 +566,10 @@
     for (var p = inicioProximos; p < Math.min(inicioProximos + 4, plan14.length); p++) {
       var pd = plan14[p];
       var pLocal = p % 7;
-      var pComidaPl = pd.comida ? E.plantillaPorId(banco, estado, pd.comida.plantillaId) : null;
-      var pCenaPl = pd.cena ? E.plantillaPorId(banco, estado, pd.cena.plantillaId) : null;
-      var pComidaNombre = pComidaPl ? splitNombrePlato(E.resolverPlato(pComidaPl, pd.comida.seleccion, [], banco).nombre).titulo : 'Sin plan';
-      var pCenaNombre = pCenaPl ? splitNombrePlato(E.resolverPlato(pCenaPl, pd.cena.seleccion, [], banco).nombre).titulo : 'Sin plan';
+      var pComidaPl = pd.comida ? E.elaboracionPorId(banco, estado, pd.comida.menu.principalId) : null;
+      var pCenaPl = pd.cena ? E.elaboracionPorId(banco, estado, pd.cena.menu.principalId) : null;
+      var pComidaNombre = pd.comida ? pd.comida.menu.nombre : 'Sin plan';
+      var pCenaNombre = pd.cena ? pd.cena.menu.nombre : 'Sin plan';
       var pColeDia = estado.cole && estado.cole.dias && estado.cole.dias[pd.fecha];
       var pFotoPl = pCenaPl || pComidaPl;
       proximosItems += '<div class="ph-proximo">' +
@@ -624,14 +621,11 @@
       '</div>';
   }
 
-  // nombre corto de un plato para la vista de un vistazo — presentes=[] es
-  // intencional: resolverPlato calcula el nombre sin depender de comensales,
-  // así se evita recalcular presencia solo para un texto.
+  // nombre corto de un plato para la vista de un vistazo — v3: el slot ya
+  // trae el nombre resuelto, no hace falta volver a llamar al motor.
   function nombreCortoSlot(estado, banco, slot) {
-    if (!slot) return 'Sin plan';
-    var plantilla = E.plantillaPorId(banco, estado, slot.plantillaId);
-    if (!plantilla) return '?';
-    return E.resolverPlato(plantilla, slot.seleccion, [], banco).nombre;
+    if (!slot || !slot.menu) return 'Sin plan';
+    return slot.menu.nombre;
   }
 
   function renderResumenDia(estado, banco, plan, diaIndex, hoyIdx) {
@@ -660,25 +654,31 @@
   // ---------------------------------------------------------------
   function categoriasDePlantilla(p, banco) {
     var set = {};
-    Object.keys(p.ejes || {}).forEach(function (eje) {
-      (p.ejes[eje] || []).forEach(function (id) {
-        var ing = banco.ingredientes[id];
-        if (ing) set[ing.categoria] = 1;
-      });
+    var ids = (p.ingredientes.opciones || []).slice();
+    Object.keys(p.ingredientes.fijos || {}).forEach(function (g) { ids = ids.concat(p.ingredientes.fijos[g]); });
+    ids.forEach(function (id) {
+      var ing = banco.ingredientes[id];
+      if (ing) set[ing.categoria] = 1;
     });
     return set;
   }
 
   function renderFormRecetaPropia(banco) {
+    // v3 (tramo 6): el modelo ya no es 3 ejes fijos — una receta propia es una
+    // elaboración PRINCIPAL (identidad = su ingrediente principal); hidrato y
+    // verdura los añade el ensamblador solo, vía compatibilidad genérica (misma
+    // familia que cualquier plancha/horno). Sin campo de técnica nuevo (cero
+    // mandos nuevos, principio del proyecto) — se asume 'plancha', la más neutra.
+    var categoriasProteina = {};
+    (banco.grupos && banco.grupos.proteina || []).forEach(function (c) { categoriasProteina[c] = 1; });
     var opcionesIng = idsIngredientesOrdenados(banco)
+      .filter(function (id) { return categoriasProteina[banco.ingredientes[id].categoria]; })
       .map(function (id) { return '<option value="' + id + '">' + escapeHtml(banco.ingredientes[id].nombre) + '</option>'; }).join('');
     return '<details class="receta-propia-form" data-detalle-key="receta-propia">' +
       '<summary>+ Añadir receta propia</summary>' +
       '<div class="form-miembro">' +
       '<label>Nombre del plato<input type="text" id="rp-nombre" maxlength="60" placeholder="p.ej. Salmón con puré"></label>' +
-      '<label>Lo principal<select id="rp-proteina"><option value="">(nada en concreto)</option>' + opcionesIng + '</select></label>' +
-      '<label>El acompañamiento<select id="rp-hidrato"><option value="">(sin acompañamiento)</option>' + opcionesIng + '</select></label>' +
-      '<label>La verdura<select id="rp-verdura"><option value="">(sin verdura)</option>' + opcionesIng + '</select></label>' +
+      '<label>Lo principal<select id="rp-proteina"><option value="">(elige un ingrediente)</option>' + opcionesIng + '</select></label>' +
       '<label>Apta para<select id="rp-apta"><option value="comida,cena">Comida y cena</option><option value="comida">Solo comida</option><option value="cena">Solo cena</option></select></label>' +
       '<label>Esfuerzo<select id="rp-esfuerzo"><option value="rapido">Rápido (≤25 min)</option><option value="medio">Medio (≤45 min)</option><option value="elaborado">Elaborado (findes)</option></select></label>' +
       '<button type="button" class="btn-primary" data-action="anadir-receta-propia">Guardar receta</button>' +
@@ -701,7 +701,7 @@
     return '<div class="rc-tarjeta' + (oculta ? ' rc-oculta' : '') + '">' +
       '<button type="button" class="rc-tarjeta-abrir" data-action="abrir-receta-banco" data-plantilla="' + p.id + '">' +
       '<span class="rc-tarjeta-foto">' + fotoHtml + (tag ? '<span class="rc-tarjeta-tag">' + escapeHtml(tag) + '</span>' : '') + '</span>' +
-      '<span class="rc-tarjeta-info"><span class="rc-tarjeta-nombre">' + escapeHtml(capitaliza(nombreEjemplo(p, banco))) + '</span>' +
+      '<span class="rc-tarjeta-info"><span class="rc-tarjeta-nombre">' + escapeHtml(nombreEjemplo(p, banco)) + '</span>' +
       '<span class="rc-tarjeta-meta"><i data-lucide="clock"></i>' + (p.tiempo_min || '?') + ' min</span></span>' +
       '</button>' +
       '<span class="rc-tarjeta-acciones">' +
@@ -716,7 +716,7 @@
     return '<div class="rc-fila' + (oculta ? ' rc-oculta' : '') + '">' +
       '<button type="button" class="rc-fila-abrir" data-action="abrir-receta-banco" data-plantilla="' + p.id + '">' +
       '<span class="rc-fila-foto">' + fotoHtml + '</span>' +
-      '<span class="rc-fila-info"><span class="rc-fila-nombre">' + escapeHtml(capitaliza(nombreEjemplo(p, banco))) + '</span>' +
+      '<span class="rc-fila-info"><span class="rc-fila-nombre">' + escapeHtml(nombreEjemplo(p, banco)) + '</span>' +
       '<span class="rc-fila-meta"><i data-lucide="clock"></i>' + (p.tiempo_min || '?') + ' min' + (tag ? ' · ' + escapeHtml(tag) : '') + '</span></span>' +
       '</button>' +
       '<button type="button" class="rc-icono-btn' + (favorita ? ' rc-icono-activo' : '') + '" data-action="toggle-favorita-receta" data-plantilla="' + p.id + '" aria-label="' + (favorita ? 'Quitar de favoritas' : 'Marcar como favorita') + '" aria-pressed="' + favorita + '"><i data-lucide="heart"' + (favorita ? ' style="fill:currentColor"' : '') + '></i></button>' +
@@ -728,7 +728,10 @@
     filtro = filtro || 'todas';
     busqueda = busqueda || '';
     vista = vista === 'list' ? 'list' : 'grid';
-    var todas = E.todasLasPlantillas(banco, estado);
+    // solo principales/mixtas son "recetas" navegables — las complementarias
+    // (guarnición de arroz, ensalada de tomate...) son piezas internas del
+    // ensamblador, no algo que la familia elija/oculte/marque favorito.
+    var todas = E.todasLasElaboraciones(banco, estado).filter(function (p) { return p.roles.indexOf('principal') !== -1; });
     var ocultas = estado.ocultas || [];
     var favoritas = estado.favoritas || [];
 
@@ -783,39 +786,28 @@
   // Ingredientes/pasos con la combinación de ejemplo (nombreEjemplo), igual
   // que ya hacía la lista del banco.
   function renderVistaRecetaPlantilla(estado, banco, plantillaId) {
-    var plantilla = E.plantillaPorId(banco, estado, plantillaId);
+    var plantilla = E.elaboracionPorId(banco, estado, plantillaId);
     if (!plantilla) {
       return '<button type="button" class="rv-flotante rv-volver" data-action="receta-volver" aria-label="Volver"><i data-lucide="arrow-left"></i></button>' +
         '<div class="rv-body rv-body-vacia"><p class="card-msg">No encontramos esta receta.</p></div>';
     }
-    // Sin día ni familia detrás: seleccion "de ejemplo" (primera opción de
-    // cada eje, igual criterio que nombreEjemplo) y UN comensal adulto
-    // sintético solo para poder enseñar una ración de referencia — resolverPlato
-    // deja ingredientes/pasos vacíos si seleccion/presentes llegan vacíos.
-    var seleccionEjemplo = {};
-    Object.keys(plantilla.ejes || {}).forEach(function (eje) {
-      if (plantilla.ejes[eje] && plantilla.ejes[eje].length) seleccionEjemplo[eje] = plantilla.ejes[eje][0];
-    });
-    var resuelto = E.resolverPlato(plantilla, seleccionEjemplo, [{ id: '_preview' }], banco, []);
-    var nombreSplit = splitNombrePlato(resuelto.nombre);
+    // Sin día ni familia detrás: E.previsualizarElaboracion resuelve nombre/pasos
+    // con la 1ª opción del eje paramétrico (si tiene) — sin kcal/gramos reales
+    // (no hay mesa real que calcular; el motor los da al ensamblar de verdad).
+    var previa = previsualizar(plantilla, banco);
+    var nombreSplit = splitNombrePlato(previa.nombre);
     var esCena = !!(plantilla.apta && plantilla.apta.indexOf('comida') === -1);
     var tag = ETIQUETA_ESFUERZO[plantilla.esfuerzo] || '—';
     var favorita = (estado.favoritas || []).indexOf(plantilla.id) !== -1;
     var oculta = (estado.ocultas || []).indexOf(plantilla.id) !== -1;
     var fotoHtml = plantilla.foto ? '<img src="' + escapeHtml(plantilla.foto) + '" alt="">' : '<div class="rv-foto-vacia"></div>';
-    var variantes = variantesProteina(plantilla, banco);
+    var variantes = variantesTexto(plantilla, banco);
+    var acompText = previa.complementariasEjemplo.length
+      ? 'Se completa con ' + previa.complementariasEjemplo.map(function (c) { return c.nombre.toLowerCase(); }).join(' y ') + '.'
+      : '';
 
-    var ingredientesHtml = resuelto.ingredientes.slice().sort(function (a, b) {
-      var na = banco.ingredientes[a.id] ? banco.ingredientes[a.id].nombre : a.id;
-      var nb = banco.ingredientes[b.id] ? banco.ingredientes[b.id].nombre : b.id;
-      return na.localeCompare(nb);
-    }).map(function (item) {
-      var ing = banco.ingredientes[item.id];
-      return '<div class="rv-ingrediente"><span class="rv-ingrediente-bullet"></span><span class="rv-ingrediente-nombre">' + escapeHtml(ing ? ing.nombre : item.id) + '</span><span class="rv-ingrediente-g">' + item.gramos + ' g</span></div>';
-    }).join('');
-
-    var pasosHtml = resuelto.pasos.length
-      ? '<div class="rv-pasos">' + resuelto.pasos.map(function (p, i) {
+    var pasosHtml = previa.pasos.length
+      ? '<div class="rv-pasos">' + previa.pasos.map(function (p, i) {
           return '<div class="rv-paso"><span class="rv-paso-num">' + (i + 1) + '</span><span class="rv-paso-texto">' + escapeHtml(p) + '</span></div>';
         }).join('') + '</div>'
       : '<p class="card-msg">Sin pasos detallados para esta receta.</p>';
@@ -832,13 +824,10 @@
       (nombreSplit.subtitulo ? '<p class="rv-subtitulo">' + escapeHtml(nombreSplit.subtitulo) + '</p>' : '') +
       '<div class="rv-stats">' +
       '<div class="rv-stat"><i data-lucide="clock"></i><span class="rv-stat-valor">' + (plantilla.tiempo_min || '?') + ' min</span></div>' +
-      '<div class="rv-stat"><i data-lucide="flame"></i><span class="rv-stat-valor">~' + resuelto.kcalTotal + ' kcal</span></div>' +
       '<div class="rv-stat"><i data-lucide="leaf"></i><span class="rv-stat-valor">' + tag + '</span></div>' +
       '</div>' +
-      '<p class="rv-variantes"><i data-lucide="info"></i>Ingredientes y cantidades para 1 ración de ejemplo.</p>' +
+      (acompText ? '<p class="rv-variantes"><i data-lucide="info"></i>' + escapeHtml(acompText) + '</p>' : '') +
       (variantes ? '<p class="rv-variantes"><i data-lucide="shuffle"></i>' + escapeHtml(capitaliza(variantes)) + '</p>' : '') +
-      '<p class="rv-seccion-titulo">Ingredientes</p>' +
-      '<div class="rv-ingredientes">' + ingredientesHtml + '</div>' +
       '<p class="rv-seccion-titulo">Preparación</p>' +
       pasosHtml +
       '</div>';
@@ -910,51 +899,32 @@
   // Sheet: cambiar plato (elegir otro / nevera) — lenguaje visual v3
   // (Roger 2026-07-19/20, handoff e3Foods.dc.html ~L541-554, tarea #18)
   // ---------------------------------------------------------------
+  // 3 opciones (borrador §6, última hora): (a) otro menú completo — el motor
+  // reensambla directo, sin lista de 40 platos que navegar a mano (antes
+  // "elegir otro" abría el recetario entero; el ensamblador ya rankea, así
+  // que un solo botón que reensambla es MENOS mandos, no más); (b) nevera —
+  // ahora con hasta 3 opciones nativas; (c) solo el acompañamiento — mantiene
+  // el principal, cambia hidrato/verdura.
   function renderSheetCambiarInicio(estado, banco, dia, tipoComida) {
     return sheetHead('Cambiar ' + (tipoComida === 'comida' ? 'comida' : 'cena')) +
       '<div class="sheet-body">' +
-      '<p class="card-msg">¿De dónde sacamos la alternativa?</p>' +
+      '<p class="card-msg">¿Qué cambiamos?</p>' +
+      '<button type="button" class="sheet-fila-opcion" data-action="modo-otro-menu" data-dia="' + dia + '" data-tipo="' + tipoComida + '">' +
+      '<span class="sheet-fila-opcion-icono sheet-fila-opcion-icono-gold"><i data-lucide="shuffle"></i></span>' +
+      '<span class="sheet-fila-opcion-texto"><span class="sheet-fila-opcion-titulo">Otro menú</span><span class="sheet-fila-opcion-sub">Un menú completo distinto</span></span>' +
+      '<i data-lucide="chevron-right" class="sheet-fila-opcion-chevron"></i>' +
+      '</button>' +
       '<button type="button" class="sheet-fila-opcion" data-action="modo-nevera" data-dia="' + dia + '" data-tipo="' + tipoComida + '">' +
       '<span class="sheet-fila-opcion-icono sheet-fila-opcion-icono-azul"><i data-lucide="refrigerator"></i></span>' +
       '<span class="sheet-fila-opcion-texto"><span class="sheet-fila-opcion-titulo">Con lo que hay en la nevera</span><span class="sheet-fila-opcion-sub">Recetas con lo de tu nevera</span></span>' +
       '<i data-lucide="chevron-right" class="sheet-fila-opcion-chevron"></i>' +
       '</button>' +
-      '<button type="button" class="sheet-fila-opcion" data-action="modo-elegir-otro" data-dia="' + dia + '" data-tipo="' + tipoComida + '">' +
-      '<span class="sheet-fila-opcion-icono sheet-fila-opcion-icono-gold"><i data-lucide="book-open"></i></span>' +
-      '<span class="sheet-fila-opcion-texto"><span class="sheet-fila-opcion-titulo">Elegir otro plato</span><span class="sheet-fila-opcion-sub">Explora el recetario completo</span></span>' +
+      '<button type="button" class="sheet-fila-opcion" data-action="modo-solo-complementaria" data-dia="' + dia + '" data-tipo="' + tipoComida + '">' +
+      '<span class="sheet-fila-opcion-icono sheet-fila-opcion-icono-gold"><i data-lucide="salad"></i></span>' +
+      '<span class="sheet-fila-opcion-texto"><span class="sheet-fila-opcion-titulo">Cambiar solo el acompañamiento</span><span class="sheet-fila-opcion-sub">Mismo plato principal, otra guarnición</span></span>' +
       '<i data-lucide="chevron-right" class="sheet-fila-opcion-chevron"></i>' +
       '</button>' +
       '</div>';
-  }
-
-  function renderListaElegirOtro(estado, banco, plan, dia, tipoComida) {
-    // Solo plantillas que el motor puede aceptar de verdad para ESTA mesa (dieta/
-    // mesa mixta y vetos) — antes se listaba todo lo 'apta' y el tap acababa en
-    // "no encontramos un plato" para opciones imposibles (bug 2026-07-16). Las
-    // cuotas máximas también se pre-filtran desde el audit 2026-07-20: el modo
-    // manual las mantiene (protegen salud) y ofrecer un plato que solo computa
-    // una categoría ya saturada (p.ej. tabla de embutido con carne-roja al máximo)
-    // repetía la misma clase de alert sin explicación.
-    var diaObj = plan && plan.dias[dia];
-    var presentes = diaObj ? E.presentesEnComida(estado, diaObj.fecha, dia, tipoComida) : [];
-    var vetosUnion = E.vetosDe(presentes);
-    var contadorCuotas = diaObj ? E.contadorSemanaSinSlot(plan, dia, tipoComida, banco) : {};
-    var cuotas = (banco && banco.categorias_cuota) || {};
-    var candidatas = E.plantillasDisponibles(banco, estado).filter(function (p) {
-      return (p.apta || []).indexOf(tipoComida) !== -1 &&
-        E.plantillaViableParaMesa(p, presentes, vetosUnion, banco) &&
-        E.plantillaPasaCuotas(p, vetosUnion, contadorCuotas, cuotas, banco);
-    });
-    var listaHtml = candidatas.length
-      ? '<ul class="lista-plantillas">' + candidatas.map(function (p) {
-          return '<li><button type="button" class="fila-plantilla" data-action="elegir-plantilla" data-dia="' + dia + '" data-tipo="' + tipoComida + '" data-plantilla="' + p.id + '">' +
-            '<span class="fila-plantilla-nombre">' + escapeHtml(capitaliza(nombreEjemplo(p, banco))) + '</span>' +
-            '<span class="fila-plantilla-meta">' + (p.tiempo_min || '?') + ' min · ' + escapeHtml(ETIQUETA_ESFUERZO[p.esfuerzo] || p.esfuerzo || '') + '</span>' +
-            '</button></li>';
-        }).join('') + '</ul>'
-      : '<p class="card-msg">No hay recetas disponibles para esta comida.</p>';
-    return sheetHead('Elegir otro plato') +
-      '<div class="sheet-body">' + listaHtml + '</div>';
   }
 
   function renderNevera(estado, banco, dia, tipoComida) {
@@ -979,6 +949,30 @@
       '</div>' +
       '<ul class="lista-nevera" id="lista-nevera-checks">' + filas + '</ul>' +
       '</div>';
+  }
+
+  // Resultado del modo nevera — HASTA 3 opciones nativas (borrador §6, última
+  // hora: "la nevera enseña, no decide"). Cada opción es un menú completo ya
+  // resuelto; si le falta exactamente 1 ingrediente de los marcados como
+  // disponibles, aviso + CTA para añadirlo a la compra en vez de descartarla.
+  function renderOpcionesNevera(banco, opciones, dia, tipoComida) {
+    if (!opciones || !opciones.length) {
+      return sheetHead('Con lo que hay en la nevera') +
+        '<div class="sheet-body"><p class="card-msg">No encontramos ningún menú que se pueda montar con eso — prueba a marcar algún ingrediente más.</p></div>';
+    }
+    var filas = opciones.map(function (m, i) {
+      var subtitulo = (m.complementariasResueltas || []).map(function (c) { return c.nombre; }).join(' · ');
+      var nombreFalta = m.faltaIngrediente && banco.ingredientes[m.faltaIngrediente] ? banco.ingredientes[m.faltaIngrediente].nombre : m.faltaIngrediente;
+      var avisoHtml = m.faltaIngrediente
+        ? '<p class="fila-opcion-nevera-aviso"><i data-lucide="alert-circle"></i>Te falta ' + escapeHtml(nombreFalta) + ' — <button type="button" class="ingrediente-link" data-action="nevera-anadir-compra" data-id="' + m.faltaIngrediente + '">¿lo añado a la compra?</button></p>'
+        : '';
+      return '<li><button type="button" class="fila-opcion-nevera" data-action="elegir-opcion-nevera" data-idx="' + i + '" data-dia="' + dia + '" data-tipo="' + tipoComida + '">' +
+        '<span class="fila-opcion-nevera-nombre">' + escapeHtml(m.nombre) + '</span>' +
+        (subtitulo ? '<span class="fila-opcion-nevera-sub">' + escapeHtml(subtitulo) + '</span>' : '') +
+        '</button>' + avisoHtml + '</li>';
+    }).join('');
+    return sheetHead('Elige un menú') +
+      '<div class="sheet-body"><ul class="lista-opciones-nevera">' + filas + '</ul></div>';
   }
 
   function renderConfirmarRegenerar(nombrePlato) {
@@ -1385,8 +1379,8 @@
     renderVistaReceta: renderVistaReceta,
     renderSheetResumenSemana: renderSheetResumenSemana,
     renderSheetCambiarInicio: renderSheetCambiarInicio,
-    renderListaElegirOtro: renderListaElegirOtro,
     renderNevera: renderNevera,
+    renderOpcionesNevera: renderOpcionesNevera,
     renderConfirmarRegenerar: renderConfirmarRegenerar,
     renderVistaMiembro: renderVistaMiembro,
     renderPatronGrid: renderPatronGrid,

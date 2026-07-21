@@ -86,23 +86,31 @@
   function necesidadKcalDia(miembro, fechaReferencia) {
     var edad = edadEnAnios(miembro.anioNacimiento, fechaReferencia);
     var sexo = miembro.sexo || 'mujer';
-    var actividad = miembro.actividad || 'media';
     var esMenor = edad < EDAD_MENOR;
-
+    // Default de actividad POR EDAD (Roger + ciencia 2026-07-21, IOM DRI EER usa 4 niveles en niños;
+    // un niño sano que cumple la OMS de ≥60 min/día es "activo", nunca sedentario): adultos 'baja'
+    // (vida de oficina sedentaria, lo común); menores 'media'. 'alta' si el niño hace deporte, a mano.
+    var actividad = miembro.actividad || (esMenor ? 'media' : 'baja');
+    var kcal;
     if (!esMenor && miembro.peso && miembro.altura) {
       var bmr = 10 * miembro.peso + 6.25 * miembro.altura - 5 * edad + (sexo === 'hombre' ? 5 : -161);
-      return Math.round(bmr * (FACTOR_ACTIVIDAD_MIFFLIN[actividad] || FACTOR_ACTIVIDAD_MIFFLIN.media));
+      kcal = Math.round(bmr * (FACTOR_ACTIVIDAD_MIFFLIN[actividad] || FACTOR_ACTIVIDAD_MIFFLIN.media));
+    } else {
+      var base;
+      if (edad < 4) base = 1000;
+      else if (edad < 9) base = 1200;
+      else if (edad < 14) base = sexo === 'hombre' ? 1600 : 1400;
+      else if (edad < 19) base = sexo === 'hombre' ? 2000 : 1800;
+      else if (edad < 31) base = sexo === 'hombre' ? 2400 : 2000;
+      else if (edad < 51) base = sexo === 'hombre' ? 2200 : 1800;
+      else if (edad < 71) base = sexo === 'hombre' ? 2000 : 1600;
+      else base = sexo === 'hombre' ? 1800 : 1600;
+      kcal = Math.round(base * (FACTOR_ACTIVIDAD_BANDA[actividad] || FACTOR_ACTIVIDAD_BANDA.media));
     }
-    var base;
-    if (edad < 4) base = 1000;
-    else if (edad < 9) base = 1200;
-    else if (edad < 14) base = sexo === 'hombre' ? 1600 : 1400;
-    else if (edad < 19) base = sexo === 'hombre' ? 2000 : 1800;
-    else if (edad < 31) base = sexo === 'hombre' ? 2400 : 2000;
-    else if (edad < 51) base = sexo === 'hombre' ? 2200 : 1800;
-    else if (edad < 71) base = sexo === 'hombre' ? 2000 : 1600;
-    else base = sexo === 'hombre' ? 1800 : 1600;
-    return Math.round(base * (FACTOR_ACTIVIDAD_BANDA[actividad] || FACTOR_ACTIVIDAD_BANDA.media));
+    // Objetivo "reducir" (recuperado de v1, estándar NIH): -500 kcal/día, suelo 1200, SOLO adultos.
+    // Sin objetivo o 'mantenimiento' -> TDEE tal cual. Los menores nunca llevan déficit.
+    if (!esMenor && miembro.objetivo === 'perdida') return Math.max(1200, kcal - 500);
+    return kcal;
   }
 
   // ---------------------------------------------------------------

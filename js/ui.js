@@ -44,6 +44,8 @@
   // alta/edición (chipToggle) y el editor inline del sheet Familia (chipToggleMiembro)
   var OPCIONES_SEXO = [{ valor: 'mujer', etiqueta: 'Mujer' }, { valor: 'hombre', etiqueta: 'Hombre' }];
   var OPCIONES_ACTIVIDAD = [{ valor: 'baja', etiqueta: 'Baja' }, { valor: 'media', etiqueta: 'Media' }, { valor: 'alta', etiqueta: 'Alta' }];
+  // Objetivo de peso (recuperado de v1, Roger 2026-07-21): 'perdida' aplica -500 kcal/día. Solo adultos.
+  var OPCIONES_OBJETIVO = [{ valor: 'mantenimiento', etiqueta: 'Mantener peso' }, { valor: 'perdida', etiqueta: 'Reducir' }];
   var OPCIONES_DIETA = Object.keys(ETIQUETAS_DIETA).map(function (k) { return { valor: k, etiqueta: ETIQUETAS_DIETA[k] }; });
 
   function etiquetaDieta(valor) { return ETIQUETAS_DIETA[valor] || 'De todo'; }
@@ -516,7 +518,9 @@
       return '<button type="button" class="' + clases + '" data-action="semana-elegir-dia" data-dia-global="' + i + '" aria-pressed="' + (i === idx) + '">' +
         '<span class="ph-dia-letra">' + NOMBRES_DIA_CORTO[i % 7].charAt(0) + '</span>' +
         '<span class="ph-dia-num">' + d.getDate() + '</span>' +
-        (tieneCole ? '<i data-lucide="graduation-cap" class="ph-dia-cole"></i>' : '') +
+        // El hueco del birrete se reserva SIEMPRE (placeholder vacío sin cole) para que todos los
+        // días tengan la misma altura y el número quede a la misma línea, haya cole o no (Roger 21-jul).
+        (tieneCole ? '<i data-lucide="graduation-cap" class="ph-dia-cole"></i>' : '<span class="ph-dia-cole ph-dia-cole-vacio" aria-hidden="true"></span>') +
         '</button>';
     }).join('');
     var tiraHtml = '<div class="ph-tira-wrap scroll">' + diasHtml + '</div>';
@@ -1030,7 +1034,7 @@
           '<div class="campo-corto"><span class="campo-eyebrow">Altura (cm)</span><input type="number" id="mf-altura" class="input-editorial input-corto" min="30" max="230" value="' + (miembro.altura || '') + '"></div>' +
           '<div class="campo-corto"><span class="campo-eyebrow">Peso (kg)</span><input type="number" id="mf-peso" class="input-editorial input-corto" min="1" max="200" value="' + (miembro.peso || '') + '"></div>' +
         '</div>' +
-        '<span class="campo-eyebrow">Actividad</span>' + chipToggle('mf-actividad', OPCIONES_ACTIVIDAD, miembro.actividad, 'media') +
+        '<span class="campo-eyebrow">Actividad</span>' + chipToggle('mf-actividad', OPCIONES_ACTIVIDAD, miembro.actividad, '') +
         '<span class="campo-eyebrow">Tipo de dieta</span>' + chipToggle('mf-dieta', OPCIONES_DIETA, miembro.dieta, 'omnivora') +
         '</div>' +
       '</details>' +
@@ -1197,7 +1201,10 @@
       '<div class="mf-campo"><span class="campo-eyebrow">Altura (cm, opcional)</span><input type="number" class="input-editorial" data-campo="altura" data-id="' + miembro.id + '" value="' + (miembro.altura || '') + '" min="30" max="230"></div>' +
       '<div class="mf-campo"><span class="campo-eyebrow">Peso (kg, opcional)</span><input type="number" class="input-editorial" data-campo="peso" data-id="' + miembro.id + '" value="' + (miembro.peso || '') + '" min="1" max="200"></div>' +
       '</div>' +
-      '<div class="mf-campo"><span class="campo-eyebrow">Actividad</span>' + chipToggleMiembro('actividad', OPCIONES_ACTIVIDAD, miembro.actividad || 'media', miembro.id) + '</div>' +
+      '<div class="mf-campo"><span class="campo-eyebrow">Actividad</span>' + chipToggleMiembro('actividad', OPCIONES_ACTIVIDAD, miembro.actividad || (E.edadEnAnios(miembro.anioNacimiento) >= 12 ? 'baja' : 'media'), miembro.id) + '</div>' +
+      (E.edadEnAnios(miembro.anioNacimiento) >= 12
+        ? '<div class="mf-campo"><span class="campo-eyebrow">Objetivo de peso</span>' + chipToggleMiembro('objetivo', OPCIONES_OBJETIVO, miembro.objetivo || 'mantenimiento', miembro.id) + '</div>'
+        : '') +
       '<div class="mf-campo"><span class="campo-eyebrow">Tipo de dieta</span>' + chipToggleMiembro('dieta', OPCIONES_DIETA, miembro.dieta || 'omnivora', miembro.id) + '</div>' +
       '<div class="mf-campo"><span class="campo-eyebrow">Alergias / restricciones</span><input type="text" class="input-editorial" data-campo="alergias" data-id="' + miembro.id + '" value="' + escapeHtml(miembro.alergias || '') + '" placeholder="Ninguna"></div>' +
       '<div class="mf-campo"><span class="campo-eyebrow">Le gusta</span><input type="text" class="input-editorial" data-campo="leGusta" data-id="' + miembro.id + '" value="' + escapeHtml(miembro.leGusta || '') + '" placeholder="Platos favoritos"></div>' +

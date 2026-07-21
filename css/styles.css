@@ -821,6 +821,9 @@ body.sheet-open { overflow: hidden; }
 .ph-dia-letra { font-size: 10px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase; opacity: .7; }
 .ph-dia-num { font-size: 15.5px; font-weight: 800; line-height: 1; }
 .ph-dia-cole { font-size: 11px; color: var(--gold-link); margin-top: 1px; }
+/* placeholder invisible: reserva el mismo hueco (1em=11px) que el birrete los días sin cole,
+   para que la tira de días no cambie de altura ni desalinee el número (Roger 21-jul) */
+.ph-dia-cole-vacio { display: block; width: 1em; height: 1em; }
 .ph-dia-hoy { border-color: var(--gold); }
 .ph-dia-activo { border: none; background: linear-gradient(180deg, var(--gold-grad-a), var(--gold-grad-b)); color: var(--ink); box-shadow: 0 6px 14px -8px var(--gold-grad-b); }
 .ph-dia-activo .ph-dia-cole { color: var(--ink); opacity: .7; }

@@ -798,7 +798,7 @@
     if (!nombre || !anio || isNaN(anio) || anio < 1920 || anio > anioActual) return null;
     var datos = {
       nombre: nombre, sexo: sexo, anioNacimiento: anio,
-      actividad: val('mf-actividad') || 'media', dieta: val('mf-dieta') || 'omnivora',
+      actividad: val('mf-actividad') || ((anioActual - anio) >= 12 ? 'baja' : 'media'), dieta: val('mf-dieta') || 'omnivora',
       foto: formFotoActual || null
     };
     // coma decimal (teclado iOS) → punto; '' o NaN quedan fuera (audit 2026-07-20)

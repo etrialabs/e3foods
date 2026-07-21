@@ -902,7 +902,10 @@
   function resolverNombre(elaboracion, seleccionEje, banco) {
     if (!elaboracion.ingredientes.eje || !seleccionEje) return elaboracion.nombre;
     var ing = banco.ingredientes[seleccionEje];
-    var nombreIng = ing ? ing.nombre : seleccionEje;
+    // Sin el paréntesis del corte en el TÍTULO (Roger 2026-07-21): "Pollo (pechuga o contramuslo)"
+    // -> "pollo" para que "Wrap casero de pollo" quede limpio. El detalle se conserva íntegro en la
+    // lista de ingredientes de la receta (que usa ing.nombre directo, no esta función).
+    var nombreIng = ing ? ing.nombre.replace(/\s*\([^)]*\)/g, '').trim() : seleccionEje;
     // los nombres de ingrediente en el banco vienen SIEMPRE capitalizados ("Arroz") — v2
     // solo sustituía al inicio de frase. A mitad de frase ("Guarnición de {hidrato}") hay
     // que minuscular explícitamente, no basta con no capitalizar (la fuente ya lo está).

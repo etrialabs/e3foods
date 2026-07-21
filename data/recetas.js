@@ -4294,7 +4294,7 @@
     },
     {
       "id": "soldaditos-de-pavia",
-      "nombre": "Soldaditos de Pavía (bacalao rebozado)",
+      "nombre": "Soldaditos de Pavía - Bacalao rebozado",
       "roles": [
         "principal"
       ],

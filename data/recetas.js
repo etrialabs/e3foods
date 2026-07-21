@@ -1463,6 +1463,12 @@
       "fuente": "AC25 (2025) p.31: verdura cruda aliñada con aceite de oliva = ideal saludable (misma cita que plancha/horno/vapor/hervido). Preparación PROPIA, distinta de \"crudo\" (Roger 2026-07-21): la ensalada siempre lleva ≥2 verduras salvo tomate/pepino que valen solos, y SIEMPRE va aliñada",
       "factor_kcal": null,
       "kcal_extra_racion": 45
+    },
+    "papillote": {
+      "salubridad": 1,
+      "fuente": "AC25 (2025) p.31 (misma cita que horno/vapor/plancha/hervido) — envuelto y cocido en su propio jugo, sin grasa añadida; técnica NUEVA (Fase 3, Roger 2026-07-21, borrador §Preparaciones·PESCADO+HUEVOS: \"papillote, o plegar en horno\"), tratada como variante de horno sin factor propio",
+      "factor_kcal": null,
+      "kcal_extra_racion": null
     }
   },
   "acabados": {
@@ -1485,6 +1491,13 @@
       "fuente": "HUECO cita directa — nivel heredado por analogía con rebozado",
       "factor_kcal": {
         "proteina": 2.3
+      }
+    },
+    "enharinado": {
+      "salubridad": 2,
+      "fuente": "research 2026-07-21 §Enharinado vs rebozado: velo de harina, poca absorción de aceite, \"~mitad de kcal extra que el rebozado\" (+50-80 kcal/ración vs +120-200 del rebozado). factor_kcal derivado: mismo extra ABSOLUTO que rebozado (kcal_100g×2.3 − kcal_100g) partido por 2, sobre la referencia merluza (90 kcal/100g): extra rebozado 117 → mitad 58.5 → factor 1.65. Salubridad intermedia (2, no 3 como rebozado/empanado): mucha menos grasa retenida",
+      "factor_kcal": {
+        "proteina": 1.65
       }
     }
   },
@@ -1527,7 +1540,11 @@
           "merluza",
           "salmon",
           "cerdo",
-          "ternera"
+          "ternera",
+          "entrecot-ternera",
+          "solomillo-ternera",
+          "secreto-iberico",
+          "presa-iberica"
         ],
         "fijos": null
       }
@@ -1569,7 +1586,11 @@
           "cerdo",
           "merluza",
           "salmon",
-          "lubina"
+          "lubina",
+          "costillas-cerdo",
+          "cordero-pierna",
+          "cordero-paletilla",
+          "cordero-chuletas"
         ],
         "fijos": null
       }
@@ -2019,7 +2040,7 @@
     },
     {
       "id": "pasta-bolonesa",
-      "nombre": "Boloñesa de {proteina}",
+      "nombre": "Boloñesa de ternera y cerdo",
       "roles": [
         "principal"
       ],
@@ -2038,23 +2059,21 @@
       "ninos": true,
       "foto": "assets/banco-fotos/ensalada-lentejas.jpg",
       "pasos": [
-        "Picar {verdura} muy fina y sofreír con ajo y cebolla.",
-        "Añadir {proteina} y dorar bien deshaciendo los grumos.",
-        "Incorporar tomate triturado y cocer a fuego lento 15-20 minutos.",
-        "Cocer {hidrato} al dente en agua con sal.",
-        "Mezclar o servir la boloñesa sobre {hidrato}."
+        "Picar la zanahoria, el calabacín y la cebolla muy finos y sofreír con ajo.",
+        "Añadir la carne picada mixta de ternera y cerdo y dorar bien deshaciendo los grumos.",
+        "Incorporar el tomate triturado y cocer a fuego lento 15-20 minutos."
       ],
       "grupos": [
         "proteina",
         "verdura"
       ],
       "ingredientes": {
-        "eje": "proteina",
-        "opciones": [
-          "pavo",
-          "ternera-picada"
-        ],
+        "eje": null,
+        "opciones": null,
         "fijos": {
+          "proteina": [
+            "carne-picada-mixta"
+          ],
           "verdura": [
             "zanahoria",
             "tomate",
@@ -3547,7 +3566,7 @@
     },
     {
       "id": "pizza-casera",
-      "nombre": "Pizza casera de {proteina}",
+      "nombre": "Pizza de atún",
       "roles": [
         "principal"
       ],
@@ -3567,8 +3586,8 @@
       "foto": "assets/banco-fotos/crema-zanahoria.jpg",
       "pasos": [
         "Precalentar el horno a la temperatura máxima con la bandeja dentro.",
-        "Estirar {hidrato} sobre papel de horno.",
-        "Cubrir con salsa de tomate, {proteina} y {verdura} troceada.",
+        "Estirar la masa de pizza sobre papel de horno.",
+        "Cubrir con salsa de tomate, el atún en conserva escurrido y el tomate troceado.",
         "Añadir queso rallado por encima.",
         "Hornear 10-12 minutos hasta que el borde esté dorado y el queso fundido."
       ],
@@ -3578,21 +3597,17 @@
         "verdura"
       ],
       "ingredientes": {
-        "eje": "proteina",
-        "opciones": [
-          "pollo",
-          "atun",
-          "queso-feta"
-        ],
+        "eje": null,
+        "opciones": null,
         "fijos": {
+          "proteina": [
+            "atun-conserva"
+          ],
           "hidrato": [
             "masa-pizza"
           ],
           "verdura": [
-            "champinones",
-            "pimiento",
-            "tomate",
-            "calabacin"
+            "tomate"
           ]
         }
       }
@@ -5230,6 +5245,1677 @@
       }
     },
     {
+      "id": "pizza-margarita",
+      "nombre": "Pizza margarita",
+      "roles": [
+        "principal"
+      ],
+      "origen": "nuevo",
+      "tecnicaCoccion": "horno",
+      "acabado": null,
+      "apta": [
+        "comida",
+        "cena"
+      ],
+      "tiempo_min": 40,
+      "esfuerzo": "medio",
+      "temporada": null,
+      "region": null,
+      "tematica": "Comida rápida e informal",
+      "ninos": true,
+      "foto": null,
+      "pasos": [
+        "Precalentar el horno a la temperatura máxima con la bandeja dentro.",
+        "Estirar la masa de pizza sobre papel de horno.",
+        "Cubrir con salsa de tomate y el tomate troceado.",
+        "Repartir el queso feta y un poco de queso rallado por encima.",
+        "Hornear 10-12 minutos hasta que el borde esté dorado y el queso fundido."
+      ],
+      "grupos": [
+        "proteina",
+        "hidrato",
+        "verdura"
+      ],
+      "ingredientes": {
+        "eje": null,
+        "opciones": null,
+        "fijos": {
+          "proteina": [
+            "queso-feta"
+          ],
+          "hidrato": [
+            "masa-pizza"
+          ],
+          "verdura": [
+            "tomate"
+          ]
+        }
+      }
+    },
+    {
+      "id": "pizza-jamon-queso",
+      "nombre": "Pizza de jamón york y queso",
+      "roles": [
+        "principal"
+      ],
+      "origen": "nuevo",
+      "tecnicaCoccion": "horno",
+      "acabado": null,
+      "apta": [
+        "comida",
+        "cena"
+      ],
+      "tiempo_min": 40,
+      "esfuerzo": "medio",
+      "temporada": null,
+      "region": null,
+      "tematica": "Comida rápida e informal",
+      "ninos": true,
+      "foto": null,
+      "pasos": [
+        "Precalentar el horno a la temperatura máxima con la bandeja dentro.",
+        "Estirar la masa de pizza sobre papel de horno.",
+        "Cubrir con salsa de tomate y el jamón cocido en tiras.",
+        "Añadir queso rallado por encima.",
+        "Hornear 10-12 minutos hasta que el borde esté dorado y el queso fundido."
+      ],
+      "grupos": [
+        "proteina",
+        "hidrato",
+        "verdura"
+      ],
+      "ingredientes": {
+        "eje": null,
+        "opciones": null,
+        "fijos": {
+          "proteina": [
+            "jamon-cocido"
+          ],
+          "hidrato": [
+            "masa-pizza"
+          ],
+          "verdura": [
+            "tomate"
+          ]
+        }
+      }
+    },
+    {
+      "id": "pizza-barbacoa",
+      "nombre": "Pizza barbacoa",
+      "roles": [
+        "principal"
+      ],
+      "origen": "nuevo",
+      "tecnicaCoccion": "horno",
+      "acabado": null,
+      "apta": [
+        "comida",
+        "cena"
+      ],
+      "tiempo_min": 40,
+      "esfuerzo": "medio",
+      "temporada": null,
+      "region": null,
+      "tematica": "Comida rápida e informal",
+      "ninos": true,
+      "foto": null,
+      "pasos": [
+        "Precalentar el horno a la temperatura máxima con la bandeja dentro.",
+        "Estirar la masa de pizza sobre papel de horno.",
+        "Cubrir con salsa barbacoa, el pollo troceado y el pimiento en tiras.",
+        "Añadir queso rallado por encima.",
+        "Hornear 10-12 minutos hasta que el borde esté dorado y el queso fundido."
+      ],
+      "grupos": [
+        "proteina",
+        "hidrato",
+        "verdura"
+      ],
+      "ingredientes": {
+        "eje": null,
+        "opciones": null,
+        "fijos": {
+          "proteina": [
+            "pollo"
+          ],
+          "hidrato": [
+            "masa-pizza"
+          ],
+          "verdura": [
+            "pimiento"
+          ]
+        }
+      }
+    },
+    {
+      "id": "pizza-cuatro-quesos",
+      "nombre": "Pizza cuatro quesos",
+      "roles": [
+        "principal"
+      ],
+      "origen": "nuevo",
+      "tecnicaCoccion": "horno",
+      "acabado": null,
+      "apta": [
+        "comida",
+        "cena"
+      ],
+      "tiempo_min": 40,
+      "esfuerzo": "medio",
+      "temporada": null,
+      "region": null,
+      "tematica": "Comida rápida e informal",
+      "ninos": true,
+      "foto": null,
+      "pasos": [
+        "Precalentar el horno a la temperatura máxima con la bandeja dentro.",
+        "Estirar la masa de pizza sobre papel de horno.",
+        "Cubrir con salsa de tomate y láminas de queso curado.",
+        "Añadir una mezcla de quesos rallados por encima.",
+        "Hornear 10-12 minutos hasta que el borde esté dorado y los quesos fundidos."
+      ],
+      "grupos": [
+        "proteina",
+        "hidrato",
+        "verdura"
+      ],
+      "ingredientes": {
+        "eje": null,
+        "opciones": null,
+        "fijos": {
+          "proteina": [
+            "queso-curado"
+          ],
+          "hidrato": [
+            "masa-pizza"
+          ],
+          "verdura": [
+            "tomate"
+          ]
+        }
+      }
+    },
+    {
+      "id": "pollo-pepitoria",
+      "nombre": "Pollo en pepitoria",
+      "roles": [
+        "principal"
+      ],
+      "origen": "nuevo",
+      "tecnicaCoccion": "guisado",
+      "acabado": null,
+      "apta": [
+        "comida",
+        "cena"
+      ],
+      "tiempo_min": 50,
+      "esfuerzo": "elaborado",
+      "temporada": null,
+      "region": null,
+      "tematica": "Carnes de cuchara y horno",
+      "ninos": true,
+      "foto": null,
+      "pasos": [
+        "Salpimentar y dorar el pollo troceado en una cazuela con aceite; reservar.",
+        "Sofreír cebolla y ajo en el mismo aceite hasta que estén tiernos.",
+        "Machacar almendras tostadas, ajo, azafrán y perejil en un mortero.",
+        "Devolver el pollo a la cazuela, añadir vino blanco y caldo, y cocer tapado 30 minutos.",
+        "Incorporar el majado de almendras y azafrán, y cocer 10 minutos más hasta espesar."
+      ],
+      "grupos": [
+        "proteina"
+      ],
+      "ingredientes": {
+        "eje": "proteina",
+        "opciones": [
+          "pollo"
+        ],
+        "fijos": null
+      }
+    },
+    {
+      "id": "escabechado",
+      "nombre": "{proteina} en escabeche",
+      "roles": [
+        "principal"
+      ],
+      "origen": "nuevo",
+      "tecnicaCoccion": "guisado",
+      "acabado": null,
+      "apta": [
+        "comida",
+        "cena"
+      ],
+      "tiempo_min": 45,
+      "esfuerzo": "elaborado",
+      "temporada": null,
+      "region": null,
+      "tematica": "Carnes de cuchara y horno",
+      "ninos": true,
+      "foto": null,
+      "pasos": [
+        "Dorar {proteina} troceado en aceite de oliva; reservar.",
+        "Sofreír cebolla, zanahoria y ajo laminado en el mismo aceite.",
+        "Añadir vino blanco, vinagre, laurel y pimienta en grano; llevar a hervor.",
+        "Devolver {proteina} a la cazuela, cubrir con caldo y cocer tapado 25 minutos.",
+        "Dejar enfriar en su propio escabeche antes de servir (se sirve frío o templado)."
+      ],
+      "grupos": [
+        "proteina"
+      ],
+      "ingredientes": {
+        "eje": "proteina",
+        "opciones": [
+          "pollo",
+          "conejo"
+        ],
+        "fijos": null
+      }
+    },
+    {
+      "id": "estofado-ternera",
+      "nombre": "Estofado de {proteina}",
+      "roles": [
+        "principal"
+      ],
+      "origen": "nuevo",
+      "tecnicaCoccion": "guisado",
+      "acabado": null,
+      "apta": [
+        "comida",
+        "cena"
+      ],
+      "tiempo_min": 90,
+      "esfuerzo": "elaborado",
+      "temporada": null,
+      "region": null,
+      "tematica": "Carnes de cuchara y horno",
+      "ninos": true,
+      "foto": null,
+      "pasos": [
+        "Salpimentar y dorar {proteina} troceado en una cazuela con aceite; reservar.",
+        "Sofreír cebolla, zanahoria y ajo en el mismo aceite hasta que estén tiernos.",
+        "Añadir un chorro de vino tinto y dejar reducir.",
+        "Devolver {proteina} a la cazuela, cubrir con caldo y cocer tapado a fuego lento 1 hora y media hasta que esté tierno."
+      ],
+      "grupos": [
+        "proteina"
+      ],
+      "ingredientes": {
+        "eje": "proteina",
+        "opciones": [
+          "carrillera-ternera",
+          "rabo-ternera",
+          "ternera"
+        ],
+        "fijos": null
+      }
+    },
+    {
+      "id": "magro-tomate",
+      "nombre": "Magro de cerdo con tomate",
+      "roles": [
+        "principal"
+      ],
+      "origen": "nuevo",
+      "tecnicaCoccion": "guisado",
+      "acabado": null,
+      "apta": [
+        "comida",
+        "cena"
+      ],
+      "tiempo_min": 35,
+      "esfuerzo": "medio",
+      "temporada": null,
+      "region": null,
+      "tematica": "Carnes de cuchara y horno",
+      "ninos": true,
+      "foto": null,
+      "pasos": [
+        "Salpimentar y dorar el cerdo troceado en una cazuela con aceite; reservar.",
+        "Sofreír cebolla y ajo en el mismo aceite hasta que estén tiernos.",
+        "Añadir tomate triturado y cocer a fuego lento 10 minutos.",
+        "Devolver el cerdo a la cazuela y cocer 15 minutos más hasta que la salsa espese."
+      ],
+      "grupos": [
+        "proteina"
+      ],
+      "ingredientes": {
+        "eje": "proteina",
+        "opciones": [
+          "cerdo"
+        ],
+        "fijos": null
+      }
+    },
+    {
+      "id": "costillas-salsa-barbacoa",
+      "nombre": "Costillas en salsa barbacoa",
+      "roles": [
+        "principal"
+      ],
+      "origen": "nuevo",
+      "tecnicaCoccion": "horno",
+      "acabado": null,
+      "apta": [
+        "comida",
+        "cena"
+      ],
+      "tiempo_min": 60,
+      "esfuerzo": "elaborado",
+      "temporada": null,
+      "region": null,
+      "tematica": "Carnes de cuchara y horno",
+      "ninos": true,
+      "foto": null,
+      "pasos": [
+        "Salpimentar las costillas y pincelarlas con salsa barbacoa.",
+        "Colocar en una bandeja de horno cubierta con papel de aluminio.",
+        "Hornear a 160°C durante 45 minutos tapadas.",
+        "Destapar, pincelar con más salsa barbacoa y hornear 15 minutos más hasta que se doren."
+      ],
+      "grupos": [
+        "proteina"
+      ],
+      "ingredientes": {
+        "eje": "proteina",
+        "opciones": [
+          "costillas-cerdo"
+        ],
+        "fijos": null
+      }
+    },
+    {
+      "id": "caldereta-cordero",
+      "nombre": "Caldereta de cordero",
+      "roles": [
+        "principal"
+      ],
+      "origen": "nuevo",
+      "tecnicaCoccion": "guisado",
+      "acabado": null,
+      "apta": [
+        "comida",
+        "cena"
+      ],
+      "tiempo_min": 90,
+      "esfuerzo": "elaborado",
+      "temporada": null,
+      "region": "extremadura",
+      "tematica": "Carnes de cuchara y horno",
+      "ninos": true,
+      "foto": null,
+      "pasos": [
+        "Salpimentar y dorar {proteina} troceado en una cazuela con aceite; reservar.",
+        "Sofreír cebolla, ajo y pimiento en el mismo aceite hasta que estén tiernos.",
+        "Añadir tomate triturado, vino blanco y una hoja de laurel; dejar reducir.",
+        "Devolver {proteina} a la cazuela, cubrir con caldo y cocer tapado a fuego lento 1 hora y media."
+      ],
+      "grupos": [
+        "proteina"
+      ],
+      "ingredientes": {
+        "eje": "proteina",
+        "opciones": [
+          "cordero-paletilla",
+          "cordero-cuello"
+        ],
+        "fijos": null
+      }
+    },
+    {
+      "id": "cordero-asado",
+      "nombre": "Cordero asado",
+      "roles": [
+        "principal"
+      ],
+      "origen": "nuevo",
+      "tecnicaCoccion": "horno",
+      "acabado": null,
+      "apta": [
+        "comida",
+        "cena"
+      ],
+      "tiempo_min": 90,
+      "esfuerzo": "elaborado",
+      "temporada": null,
+      "region": "castilla",
+      "tematica": "Carnes de cuchara y horno",
+      "ninos": true,
+      "foto": null,
+      "pasos": [
+        "Salpimentar {proteina} y colocarlo en una fuente de horno con manteca o aceite.",
+        "Añadir un fondo de agua o caldo con ajo y hoja de laurel.",
+        "Hornear a 180°C durante 1 hora, regando de vez en cuando con su jugo.",
+        "Subir la temperatura a 200°C los últimos 15-20 minutos hasta que la piel quede dorada y crujiente."
+      ],
+      "grupos": [
+        "proteina"
+      ],
+      "ingredientes": {
+        "eje": "proteina",
+        "opciones": [
+          "cordero-pierna",
+          "cordero-paletilla"
+        ],
+        "fijos": null
+      }
+    },
+    {
+      "id": "solomillo-pedro-ximenez",
+      "nombre": "Solomillo al Pedro Ximénez",
+      "roles": [
+        "principal"
+      ],
+      "origen": "nuevo",
+      "tecnicaCoccion": "guisado",
+      "acabado": null,
+      "apta": [
+        "comida",
+        "cena"
+      ],
+      "tiempo_min": 30,
+      "esfuerzo": "medio",
+      "temporada": null,
+      "region": "andalucia",
+      "tematica": "Carnes de cuchara y horno",
+      "ninos": true,
+      "foto": null,
+      "pasos": [
+        "Salpimentar y marcar {proteina} en una sartén con aceite bien caliente; reservar.",
+        "Sofreír cebolla y ajo en la misma sartén hasta que estén tiernos.",
+        "Añadir vino Pedro Ximénez y dejar reducir a fuego medio 5 minutos.",
+        "Devolver {proteina} a la sartén y cocinar 5-8 minutos más hasta que la salsa espese y nape la carne."
+      ],
+      "grupos": [
+        "proteina"
+      ],
+      "ingredientes": {
+        "eje": "proteina",
+        "opciones": [
+          "cerdo",
+          "solomillo-ternera"
+        ],
+        "fijos": null
+      }
+    },
+    {
+      "id": "brochetas-carne",
+      "nombre": "Brochetas de {proteina}",
+      "roles": [
+        "principal"
+      ],
+      "origen": "nuevo",
+      "tecnicaCoccion": "plancha",
+      "acabado": null,
+      "apta": [
+        "comida",
+        "cena"
+      ],
+      "tiempo_min": 25,
+      "esfuerzo": "rapido",
+      "temporada": "verano",
+      "region": null,
+      "tematica": "A la plancha o al horno",
+      "ninos": true,
+      "foto": null,
+      "pasos": [
+        "Cortar {proteina} en dados y marinar 15 minutos con aceite, ajo y pimentón.",
+        "Montar en brochetas alternando con trozos de pimiento y cebolla.",
+        "Hacer a la plancha o parrilla, girando hasta que estén doradas por todos los lados."
+      ],
+      "grupos": [
+        "proteina"
+      ],
+      "ingredientes": {
+        "eje": "proteina",
+        "opciones": [
+          "pollo",
+          "cerdo",
+          "ternera"
+        ],
+        "fijos": null
+      }
+    },
+    {
+      "id": "pollo-salsa-champinones",
+      "nombre": "Pollo en salsa de champiñones",
+      "roles": [
+        "principal"
+      ],
+      "origen": "nuevo",
+      "tecnicaCoccion": "guisado",
+      "acabado": null,
+      "apta": [
+        "comida",
+        "cena"
+      ],
+      "tiempo_min": 35,
+      "esfuerzo": "medio",
+      "temporada": null,
+      "region": null,
+      "tematica": "Carnes de cuchara y horno",
+      "ninos": true,
+      "foto": null,
+      "pasos": [
+        "Salpimentar y dorar el pollo en una cazuela con aceite; reservar.",
+        "Sofreír cebolla y ajo en el mismo aceite hasta que estén tiernos.",
+        "Añadir los champiñones laminados y saltear hasta que suelten su agua.",
+        "Incorporar un chorro de nata líquida o caldo y devolver el pollo a la cazuela.",
+        "Cocer 10-15 minutos a fuego lento hasta que la salsa espese."
+      ],
+      "grupos": [
+        "proteina",
+        "verdura"
+      ],
+      "ingredientes": {
+        "eje": null,
+        "opciones": null,
+        "fijos": {
+          "proteina": [
+            "pollo"
+          ],
+          "verdura": [
+            "champinones"
+          ]
+        }
+      }
+    },
+    {
+      "id": "escalope-empanado",
+      "nombre": "{proteina} empanado",
+      "roles": [
+        "principal"
+      ],
+      "origen": "nuevo",
+      "tecnicaCoccion": "frito",
+      "acabado": "empanado",
+      "apta": [
+        "comida",
+        "cena"
+      ],
+      "tiempo_min": 25,
+      "esfuerzo": "rapido",
+      "temporada": null,
+      "region": null,
+      "tematica": "Comida rápida e informal",
+      "ninos": true,
+      "foto": null,
+      "pasos": [
+        "Salpimentar el filete de {proteina} y aplanarlo un poco si es grueso.",
+        "Pasar por harina, huevo batido y pan rallado.",
+        "Freír en aceite bien caliente 2-3 minutos por cada lado hasta dorar.",
+        "Escurrir sobre papel absorbente antes de servir."
+      ],
+      "grupos": [
+        "proteina"
+      ],
+      "ingredientes": {
+        "eje": "proteina",
+        "opciones": [
+          "pollo",
+          "pavo",
+          "cerdo"
+        ],
+        "fijos": null
+      }
+    },
+    {
+      "id": "san-jacobo",
+      "nombre": "San Jacobo",
+      "roles": [
+        "principal"
+      ],
+      "origen": "nuevo",
+      "tecnicaCoccion": "frito",
+      "acabado": "empanado",
+      "apta": [
+        "comida",
+        "cena"
+      ],
+      "tiempo_min": 25,
+      "esfuerzo": "rapido",
+      "temporada": null,
+      "region": null,
+      "tematica": "Comida rápida e informal",
+      "ninos": true,
+      "foto": null,
+      "pasos": [
+        "Colocar una loncha de jamón serrano y otra de queso curado entre dos filetes finos de cerdo.",
+        "Sellar bien los bordes y pasar por harina, huevo batido y pan rallado.",
+        "Freír en aceite bien caliente 3-4 minutos por cada lado hasta dorar.",
+        "Escurrir sobre papel absorbente antes de servir."
+      ],
+      "grupos": [
+        "proteina"
+      ],
+      "ingredientes": {
+        "eje": null,
+        "opciones": null,
+        "fijos": {
+          "proteina": [
+            "cerdo",
+            "jamon-serrano",
+            "queso-curado"
+          ]
+        }
+      }
+    },
+    {
+      "id": "flamenquin",
+      "nombre": "Flamenquín",
+      "roles": [
+        "principal"
+      ],
+      "origen": "nuevo",
+      "tecnicaCoccion": "frito",
+      "acabado": "empanado",
+      "apta": [
+        "comida",
+        "cena"
+      ],
+      "tiempo_min": 25,
+      "esfuerzo": "rapido",
+      "temporada": null,
+      "region": "andalucia",
+      "tematica": "Comida rápida e informal",
+      "ninos": true,
+      "foto": null,
+      "pasos": [
+        "Envolver una tira de jamón serrano dentro de un filete fino de cerdo, enrollando bien.",
+        "Pasar por harina, huevo batido y pan rallado.",
+        "Freír en aceite bien caliente 3-4 minutos, girando hasta dorar por todos los lados.",
+        "Escurrir sobre papel absorbente y cortar en rodajas antes de servir."
+      ],
+      "grupos": [
+        "proteina"
+      ],
+      "ingredientes": {
+        "eje": null,
+        "opciones": null,
+        "fijos": {
+          "proteina": [
+            "cerdo",
+            "jamon-serrano"
+          ]
+        }
+      }
+    },
+    {
+      "id": "pescado-romana",
+      "nombre": "{proteina} a la romana",
+      "roles": [
+        "principal"
+      ],
+      "origen": "nuevo",
+      "tecnicaCoccion": "frito",
+      "acabado": "rebozado",
+      "apta": [
+        "comida",
+        "cena"
+      ],
+      "tiempo_min": 25,
+      "esfuerzo": "rapido",
+      "temporada": null,
+      "region": null,
+      "tematica": "Pescado y marisco",
+      "ninos": true,
+      "foto": null,
+      "pasos": [
+        "Salpimentar los filetes de {proteina}.",
+        "Pasar por harina y huevo batido (rebozado clásico a la romana).",
+        "Freír en aceite bien caliente 2-3 minutos por cada lado hasta dorar.",
+        "Escurrir sobre papel absorbente antes de servir."
+      ],
+      "grupos": [
+        "proteina"
+      ],
+      "ingredientes": {
+        "eje": "proteina",
+        "opciones": [
+          "merluza",
+          "gallo"
+        ],
+        "fijos": null
+      }
+    },
+    {
+      "id": "pescado-papillote",
+      "nombre": "{proteina} en papillote",
+      "roles": [
+        "principal"
+      ],
+      "origen": "nuevo",
+      "tecnicaCoccion": "papillote",
+      "acabado": null,
+      "apta": [
+        "comida",
+        "cena"
+      ],
+      "tiempo_min": 30,
+      "esfuerzo": "medio",
+      "temporada": null,
+      "region": null,
+      "tematica": "Pescado y marisco",
+      "ninos": true,
+      "foto": null,
+      "pasos": [
+        "Cortar el calabacín, la zanahoria y el puerro en juliana fina.",
+        "Colocar {proteina} sobre un rectángulo de papel de horno con la verdura por encima.",
+        "Añadir un chorrito de aceite de oliva, sal y un poco de vino blanco; cerrar el paquete bien sellado.",
+        "Hornear a 200°C durante 15-18 minutos hasta que el pescado esté hecho al vapor en su propio jugo."
+      ],
+      "grupos": [
+        "proteina",
+        "verdura"
+      ],
+      "ingredientes": {
+        "eje": "proteina",
+        "opciones": [
+          "merluza",
+          "dorada",
+          "lubina"
+        ],
+        "fijos": {
+          "verdura": [
+            "calabacin",
+            "zanahoria",
+            "puerro"
+          ]
+        }
+      }
+    },
+    {
+      "id": "bacalao-pil-pil",
+      "nombre": "Bacalao al pil pil",
+      "roles": [
+        "principal"
+      ],
+      "origen": "nuevo",
+      "tecnicaCoccion": "guisado",
+      "acabado": null,
+      "apta": [
+        "comida",
+        "cena"
+      ],
+      "tiempo_min": 40,
+      "esfuerzo": "elaborado",
+      "temporada": null,
+      "region": "euskadi",
+      "tematica": "Pescado y marisco",
+      "ninos": true,
+      "foto": null,
+      "pasos": [
+        "Confitar el bacalao a fuego muy suave en abundante aceite de oliva con ajo laminado, 8-10 minutos.",
+        "Retirar el bacalao y reservar el aceite con los jugos de la piel.",
+        "Ligar el aceite moviendo la cazuela en círculos (o batiendo) hasta que emulsione y espese en una salsa pil-pil.",
+        "Devolver el bacalao a la cazuela y napar con la salsa antes de servir."
+      ],
+      "grupos": [
+        "proteina"
+      ],
+      "ingredientes": {
+        "eje": "proteina",
+        "opciones": [
+          "bacalao"
+        ],
+        "fijos": null
+      }
+    },
+    {
+      "id": "bacalao-vizcaina",
+      "nombre": "Bacalao a la vizcaína",
+      "roles": [
+        "principal"
+      ],
+      "origen": "nuevo",
+      "tecnicaCoccion": "guisado",
+      "acabado": null,
+      "apta": [
+        "comida",
+        "cena"
+      ],
+      "tiempo_min": 45,
+      "esfuerzo": "elaborado",
+      "temporada": null,
+      "region": "euskadi",
+      "tematica": "Pescado y marisco",
+      "ninos": true,
+      "foto": null,
+      "pasos": [
+        "Sofreír cebolla y ajo en aceite de oliva hasta que estén muy tiernos.",
+        "Añadir el pimiento y el tomate troceados y cocer a fuego lento 20 minutos hasta formar una salsa.",
+        "Triturar la salsa hasta que quede fina.",
+        "Añadir el bacalao a la salsa y cocer 8-10 minutos a fuego suave hasta que esté hecho."
+      ],
+      "grupos": [
+        "proteina",
+        "verdura"
+      ],
+      "ingredientes": {
+        "eje": null,
+        "opciones": null,
+        "fijos": {
+          "proteina": [
+            "bacalao"
+          ],
+          "verdura": [
+            "pimiento",
+            "tomate"
+          ]
+        }
+      }
+    },
+    {
+      "id": "calamares-plancha",
+      "nombre": "Calamares a la plancha",
+      "roles": [
+        "principal"
+      ],
+      "origen": "nuevo",
+      "tecnicaCoccion": "plancha",
+      "acabado": null,
+      "apta": [
+        "comida",
+        "cena"
+      ],
+      "tiempo_min": 20,
+      "esfuerzo": "rapido",
+      "temporada": null,
+      "region": null,
+      "tematica": "Pescado y marisco",
+      "ninos": true,
+      "foto": null,
+      "pasos": [
+        "Limpiar y cortar el calamar en anillas o tiras.",
+        "Salpimentar y marcar a la plancha con un chorrito de aceite muy caliente, 2-3 minutos.",
+        "Añadir un toque de ajo y perejil picado al final y servir enseguida."
+      ],
+      "grupos": [
+        "proteina"
+      ],
+      "ingredientes": {
+        "eje": "proteina",
+        "opciones": [
+          "calamar"
+        ],
+        "fijos": null
+      }
+    },
+    {
+      "id": "calamares-romana",
+      "nombre": "Calamares a la romana",
+      "roles": [
+        "principal"
+      ],
+      "origen": "nuevo",
+      "tecnicaCoccion": "frito",
+      "acabado": "rebozado",
+      "apta": [
+        "comida",
+        "cena"
+      ],
+      "tiempo_min": 25,
+      "esfuerzo": "rapido",
+      "temporada": null,
+      "region": null,
+      "tematica": "Pescado y marisco",
+      "ninos": true,
+      "foto": null,
+      "pasos": [
+        "Limpiar y cortar el calamar en anillas.",
+        "Pasar por harina y huevo batido.",
+        "Freír en aceite bien caliente hasta dorar, 2-3 minutos.",
+        "Escurrir sobre papel absorbente y servir con un gajo de limón."
+      ],
+      "grupos": [
+        "proteina"
+      ],
+      "ingredientes": {
+        "eje": "proteina",
+        "opciones": [
+          "calamar"
+        ],
+        "fijos": null
+      }
+    },
+    {
+      "id": "sepia-plancha",
+      "nombre": "Sepia a la plancha",
+      "roles": [
+        "principal"
+      ],
+      "origen": "nuevo",
+      "tecnicaCoccion": "plancha",
+      "acabado": null,
+      "apta": [
+        "comida",
+        "cena"
+      ],
+      "tiempo_min": 20,
+      "esfuerzo": "rapido",
+      "temporada": null,
+      "region": null,
+      "tematica": "Pescado y marisco",
+      "ninos": true,
+      "foto": null,
+      "pasos": [
+        "Limpiar y cortar la sepia en trozos o tiras.",
+        "Salpimentar y marcar a la plancha con un chorrito de aceite muy caliente, 3-4 minutos.",
+        "Añadir un toque de ajo y perejil picado al final y servir enseguida."
+      ],
+      "grupos": [
+        "proteina"
+      ],
+      "ingredientes": {
+        "eje": "proteina",
+        "opciones": [
+          "sepia"
+        ],
+        "fijos": null
+      }
+    },
+    {
+      "id": "chipirones-plancha",
+      "nombre": "Chipirones a la plancha",
+      "roles": [
+        "principal"
+      ],
+      "origen": "nuevo",
+      "tecnicaCoccion": "plancha",
+      "acabado": null,
+      "apta": [
+        "comida",
+        "cena"
+      ],
+      "tiempo_min": 20,
+      "esfuerzo": "rapido",
+      "temporada": null,
+      "region": null,
+      "tematica": "Pescado y marisco",
+      "ninos": true,
+      "foto": null,
+      "pasos": [
+        "Limpiar los chipirones enteros.",
+        "Salpimentar y marcar a la plancha con un chorrito de aceite muy caliente, 2-3 minutos por lado.",
+        "Añadir un toque de ajo y perejil picado al final y servir enseguida."
+      ],
+      "grupos": [
+        "proteina"
+      ],
+      "ingredientes": {
+        "eje": "proteina",
+        "opciones": [
+          "chipiron"
+        ],
+        "fijos": null
+      }
+    },
+    {
+      "id": "pulpo-a-feira",
+      "nombre": "Pulpo á feira",
+      "roles": [
+        "principal"
+      ],
+      "origen": "nuevo",
+      "tecnicaCoccion": "hervido",
+      "acabado": null,
+      "apta": [
+        "comida",
+        "cena"
+      ],
+      "tiempo_min": 45,
+      "esfuerzo": "elaborado",
+      "temporada": null,
+      "region": "galicia",
+      "tematica": "Pescado y marisco",
+      "ninos": true,
+      "foto": null,
+      "pasos": [
+        "Cocer el pulpo en agua abundante 35-40 minutos hasta que esté tierno.",
+        "Cocer la patata con piel en agua con sal y cortarla en rodajas.",
+        "Cortar el pulpo en rodajas con unas tijeras y disponerlo sobre las rodajas de patata.",
+        "Aliñar con aceite de oliva, sal gruesa y pimentón dulce y picante."
+      ],
+      "grupos": [
+        "proteina",
+        "hidrato"
+      ],
+      "ingredientes": {
+        "eje": null,
+        "opciones": null,
+        "fijos": {
+          "proteina": [
+            "pulpo"
+          ],
+          "hidrato": [
+            "patata"
+          ]
+        }
+      }
+    },
+    {
+      "id": "almejas-marinera",
+      "nombre": "Almejas a la marinera",
+      "roles": [
+        "principal"
+      ],
+      "origen": "nuevo",
+      "tecnicaCoccion": "guisado",
+      "acabado": null,
+      "apta": [
+        "comida",
+        "cena"
+      ],
+      "tiempo_min": 20,
+      "esfuerzo": "rapido",
+      "temporada": null,
+      "region": null,
+      "tematica": "Pescado y marisco",
+      "ninos": true,
+      "foto": null,
+      "pasos": [
+        "Sofreír ajo picado en aceite de oliva.",
+        "Añadir un poco de harina, rehogar y mojar con vino blanco y perejil picado.",
+        "Incorporar las almejas y tapar la cazuela.",
+        "Cocinar 3-4 minutos, moviendo la cazuela, hasta que las almejas se abran."
+      ],
+      "grupos": [
+        "proteina"
+      ],
+      "ingredientes": {
+        "eje": "proteina",
+        "opciones": [
+          "almejas"
+        ],
+        "fijos": null
+      }
+    },
+    {
+      "id": "huevos-al-plato",
+      "nombre": "Huevos al plato",
+      "roles": [
+        "principal"
+      ],
+      "origen": "nuevo",
+      "tecnicaCoccion": "horno",
+      "acabado": null,
+      "apta": [
+        "comida",
+        "cena"
+      ],
+      "tiempo_min": 20,
+      "esfuerzo": "rapido",
+      "temporada": null,
+      "region": null,
+      "tematica": "Huevos y tortillas",
+      "ninos": true,
+      "foto": null,
+      "pasos": [
+        "Repartir salsa de tomate en cazuelitas individuales aptas para horno.",
+        "Cascar un huevo sobre la salsa de tomate en cada cazuelita.",
+        "Hornear a 200°C 8-10 minutos hasta que la clara esté cuajada y la yema aún líquida."
+      ],
+      "grupos": [
+        "proteina",
+        "verdura"
+      ],
+      "ingredientes": {
+        "eje": null,
+        "opciones": null,
+        "fijos": {
+          "proteina": [
+            "huevo"
+          ],
+          "verdura": [
+            "tomate"
+          ]
+        }
+      }
+    },
+    {
+      "id": "huevos-flamenca",
+      "nombre": "Huevos a la flamenca",
+      "roles": [
+        "principal"
+      ],
+      "origen": "nuevo",
+      "tecnicaCoccion": "horno",
+      "acabado": null,
+      "apta": [
+        "comida",
+        "cena"
+      ],
+      "tiempo_min": 30,
+      "esfuerzo": "medio",
+      "temporada": null,
+      "region": "andalucia",
+      "tematica": "Huevos y tortillas",
+      "ninos": true,
+      "foto": null,
+      "pasos": [
+        "Sofreír pimiento en aceite de oliva y repartir en cazuelitas individuales con salsa de tomate.",
+        "Añadir los guisantes por encima.",
+        "Cascar un huevo sobre cada cazuelita.",
+        "Hornear a 200°C 10-12 minutos hasta que la clara esté cuajada y las verduras tiernas."
+      ],
+      "grupos": [
+        "proteina",
+        "verdura"
+      ],
+      "ingredientes": {
+        "eje": null,
+        "opciones": null,
+        "fijos": {
+          "proteina": [
+            "huevo"
+          ],
+          "verdura": [
+            "guisantes",
+            "pimiento"
+          ]
+        }
+      }
+    },
+    {
+      "id": "verduras-rellenas",
+      "nombre": "{verdura} rellena",
+      "roles": [
+        "principal"
+      ],
+      "origen": "nuevo",
+      "tecnicaCoccion": "horno",
+      "acabado": null,
+      "apta": [
+        "comida"
+      ],
+      "tiempo_min": 60,
+      "esfuerzo": "elaborado",
+      "temporada": null,
+      "region": null,
+      "tematica": "Verduras y platos de verdura",
+      "ninos": true,
+      "foto": null,
+      "pasos": [
+        "Cortar {verdura} por la mitad y vaciar la pulpa, reservando las pieles como base para rellenar.",
+        "Sofreír cebolla y la pulpa reservada, picada, en aceite de oliva.",
+        "Añadir la carne picada mixta y el arroz, y rehogar unos minutos con un poco de tomate triturado.",
+        "Rellenar las pieles de {verdura} con la mezcla y colocarlas en una bandeja de horno.",
+        "Hornear a 180°C durante 30-35 minutos hasta que la verdura esté tierna y el relleno dorado."
+      ],
+      "grupos": [
+        "proteina",
+        "hidrato",
+        "verdura"
+      ],
+      "ingredientes": {
+        "eje": "verdura",
+        "opciones": [
+          "berenjena",
+          "calabacin",
+          "pimiento"
+        ],
+        "fijos": {
+          "proteina": [
+            "carne-picada-mixta"
+          ],
+          "hidrato": [
+            "arroz"
+          ]
+        }
+      }
+    },
+    {
+      "id": "canelones-carne",
+      "nombre": "Canelones de carne",
+      "roles": [
+        "principal"
+      ],
+      "origen": "nuevo",
+      "tecnicaCoccion": "horno",
+      "acabado": null,
+      "apta": [
+        "comida"
+      ],
+      "tiempo_min": 75,
+      "esfuerzo": "elaborado",
+      "temporada": null,
+      "region": "cataluna",
+      "tematica": "Pasta",
+      "ninos": true,
+      "foto": null,
+      "pasos": [
+        "Sofreír cebolla y la carne picada mixta, dorando bien y deshaciendo los grumos.",
+        "Añadir un chorro de vino blanco y dejar reducir; salpimentar.",
+        "Cocer las placas de canelón según su tiempo y rellenarlas con la carne.",
+        "Colocar los canelones en una fuente, cubrir con bechamel y queso rallado.",
+        "Gratinar al horno 15 minutos hasta que la superficie esté dorada."
+      ],
+      "grupos": [
+        "proteina",
+        "hidrato"
+      ],
+      "ingredientes": {
+        "eje": null,
+        "opciones": null,
+        "fijos": {
+          "proteina": [
+            "carne-picada-mixta"
+          ],
+          "hidrato": [
+            "placas-lasana"
+          ]
+        }
+      }
+    },
+    {
+      "id": "escudella",
+      "nombre": "Escudella",
+      "roles": [
+        "principal"
+      ],
+      "origen": "nuevo",
+      "tecnicaCoccion": "hervido",
+      "acabado": null,
+      "apta": [
+        "comida"
+      ],
+      "tiempo_min": 120,
+      "esfuerzo": "elaborado",
+      "temporada": null,
+      "region": "cataluna",
+      "tematica": "Potajes y guisos",
+      "ninos": true,
+      "foto": null,
+      "pasos": [
+        "Poner a cocer el pollo y la ternera en una olla grande con agua abundante y sal.",
+        "Añadir la zanahoria y el puerro y cocer a fuego lento 1 hora y media hasta que las carnes estén tiernas.",
+        "Colar el caldo resultante y cocer la pasta (galets) en él aparte.",
+        "Servir primero la sopa con la pasta y después las carnes y verduras como segundo plato."
+      ],
+      "grupos": [
+        "proteina",
+        "hidrato",
+        "verdura"
+      ],
+      "ingredientes": {
+        "eje": null,
+        "opciones": null,
+        "fijos": {
+          "proteina": [
+            "pollo",
+            "ternera"
+          ],
+          "hidrato": [
+            "pasta"
+          ],
+          "verdura": [
+            "zanahoria",
+            "puerro"
+          ]
+        }
+      }
+    },
+    {
+      "id": "potaje-vigilia",
+      "nombre": "Potaje de vigilia",
+      "roles": [
+        "principal"
+      ],
+      "origen": "nuevo",
+      "tecnicaCoccion": "guisado",
+      "acabado": null,
+      "apta": [
+        "comida"
+      ],
+      "tiempo_min": 60,
+      "esfuerzo": "elaborado",
+      "temporada": null,
+      "region": null,
+      "tematica": "Potajes y guisos",
+      "ninos": true,
+      "foto": null,
+      "pasos": [
+        "Sofreír cebolla y ajo en aceite de oliva con un poco de pimentón.",
+        "Añadir los garbanzos cocidos, el bacalao desmigado y las espinacas.",
+        "Cubrir con caldo o agua y cocer a fuego lento 20-25 minutos hasta que espese.",
+        "Rectificar de sal (el bacalao ya aporta salazón) y servir bien caliente."
+      ],
+      "grupos": [
+        "proteina",
+        "hidrato",
+        "verdura"
+      ],
+      "ingredientes": {
+        "eje": null,
+        "opciones": null,
+        "fijos": {
+          "proteina": [
+            "garbanzos",
+            "bacalao"
+          ],
+          "hidrato": [
+            "garbanzos"
+          ],
+          "verdura": [
+            "espinacas"
+          ]
+        }
+      }
+    },
+    {
+      "id": "carbonara",
+      "nombre": "Pasta carbonara",
+      "roles": [
+        "principal"
+      ],
+      "origen": "nuevo",
+      "tecnicaCoccion": "salteado",
+      "acabado": null,
+      "apta": [
+        "comida"
+      ],
+      "tiempo_min": 25,
+      "esfuerzo": "elaborado",
+      "temporada": null,
+      "region": null,
+      "tematica": "Pasta",
+      "ninos": true,
+      "foto": null,
+      "pasos": [
+        "Cocer la pasta al dente en agua con sal.",
+        "Dorar la panceta en una sartén hasta que quede crujiente.",
+        "Batir los huevos con queso rallado y pimienta negra molida.",
+        "Fuera del fuego, mezclar la pasta escurrida con la panceta y el batido de huevo, removiendo rápido para que cree una crema sin cuajar."
+      ],
+      "grupos": [
+        "proteina",
+        "hidrato"
+      ],
+      "ingredientes": {
+        "eje": null,
+        "opciones": null,
+        "fijos": {
+          "proteina": [
+            "panceta",
+            "huevo"
+          ],
+          "hidrato": [
+            "pasta"
+          ]
+        }
+      }
+    },
+    {
+      "id": "arroz-negro",
+      "nombre": "Arroz negro",
+      "roles": [
+        "principal"
+      ],
+      "origen": "nuevo",
+      "tecnicaCoccion": "guisado",
+      "acabado": null,
+      "apta": [
+        "comida"
+      ],
+      "tiempo_min": 45,
+      "esfuerzo": "elaborado",
+      "temporada": null,
+      "region": "comunidad-valenciana",
+      "tematica": "Arroces y fideuà",
+      "ninos": true,
+      "foto": null,
+      "pasos": [
+        "Sofreír cebolla y ajo en aceite de oliva; añadir el calamar y la sepia troceados.",
+        "Incorporar el arroz y rehogar 1-2 minutos.",
+        "Disolver la tinta de calamar en el caldo caliente y añadirlo al arroz.",
+        "Cocer 18-20 minutos sin remover hasta que el arroz absorba el caldo."
+      ],
+      "grupos": [
+        "proteina",
+        "hidrato"
+      ],
+      "ingredientes": {
+        "eje": null,
+        "opciones": null,
+        "fijos": {
+          "proteina": [
+            "calamar",
+            "sepia"
+          ],
+          "hidrato": [
+            "arroz"
+          ]
+        }
+      }
+    },
+    {
+      "id": "arroz-tres-delicias",
+      "nombre": "Arroz tres delicias",
+      "roles": [
+        "principal"
+      ],
+      "origen": "nuevo",
+      "tecnicaCoccion": "salteado",
+      "acabado": null,
+      "apta": [
+        "comida"
+      ],
+      "tiempo_min": 25,
+      "esfuerzo": "elaborado",
+      "temporada": null,
+      "region": null,
+      "tematica": "Arroces y fideuà",
+      "ninos": true,
+      "foto": null,
+      "pasos": [
+        "Cocer el arroz y dejarlo enfriar (mejor de un día para otro para que quede suelto).",
+        "Hacer un revuelto con el huevo batido y trocearlo.",
+        "Saltear en un wok o sartén amplia el jamón cocido en dados, las gambas y los guisantes.",
+        "Añadir el arroz frío y el huevo troceado, y saltear todo junto 3-4 minutos con un chorrito de salsa de soja."
+      ],
+      "grupos": [
+        "proteina",
+        "hidrato",
+        "verdura"
+      ],
+      "ingredientes": {
+        "eje": null,
+        "opciones": null,
+        "fijos": {
+          "proteina": [
+            "huevo",
+            "jamon-cocido",
+            "gambas"
+          ],
+          "hidrato": [
+            "arroz"
+          ],
+          "verdura": [
+            "guisantes"
+          ]
+        }
+      }
+    },
+    {
+      "id": "patatas-riojana",
+      "nombre": "Patatas a la riojana",
+      "roles": [
+        "principal"
+      ],
+      "origen": "nuevo",
+      "tecnicaCoccion": "guisado",
+      "acabado": null,
+      "apta": [
+        "comida"
+      ],
+      "tiempo_min": 50,
+      "esfuerzo": "elaborado",
+      "temporada": null,
+      "region": "navarra-rioja",
+      "tematica": "Potajes y guisos",
+      "ninos": true,
+      "foto": null,
+      "pasos": [
+        "Sofreír cebolla y ajo en aceite de oliva.",
+        "Añadir el chorizo troceado y rehogar unos minutos hasta que suelte su grasa.",
+        "Incorporar la patata \"chascada\" (cascada con la punta del cuchillo) y cubrir con caldo.",
+        "Cocer a fuego lento 30-35 minutos hasta que la patata esté tierna y el caldo haya espesado."
+      ],
+      "grupos": [
+        "proteina",
+        "hidrato"
+      ],
+      "ingredientes": {
+        "eje": null,
+        "opciones": null,
+        "fijos": {
+          "proteina": [
+            "chorizo"
+          ],
+          "hidrato": [
+            "patata"
+          ]
+        }
+      }
+    },
+    {
+      "id": "fideos-cazuela",
+      "nombre": "Fideos a la cazuela",
+      "roles": [
+        "principal"
+      ],
+      "origen": "nuevo",
+      "tecnicaCoccion": "guisado",
+      "acabado": null,
+      "apta": [
+        "comida"
+      ],
+      "tiempo_min": 45,
+      "esfuerzo": "elaborado",
+      "temporada": null,
+      "region": "cataluna",
+      "tematica": "Arroces y fideuà",
+      "ninos": true,
+      "foto": null,
+      "pasos": [
+        "Dorar las costillas troceadas en una cazuela con aceite de oliva; reservar.",
+        "Sofreír cebolla, ajo y tomate triturado en el mismo aceite.",
+        "Devolver las costillas a la cazuela, cubrir con caldo y cocer 20 minutos hasta que estén tiernas.",
+        "Añadir los fideos y cocer 8-10 minutos más hasta que estén hechos y hayan absorbido el caldo."
+      ],
+      "grupos": [
+        "proteina",
+        "hidrato"
+      ],
+      "ingredientes": {
+        "eje": null,
+        "opciones": null,
+        "fijos": {
+          "proteina": [
+            "costillas-cerdo"
+          ],
+          "hidrato": [
+            "fideos"
+          ]
+        }
+      }
+    },
+    {
+      "id": "risotto",
+      "nombre": "Risotto de {proteina}",
+      "roles": [
+        "principal"
+      ],
+      "origen": "nuevo",
+      "tecnicaCoccion": "guisado",
+      "acabado": null,
+      "apta": [
+        "comida"
+      ],
+      "tiempo_min": 40,
+      "esfuerzo": "elaborado",
+      "temporada": null,
+      "region": null,
+      "tematica": "Arroces y fideuà",
+      "ninos": true,
+      "foto": null,
+      "pasos": [
+        "Sofreír cebolla en mantequilla o aceite hasta que esté tierna.",
+        "Añadir el arroz y nacararlo 1-2 minutos removiendo.",
+        "Incorporar los champiñones y {proteina}, y mojar con un chorro de vino blanco.",
+        "Añadir caldo caliente poco a poco, removiendo sin parar, hasta que el arroz esté cremoso y en su punto (18-20 minutos)."
+      ],
+      "grupos": [
+        "proteina",
+        "hidrato",
+        "verdura"
+      ],
+      "ingredientes": {
+        "eje": "proteina",
+        "opciones": [
+          "pollo",
+          "gambas"
+        ],
+        "fijos": {
+          "hidrato": [
+            "arroz"
+          ],
+          "verdura": [
+            "champinones"
+          ]
+        }
+      }
+    },
+    {
+      "id": "tortilla-paisana",
+      "nombre": "Tortilla paisana",
+      "roles": [
+        "principal"
+      ],
+      "origen": "nuevo",
+      "tecnicaCoccion": "frito",
+      "acabado": null,
+      "apta": [
+        "comida"
+      ],
+      "tiempo_min": 30,
+      "esfuerzo": "elaborado",
+      "temporada": null,
+      "region": null,
+      "tematica": "Huevos y tortillas",
+      "ninos": true,
+      "foto": null,
+      "pasos": [
+        "Confitar la patata en dados en abundante aceite a fuego suave hasta que esté tierna.",
+        "Saltear el pimiento y los guisantes en un poco de aceite aparte.",
+        "Batir los huevos y mezclar con la patata escurrida y las verduras salteadas.",
+        "Cuajar la mezcla en una sartén antiadherente, dando la vuelta a la tortilla para que se haga por los dos lados."
+      ],
+      "grupos": [
+        "proteina",
+        "hidrato",
+        "verdura"
+      ],
+      "ingredientes": {
+        "eje": null,
+        "opciones": null,
+        "fijos": {
+          "proteina": [
+            "huevo"
+          ],
+          "hidrato": [
+            "patata"
+          ],
+          "verdura": [
+            "guisantes",
+            "pimiento"
+          ]
+        }
+      }
+    },
+    {
       "id": "hidrato-cocido",
       "nombre": "Guarnición de {hidrato}",
       "roles": [
@@ -5298,6 +6984,111 @@
       "familia": "hidrato-frito"
     },
     {
+      "id": "hidrato-salteado",
+      "nombre": "Arroz salteado",
+      "roles": [
+        "complementaria"
+      ],
+      "origen": "nativo",
+      "tecnicaCoccion": "salteado",
+      "acabado": null,
+      "grupos": [
+        "hidrato"
+      ],
+      "ingredientes": {
+        "eje": "hidrato",
+        "opciones": [
+          "arroz"
+        ],
+        "fijos": null
+      },
+      "familia": "hidrato-salteado"
+    },
+    {
+      "id": "hidrato-pure",
+      "nombre": "Puré de patata",
+      "roles": [
+        "complementaria"
+      ],
+      "origen": "nativo",
+      "tecnicaCoccion": "hervido",
+      "acabado": null,
+      "grupos": [
+        "hidrato"
+      ],
+      "ingredientes": {
+        "eje": "hidrato",
+        "opciones": [
+          "patata"
+        ],
+        "fijos": null
+      },
+      "familia": "hidrato-pure"
+    },
+    {
+      "id": "hidrato-panadera",
+      "nombre": "Patatas panaderas",
+      "roles": [
+        "complementaria"
+      ],
+      "origen": "nativo",
+      "tecnicaCoccion": "horno",
+      "acabado": null,
+      "grupos": [
+        "hidrato"
+      ],
+      "ingredientes": {
+        "eje": "hidrato",
+        "opciones": [
+          "patata"
+        ],
+        "fijos": null
+      },
+      "familia": "hidrato-panadera"
+    },
+    {
+      "id": "hidrato-asada",
+      "nombre": "Patata asada",
+      "roles": [
+        "complementaria"
+      ],
+      "origen": "nativo",
+      "tecnicaCoccion": "horno",
+      "acabado": null,
+      "grupos": [
+        "hidrato"
+      ],
+      "ingredientes": {
+        "eje": "hidrato",
+        "opciones": [
+          "patata"
+        ],
+        "fijos": null
+      },
+      "familia": "hidrato-asada"
+    },
+    {
+      "id": "hidrato-gajos",
+      "nombre": "Patatas en gajos",
+      "roles": [
+        "complementaria"
+      ],
+      "origen": "nativo",
+      "tecnicaCoccion": "horno",
+      "acabado": null,
+      "grupos": [
+        "hidrato"
+      ],
+      "ingredientes": {
+        "eje": "hidrato",
+        "opciones": [
+          "patata"
+        ],
+        "fijos": null
+      },
+      "familia": "hidrato-gajos"
+    },
+    {
       "id": "pan-mojar",
       "nombre": "Pan",
       "roles": [
@@ -5362,7 +7153,8 @@
           "zanahoria",
           "pimiento",
           "espinacas",
-          "champinones"
+          "champinones",
+          "col"
         ],
         "fijos": null
       },
@@ -5393,6 +7185,73 @@
         "fijos": null
       },
       "familia": "verdura-horno"
+    },
+    {
+      "id": "verdura-vapor",
+      "nombre": "{verdura} al vapor",
+      "roles": [
+        "complementaria"
+      ],
+      "origen": "nativo",
+      "tecnicaCoccion": "vapor",
+      "acabado": null,
+      "grupos": [
+        "verdura"
+      ],
+      "ingredientes": {
+        "eje": "verdura",
+        "opciones": [
+          "brocoli",
+          "judias-verdes",
+          "calabacin",
+          "zanahoria"
+        ],
+        "fijos": null
+      },
+      "familia": "verdura-vapor"
+    },
+    {
+      "id": "escalivada",
+      "nombre": "Escalivada",
+      "roles": [
+        "complementaria"
+      ],
+      "origen": "nativo",
+      "tecnicaCoccion": "horno",
+      "acabado": null,
+      "grupos": [
+        "verdura"
+      ],
+      "ingredientes": {
+        "eje": "verdura",
+        "opciones": [
+          "berenjena",
+          "pimiento"
+        ],
+        "fijos": null
+      },
+      "familia": "escalivada"
+    },
+    {
+      "id": "espinacas-catalana",
+      "nombre": "Espinacas a la catalana",
+      "roles": [
+        "complementaria"
+      ],
+      "origen": "nativo",
+      "tecnicaCoccion": "salteado",
+      "acabado": null,
+      "grupos": [
+        "verdura"
+      ],
+      "ingredientes": {
+        "eje": "verdura",
+        "opciones": [
+          "espinacas"
+        ],
+        "fijos": null
+      },
+      "familia": "espinacas-catalana"
     },
     {
       "id": "ensalada-solo",
@@ -5725,6 +7584,282 @@
     {
       "principalId": "cena-de-tabla",
       "complementariaFamilia": "pan-mojar"
+    },
+    {
+      "principalId": "pollo-pepitoria",
+      "complementariaFamilia": "hidrato-cocido"
+    },
+    {
+      "principalId": "pollo-pepitoria",
+      "complementariaFamilia": "ensalada-solo"
+    },
+    {
+      "principalId": "pollo-pepitoria",
+      "complementariaFamilia": "ensalada-mixta"
+    },
+    {
+      "principalId": "escabechado",
+      "complementariaFamilia": "hidrato-cocido"
+    },
+    {
+      "principalId": "escabechado",
+      "complementariaFamilia": "ensalada-solo"
+    },
+    {
+      "principalId": "escabechado",
+      "complementariaFamilia": "ensalada-mixta"
+    },
+    {
+      "principalId": "estofado-ternera",
+      "complementariaFamilia": "hidrato-pure"
+    },
+    {
+      "principalId": "estofado-ternera",
+      "complementariaFamilia": "verdura-salteada-vapor"
+    },
+    {
+      "principalId": "magro-tomate",
+      "complementariaFamilia": "hidrato-frito"
+    },
+    {
+      "principalId": "magro-tomate",
+      "complementariaFamilia": "ensalada-solo"
+    },
+    {
+      "principalId": "magro-tomate",
+      "complementariaFamilia": "ensalada-mixta"
+    },
+    {
+      "principalId": "costillas-salsa-barbacoa",
+      "complementariaFamilia": "hidrato-gajos"
+    },
+    {
+      "principalId": "costillas-salsa-barbacoa",
+      "complementariaFamilia": "verdura-horno"
+    },
+    {
+      "principalId": "caldereta-cordero",
+      "complementariaFamilia": "hidrato-cocido"
+    },
+    {
+      "principalId": "caldereta-cordero",
+      "complementariaFamilia": "ensalada-solo"
+    },
+    {
+      "principalId": "caldereta-cordero",
+      "complementariaFamilia": "ensalada-mixta"
+    },
+    {
+      "principalId": "cordero-asado",
+      "complementariaFamilia": "hidrato-panadera"
+    },
+    {
+      "principalId": "cordero-asado",
+      "complementariaFamilia": "ensalada-solo"
+    },
+    {
+      "principalId": "cordero-asado",
+      "complementariaFamilia": "ensalada-mixta"
+    },
+    {
+      "principalId": "solomillo-pedro-ximenez",
+      "complementariaFamilia": "hidrato-cocido"
+    },
+    {
+      "principalId": "solomillo-pedro-ximenez",
+      "complementariaFamilia": "escalivada"
+    },
+    {
+      "principalId": "brochetas-carne",
+      "complementariaFamilia": "hidrato-salteado"
+    },
+    {
+      "principalId": "brochetas-carne",
+      "complementariaFamilia": "verdura-salteada-vapor"
+    },
+    {
+      "principalId": "pollo-salsa-champinones",
+      "complementariaFamilia": "hidrato-cocido"
+    },
+    {
+      "principalId": "escalope-empanado",
+      "complementariaFamilia": "hidrato-cocido"
+    },
+    {
+      "principalId": "escalope-empanado",
+      "complementariaFamilia": "ensalada-solo"
+    },
+    {
+      "principalId": "escalope-empanado",
+      "complementariaFamilia": "ensalada-mixta"
+    },
+    {
+      "principalId": "san-jacobo",
+      "complementariaFamilia": "hidrato-cocido"
+    },
+    {
+      "principalId": "san-jacobo",
+      "complementariaFamilia": "ensalada-solo"
+    },
+    {
+      "principalId": "san-jacobo",
+      "complementariaFamilia": "ensalada-mixta"
+    },
+    {
+      "principalId": "flamenquin",
+      "complementariaFamilia": "hidrato-cocido"
+    },
+    {
+      "principalId": "flamenquin",
+      "complementariaFamilia": "ensalada-solo"
+    },
+    {
+      "principalId": "flamenquin",
+      "complementariaFamilia": "ensalada-mixta"
+    },
+    {
+      "principalId": "pescado-romana",
+      "complementariaFamilia": "hidrato-cocido"
+    },
+    {
+      "principalId": "pescado-romana",
+      "complementariaFamilia": "ensalada-solo"
+    },
+    {
+      "principalId": "pescado-romana",
+      "complementariaFamilia": "ensalada-mixta"
+    },
+    {
+      "principalId": "pescado-papillote",
+      "complementariaFamilia": "hidrato-cocido"
+    },
+    {
+      "principalId": "bacalao-pil-pil",
+      "complementariaFamilia": "pan-mojar"
+    },
+    {
+      "principalId": "bacalao-pil-pil",
+      "complementariaFamilia": "espinacas-catalana"
+    },
+    {
+      "principalId": "bacalao-vizcaina",
+      "complementariaFamilia": "hidrato-cocido"
+    },
+    {
+      "principalId": "calamares-plancha",
+      "complementariaFamilia": "hidrato-cocido"
+    },
+    {
+      "principalId": "calamares-plancha",
+      "complementariaFamilia": "ensalada-solo"
+    },
+    {
+      "principalId": "calamares-plancha",
+      "complementariaFamilia": "ensalada-mixta"
+    },
+    {
+      "principalId": "calamares-romana",
+      "complementariaFamilia": "hidrato-cocido"
+    },
+    {
+      "principalId": "calamares-romana",
+      "complementariaFamilia": "ensalada-solo"
+    },
+    {
+      "principalId": "calamares-romana",
+      "complementariaFamilia": "ensalada-mixta"
+    },
+    {
+      "principalId": "sepia-plancha",
+      "complementariaFamilia": "hidrato-cocido"
+    },
+    {
+      "principalId": "sepia-plancha",
+      "complementariaFamilia": "ensalada-solo"
+    },
+    {
+      "principalId": "sepia-plancha",
+      "complementariaFamilia": "ensalada-mixta"
+    },
+    {
+      "principalId": "chipirones-plancha",
+      "complementariaFamilia": "hidrato-cocido"
+    },
+    {
+      "principalId": "chipirones-plancha",
+      "complementariaFamilia": "ensalada-solo"
+    },
+    {
+      "principalId": "chipirones-plancha",
+      "complementariaFamilia": "ensalada-mixta"
+    },
+    {
+      "principalId": "pulpo-a-feira",
+      "complementariaFamilia": "ensalada-solo"
+    },
+    {
+      "principalId": "pulpo-a-feira",
+      "complementariaFamilia": "ensalada-mixta"
+    },
+    {
+      "principalId": "almejas-marinera",
+      "complementariaFamilia": "pan-mojar"
+    },
+    {
+      "principalId": "almejas-marinera",
+      "complementariaFamilia": "ensalada-solo"
+    },
+    {
+      "principalId": "almejas-marinera",
+      "complementariaFamilia": "ensalada-mixta"
+    },
+    {
+      "principalId": "huevos-al-plato",
+      "complementariaFamilia": "pan-mojar"
+    },
+    {
+      "principalId": "huevos-flamenca",
+      "complementariaFamilia": "pan-mojar"
+    },
+    {
+      "principalId": "canelones-carne",
+      "complementariaFamilia": "ensalada-solo"
+    },
+    {
+      "principalId": "canelones-carne",
+      "complementariaFamilia": "ensalada-mixta"
+    },
+    {
+      "principalId": "carbonara",
+      "complementariaFamilia": "ensalada-solo"
+    },
+    {
+      "principalId": "carbonara",
+      "complementariaFamilia": "ensalada-mixta"
+    },
+    {
+      "principalId": "arroz-negro",
+      "complementariaFamilia": "ensalada-solo"
+    },
+    {
+      "principalId": "arroz-negro",
+      "complementariaFamilia": "ensalada-mixta"
+    },
+    {
+      "principalId": "patatas-riojana",
+      "complementariaFamilia": "ensalada-solo"
+    },
+    {
+      "principalId": "patatas-riojana",
+      "complementariaFamilia": "ensalada-mixta"
+    },
+    {
+      "principalId": "fideos-cazuela",
+      "complementariaFamilia": "ensalada-solo"
+    },
+    {
+      "principalId": "fideos-cazuela",
+      "complementariaFamilia": "ensalada-mixta"
     }
   ],
   "postres": {

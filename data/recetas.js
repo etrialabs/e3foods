@@ -4730,8 +4730,8 @@
       "familia": "ensalada"
     },
     {
-      "id": "ensalada-verde",
-      "nombre": "Ensalada de lechuga y {verdura}",
+      "id": "ensalada-mixta",
+      "nombre": "Ensalada mixta con {verdura}",
       "roles": [
         "complementaria"
       ],
@@ -4744,14 +4744,14 @@
       "ingredientes": {
         "eje": "verdura",
         "opciones": [
-          "tomate",
           "pepino",
           "zanahoria",
           "pimiento"
         ],
         "fijos": {
           "verdura": [
-            "lechuga"
+            "lechuga",
+            "tomate"
           ]
         }
       },
@@ -4801,7 +4801,7 @@
     },
     {
       "principalId": "tortilla-patata",
-      "complementariaFamilia": "ensalada-verde"
+      "complementariaFamilia": "ensalada-mixta"
     },
     {
       "principalId": "tortilla-francesa-verdura",
@@ -4821,7 +4821,7 @@
     },
     {
       "principalId": "ensalada-completa",
-      "complementariaFamilia": "ensalada-verde"
+      "complementariaFamilia": "ensalada-mixta"
     },
     {
       "principalId": "ensalada-pasta",
@@ -4829,7 +4829,7 @@
     },
     {
       "principalId": "ensalada-pasta",
-      "complementariaFamilia": "ensalada-verde"
+      "complementariaFamilia": "ensalada-mixta"
     },
     {
       "principalId": "ensalada-cesar-casera",
@@ -4841,7 +4841,7 @@
     },
     {
       "principalId": "ensalada-cesar-casera",
-      "complementariaFamilia": "ensalada-verde"
+      "complementariaFamilia": "ensalada-mixta"
     },
     {
       "principalId": "quinoa-ensalada",
@@ -4849,7 +4849,7 @@
     },
     {
       "principalId": "quinoa-ensalada",
-      "complementariaFamilia": "ensalada-verde"
+      "complementariaFamilia": "ensalada-mixta"
     },
     {
       "principalId": "merluza-salsa-verde",
@@ -4877,7 +4877,7 @@
     },
     {
       "principalId": "pescaditos-plancha",
-      "complementariaFamilia": "ensalada-verde"
+      "complementariaFamilia": "ensalada-mixta"
     },
     {
       "principalId": "gallo-plancha",
@@ -4897,7 +4897,7 @@
     },
     {
       "principalId": "gambas-ajillo",
-      "complementariaFamilia": "ensalada-verde"
+      "complementariaFamilia": "ensalada-mixta"
     },
     {
       "principalId": "mejillones-marinera",
@@ -4909,7 +4909,7 @@
     },
     {
       "principalId": "empanadillas-caseras",
-      "complementariaFamilia": "ensalada-verde"
+      "complementariaFamilia": "ensalada-mixta"
     },
     {
       "principalId": "hummus-plato",
@@ -4921,7 +4921,7 @@
     },
     {
       "principalId": "hummus-plato",
-      "complementariaFamilia": "ensalada-verde"
+      "complementariaFamilia": "ensalada-mixta"
     },
     {
       "principalId": "tofu-plancha-verduras",
@@ -4949,7 +4949,7 @@
     },
     {
       "principalId": "croquetas-caseras",
-      "complementariaFamilia": "ensalada-verde"
+      "complementariaFamilia": "ensalada-mixta"
     },
     {
       "principalId": "pollo-al-chilindron",
@@ -4961,7 +4961,7 @@
     },
     {
       "principalId": "fabada-asturiana",
-      "complementariaFamilia": "ensalada-verde"
+      "complementariaFamilia": "ensalada-mixta"
     },
     {
       "principalId": "cachopo",
@@ -4969,7 +4969,7 @@
     },
     {
       "principalId": "cachopo",
-      "complementariaFamilia": "ensalada-verde"
+      "complementariaFamilia": "ensalada-mixta"
     },
     {
       "principalId": "piperrada-con-huevo",
@@ -4989,7 +4989,7 @@
     },
     {
       "principalId": "atascaburras",
-      "complementariaFamilia": "ensalada-verde"
+      "complementariaFamilia": "ensalada-mixta"
     },
     {
       "principalId": "sopa-castellana",
@@ -4997,7 +4997,7 @@
     },
     {
       "principalId": "sopa-castellana",
-      "complementariaFamilia": "ensalada-verde"
+      "complementariaFamilia": "ensalada-mixta"
     },
     {
       "principalId": "bonito-encebollado",
@@ -5025,7 +5025,7 @@
     },
     {
       "principalId": "trucha-a-la-navarra",
-      "complementariaFamilia": "ensalada-verde"
+      "complementariaFamilia": "ensalada-mixta"
     },
     {
       "principalId": "huevos-fritos-con-patatas",
@@ -5033,7 +5033,7 @@
     },
     {
       "principalId": "huevos-fritos-con-patatas",
-      "complementariaFamilia": "ensalada-verde"
+      "complementariaFamilia": "ensalada-mixta"
     },
     {
       "principalId": "cena-de-tabla",

@@ -36,6 +36,13 @@
   var CATEGORIAS_VEGETARIANA_OK = { legumbre: 1, huevo: 1, lacteo: 1, cereal: 1, tuberculo: 1, verdura: 1, fruta: 1, otro: 1 };
   var CATEGORIAS_SIN_PESCADO_EXCLUIDAS = { 'pescado-blanco': 1, 'pescado-azul': 1, marisco: 1 };
   var IDS_CERDO_CONOCIDOS = ['cerdo', 'lomo', 'panceta', 'jamon', 'chorizo', 'salchicha', 'beicon', 'morcilla', 'costillas-cerdo', 'secreto', 'presa', 'solomillo-cerdo', 'lacon', 'compango', 'ternera-rellena'];
+  // Mercurio alto (Fase 4, 2026-07-21, borrador §PESCADO+HUEVOS + research AESAN 2019, evitar <10
+  // años/embarazadas): atún rojo, pez espada/emperador, tiburón (varias especies), lucio. NINGUNO
+  // está en el banco hoy (decisión ya resuelta: "atún fresco" del banco = atún claro, mercurio medio,
+  // permitido) — preventivo para si algún día se da de alta alguno de estos, mismo patrón que
+  // IDS_CERDO_CONOCIDOS. EDAD_MERCURIO=10 (AESAN), distinto de EDAD_MENOR=12 (criterio kcal).
+  var IDS_MERCURIO_ALTO = ['atun-rojo', 'pez-espada', 'emperador', 'cazon', 'marrajo', 'mielga', 'pintarroja', 'tintorera', 'lucio'];
+  var EDAD_MERCURIO = 10;
 
   var MAX_COMPLEMENTARIAS_POR_MENU = 2; // proteína ya cubierta por principal; hidrato+verdura como mucho (borrador §15 punto 2, límite duro)
 
@@ -74,9 +81,14 @@
 
   function esFinDeSemana(diaIndex) { return diaIndex >= 5; }
   function estaEn(set, id) { return !!set[id]; }
-  function vetosDe(miembros) {
+  function vetosDe(miembros, fechaReferencia) {
     var set = {};
     (miembros || []).forEach(function (m) { (m.vetos || []).forEach(function (id) { set[id] = 1; }); });
+    // Regla de mercurio (Fase 4, 2026-07-21): con un menor <10 en la mesa, veta las especies de
+    // mercurio alto igual que un veto explícito — activa donde el motor ya filtra los vetos, sin
+    // mecanismo nuevo. Sin efecto hoy (ninguna de esas especies está en el banco).
+    var hayMenorMercurio = (miembros || []).some(function (m) { return edadEnAnios(m.anioNacimiento, fechaReferencia) < EDAD_MERCURIO; });
+    if (hayMenorMercurio) IDS_MERCURIO_ALTO.forEach(function (id) { set[id] = 1; });
     return set;
   }
 
@@ -699,6 +711,41 @@
     return principal.temporada === estacion ? 5 : -5;
   }
   function puntuarRegion(principal, familiaRegion) { return (familiaRegion && principal.region === familiaRegion) ? 4 : 0; }
+
+  // ---------------------------------------------------------------
+  // Ocasión de plato (Fase 4, 2026-07-21, borrador §Preparaciones·MIXTOS "Ocasión: canelones (Sant
+  // Esteve), escudella (Navidad), potaje de vigilia (Semana Santa) -> entran tagueados"). Señal
+  // BLANDA (realza el plato en su ventana, no filtra por stock — igual espíritu que puntuarTemporada,
+  // nunca un veto). Semana Santa es fiesta movible: domingo de Pascua vía el algoritmo gregoriano
+  // anónimo (Meeus/Jones/Butcher, verificado contra python-dateutil para 2024-2028) — pura aritmética
+  // de calendario, Date.UTC(y,m,d) con argumentos explícitos no toca el reloj real.
+  // ---------------------------------------------------------------
+  function pascuaDomingo(anio) {
+    var a = anio % 19, b = Math.floor(anio / 100), c = anio % 100;
+    var d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25), g = Math.floor((b - f + 1) / 3);
+    var h = (19 * a + b - d - g + 15) % 30;
+    var i = Math.floor(c / 4), k = c % 4;
+    var l = (32 + 2 * e + 2 * i - h - k) % 7;
+    var m = Math.floor((a + 11 * h + 22 * l) / 451);
+    var mes = Math.floor((h + l - 7 * m + 114) / 31);
+    var dia = ((h + l - 7 * m + 114) % 31) + 1;
+    return { anio: anio, mes: mes, dia: dia };
+  }
+  function diaEpoch(anio, mes, dia) { return Date.UTC(anio, mes - 1, dia) / 86400000; }
+  function ocasionDeFecha(fechaISOStr) {
+    var partes = fechaISOStr.split('-');
+    var anio = parseInt(partes[0], 10), mes = parseInt(partes[1], 10), dia = parseInt(partes[2], 10);
+    if (mes === 12 && dia >= 20 && dia <= 25) return 'navidad'; // Nochebuena/Navidad
+    if (mes === 12 && dia >= 26 && dia <= 28) return 'sant-esteve'; // 26-dic + margen corto
+    var pascua = pascuaDomingo(anio);
+    var offset = diaEpoch(anio, mes, dia) - diaEpoch(pascua.anio, pascua.mes, pascua.dia);
+    if (offset >= -7 && offset <= 1) return 'semana-santa'; // domingo de Ramos -> lunes de Pascua
+    return null;
+  }
+  function puntuarOcasion(principal, ocasionActual) {
+    if (!principal.ocasion || !ocasionActual) return 0;
+    return principal.ocasion === ocasionActual ? 8 : 0; // nunca malus — no penaliza fuera de fecha, solo realza dentro
+  }
   function puntuarCambios(principalId, cambiosPorPrincipal) {
     var n = Math.min((cambiosPorPrincipal && cambiosPorPrincipal[principalId]) || 0, 3);
     return -n * 3;
@@ -783,6 +830,7 @@
       + puntuarNovedad(candidato.principal.id, senales.historialPrincipales)
       + puntuarRepeticionSemana(candidato.principal.id, senales.usosSemana)
       + puntuarTemporada(candidato.principal, senales.estacion)
+      + puntuarOcasion(candidato.principal, senales.ocasion)
       + puntuarRegion(candidato.principal, senales.familiaRegion)
       + puntuarCambios(candidato.principal.id, senales.cambiosPorPrincipal)
       + puntuarCole(idsTotal, senales.coleDiaD, senales.coleDiaDMas1, ctx.presentes, ctx.banco)
@@ -1056,7 +1104,7 @@
       kcalTotal = r.kcalTotal; factorRacion = r.factorRacion; componenteExtra = menuActual.componenteExtra;
     }
     var candidato = { principal: principal, seleccionEje: menuActual.seleccionEje, complementarias: complementarias, kcalTotal: kcalTotal, factorRacion: factorRacion, componenteExtra: componenteExtra };
-    var ctx = { bancoV3: bancoV3, banco: banco, presentes: presentesNuevos, vetosViabilidad: vetosDe(presentesNuevos), vetosUnion: vetosDe(presentesNuevos), bandaSlot: banda };
+    var ctx = { bancoV3: bancoV3, banco: banco, presentes: presentesNuevos, vetosViabilidad: vetosDe(presentesNuevos, fechaReferencia), vetosUnion: vetosDe(presentesNuevos, fechaReferencia), bandaSlot: banda };
     return resolverMenu(candidato, ctx);
   }
 
@@ -1223,7 +1271,7 @@
 
         var ctxBase = {
           bancoV3: bancoV3, banco: banco, estado: estado, presentes: presentes, tipoComida: tipoComida, esFinde: esFinde,
-          fechaReferencia: fechaReferencia, mes: mesDeFecha(fecha), vetosUnion: vetosDe(presentes), vetosViabilidad: vetosDe(presentes),
+          fechaReferencia: fechaReferencia, mes: mesDeFecha(fecha), vetosUnion: vetosDe(presentes, fechaReferencia), vetosViabilidad: vetosDe(presentes, fechaReferencia),
           usadosHoy: usadosHoyAcumulado, usadosAyer: usadosAyer, categoriasProteinaHoy: categoriasProteinaHoyAcumulado,
           contadorCuotas: contadorCuotas, cuotas: cuotas, contadorFritos: contadorFritos, cuotaFritos: bancoV3.cuota_fritos,
           ignorarEsfuerzo: false
@@ -1237,6 +1285,7 @@
         var senales = {
           slotsRestantes: slotsRestantes, rechazosPorPrincipal: rechazosPorPrincipal, historialPrincipales: historialPrincipales,
           semanaISO: semanaISO, gustasPorPrincipal: gustasPorPrincipal, usosSemana: usosSemana, estacion: estacion,
+          ocasion: ocasionDeFecha(fecha), // por día (Fase 4), no por semana como estacion — la ventana es de fecha exacta
           familiaRegion: familiaRegion, cambiosPorPrincipal: cambiosPorPrincipal, coleDiaD: coleDiaD, coleDiaDMas1: coleDiaDMas1,
           favoritas: favoritas, familiaCompleta: estado.familia, diaIndex: i
         };
@@ -1337,14 +1386,14 @@
       slotsRestantes: Math.max(1, (7 - dia) * 2), rechazosPorPrincipal: contarRechazosPorPrincipal(estado),
       historialPrincipales: (estado && estado.historialPrincipales) || null, semanaISO: plan.semanaISO,
       gustasPorPrincipal: contarGustasPorPrincipal(estado), usosSemana: usosDePlan(diasParaContar),
-      estacion: estacionDelMes(new Date(fecha + 'T00:00:00').getMonth() + 1), familiaRegion: (estado && estado.familiaRegion) || null,
+      estacion: estacionDelMes(new Date(fecha + 'T00:00:00').getMonth() + 1), ocasion: ocasionDeFecha(fecha), familiaRegion: (estado && estado.familiaRegion) || null,
       cambiosPorPrincipal: contarCambiosPorPrincipal(estado), coleDiaD: coleDiaD, coleDiaDMas1: coleDiaDMas1,
       favoritas: (estado && estado.favoritas) || [], familiaCompleta: estado.familia, diaIndex: dia
     };
 
     var ctxBase = {
       bancoV3: bancoV3, banco: banco, estado: estado, presentes: presentes, tipoComida: tipoComida, esFinde: esFinde,
-      fechaReferencia: fechaReferencia, mes: mesDeFecha(fecha), vetosUnion: vetosDe(presentes), vetosViabilidad: vetosDe(presentes),
+      fechaReferencia: fechaReferencia, mes: mesDeFecha(fecha), vetosUnion: vetosDe(presentes, fechaReferencia), vetosViabilidad: vetosDe(presentes, fechaReferencia),
       usadosHoy: usadosHoy, usadosAyer: usadosAyer, categoriasProteinaHoy: {},
       contadorCuotas: contadorCuotas, cuotas: cuotas, contadorFritos: contadorFritos, cuotaFritos: bancoV3.cuota_fritos,
       ignorarEsfuerzo: false
@@ -1614,6 +1663,7 @@
     generarCombosComplementarias: generarCombosComplementarias, componentesDeCandidato: componentesDeCandidato,
     cerrarBandaKcal: cerrarBandaKcal, generarCandidatosSlot: generarCandidatosSlot,
     estacionDelMes: estacionDelMes, puntuarCandidato: puntuarCandidato, puntuarSalubridadTecnica: puntuarSalubridadTecnica,
+    ocasionDeFecha: ocasionDeFecha, puntuarOcasion: puntuarOcasion, pascuaDomingo: pascuaDomingo,
     puntuarFavorita: puntuarFavorita, puntuarCole: puntuarCole, puntuarAusenciaEstructural: puntuarAusenciaEstructural,
     idCanonicoCandidato: idCanonicoCandidato, ordenarDeterminista: ordenarDeterminista, elegirTopN: elegirTopN,
     generarCandidatosConRelajacion: generarCandidatosConRelajacion, NIVELES_RELAJACION: NIVELES_RELAJACION,
@@ -1630,6 +1680,7 @@
     edadEnAnios: edadEnAnios, fechaLocalISO: fechaLocalISO, fechaISO: fechaISO,
     lunesDeEstaSemana: lunesDeEstaSemana, esFinDeSemana: esFinDeSemana, vetosDe: vetosDe,
     mesDeFecha: mesDeFecha, disponibleEnMes: disponibleEnMes,
+    IDS_MERCURIO_ALTO: IDS_MERCURIO_ALTO, EDAD_MERCURIO: EDAD_MERCURIO,
     necesidadKcalDia: necesidadKcalDia, objetivoBandaPersona: objetivoBandaPersona,
     bandaAgregadaMesa: bandaAgregadaMesa, capitaliza: capitaliza,
     excluidoPorCole: excluidoPorCole, presentesEnComida: presentesEnComida,

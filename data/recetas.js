@@ -1520,6 +1520,7 @@
       "temporada": null,
       "region": null,
       "tematica": "A la plancha o al horno",
+      "ocasion": null,
       "ninos": true,
       "foto": "assets/banco-fotos/plancha-guarnicion.jpg",
       "pasos": [
@@ -1567,6 +1568,7 @@
       "temporada": "invierno",
       "region": null,
       "tematica": "A la plancha o al horno",
+      "ocasion": null,
       "ninos": true,
       "foto": "assets/banco-fotos/crema-zanahoria.jpg",
       "pasos": [
@@ -1613,6 +1615,7 @@
       "temporada": "invierno",
       "region": null,
       "tematica": "Potajes y guisos",
+      "ocasion": null,
       "ninos": true,
       "foto": "assets/banco-fotos/crema-zanahoria.jpg",
       "pasos": [
@@ -1663,6 +1666,7 @@
       "temporada": "invierno",
       "region": null,
       "tematica": "Potajes y guisos",
+      "ocasion": null,
       "ninos": true,
       "foto": "assets/banco-fotos/ensalada-lentejas.jpg",
       "pasos": [
@@ -1711,6 +1715,7 @@
       "temporada": "invierno",
       "region": "madrid",
       "tematica": "Potajes y guisos",
+      "ocasion": null,
       "ninos": true,
       "foto": "assets/banco-fotos/crema-zanahoria.jpg",
       "pasos": [
@@ -1760,6 +1765,7 @@
       "temporada": "invierno",
       "region": null,
       "tematica": "Potajes y guisos",
+      "ocasion": null,
       "ninos": true,
       "foto": "assets/banco-fotos/ensalada-lentejas.jpg",
       "pasos": [
@@ -1808,6 +1814,7 @@
       "temporada": null,
       "region": "comunidad-valenciana",
       "tematica": "Arroces y fideuà",
+      "ocasion": null,
       "ninos": true,
       "foto": "assets/banco-fotos/crema-zanahoria.jpg",
       "pasos": [
@@ -1857,6 +1864,7 @@
       "temporada": "invierno",
       "region": "comunidad-valenciana",
       "tematica": "Arroces y fideuà",
+      "ocasion": null,
       "ninos": true,
       "foto": "assets/banco-fotos/ensalada-lentejas.jpg",
       "pasos": [
@@ -1906,6 +1914,7 @@
       "temporada": "invierno",
       "region": null,
       "tematica": "Arroces y fideuà",
+      "ocasion": null,
       "ninos": true,
       "foto": "assets/banco-fotos/crema-zanahoria.jpg",
       "pasos": [
@@ -1956,6 +1965,7 @@
       "temporada": null,
       "region": null,
       "tematica": "Arroces y fideuà",
+      "ocasion": null,
       "ninos": true,
       "foto": "assets/banco-fotos/salteado-wok.jpg",
       "pasos": [
@@ -2009,6 +2019,7 @@
       "temporada": null,
       "region": null,
       "tematica": "Arroces y fideuà",
+      "ocasion": null,
       "ninos": true,
       "foto": "assets/banco-fotos/salteado-wok.jpg",
       "pasos": [
@@ -2056,6 +2067,7 @@
       "temporada": null,
       "region": null,
       "tematica": "Pasta",
+      "ocasion": null,
       "ninos": true,
       "foto": "assets/banco-fotos/ensalada-lentejas.jpg",
       "pasos": [
@@ -2100,6 +2112,7 @@
       "temporada": null,
       "region": null,
       "tematica": "Pasta",
+      "ocasion": null,
       "ninos": true,
       "foto": "assets/banco-fotos/ensalada-lentejas.jpg",
       "pasos": [
@@ -2154,6 +2167,7 @@
       "temporada": null,
       "region": null,
       "tematica": "Pasta",
+      "ocasion": null,
       "ninos": true,
       "foto": "assets/banco-fotos/salteado-wok.jpg",
       "pasos": [
@@ -2200,6 +2214,7 @@
       "temporada": "invierno",
       "region": null,
       "tematica": "Pasta",
+      "ocasion": null,
       "ninos": true,
       "foto": "assets/banco-fotos/plancha-guarnicion.jpg",
       "pasos": [
@@ -2249,6 +2264,7 @@
       "temporada": "invierno",
       "region": null,
       "tematica": "A la plancha o al horno",
+      "ocasion": null,
       "ninos": true,
       "foto": "assets/banco-fotos/salteado-wok.jpg",
       "pasos": [
@@ -2288,6 +2304,7 @@
       "temporada": "invierno",
       "region": null,
       "tematica": "Pescado y marisco",
+      "ocasion": null,
       "ninos": true,
       "foto": "assets/banco-fotos/plancha-guarnicion.jpg",
       "pasos": [
@@ -2329,6 +2346,7 @@
       "temporada": "verano",
       "region": null,
       "tematica": "Huevos y tortillas",
+      "ocasion": null,
       "ninos": true,
       "foto": "assets/banco-fotos/ensalada-lentejas.jpg",
       "pasos": [
@@ -2380,6 +2398,7 @@
       "temporada": null,
       "region": null,
       "tematica": "Huevos y tortillas",
+      "ocasion": null,
       "ninos": true,
       "foto": "assets/banco-fotos/plancha-guarnicion.jpg",
       "pasos": [
@@ -2423,6 +2442,7 @@
       "temporada": null,
       "region": null,
       "tematica": "Huevos y tortillas",
+      "ocasion": null,
       "ninos": true,
       "foto": "assets/banco-fotos/crema-zanahoria.jpg",
       "pasos": [
@@ -2467,6 +2487,7 @@
       "temporada": null,
       "region": null,
       "tematica": "Huevos y tortillas",
+      "ocasion": null,
       "ninos": true,
       "foto": "assets/banco-fotos/salteado-wok.jpg",
       "pasos": [
@@ -2510,6 +2531,7 @@
       "temporada": null,
       "region": null,
       "tematica": "Cremas y sopas",
+      "ocasion": null,
       "ninos": true,
       "foto": "assets/banco-fotos/plancha-guarnicion.jpg",
       "pasos": [
@@ -2557,6 +2579,7 @@
       "temporada": null,
       "region": null,
       "tematica": "Cremas y sopas",
+      "ocasion": null,
       "ninos": true,
       "foto": "assets/banco-fotos/crema-zanahoria.jpg",
       "pasos": [
@@ -2604,6 +2627,7 @@
       "temporada": null,
       "region": null,
       "tematica": "Cremas y sopas",
+      "ocasion": null,
       "ninos": true,
       "foto": "assets/banco-fotos/crema-zanahoria.jpg",
       "pasos": [
@@ -2654,6 +2678,7 @@
       "temporada": "invierno",
       "region": null,
       "tematica": "Cremas y sopas",
+      "ocasion": null,
       "ninos": true,
       "foto": "assets/banco-fotos/salteado-wok.jpg",
       "pasos": [
@@ -2702,6 +2727,7 @@
       "temporada": "verano",
       "region": null,
       "tematica": "Ensaladas completas",
+      "ocasion": null,
       "ninos": true,
       "foto": "assets/banco-fotos/salteado-wok.jpg",
       "pasos": [
@@ -2717,7 +2743,7 @@
       "ingredientes": {
         "eje": "proteina",
         "opciones": [
-          "atun",
+          "atun-conserva",
           "huevo",
           "pollo",
           "queso-feta",
@@ -2744,6 +2770,7 @@
       "temporada": "verano",
       "region": null,
       "tematica": "Ensaladas completas",
+      "ocasion": null,
       "ninos": true,
       "foto": "assets/banco-fotos/plancha-guarnicion.jpg",
       "pasos": [
@@ -2760,7 +2787,7 @@
       "ingredientes": {
         "eje": "proteina",
         "opciones": [
-          "atun",
+          "atun-conserva",
           "pollo",
           "queso-feta",
           "huevo"
@@ -2790,6 +2817,7 @@
       "temporada": "verano",
       "region": null,
       "tematica": "Ensaladas completas",
+      "ocasion": null,
       "ninos": true,
       "foto": "assets/banco-fotos/ensalada-lentejas.jpg",
       "pasos": [
@@ -2839,6 +2867,7 @@
       "temporada": "verano",
       "region": null,
       "tematica": "Ensaladas completas",
+      "ocasion": null,
       "ninos": true,
       "foto": "assets/banco-fotos/ensalada-lentejas.jpg",
       "pasos": [
@@ -2888,6 +2917,7 @@
       "temporada": "verano",
       "region": null,
       "tematica": "Ensaladas completas",
+      "ocasion": null,
       "ninos": true,
       "foto": "assets/banco-fotos/crema-zanahoria.jpg",
       "pasos": [
@@ -2927,6 +2957,7 @@
       "temporada": "verano",
       "region": null,
       "tematica": "Ensaladas completas",
+      "ocasion": null,
       "ninos": true,
       "foto": "assets/banco-fotos/plancha-guarnicion.jpg",
       "pasos": [
@@ -2972,6 +3003,7 @@
       "temporada": null,
       "region": "euskadi",
       "tematica": "Pescado y marisco",
+      "ocasion": null,
       "ninos": true,
       "foto": "assets/banco-fotos/crema-zanahoria.jpg",
       "pasos": [
@@ -3017,6 +3049,7 @@
       "temporada": null,
       "region": null,
       "tematica": "Pescado y marisco",
+      "ocasion": null,
       "ninos": true,
       "foto": "assets/banco-fotos/plancha-guarnicion.jpg",
       "pasos": [
@@ -3054,6 +3087,7 @@
       "temporada": "invierno",
       "region": null,
       "tematica": "Pescado y marisco",
+      "ocasion": null,
       "ninos": true,
       "foto": "assets/banco-fotos/salteado-wok.jpg",
       "pasos": [
@@ -3098,6 +3132,7 @@
       "temporada": "verano",
       "region": "euskadi",
       "tematica": "Pescado y marisco",
+      "ocasion": null,
       "ninos": true,
       "foto": "assets/banco-fotos/ensalada-lentejas.jpg",
       "pasos": [
@@ -3146,6 +3181,7 @@
       "temporada": "verano",
       "region": null,
       "tematica": "Pescado y marisco",
+      "ocasion": null,
       "ninos": false,
       "foto": "assets/banco-fotos/plancha-guarnicion.jpg",
       "pasos": [
@@ -3185,6 +3221,7 @@
       "temporada": null,
       "region": null,
       "tematica": "Pescado y marisco",
+      "ocasion": null,
       "ninos": true,
       "foto": "assets/banco-fotos/ensalada-lentejas.jpg",
       "pasos": [
@@ -3223,6 +3260,7 @@
       "temporada": null,
       "region": null,
       "tematica": "Pescado y marisco",
+      "ocasion": null,
       "ninos": true,
       "foto": "assets/banco-fotos/crema-zanahoria.jpg",
       "pasos": [
@@ -3262,6 +3300,7 @@
       "temporada": null,
       "region": null,
       "tematica": "Pescado y marisco",
+      "ocasion": null,
       "ninos": false,
       "foto": "assets/banco-fotos/plancha-guarnicion.jpg",
       "pasos": [
@@ -3306,6 +3345,7 @@
       "temporada": null,
       "region": null,
       "tematica": "Comida rápida e informal",
+      "ocasion": null,
       "ninos": true,
       "foto": "assets/banco-fotos/crema-zanahoria.jpg",
       "pasos": [
@@ -3352,6 +3392,7 @@
       "temporada": "verano",
       "region": null,
       "tematica": "Comida rápida e informal",
+      "ocasion": null,
       "ninos": true,
       "foto": "assets/banco-fotos/salteado-wok.jpg",
       "pasos": [
@@ -3404,6 +3445,7 @@
       "temporada": "verano",
       "region": null,
       "tematica": "Comida rápida e informal",
+      "ocasion": null,
       "ninos": true,
       "foto": "assets/banco-fotos/plancha-guarnicion.jpg",
       "pasos": [
@@ -3443,6 +3485,7 @@
       "temporada": null,
       "region": null,
       "tematica": "A la plancha o al horno",
+      "ocasion": null,
       "ninos": false,
       "foto": "assets/banco-fotos/salteado-wok.jpg",
       "pasos": [
@@ -3481,6 +3524,7 @@
       "temporada": null,
       "region": null,
       "tematica": "Comida rápida e informal",
+      "ocasion": null,
       "ninos": true,
       "foto": "assets/banco-fotos/salteado-wok.jpg",
       "pasos": [
@@ -3537,6 +3581,7 @@
       "temporada": null,
       "region": null,
       "tematica": "Comida rápida e informal",
+      "ocasion": null,
       "ninos": true,
       "foto": "assets/banco-fotos/ensalada-lentejas.jpg",
       "pasos": [
@@ -3582,6 +3627,7 @@
       "temporada": null,
       "region": null,
       "tematica": "Comida rápida e informal",
+      "ocasion": null,
       "ninos": true,
       "foto": "assets/banco-fotos/crema-zanahoria.jpg",
       "pasos": [
@@ -3629,6 +3675,7 @@
       "temporada": "invierno",
       "region": null,
       "tematica": "Cremas y sopas",
+      "ocasion": null,
       "ninos": true,
       "foto": "assets/banco-fotos/salteado-wok.jpg",
       "pasos": [
@@ -3678,6 +3725,7 @@
       "temporada": null,
       "region": null,
       "tematica": "Verduras y platos de verdura",
+      "ocasion": null,
       "ninos": false,
       "foto": "assets/banco-fotos/salteado-wok.jpg",
       "pasos": [
@@ -3726,6 +3774,7 @@
       "temporada": "invierno",
       "region": null,
       "tematica": "Potajes y guisos",
+      "ocasion": null,
       "ninos": true,
       "foto": "assets/banco-fotos/plancha-guarnicion.jpg",
       "pasos": [
@@ -3774,6 +3823,7 @@
       "temporada": "invierno",
       "region": null,
       "tematica": "Carnes de cuchara y horno",
+      "ocasion": null,
       "ninos": true,
       "foto": "assets/banco-fotos/ensalada-lentejas.jpg",
       "pasos": [
@@ -3818,6 +3868,7 @@
       "temporada": "invierno",
       "region": null,
       "tematica": "Potajes y guisos",
+      "ocasion": null,
       "ninos": true,
       "foto": "assets/banco-fotos/plancha-guarnicion.jpg",
       "pasos": [
@@ -3868,6 +3919,7 @@
       "temporada": "invierno",
       "region": null,
       "tematica": "Verduras y platos de verdura",
+      "ocasion": null,
       "ninos": false,
       "foto": "assets/banco-fotos/ensalada-lentejas.jpg",
       "pasos": [
@@ -3916,6 +3968,7 @@
       "temporada": "verano",
       "region": "andalucia",
       "tematica": "Cremas y sopas",
+      "ocasion": null,
       "ninos": true,
       "foto": "assets/banco-fotos/crema-zanahoria.jpg",
       "pasos": [
@@ -3963,6 +4016,7 @@
       "temporada": "verano",
       "region": "andalucia",
       "tematica": "Cremas y sopas",
+      "ocasion": null,
       "ninos": true,
       "foto": "assets/banco-fotos/crema-zanahoria.jpg",
       "pasos": [
@@ -4010,6 +4064,7 @@
       "temporada": "verano",
       "region": "castilla",
       "tematica": "Verduras y platos de verdura",
+      "ocasion": null,
       "ninos": true,
       "foto": "assets/banco-fotos/salteado-wok.jpg",
       "pasos": [
@@ -4060,6 +4115,7 @@
       "temporada": null,
       "region": null,
       "tematica": "Comida rápida e informal",
+      "ocasion": null,
       "ninos": true,
       "foto": "assets/banco-fotos/plancha-guarnicion.jpg",
       "pasos": [
@@ -4104,6 +4160,7 @@
       "temporada": null,
       "region": "comunidad-valenciana",
       "tematica": "Arroces y fideuà",
+      "ocasion": null,
       "ninos": true,
       "foto": "assets/banco-fotos/crema-zanahoria.jpg",
       "pasos": [
@@ -4153,6 +4210,7 @@
       "temporada": null,
       "region": "aragon",
       "tematica": "Carnes de cuchara y horno",
+      "ocasion": null,
       "ninos": true,
       "foto": "assets/banco-fotos/salteado-wok.jpg",
       "pasos": [
@@ -4195,6 +4253,7 @@
       "temporada": null,
       "region": "navarra-rioja",
       "tematica": "Potajes y guisos",
+      "ocasion": null,
       "ninos": true,
       "foto": "assets/banco-fotos/ensalada-lentejas.jpg",
       "pasos": [
@@ -4242,6 +4301,7 @@
       "temporada": "invierno",
       "region": "asturias",
       "tematica": "Potajes y guisos",
+      "ocasion": null,
       "ninos": true,
       "foto": "assets/banco-fotos/ensalada-lentejas.jpg",
       "pasos": [
@@ -4286,6 +4346,7 @@
       "temporada": null,
       "region": "asturias",
       "tematica": "Carnes de cuchara y horno",
+      "ocasion": null,
       "ninos": true,
       "foto": "assets/banco-fotos/plancha-guarnicion.jpg",
       "pasos": [
@@ -4330,6 +4391,7 @@
       "temporada": null,
       "region": "galicia",
       "tematica": "Comida rápida e informal",
+      "ocasion": null,
       "ninos": true,
       "foto": "assets/banco-fotos/ensalada-lentejas.jpg",
       "pasos": [
@@ -4352,7 +4414,7 @@
         ],
         "fijos": {
           "proteina": [
-            "atun"
+            "atun-conserva"
           ],
           "hidrato": [
             "masa-empanadilla"
@@ -4378,6 +4440,7 @@
       "temporada": "invierno",
       "region": "euskadi",
       "tematica": "Cremas y sopas",
+      "ocasion": null,
       "ninos": true,
       "foto": "assets/banco-fotos/crema-zanahoria.jpg",
       "pasos": [
@@ -4424,6 +4487,7 @@
       "temporada": "verano",
       "region": "euskadi",
       "tematica": "Huevos y tortillas",
+      "ocasion": null,
       "ninos": true,
       "foto": "assets/banco-fotos/salteado-wok.jpg",
       "pasos": [
@@ -4466,6 +4530,7 @@
       "temporada": "verano",
       "region": "murcia",
       "tematica": "Verduras y platos de verdura",
+      "ocasion": null,
       "ninos": true,
       "foto": "assets/banco-fotos/salteado-wok.jpg",
       "pasos": [
@@ -4509,6 +4574,7 @@
       "temporada": "verano",
       "region": "murcia",
       "tematica": "Ensaladas completas",
+      "ocasion": null,
       "ninos": true,
       "foto": "assets/banco-fotos/ensalada-lentejas.jpg",
       "pasos": [
@@ -4525,7 +4591,7 @@
       "ingredientes": {
         "eje": "proteina",
         "opciones": [
-          "atun",
+          "atun-conserva",
           "huevo"
         ],
         "fijos": {
@@ -4555,6 +4621,7 @@
       "temporada": "invierno",
       "region": "cataluna",
       "tematica": "Carnes de cuchara y horno",
+      "ocasion": null,
       "ninos": true,
       "foto": "assets/banco-fotos/salteado-wok.jpg",
       "pasos": [
@@ -4598,6 +4665,7 @@
       "temporada": "verano",
       "region": "baleares",
       "tematica": "Verduras y platos de verdura",
+      "ocasion": null,
       "ninos": true,
       "foto": "assets/banco-fotos/salteado-wok.jpg",
       "pasos": [
@@ -4647,6 +4715,7 @@
       "temporada": null,
       "region": "canarias",
       "tematica": "Verduras y platos de verdura",
+      "ocasion": null,
       "ninos": true,
       "foto": "assets/banco-fotos/plancha-guarnicion.jpg",
       "pasos": [
@@ -4694,6 +4763,7 @@
       "temporada": null,
       "region": "canarias",
       "tematica": "Carnes de cuchara y horno",
+      "ocasion": null,
       "ninos": true,
       "foto": "assets/banco-fotos/ensalada-lentejas.jpg",
       "pasos": [
@@ -4742,6 +4812,7 @@
       "temporada": "invierno",
       "region": "castilla",
       "tematica": "Pescado y marisco",
+      "ocasion": null,
       "ninos": true,
       "foto": "assets/banco-fotos/crema-zanahoria.jpg",
       "pasos": [
@@ -4784,6 +4855,7 @@
       "temporada": "invierno",
       "region": "castilla",
       "tematica": "Cremas y sopas",
+      "ocasion": null,
       "ninos": true,
       "foto": "assets/banco-fotos/crema-zanahoria.jpg",
       "pasos": [
@@ -4826,6 +4898,7 @@
       "temporada": "invierno",
       "region": "extremadura",
       "tematica": "Carnes de cuchara y horno",
+      "ocasion": null,
       "ninos": true,
       "foto": "assets/banco-fotos/salteado-wok.jpg",
       "pasos": [
@@ -4874,6 +4947,7 @@
       "temporada": "verano",
       "region": null,
       "tematica": "Pescado y marisco",
+      "ocasion": null,
       "ninos": true,
       "foto": "assets/banco-fotos/plancha-guarnicion.jpg",
       "pasos": [
@@ -4916,6 +4990,7 @@
       "temporada": "verano",
       "region": null,
       "tematica": "Ensaladas completas",
+      "ocasion": null,
       "ninos": true,
       "foto": "assets/banco-fotos/ensalada-lentejas.jpg",
       "pasos": [
@@ -4964,6 +5039,7 @@
       "temporada": "invierno",
       "region": "comunidad-valenciana",
       "tematica": "Arroces y fideuà",
+      "ocasion": null,
       "ninos": true,
       "foto": "assets/banco-fotos/crema-zanahoria.jpg",
       "pasos": [
@@ -5011,6 +5087,7 @@
       "temporada": null,
       "region": "madrid",
       "tematica": "Pescado y marisco",
+      "ocasion": null,
       "ninos": true,
       "foto": "assets/banco-fotos/plancha-guarnicion.jpg",
       "pasos": [
@@ -5050,6 +5127,7 @@
       "temporada": null,
       "region": "asturias",
       "tematica": "Pescado y marisco",
+      "ocasion": null,
       "ninos": true,
       "foto": "assets/banco-fotos/plancha-guarnicion.jpg",
       "pasos": [
@@ -5094,6 +5172,7 @@
       "temporada": null,
       "region": "navarra-rioja",
       "tematica": "Pescado y marisco",
+      "ocasion": null,
       "ninos": true,
       "foto": "assets/banco-fotos/plancha-guarnicion.jpg",
       "pasos": [
@@ -5130,6 +5209,7 @@
       "temporada": null,
       "region": null,
       "tematica": "Huevos y tortillas",
+      "ocasion": null,
       "ninos": true,
       "foto": "assets/banco-fotos/plancha-guarnicion.jpg",
       "pasos": [
@@ -5173,6 +5253,7 @@
       "temporada": null,
       "region": null,
       "tematica": "Verduras y platos de verdura",
+      "ocasion": null,
       "ninos": true,
       "foto": "assets/banco-fotos/salteado-wok.jpg",
       "pasos": [
@@ -5219,6 +5300,7 @@
       "temporada": null,
       "region": null,
       "tematica": "Comida rápida e informal",
+      "ocasion": null,
       "ninos": true,
       "foto": "assets/banco-fotos/ensalada-lentejas.jpg",
       "pasos": [
@@ -5262,6 +5344,7 @@
       "temporada": null,
       "region": null,
       "tematica": "Comida rápida e informal",
+      "ocasion": null,
       "ninos": true,
       "foto": null,
       "pasos": [
@@ -5310,6 +5393,7 @@
       "temporada": null,
       "region": null,
       "tematica": "Comida rápida e informal",
+      "ocasion": null,
       "ninos": true,
       "foto": null,
       "pasos": [
@@ -5358,6 +5442,7 @@
       "temporada": null,
       "region": null,
       "tematica": "Comida rápida e informal",
+      "ocasion": null,
       "ninos": true,
       "foto": null,
       "pasos": [
@@ -5406,6 +5491,7 @@
       "temporada": null,
       "region": null,
       "tematica": "Comida rápida e informal",
+      "ocasion": null,
       "ninos": true,
       "foto": null,
       "pasos": [
@@ -5454,6 +5540,7 @@
       "temporada": null,
       "region": null,
       "tematica": "Carnes de cuchara y horno",
+      "ocasion": null,
       "ninos": true,
       "foto": null,
       "pasos": [
@@ -5492,6 +5579,7 @@
       "temporada": null,
       "region": null,
       "tematica": "Carnes de cuchara y horno",
+      "ocasion": null,
       "ninos": true,
       "foto": null,
       "pasos": [
@@ -5531,6 +5619,7 @@
       "temporada": null,
       "region": null,
       "tematica": "Carnes de cuchara y horno",
+      "ocasion": null,
       "ninos": true,
       "foto": null,
       "pasos": [
@@ -5570,6 +5659,7 @@
       "temporada": null,
       "region": null,
       "tematica": "Carnes de cuchara y horno",
+      "ocasion": null,
       "ninos": true,
       "foto": null,
       "pasos": [
@@ -5607,6 +5697,7 @@
       "temporada": null,
       "region": null,
       "tematica": "Carnes de cuchara y horno",
+      "ocasion": null,
       "ninos": true,
       "foto": null,
       "pasos": [
@@ -5644,6 +5735,7 @@
       "temporada": null,
       "region": "extremadura",
       "tematica": "Carnes de cuchara y horno",
+      "ocasion": null,
       "ninos": true,
       "foto": null,
       "pasos": [
@@ -5682,6 +5774,7 @@
       "temporada": null,
       "region": "castilla",
       "tematica": "Carnes de cuchara y horno",
+      "ocasion": null,
       "ninos": true,
       "foto": null,
       "pasos": [
@@ -5720,6 +5813,7 @@
       "temporada": null,
       "region": "andalucia",
       "tematica": "Carnes de cuchara y horno",
+      "ocasion": null,
       "ninos": true,
       "foto": null,
       "pasos": [
@@ -5758,6 +5852,7 @@
       "temporada": "verano",
       "region": null,
       "tematica": "A la plancha o al horno",
+      "ocasion": null,
       "ninos": true,
       "foto": null,
       "pasos": [
@@ -5796,6 +5891,7 @@
       "temporada": null,
       "region": null,
       "tematica": "Carnes de cuchara y horno",
+      "ocasion": null,
       "ninos": true,
       "foto": null,
       "pasos": [
@@ -5840,6 +5936,7 @@
       "temporada": null,
       "region": null,
       "tematica": "Comida rápida e informal",
+      "ocasion": null,
       "ninos": true,
       "foto": null,
       "pasos": [
@@ -5879,6 +5976,7 @@
       "temporada": null,
       "region": null,
       "tematica": "Comida rápida e informal",
+      "ocasion": null,
       "ninos": true,
       "foto": null,
       "pasos": [
@@ -5920,6 +6018,7 @@
       "temporada": null,
       "region": "andalucia",
       "tematica": "Comida rápida e informal",
+      "ocasion": null,
       "ninos": true,
       "foto": null,
       "pasos": [
@@ -5960,6 +6059,7 @@
       "temporada": null,
       "region": null,
       "tematica": "Pescado y marisco",
+      "ocasion": null,
       "ninos": true,
       "foto": null,
       "pasos": [
@@ -5998,6 +6098,7 @@
       "temporada": null,
       "region": null,
       "tematica": "Pescado y marisco",
+      "ocasion": null,
       "ninos": true,
       "foto": null,
       "pasos": [
@@ -6044,6 +6145,7 @@
       "temporada": null,
       "region": "euskadi",
       "tematica": "Pescado y marisco",
+      "ocasion": null,
       "ninos": true,
       "foto": null,
       "pasos": [
@@ -6081,6 +6183,7 @@
       "temporada": null,
       "region": "euskadi",
       "tematica": "Pescado y marisco",
+      "ocasion": null,
       "ninos": true,
       "foto": null,
       "pasos": [
@@ -6125,6 +6228,7 @@
       "temporada": null,
       "region": null,
       "tematica": "Pescado y marisco",
+      "ocasion": null,
       "ninos": true,
       "foto": null,
       "pasos": [
@@ -6161,6 +6265,7 @@
       "temporada": null,
       "region": null,
       "tematica": "Pescado y marisco",
+      "ocasion": null,
       "ninos": true,
       "foto": null,
       "pasos": [
@@ -6198,6 +6303,7 @@
       "temporada": null,
       "region": null,
       "tematica": "Pescado y marisco",
+      "ocasion": null,
       "ninos": true,
       "foto": null,
       "pasos": [
@@ -6234,6 +6340,7 @@
       "temporada": null,
       "region": null,
       "tematica": "Pescado y marisco",
+      "ocasion": null,
       "ninos": true,
       "foto": null,
       "pasos": [
@@ -6270,6 +6377,7 @@
       "temporada": null,
       "region": "galicia",
       "tematica": "Pescado y marisco",
+      "ocasion": null,
       "ninos": true,
       "foto": null,
       "pasos": [
@@ -6313,6 +6421,7 @@
       "temporada": null,
       "region": null,
       "tematica": "Pescado y marisco",
+      "ocasion": null,
       "ninos": true,
       "foto": null,
       "pasos": [
@@ -6350,6 +6459,7 @@
       "temporada": null,
       "region": null,
       "tematica": "Huevos y tortillas",
+      "ocasion": null,
       "ninos": true,
       "foto": null,
       "pasos": [
@@ -6392,6 +6502,7 @@
       "temporada": null,
       "region": "andalucia",
       "tematica": "Huevos y tortillas",
+      "ocasion": null,
       "ninos": true,
       "foto": null,
       "pasos": [
@@ -6435,6 +6546,7 @@
       "temporada": null,
       "region": null,
       "tematica": "Verduras y platos de verdura",
+      "ocasion": null,
       "ninos": true,
       "foto": null,
       "pasos": [
@@ -6483,6 +6595,7 @@
       "temporada": null,
       "region": "cataluna",
       "tematica": "Pasta",
+      "ocasion": "sant-esteve",
       "ninos": true,
       "foto": null,
       "pasos": [
@@ -6526,6 +6639,7 @@
       "temporada": null,
       "region": "cataluna",
       "tematica": "Potajes y guisos",
+      "ocasion": "navidad",
       "ninos": true,
       "foto": null,
       "pasos": [
@@ -6574,6 +6688,7 @@
       "temporada": null,
       "region": null,
       "tematica": "Potajes y guisos",
+      "ocasion": "semana-santa",
       "ninos": true,
       "foto": null,
       "pasos": [
@@ -6621,6 +6736,7 @@
       "temporada": null,
       "region": null,
       "tematica": "Pasta",
+      "ocasion": null,
       "ninos": true,
       "foto": null,
       "pasos": [
@@ -6664,6 +6780,7 @@
       "temporada": null,
       "region": "comunidad-valenciana",
       "tematica": "Arroces y fideuà",
+      "ocasion": null,
       "ninos": true,
       "foto": null,
       "pasos": [
@@ -6707,6 +6824,7 @@
       "temporada": null,
       "region": null,
       "tematica": "Arroces y fideuà",
+      "ocasion": null,
       "ninos": true,
       "foto": null,
       "pasos": [
@@ -6755,6 +6873,7 @@
       "temporada": null,
       "region": "navarra-rioja",
       "tematica": "Potajes y guisos",
+      "ocasion": null,
       "ninos": true,
       "foto": null,
       "pasos": [
@@ -6797,6 +6916,7 @@
       "temporada": null,
       "region": "cataluna",
       "tematica": "Arroces y fideuà",
+      "ocasion": null,
       "ninos": true,
       "foto": null,
       "pasos": [
@@ -6839,6 +6959,7 @@
       "temporada": null,
       "region": null,
       "tematica": "Arroces y fideuà",
+      "ocasion": null,
       "ninos": true,
       "foto": null,
       "pasos": [
@@ -6885,6 +7006,7 @@
       "temporada": null,
       "region": null,
       "tematica": "Huevos y tortillas",
+      "ocasion": null,
       "ninos": true,
       "foto": null,
       "pasos": [

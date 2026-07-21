@@ -962,6 +962,45 @@
     };
   }
 
+  // Re-escala un menú YA elegido cuando cambian los presentes de ESE slot (p.ej. alguien se
+  // marca "hoy no como") — NUNCA cambia el plato (mismo principal/seleccionEje/complementarias),
+  // solo recalcula cantidades/kcal para quiénes están de verdad. Bug real hallado en uso real
+  // 2026-07-21: togglePresente solo actualizaba ausenciasPuntuales sin recalcular nada, dejando
+  // el menú con las cantidades de la mesa original (2200 kcal "por persona" al quedar 1 solo
+  // comensal, porque se dividía en la UI el total ya calculado para 4 entre 1).
+  function reescalarMenuParaPresentes(estado, bancoV3, banco, menuActual, presentesNuevos, tipoComida, diaIndex, fechaReferencia, margenKcal) {
+    if (!presentesNuevos.length) return null; // nadie presente -> hueco vacío, igual que generarSemana
+    var esFinde = esFinDeSemana(diaIndex);
+    var principal = elaboracionPorId(bancoV3, estado, menuActual.principalId);
+    if (!principal) return null;
+    var complementarias = [];
+    for (var i = 0; i < (menuActual.complementarias || []).length; i++) {
+      var c = menuActual.complementarias[i];
+      var elaboracion = elaboracionPorId(bancoV3, estado, c.id);
+      if (!elaboracion) return null; // dato corrupto/id no encontrado, no forzar un resultado a medias
+      complementarias.push({ elaboracion: elaboracion, seleccionEje: c.seleccionEje });
+    }
+    var banda = bandaAgregadaMesa(presentesNuevos, tipoComida, esFinde, fechaReferencia, margenKcal);
+    var bandaPersonaFn = function (p) { return objetivoBandaPersona(p, tipoComida, esFinde, fechaReferencia, margenKcal); };
+    var cierre = cerrarBandaKcal(principal, menuActual.seleccionEje, complementarias, presentesNuevos, banda, bandaPersonaFn, banco, bancoV3);
+    var kcalTotal, factorRacion, componenteExtra;
+    if (cierre.viable) {
+      kcalTotal = cierre.kcalTotal; factorRacion = cierre.factorRacion; componenteExtra = cierre.componenteExtra;
+    } else {
+      // ni escalando (0.75-1.25) ni con pan cabe en la banda de la mesa nueva — se acepta el
+      // mejor ajuste posible (factor calculado igualmente) antes que dejar la cantidad de la
+      // mesa vieja, que es estrictamente peor: aquí prioriza "cantidad real de quien está",
+      // no la banda (la banda ya hizo su trabajo al generar el menú originalmente)
+      var componentesSinExtra = componentesDeCandidato(principal, menuActual.seleccionEje, complementarias);
+      var kcalAlinio = kcalAlinioPorRacion(principal, complementarias, bancoV3);
+      var r = calcularKcalYFactor(componentesSinExtra, presentesNuevos, bandaPersonaFn, banco, bancoV3, kcalAlinio);
+      kcalTotal = r.kcalTotal; factorRacion = r.factorRacion; componenteExtra = menuActual.componenteExtra;
+    }
+    var candidato = { principal: principal, seleccionEje: menuActual.seleccionEje, complementarias: complementarias, kcalTotal: kcalTotal, factorRacion: factorRacion, componenteExtra: componenteExtra };
+    var ctx = { bancoV3: bancoV3, banco: banco, presentes: presentesNuevos, vetosViabilidad: vetosDe(presentesNuevos), vetosUnion: vetosDe(presentesNuevos), bandaSlot: banda };
+    return resolverMenu(candidato, ctx);
+  }
+
   // ---------------------------------------------------------------
   // Función LAZY: generator que produce menús YA ORDENADOS por score; el
   // caller consume 1 (flujo normal) o hasta 3 (modo nevera, top-N nativo,
@@ -1512,7 +1551,8 @@
     complementariasCompatibles: complementariasCompatibles,
     categoriaExcluidaPorDieta: categoriaExcluidaPorDieta, opcionAptaParaDieta: opcionAptaParaDieta,
     elaboracionViableParaMesa: elaboracionViableParaMesa, calcularAdaptaciones: calcularAdaptaciones,
-    kcalIngredienteConTecnica: kcalIngredienteConTecnica, kcalAlinioPorRacion: kcalAlinioPorRacion
+    kcalIngredienteConTecnica: kcalIngredienteConTecnica, kcalAlinioPorRacion: kcalAlinioPorRacion,
+    calcularKcalYFactor: calcularKcalYFactor, reescalarMenuParaPresentes: reescalarMenuParaPresentes
   };
 
   if (typeof module !== 'undefined' && module.exports) module.exports = E3Engine;

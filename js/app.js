@@ -929,6 +929,19 @@
     var idx = lista.indexOf(miembroId);
     if (idx === -1) lista.push(miembroId); else lista.splice(idx, 1);
     estado.ausenciasPuntuales[fecha][tipoComida] = lista;
+    // Bug real (2026-07-21, hallado en uso real de la familia): marcar ausencia solo tocaba
+    // ausenciasPuntuales sin recalcular el menú ya generado — las cantidades/kcal se quedaban
+    // congeladas en la mesa original (2200+ kcal "por persona" al quedar 1 solo comensal, porque
+    // la UI dividía el total ya calculado para 4 entre 1). Re-escala el MISMO plato (nunca elige
+    // otro) para quienes están de verdad presentes ahora.
+    var slot = plan.dias[dia][tipoComida];
+    if (slot && slot.menu) {
+      var presentesNuevos = E.presentesEnComida(estado, fecha, dia, tipoComida);
+      var menuReescalado = E.reescalarMenuParaPresentes(estado, BANCO, BANCO, slot.menu, presentesNuevos, tipoComida, dia, E.fechaLocalISO(new Date()), null);
+      plan.dias[dia][tipoComida] = menuReescalado
+        ? { menu: Object.assign({}, menuReescalado, { categoriaProteina: slot.menu.categoriaProteina, tecnicaPrincipal: slot.menu.tecnicaPrincipal }) }
+        : null; // nadie presente -> hueco vacío, igual que generarSemana
+    }
     guardarEstado();
     render();
   }

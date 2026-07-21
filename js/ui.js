@@ -11,7 +11,7 @@
   var E = global.E3Engine;
   var NOMBRES_DIA = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
   var NOMBRES_DIA_CORTO = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
-  var ETIQUETAS_DIETA = { omnivora: 'De todo', vegetariana: 'Vegetariana', 'sin-pescado': 'Sin pescado', 'sin-cerdo': 'Sin cerdo' };
+  var ETIQUETAS_DIETA = { omnivora: 'De todo', vegetariana: 'Vegetariana', 'sin-pescado': 'Sin pescado', 'sin-cerdo': 'Sin cerdo', 'sin-lactosa': 'Sin lactosa' };
   var ETIQUETAS_PATRON = { casa: 'Casa', fuera: 'Fuera', cole: 'Cole' };
 
   // categoría de ingrediente -> etiqueta ES, para chips de RECETAS y secciones de COMPRA
@@ -430,11 +430,14 @@
   // Listas de compra (filas de check) — reutilizadas en franja HOY y tab COMPRA
   // ---------------------------------------------------------------
   function filaCompraHtml(item) {
+    // gramos null = ítem "¿lo tengo en casa?" (base de despensa/staple, Roger 2026-07-21): sin
+    // cantidad real que comprar, solo el check — no se muestra "0 g" ni ninguna cifra inventada.
+    var cantidadHtml = item.gramos == null ? '' : '<span class="check-cantidad">' + item.gramos + ' g</span>';
     return '<li class="check-item ' + (item.marcado ? 'check-marcado' : '') + '">' +
       '<label>' +
       '<input type="checkbox" data-action="toggle-compra-item" data-id="' + item.id + '" ' + (item.marcado ? 'checked' : '') + '>' +
       '<span class="check-texto">' + escapeHtml(item.nombre) + '</span>' +
-      '<span class="check-cantidad">' + item.gramos + ' g</span>' +
+      cantidadHtml +
       '</label></li>';
   }
 

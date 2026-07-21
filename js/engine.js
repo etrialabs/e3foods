@@ -80,6 +80,18 @@
     return set;
   }
 
+  // Disponibilidad por temporada (Roger 2026-07-21): un ingrediente con temporada:[meses]
+  // solo está disponible en esos meses; sin temporada (o vacía) = todo el año. Se aplica en los
+  // MISMOS puntos donde el motor filtra los vetos al resolver un eje — una opción fuera del mes se
+  // descarta igual que un veto; si el pool del eje queda vacío, el plato entero no se ofrece.
+  function mesDeFecha(fechaISOStr) { return new Date((fechaISOStr || fechaLocalISO()) + 'T00:00:00').getMonth() + 1; }
+  function disponibleEnMes(banco, id, mes) {
+    if (!mes) return true; // sin mes de contexto (previews, reescalado) = sin filtro de temporada
+    var ing = banco && banco.ingredientes[id];
+    if (!ing || !ing.temporada || !ing.temporada.length) return true; // sin temporada = todo el año
+    return ing.temporada.indexOf(mes) !== -1;
+  }
+
   // ---------------------------------------------------------------
   // 1. Necesidad calórica individual — IDÉNTICO a v2 (borrador §7: "Intacta")
   // ---------------------------------------------------------------
@@ -215,6 +227,11 @@
     if (!dieta || dieta === 'omnivora') return false;
     if (dieta === 'vegetariana') return !CATEGORIAS_VEGETARIANA_OK[categoria];
     if (dieta === 'sin-pescado') return !!CATEGORIAS_SIN_PESCADO_EXCLUIDAS[categoria];
+    // Sin lactosa (Roger 2026-07-21, borrador §7): mismo mecanismo que vegetariana/sin-pescado —
+    // excluye la categoría lácteo del eje paramétrico; el motor busca otra opción del MISMO eje
+    // (p.ej. ensalada-completa con queso-feta -> pollo), no sustituye por un lácteo "sin lactosa"
+    // (no hay tal opción en ningún eje hoy — los ingredientes sin-lactosa nuevos son de despensa).
+    if (dieta === 'sin-lactosa') return categoria === 'lacteo';
     if (dieta === 'sin-cerdo') {
       var idNorm = (ingredienteId || '').toLowerCase();
       return IDS_CERDO_CONOCIDOS.some(function (k) { return idNorm.indexOf(k) !== -1; });
@@ -222,10 +239,11 @@
     return false;
   }
 
-  function opcionAptaParaDieta(opciones, dieta, banco, vetosUnion) {
+  function opcionAptaParaDieta(opciones, dieta, banco, vetosUnion, mes) {
     var encontrada = null;
     (opciones || []).some(function (id) {
       if (estaEn(vetosUnion, id)) return false;
+      if (!disponibleEnMes(banco, id, mes)) return false; // una adaptación de dieta tampoco escoge algo fuera de temporada
       var ing = banco.ingredientes[id];
       if (!ing) return false;
       if (categoriaExcluidaPorDieta(ing.categoria, dieta, id)) return false;
@@ -235,21 +253,18 @@
     return encontrada;
   }
 
-  // ¿Es esta elaboración PRINCIPAL/MIXTA viable para la mesa (vetos + dieta),
+  // ¿Es esta elaboración PRINCIPAL/MIXTA viable para la mesa (vetos + dieta + temporada),
   // considerando solo su eje paramétrico (si lo tiene) y sus ids fijos?
-  function elaboracionViableParaMesa(elaboracion, presentes, vetosUnion, banco) {
-    var idsAEvaluar = [];
-    if (elaboracion.ingredientes.eje) idsAEvaluar = elaboracion.ingredientes.opciones.slice();
-    Object.keys(elaboracion.ingredientes.fijos || {}).forEach(function (g) { idsAEvaluar = idsAEvaluar.concat(elaboracion.ingredientes.fijos[g]); });
-
-    // restricción de vetos: al menos una opción del eje paramétrico (si existe) debe sobrevivir a los vetos;
-    // los ids fijos NO tienen alternativa — si alguno está vetado, la elaboración entera es inviable para esta mesa.
+  function elaboracionViableParaMesa(elaboracion, presentes, vetosUnion, banco, mes) {
+    // restricción de vetos + temporada: al menos una opción del eje paramétrico (si existe) debe
+    // sobrevivir a los vetos Y estar en temporada; los ids fijos NO tienen alternativa — si alguno
+    // está vetado o fuera de temporada, la elaboración entera es inviable para esta mesa/mes.
     if (elaboracion.ingredientes.eje) {
-      var quedaAlguna = elaboracion.ingredientes.opciones.some(function (id) { return !estaEn(vetosUnion, id); });
+      var quedaAlguna = elaboracion.ingredientes.opciones.some(function (id) { return !estaEn(vetosUnion, id) && disponibleEnMes(banco, id, mes); });
       if (!quedaAlguna) return false;
     }
     var fijosOk = Object.keys(elaboracion.ingredientes.fijos || {}).every(function (g) {
-      return elaboracion.ingredientes.fijos[g].every(function (id) { return !estaEn(vetosUnion, id); });
+      return elaboracion.ingredientes.fijos[g].every(function (id) { return !estaEn(vetosUnion, id) && disponibleEnMes(banco, id, mes); });
     });
     if (!fijosOk) return false;
 
@@ -258,11 +273,11 @@
     return (presentes || []).every(function (m) {
       var dieta = m.dieta || 'omnivora';
       if (dieta === 'omnivora') return true;
-      return !!opcionAptaParaDieta(elaboracion.ingredientes.opciones, dieta, banco, vetosUnion);
+      return !!opcionAptaParaDieta(elaboracion.ingredientes.opciones, dieta, banco, vetosUnion, mes);
     });
   }
 
-  function calcularAdaptaciones(elaboracion, seleccionEje, presentes, banco, vetosUnion) {
+  function calcularAdaptaciones(elaboracion, seleccionEje, presentes, banco, vetosUnion, mes) {
     var adaptaciones = [];
     if (elaboracion.ingredientes.eje !== 'proteina' || !seleccionEje) return adaptaciones;
     var ingPrincipal = banco.ingredientes[seleccionEje];
@@ -270,7 +285,7 @@
       var dieta = m.dieta || 'omnivora';
       if (dieta === 'omnivora') return;
       if (ingPrincipal && !categoriaExcluidaPorDieta(ingPrincipal.categoria, dieta, seleccionEje)) return;
-      var alt = opcionAptaParaDieta(elaboracion.ingredientes.opciones, dieta, banco, vetosUnion);
+      var alt = opcionAptaParaDieta(elaboracion.ingredientes.opciones, dieta, banco, vetosUnion, mes);
       if (alt && alt !== seleccionEje) adaptaciones.push({ miembroId: m.id, eje: 'proteina', valor: alt });
     });
     return adaptaciones;
@@ -424,17 +439,17 @@
   // que el principal NO cubre (0, 1 o 2 grupos faltantes — nunca más,
   // proteína siempre la cubre el principal).
   // ---------------------------------------------------------------
-  function opcionesDeComplementaria(complementaria, vetosUnion) {
-    return (complementaria.ingredientes.opciones || []).filter(function (id) { return !estaEn(vetosUnion, id); });
+  function opcionesDeComplementaria(complementaria, vetosUnion, banco, mes) {
+    return (complementaria.ingredientes.opciones || []).filter(function (id) { return !estaEn(vetosUnion, id) && disponibleEnMes(banco, id, mes); });
   }
 
-  function generarCombosComplementarias(bancoV3, principalId, gruposFaltantes, vetosUnion) {
+  function generarCombosComplementarias(bancoV3, principalId, gruposFaltantes, vetosUnion, mes) {
     if (!gruposFaltantes.length) return [[]];
     var porGrupo = gruposFaltantes.map(function (grupo) {
       var compatibles = complementariasCompatibles(bancoV3, principalId, grupo);
       var opciones = [];
       compatibles.forEach(function (comp) {
-        opcionesDeComplementaria(comp, vetosUnion).forEach(function (id) { opciones.push({ elaboracion: comp, seleccionEje: id }); });
+        opcionesDeComplementaria(comp, vetosUnion, bancoV3, mes).forEach(function (id) { opciones.push({ elaboracion: comp, seleccionEje: id }); });
       });
       return opciones;
     });
@@ -562,10 +577,10 @@
     principalesMixtas(ctx.bancoV3, ctx.estado, ctx.tipoComida).forEach(function (principal) {
       if (ctx.principalExcluido && principal.id === ctx.principalExcluido) { traceDescarta(trace, principal.id, 'excluido: es el principal ya mostrado en este slot (otro menú)'); return; }
       if (!ctx.ignorarEsfuerzo && !ctx.esFinde && principal.esfuerzo === 'elaborado') { traceDescarta(trace, principal.id, 'esfuerzo: elaborado solo finde'); return; }
-      if (!elaboracionViableParaMesa(principal, ctx.presentes, ctx.vetosViabilidad || ctx.vetosUnion, ctx.banco)) { traceDescarta(trace, principal.id, 'mesa mixta/dieta inviable'); return; }
+      if (!elaboracionViableParaMesa(principal, ctx.presentes, ctx.vetosViabilidad || ctx.vetosUnion, ctx.banco, ctx.mes)) { traceDescarta(trace, principal.id, 'mesa mixta/dieta/temporada inviable'); return; }
 
-      var opcionesEje = principal.ingredientes.eje ? principal.ingredientes.opciones.filter(function (id) { return !estaEn(ctx.vetosUnion, id); }) : [null];
-      if (principal.ingredientes.eje && !opcionesEje.length) { traceDescarta(trace, principal.id, 'todas las opciones del eje vetadas'); return; }
+      var opcionesEje = principal.ingredientes.eje ? principal.ingredientes.opciones.filter(function (id) { return !estaEn(ctx.vetosUnion, id) && disponibleEnMes(ctx.banco, id, ctx.mes); }) : [null];
+      if (principal.ingredientes.eje && !opcionesEje.length) { traceDescarta(trace, principal.id, 'todas las opciones del eje vetadas o fuera de temporada'); return; }
 
       opcionesEje.forEach(function (opcionEje) {
         var idsPrincipal = [];
@@ -582,7 +597,7 @@
         if (violaCuotaFritos(principal.tecnicaCoccion, ctx.contadorFritos, ctx.cuotaFritos)) { traceDescarta(trace, principal.id, 'cuota máxima de fritos'); return; }
 
         var gruposFaltantes = ['proteina', 'hidrato', 'verdura'].filter(function (g) { return principal.grupos.indexOf(g) === -1; });
-        var combos = generarCombosComplementarias(ctx.bancoV3, principal.id, gruposFaltantes, ctx.vetosUnion);
+        var combos = generarCombosComplementarias(ctx.bancoV3, principal.id, gruposFaltantes, ctx.vetosUnion, ctx.mes);
 
         combos.forEach(function (combo) {
           var idsCombo = [];
@@ -832,9 +847,19 @@
   }
 
   // ---------------------------------------------------------------
-  // Postre del día — IDÉNTICO a v2 (borrador §7: modelo AESAN sin cambios,
-  // componente del menú pero determinista, fuera del scoring).
+  // Postre del día — modelo AESAN sin cambios (borrador §7), componente del
+  // menú determinista fuera del scoring. Fusión frutas_mes → temporada (Roger
+  // 2026-07-21): la fruta de diario ya NO vive en postres.frutas_mes; el
+  // selector lee la temporada de cada ingrediente-fruta (mismo campo que el
+  // filtro de disponibilidad del motor). Rotación por día + semana para que
+  // todas las frutas de temporada del mes tengan turno a lo largo de las semanas.
   // ---------------------------------------------------------------
+  function frutasDeTemporada(banco, mes) {
+    return Object.keys(banco.ingredientes).filter(function (id) {
+      var ing = banco.ingredientes[id];
+      return ing.categoria === 'fruta' && disponibleEnMes(banco, id, mes);
+    });
+  }
   function postreDelDia(banco, fecha, diaIndex) {
     var postres = banco && banco.postres;
     if (!postres) return null;
@@ -852,9 +877,10 @@
       var elegido = aptos[nSemana % aptos.length];
       return { tipo: 'tradicional', nombre: elegido.nombre, receta_aparte: true };
     }
-    var frutas = (postres.frutas_mes && postres.frutas_mes[mes]) || [];
+    var frutas = frutasDeTemporada(banco, mes);
     if (!frutas.length) return null;
-    var idFruta = frutas[diaIndex % frutas.length];
+    var nSemana = Math.floor(d.getTime() / (7 * 24 * 3600 * 1000));
+    var idFruta = frutas[(diaIndex + nSemana) % frutas.length];
     var ingF = banco.ingredientes[idFruta];
     return { tipo: 'fruta', id: idFruta, nombre: ingF ? ingF.nombre : idFruta };
   }
@@ -943,7 +969,7 @@
       return { id: c.elaboracion.id, nombre: resolverNombre(c.elaboracion, c.seleccionEje, banco), seleccionEje: c.seleccionEje, pasos: pasosComplementaria(c.elaboracion, c.seleccionEje, banco) };
     });
 
-    var adaptaciones = calcularAdaptaciones(candidato.principal, candidato.seleccionEje, ctx.presentes, banco, ctx.vetosViabilidad || ctx.vetosUnion);
+    var adaptaciones = calcularAdaptaciones(candidato.principal, candidato.seleccionEje, ctx.presentes, banco, ctx.vetosViabilidad || ctx.vetosUnion, ctx.mes);
     var mapaAdaptaciones = {};
     adaptaciones.forEach(function (a) { mapaAdaptaciones[a.miembroId] = a; });
 
@@ -1197,7 +1223,7 @@
 
         var ctxBase = {
           bancoV3: bancoV3, banco: banco, estado: estado, presentes: presentes, tipoComida: tipoComida, esFinde: esFinde,
-          fechaReferencia: fechaReferencia, vetosUnion: vetosDe(presentes), vetosViabilidad: vetosDe(presentes),
+          fechaReferencia: fechaReferencia, mes: mesDeFecha(fecha), vetosUnion: vetosDe(presentes), vetosViabilidad: vetosDe(presentes),
           usadosHoy: usadosHoyAcumulado, usadosAyer: usadosAyer, categoriasProteinaHoy: categoriasProteinaHoyAcumulado,
           contadorCuotas: contadorCuotas, cuotas: cuotas, contadorFritos: contadorFritos, cuotaFritos: bancoV3.cuota_fritos,
           ignorarEsfuerzo: false
@@ -1318,7 +1344,7 @@
 
     var ctxBase = {
       bancoV3: bancoV3, banco: banco, estado: estado, presentes: presentes, tipoComida: tipoComida, esFinde: esFinde,
-      fechaReferencia: fechaReferencia, vetosUnion: vetosDe(presentes), vetosViabilidad: vetosDe(presentes),
+      fechaReferencia: fechaReferencia, mes: mesDeFecha(fecha), vetosUnion: vetosDe(presentes), vetosViabilidad: vetosDe(presentes),
       usadosHoy: usadosHoy, usadosAyer: usadosAyer, categoriasProteinaHoy: {},
       contadorCuotas: contadorCuotas, cuotas: cuotas, contadorFritos: contadorFritos, cuotaFritos: bancoV3.cuota_fritos,
       ignorarEsfuerzo: false
@@ -1335,7 +1361,7 @@
       var ctxSolo = Object.assign({}, ctxBase, { usadosHoy: {}, usadosAyer: {} });
       var banda = bandaAgregadaMesa(presentes, tipoComida, esFinde, fechaReferencia, MARGEN_KCAL_DEFECTO);
       var bandaPersonaFn = function (p) { return objetivoBandaPersona(p, tipoComida, esFinde, fechaReferencia, MARGEN_KCAL_DEFECTO); };
-      var combos = generarCombosComplementarias(bancoV3, principalActual.id, gruposFaltantes, ctxBase.vetosUnion);
+      var combos = generarCombosComplementarias(bancoV3, principalActual.id, gruposFaltantes, ctxBase.vetosUnion, ctxBase.mes);
       var idComboActual = (slotActual.menu.complementarias || []).map(function (c) { return c.seleccionEje; }).sort().join(',');
       var candidatosSolo = [];
       combos.forEach(function (combo) {
@@ -1465,11 +1491,26 @@
       acumulado[id].gramos += ing.racion_adulto_g;
     });
 
+    // Ingrediente BASE (Roger 2026-07-21, tarea 4) + despensa de compra (tarea 3): cebolla/leche/
+    // nata/mantequilla/queso rallado + los staples (aceite, sal...) NO son ración de ningún menú —
+    // "¿lo tengo en casa?", no cantidad a comprar. Aparecen SIEMPRE, en cualquier rango (hoy/semana),
+    // como líneas sin gramos (checkbox simple), en la MISMA categoría de compra "despensa" que los
+    // staples (borrador ARQUITECTURA: "categoría propia Despensa... + las bases cebolla/leche/nata")
+    // — la categoría nutricional real (lacteo/verdura) sigue intacta en banco.ingredientes, esto es
+    // solo la agrupación de LA LISTA DE COMPRA, no toca cuotas/proteína/dieta.
+    Object.keys(banco.ingredientes).forEach(function (id) {
+      var ing = banco.ingredientes[id];
+      if (ing.base && !acumulado[id]) acumulado[id] = { id: id, nombre: ing.nombre, categoria: 'despensa', gramos: null };
+    });
+    (banco.despensa || []).forEach(function (item) {
+      if (!acumulado[item.id]) acumulado[item.id] = { id: item.id, nombre: item.nombre, categoria: 'despensa', gramos: null };
+    });
+
     var marcados = {};
     ((estado.compra && estado.compra.marcados) || []).forEach(function (id) { marcados[id] = 1; });
     return Object.keys(acumulado).map(function (id) {
       var linea = acumulado[id];
-      return { id: linea.id, nombre: linea.nombre, categoria: linea.categoria, gramos: redondearCantidad(linea.gramos), marcado: !!marcados[id] };
+      return { id: linea.id, nombre: linea.nombre, categoria: linea.categoria, gramos: linea.gramos === null ? null : redondearCantidad(linea.gramos), marcado: !!marcados[id] };
     }).sort(function (a, b) { if (a.categoria !== b.categoria) return a.categoria.localeCompare(b.categoria); return a.nombre.localeCompare(b.nombre); });
   }
 
@@ -1588,6 +1629,7 @@
     nuevoTrace: nuevoTrace, traceDescarta: traceDescarta, traceSobrevive: traceSobrevive,
     edadEnAnios: edadEnAnios, fechaLocalISO: fechaLocalISO, fechaISO: fechaISO,
     lunesDeEstaSemana: lunesDeEstaSemana, esFinDeSemana: esFinDeSemana, vetosDe: vetosDe,
+    mesDeFecha: mesDeFecha, disponibleEnMes: disponibleEnMes,
     necesidadKcalDia: necesidadKcalDia, objetivoBandaPersona: objetivoBandaPersona,
     bandaAgregadaMesa: bandaAgregadaMesa, capitaliza: capitaliza,
     excluidoPorCole: excluidoPorCole, presentesEnComida: presentesEnComida,

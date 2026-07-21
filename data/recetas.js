@@ -1,7 +1,7 @@
 /* ============================================================
    e3Foods — recetas.js (v3)
 
-   Banco unico del motor v3: ingredientes + postres (datos base, se editan
+   Banco unico del motor v3: ingredientes + postres + despensa (datos base, se editan
    aqui directamente) + grupos/tecnicas_coccion/acabados/elaboraciones/
    compatibilidad (GENERADOS, no editar a mano — tocar
    tests/fixtures/clasificacion_elaboraciones_v3.js y correr
@@ -205,6 +205,415 @@
       "racion_adulto_g": 120,
       "racion_nino_g": 60,
       "coste_banda": 1
+    },
+    "entrecot-ternera": {
+      "nombre": "Entrecot de ternera",
+      "categoria": "carne-roja",
+      "kcal_100g": 180,
+      "racion_adulto_g": 150,
+      "racion_nino_g": 90,
+      "coste_banda": 3
+    },
+    "solomillo-ternera": {
+      "nombre": "Solomillo de ternera",
+      "categoria": "carne-roja",
+      "kcal_100g": 126,
+      "racion_adulto_g": 150,
+      "racion_nino_g": 90,
+      "coste_banda": 3
+    },
+    "carrillera-ternera": {
+      "nombre": "Carrillera de ternera",
+      "categoria": "carne-roja",
+      "kcal_100g": 130,
+      "racion_adulto_g": 160,
+      "racion_nino_g": 100,
+      "coste_banda": 2
+    },
+    "rabo-ternera": {
+      "nombre": "Rabo de ternera",
+      "categoria": "carne-roja",
+      "kcal_100g": 200,
+      "racion_adulto_g": 180,
+      "racion_nino_g": 110,
+      "coste_banda": 2
+    },
+    "chuletas-cerdo": {
+      "nombre": "Chuletas de cerdo",
+      "categoria": "carne-roja",
+      "kcal_100g": 180,
+      "racion_adulto_g": 200,
+      "racion_nino_g": 120,
+      "coste_banda": 1
+    },
+    "costillas-cerdo": {
+      "nombre": "Costillas de cerdo",
+      "categoria": "carne-roja",
+      "kcal_100g": 250,
+      "racion_adulto_g": 220,
+      "racion_nino_g": 130,
+      "coste_banda": 1
+    },
+    "secreto-iberico": {
+      "nombre": "Secreto ibérico",
+      "categoria": "carne-roja",
+      "kcal_100g": 290,
+      "racion_adulto_g": 150,
+      "racion_nino_g": 90,
+      "coste_banda": 2
+    },
+    "presa-iberica": {
+      "nombre": "Presa ibérica",
+      "categoria": "carne-roja",
+      "kcal_100g": 210,
+      "racion_adulto_g": 150,
+      "racion_nino_g": 90,
+      "coste_banda": 2
+    },
+    "salchichas-cerdo": {
+      "nombre": "Salchichas frescas",
+      "categoria": "carne-roja",
+      "kcal_100g": 168,
+      "racion_adulto_g": 150,
+      "racion_nino_g": 90,
+      "coste_banda": 1
+    },
+    "butifarra-fresca": {
+      "nombre": "Butifarra fresca",
+      "categoria": "carne-roja",
+      "kcal_100g": 230,
+      "racion_adulto_g": 150,
+      "racion_nino_g": 90,
+      "coste_banda": 1
+    },
+    "butifarra-blanca": {
+      "nombre": "Butifarra blanca",
+      "categoria": "carne-roja",
+      "kcal_100g": 240,
+      "racion_adulto_g": 150,
+      "racion_nino_g": 90,
+      "coste_banda": 2
+    },
+    "butifarra-negra": {
+      "nombre": "Butifarra negra",
+      "categoria": "carne-roja",
+      "kcal_100g": 290,
+      "racion_adulto_g": 150,
+      "racion_nino_g": 90,
+      "coste_banda": 2
+    },
+    "cordero-pierna": {
+      "nombre": "Pierna de cordero",
+      "categoria": "carne-roja",
+      "kcal_100g": 182,
+      "racion_adulto_g": 200,
+      "racion_nino_g": 120,
+      "coste_banda": 3
+    },
+    "cordero-paletilla": {
+      "nombre": "Paletilla de cordero",
+      "categoria": "carne-roja",
+      "kcal_100g": 205,
+      "racion_adulto_g": 200,
+      "racion_nino_g": 120,
+      "coste_banda": 2
+    },
+    "cordero-chuletas": {
+      "nombre": "Chuletas de cordero",
+      "categoria": "carne-roja",
+      "kcal_100g": 228,
+      "racion_adulto_g": 200,
+      "racion_nino_g": 120,
+      "coste_banda": 3
+    },
+    "cordero-cuello": {
+      "nombre": "Cuello de cordero",
+      "categoria": "carne-roja",
+      "kcal_100g": 275,
+      "racion_adulto_g": 200,
+      "racion_nino_g": 120,
+      "coste_banda": 2
+    },
+    "alitas-pollo": {
+      "nombre": "Alitas de pollo",
+      "categoria": "carne-blanca",
+      "kcal_100g": 217,
+      "racion_adulto_g": 200,
+      "racion_nino_g": 120,
+      "coste_banda": 1
+    },
+    "carne-picada-mixta": {
+      "nombre": "Carne picada mixta",
+      "categoria": "carne-roja",
+      "kcal_100g": 190,
+      "racion_adulto_g": 130,
+      "racion_nino_g": 80,
+      "coste_banda": 1
+    },
+    "jamon-cocido": {
+      "nombre": "Jamón cocido",
+      "categoria": "carne-roja",
+      "kcal_100g": 106,
+      "racion_adulto_g": 50,
+      "racion_nino_g": 30,
+      "coste_banda": 2
+    },
+    "fuet": {
+      "nombre": "Fuet",
+      "categoria": "carne-roja",
+      "kcal_100g": 473,
+      "racion_adulto_g": 30,
+      "racion_nino_g": 20,
+      "coste_banda": 2
+    },
+    "salchichon": {
+      "nombre": "Salchichón",
+      "categoria": "carne-roja",
+      "kcal_100g": 438,
+      "racion_adulto_g": 30,
+      "racion_nino_g": 20,
+      "coste_banda": 2
+    },
+    "morcilla": {
+      "nombre": "Morcilla",
+      "categoria": "carne-roja",
+      "kcal_100g": 323,
+      "racion_adulto_g": 60,
+      "racion_nino_g": 30,
+      "coste_banda": 1
+    },
+    "sobrasada": {
+      "nombre": "Sobrasada",
+      "categoria": "carne-roja",
+      "kcal_100g": 608,
+      "racion_adulto_g": 30,
+      "racion_nino_g": 20,
+      "coste_banda": 2
+    },
+    "lomo-embuchado": {
+      "nombre": "Lomo embuchado",
+      "categoria": "carne-roja",
+      "kcal_100g": 321,
+      "racion_adulto_g": 30,
+      "racion_nino_g": 20,
+      "coste_banda": 3
+    },
+    "queso-curado": {
+      "nombre": "Queso curado",
+      "categoria": "lacteo",
+      "kcal_100g": 448,
+      "racion_adulto_g": 40,
+      "racion_nino_g": 25,
+      "coste_banda": 3
+    },
+    "dorada": {
+      "nombre": "Dorada",
+      "categoria": "pescado-blanco",
+      "kcal_100g": 125,
+      "racion_adulto_g": 160,
+      "racion_nino_g": 100,
+      "coste_banda": 2
+    },
+    "lenguado": {
+      "nombre": "Lenguado",
+      "categoria": "pescado-blanco",
+      "kcal_100g": 79,
+      "racion_adulto_g": 160,
+      "racion_nino_g": 100,
+      "coste_banda": 3
+    },
+    "rape": {
+      "nombre": "Rape",
+      "categoria": "pescado-blanco",
+      "kcal_100g": 70,
+      "racion_adulto_g": 160,
+      "racion_nino_g": 100,
+      "coste_banda": 3
+    },
+    "calamar": {
+      "nombre": "Calamar",
+      "categoria": "marisco",
+      "kcal_100g": 72,
+      "racion_adulto_g": 160,
+      "racion_nino_g": 100,
+      "coste_banda": 2
+    },
+    "sepia": {
+      "nombre": "Sepia",
+      "categoria": "marisco",
+      "kcal_100g": 80,
+      "racion_adulto_g": 160,
+      "racion_nino_g": 100,
+      "coste_banda": 2
+    },
+    "chipiron": {
+      "nombre": "Chipirón",
+      "categoria": "marisco",
+      "kcal_100g": 72,
+      "racion_adulto_g": 160,
+      "racion_nino_g": 100,
+      "coste_banda": 3
+    },
+    "pulpo": {
+      "nombre": "Pulpo",
+      "categoria": "marisco",
+      "kcal_100g": 91,
+      "racion_adulto_g": 160,
+      "racion_nino_g": 100,
+      "coste_banda": 2
+    },
+    "almejas": {
+      "nombre": "Almejas",
+      "categoria": "marisco",
+      "kcal_100g": 48,
+      "racion_adulto_g": 180,
+      "racion_nino_g": 110,
+      "coste_banda": 3
+    },
+    "atun-conserva": {
+      "nombre": "Atún en conserva",
+      "categoria": "pescado-azul",
+      "kcal_100g": 101,
+      "racion_adulto_g": 65,
+      "racion_nino_g": 40,
+      "coste_banda": 2
+    },
+    "anchoas-conserva": {
+      "nombre": "Anchoas en conserva",
+      "categoria": "pescado-azul",
+      "kcal_100g": 203,
+      "racion_adulto_g": 25,
+      "racion_nino_g": 15,
+      "coste_banda": 3
+    },
+    "col": {
+      "nombre": "Col",
+      "categoria": "verdura",
+      "kcal_100g": 25,
+      "racion_adulto_g": 200,
+      "racion_nino_g": 120,
+      "coste_banda": 1
+    },
+    "habas-tiernas": {
+      "nombre": "Habas tiernas",
+      "categoria": "verdura",
+      "kcal_100g": 60,
+      "racion_adulto_g": 150,
+      "racion_nino_g": 90,
+      "coste_banda": 2,
+      "temporada": [
+        2,
+        3,
+        4,
+        5
+      ]
+    },
+    "esparrago-blanco": {
+      "nombre": "Espárrago blanco",
+      "categoria": "verdura",
+      "kcal_100g": 20,
+      "racion_adulto_g": 125,
+      "racion_nino_g": 75,
+      "coste_banda": 2
+    },
+    "esparrago-verde": {
+      "nombre": "Espárrago verde",
+      "categoria": "verdura",
+      "kcal_100g": 22,
+      "racion_adulto_g": 150,
+      "racion_nino_g": 90,
+      "coste_banda": 3,
+      "temporada": [
+        3,
+        4,
+        5,
+        6
+      ]
+    },
+    "niscalos": {
+      "nombre": "Níscalos",
+      "categoria": "verdura",
+      "kcal_100g": 24,
+      "racion_adulto_g": 150,
+      "racion_nino_g": 90,
+      "coste_banda": 3,
+      "temporada": [
+        9,
+        10,
+        11,
+        12
+      ]
+    },
+    "boletus": {
+      "nombre": "Boletus",
+      "categoria": "verdura",
+      "kcal_100g": 30,
+      "racion_adulto_g": 150,
+      "racion_nino_g": 90,
+      "coste_banda": 3,
+      "temporada": [
+        9,
+        10,
+        11
+      ]
+    },
+    "cebolla": {
+      "nombre": "Cebolla",
+      "categoria": "verdura",
+      "kcal_100g": 28,
+      "racion_adulto_g": 80,
+      "racion_nino_g": 50,
+      "coste_banda": 1,
+      "base": true
+    },
+    "cebolleta": {
+      "nombre": "Cebolleta",
+      "categoria": "verdura",
+      "kcal_100g": 32,
+      "racion_adulto_g": 40,
+      "racion_nino_g": 25,
+      "coste_banda": 1,
+      "base": true
+    },
+    "aguacate": {
+      "nombre": "Aguacate",
+      "categoria": "verdura",
+      "kcal_100g": 145,
+      "racion_adulto_g": 90,
+      "racion_nino_g": 55,
+      "coste_banda": 2
+    },
+    "masa-empanada": {
+      "nombre": "Masa de empanada",
+      "categoria": "cereal",
+      "kcal_100g": 385,
+      "racion_adulto_g": 100,
+      "racion_nino_g": 60,
+      "coste_banda": 2
+    },
+    "noquis": {
+      "nombre": "Ñoquis",
+      "categoria": "cereal",
+      "kcal_100g": 160,
+      "racion_adulto_g": 200,
+      "racion_nino_g": 120,
+      "coste_banda": 2
+    },
+    "maiz": {
+      "nombre": "Maíz dulce",
+      "categoria": "cereal",
+      "kcal_100g": 85,
+      "racion_adulto_g": 60,
+      "racion_nino_g": 40,
+      "coste_banda": 1
+    },
+    "arroz-bomba": {
+      "nombre": "Arroz bomba",
+      "categoria": "cereal",
+      "kcal_100g": 350,
+      "racion_adulto_g": 80,
+      "racion_nino_g": 50,
+      "coste_banda": 2
     },
     "garbanzos": {
       "nombre": "Garbanzos cocidos",
@@ -558,13 +967,108 @@
       "racion_nino_g": 60,
       "coste_banda": 1
     },
+    "leche": {
+      "nombre": "Leche entera",
+      "categoria": "lacteo",
+      "kcal_100g": 63,
+      "racion_adulto_g": 220,
+      "racion_nino_g": 200,
+      "coste_banda": 1,
+      "base": true
+    },
+    "nata": {
+      "nombre": "Nata líquida para cocinar",
+      "categoria": "lacteo",
+      "kcal_100g": 190,
+      "racion_adulto_g": 40,
+      "racion_nino_g": 30,
+      "coste_banda": 2,
+      "base": true
+    },
+    "mantequilla": {
+      "nombre": "Mantequilla",
+      "categoria": "lacteo",
+      "kcal_100g": 730,
+      "racion_adulto_g": 12,
+      "racion_nino_g": 8,
+      "coste_banda": 2,
+      "base": true
+    },
+    "queso-rallado": {
+      "nombre": "Queso rallado para gratinar",
+      "categoria": "lacteo",
+      "kcal_100g": 380,
+      "racion_adulto_g": 25,
+      "racion_nino_g": 15,
+      "coste_banda": 2,
+      "base": true
+    },
+    "leche-sin-lactosa": {
+      "nombre": "Leche sin lactosa",
+      "categoria": "lacteo",
+      "kcal_100g": 63,
+      "racion_adulto_g": 220,
+      "racion_nino_g": 200,
+      "coste_banda": 1
+    },
+    "bebida-avena": {
+      "nombre": "Bebida de avena",
+      "categoria": "lacteo",
+      "kcal_100g": 40,
+      "racion_adulto_g": 220,
+      "racion_nino_g": 200,
+      "coste_banda": 2
+    },
+    "bebida-soja": {
+      "nombre": "Bebida de soja",
+      "categoria": "lacteo",
+      "kcal_100g": 40,
+      "racion_adulto_g": 220,
+      "racion_nino_g": 200,
+      "coste_banda": 1
+    },
+    "yogur-sin-lactosa": {
+      "nombre": "Yogur sin lactosa",
+      "categoria": "lacteo",
+      "kcal_100g": 60,
+      "racion_adulto_g": 125,
+      "racion_nino_g": 125,
+      "coste_banda": 2
+    },
+    "helado": {
+      "nombre": "Helado (vainilla o chocolate)",
+      "categoria": "otro",
+      "kcal_100g": 190,
+      "racion_adulto_g": 70,
+      "racion_nino_g": 50,
+      "coste_banda": 2
+    },
+    "compota": {
+      "nombre": "Compota de manzana o pera",
+      "categoria": "otro",
+      "kcal_100g": 70,
+      "racion_adulto_g": 110,
+      "racion_nino_g": 80,
+      "coste_banda": 2
+    },
     "naranja": {
       "nombre": "Naranja",
       "categoria": "fruta",
       "kcal_100g": 38,
       "racion_adulto_g": 170,
       "racion_nino_g": 100,
-      "coste_banda": 1
+      "coste_banda": 1,
+      "temporada": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        10,
+        11,
+        12
+      ]
     },
     "mandarina": {
       "nombre": "Mandarina",
@@ -572,7 +1076,18 @@
       "kcal_100g": 40,
       "racion_adulto_g": 170,
       "racion_nino_g": 100,
-      "coste_banda": 1
+      "coste_banda": 1,
+      "temporada": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        9,
+        10,
+        11,
+        12
+      ]
     },
     "fresa": {
       "nombre": "Fresas",
@@ -580,7 +1095,14 @@
       "kcal_100g": 36,
       "racion_adulto_g": 170,
       "racion_nino_g": 100,
-      "coste_banda": 1
+      "coste_banda": 1,
+      "temporada": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ]
     },
     "cereza": {
       "nombre": "Cerezas",
@@ -588,7 +1110,14 @@
       "kcal_100g": 63,
       "racion_adulto_g": 170,
       "racion_nino_g": 100,
-      "coste_banda": 2
+      "coste_banda": 2,
+      "temporada": [
+        4,
+        5,
+        6,
+        7,
+        8
+      ]
     },
     "albaricoque": {
       "nombre": "Albaricoques",
@@ -596,7 +1125,13 @@
       "kcal_100g": 42,
       "racion_adulto_g": 170,
       "racion_nino_g": 100,
-      "coste_banda": 1
+      "coste_banda": 1,
+      "temporada": [
+        5,
+        6,
+        7,
+        8
+      ]
     },
     "melocoton": {
       "nombre": "Melocotón",
@@ -604,7 +1139,16 @@
       "kcal_100g": 39,
       "racion_adulto_g": 170,
       "racion_nino_g": 100,
-      "coste_banda": 1
+      "coste_banda": 1,
+      "temporada": [
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
     },
     "sandia": {
       "nombre": "Sandía",
@@ -612,7 +1156,14 @@
       "kcal_100g": 20,
       "racion_adulto_g": 250,
       "racion_nino_g": 150,
-      "coste_banda": 1
+      "coste_banda": 1,
+      "temporada": [
+        5,
+        6,
+        7,
+        8,
+        9
+      ]
     },
     "melon": {
       "nombre": "Melón",
@@ -620,7 +1171,14 @@
       "kcal_100g": 27,
       "racion_adulto_g": 250,
       "racion_nino_g": 150,
-      "coste_banda": 1
+      "coste_banda": 1,
+      "temporada": [
+        5,
+        6,
+        7,
+        8,
+        9
+      ]
     },
     "uva": {
       "nombre": "Uvas",
@@ -628,7 +1186,14 @@
       "kcal_100g": 68,
       "racion_adulto_g": 170,
       "racion_nino_g": 100,
-      "coste_banda": 2
+      "coste_banda": 2,
+      "temporada": [
+        8,
+        9,
+        10,
+        11,
+        12
+      ]
     },
     "caqui": {
       "nombre": "Caqui",
@@ -636,7 +1201,14 @@
       "kcal_100g": 67,
       "racion_adulto_g": 170,
       "racion_nino_g": 100,
-      "coste_banda": 1
+      "coste_banda": 1,
+      "temporada": [
+        1,
+        9,
+        10,
+        11,
+        12
+      ]
     },
     "manzana": {
       "nombre": "Manzana",
@@ -652,7 +1224,20 @@
       "kcal_100g": 45,
       "racion_adulto_g": 170,
       "racion_nino_g": 100,
-      "coste_banda": 1
+      "coste_banda": 1,
+      "temporada": [
+        1,
+        2,
+        3,
+        4,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ]
     },
     "platano": {
       "nombre": "Plátano",
@@ -668,7 +1253,109 @@
       "kcal_100g": 52,
       "racion_adulto_g": 170,
       "racion_nino_g": 100,
-      "coste_banda": 1
+      "coste_banda": 1,
+      "temporada": [
+        1,
+        2,
+        3,
+        4,
+        9,
+        10,
+        11,
+        12
+      ]
+    },
+    "ciruela": {
+      "nombre": "Ciruelas",
+      "categoria": "fruta",
+      "kcal_100g": 46,
+      "racion_adulto_g": 170,
+      "racion_nino_g": 100,
+      "coste_banda": 1,
+      "temporada": [
+        5,
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    "pina": {
+      "nombre": "Piña",
+      "categoria": "fruta",
+      "kcal_100g": 50,
+      "racion_adulto_g": 170,
+      "racion_nino_g": 100,
+      "coste_banda": 2
+    },
+    "granada": {
+      "nombre": "Granada",
+      "categoria": "fruta",
+      "kcal_100g": 65,
+      "racion_adulto_g": 170,
+      "racion_nino_g": 100,
+      "coste_banda": 2,
+      "temporada": [
+        9,
+        10,
+        11
+      ]
+    },
+    "higo": {
+      "nombre": "Higos",
+      "categoria": "fruta",
+      "kcal_100g": 66,
+      "racion_adulto_g": 150,
+      "racion_nino_g": 90,
+      "coste_banda": 2,
+      "temporada": [
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    "mango": {
+      "nombre": "Mango",
+      "categoria": "fruta",
+      "kcal_100g": 60,
+      "racion_adulto_g": 170,
+      "racion_nino_g": 100,
+      "coste_banda": 2
+    },
+    "nectarina": {
+      "nombre": "Nectarinas",
+      "categoria": "fruta",
+      "kcal_100g": 44,
+      "racion_adulto_g": 170,
+      "racion_nino_g": 100,
+      "coste_banda": 1,
+      "temporada": [
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    "frambuesa": {
+      "nombre": "Frambuesas",
+      "categoria": "fruta",
+      "kcal_100g": 40,
+      "racion_adulto_g": 120,
+      "racion_nino_g": 80,
+      "coste_banda": 3
+    },
+    "arandanos": {
+      "nombre": "Arándanos",
+      "categoria": "fruta",
+      "kcal_100g": 45,
+      "racion_adulto_g": 120,
+      "racion_nino_g": 80,
+      "coste_banda": 3
     }
   },
   "categorias_cuota": {
@@ -5041,83 +5728,6 @@
     }
   ],
   "postres": {
-    "frutas_mes": {
-      "1": [
-        "naranja",
-        "mandarina",
-        "kiwi",
-        "manzana",
-        "pera",
-        "platano"
-      ],
-      "2": [
-        "naranja",
-        "mandarina",
-        "kiwi",
-        "fresa"
-      ],
-      "3": [
-        "fresa",
-        "naranja",
-        "kiwi"
-      ],
-      "4": [
-        "fresa",
-        "kiwi",
-        "platano"
-      ],
-      "5": [
-        "fresa",
-        "cereza",
-        "albaricoque",
-        "melon"
-      ],
-      "6": [
-        "cereza",
-        "albaricoque",
-        "melon",
-        "sandia"
-      ],
-      "7": [
-        "sandia",
-        "melon",
-        "melocoton",
-        "cereza"
-      ],
-      "8": [
-        "sandia",
-        "melon",
-        "melocoton",
-        "uva"
-      ],
-      "9": [
-        "uva",
-        "melocoton",
-        "manzana",
-        "pera"
-      ],
-      "10": [
-        "uva",
-        "caqui",
-        "manzana",
-        "pera",
-        "mandarina"
-      ],
-      "11": [
-        "mandarina",
-        "naranja",
-        "caqui",
-        "manzana",
-        "pera"
-      ],
-      "12": [
-        "mandarina",
-        "naranja",
-        "caqui",
-        "manzana",
-        "pera"
-      ]
-    },
     "lacteo": "yogur",
     "tradicionales": [
       {
@@ -5161,7 +5771,69 @@
         "temporada": "invierno"
       }
     ]
-  }
+  },
+  "despensa": [
+    {
+      "id": "st-aceite",
+      "nombre": "Aceite de oliva"
+    },
+    {
+      "id": "st-sal",
+      "nombre": "Sal"
+    },
+    {
+      "id": "st-vinagre",
+      "nombre": "Vinagre"
+    },
+    {
+      "id": "st-harina",
+      "nombre": "Harina"
+    },
+    {
+      "id": "st-pan-rallado",
+      "nombre": "Pan rallado"
+    },
+    {
+      "id": "st-caldo",
+      "nombre": "Caldo (pollo o verduras)"
+    },
+    {
+      "id": "st-pimenton",
+      "nombre": "Pimentón"
+    },
+    {
+      "id": "st-azafran",
+      "nombre": "Azafrán"
+    },
+    {
+      "id": "st-laurel",
+      "nombre": "Laurel"
+    },
+    {
+      "id": "st-perejil",
+      "nombre": "Perejil"
+    },
+    {
+      "id": "st-comino",
+      "nombre": "Comino"
+    },
+    {
+      "id": "st-oregano",
+      "nombre": "Orégano"
+    },
+    {
+      "id": "st-pimienta",
+      "nombre": "Pimienta"
+    },
+    {
+      "id": "st-nora-choricero",
+      "nombre": "Ñora / pimiento choricero"
+    },
+    {
+      "id": "st-salsa-barbacoa",
+      "nombre": "Salsa barbacoa"
+    }
+  ]
 };
   if (typeof module !== 'undefined' && module.exports) module.exports = window.E3_RECETAS;
 })(typeof window !== 'undefined' ? window : (typeof global !== 'undefined' ? global : this));

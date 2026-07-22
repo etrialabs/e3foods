@@ -2806,7 +2806,7 @@
       "tematica": "Ensaladas completas",
       "ocasion": null,
       "ninos": true,
-      "foto": "assets/banco-fotos/plancha-guarnicion.jpg",
+      "foto": "assets/banco-fotos/ensalada-pasta.jpg",
       "pasos": [
         "Cocer {hidrato} al dente, escurrir y enfriar bajo el grifo.",
         "Cortar {verdura} en trozos pequeños.",
@@ -5959,7 +5959,7 @@
       "tematica": "A la plancha o al horno",
       "ocasion": null,
       "ninos": true,
-      "foto": null,
+      "foto": "assets/banco-fotos/brochetas-carne.jpg",
       "pasos": [
         "Cortar {proteina} en dados y marinar 15 minutos con aceite, ajo y pimentón.",
         "Montar en brochetas alternando con trozos de pimiento y cebolla.",

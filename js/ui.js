@@ -726,13 +726,14 @@
     return '<div class="rc-tarjeta' + (oculta ? ' rc-oculta' : '') + '">' +
       '<button type="button" class="rc-tarjeta-abrir" data-action="abrir-receta-banco" data-plantilla="' + p.id + '">' +
       '<span class="rc-tarjeta-foto">' + fotoHtml + (tag ? '<span class="rc-tarjeta-tag">' + escapeHtml(tag) + '</span>' : '') + '</span>' +
-      '<span class="rc-tarjeta-info"><span class="rc-tarjeta-nombre">' + escapeHtml(nombreEjemplo(p, banco)) + '</span>' +
-      '<span class="rc-tarjeta-meta"><i data-lucide="clock"></i>' + (p.tiempo_min || '?') + ' min</span></span>' +
+      '<span class="rc-tarjeta-info"><span class="rc-tarjeta-nombre">' + escapeHtml(nombreEjemplo(p, banco)) + '</span></span>' +
       '</button>' +
+      '<div class="rc-tarjeta-pie">' +
+      '<span class="rc-tarjeta-meta"><i data-lucide="clock"></i>' + (p.tiempo_min || '?') + ' min</span>' +
       '<span class="rc-tarjeta-acciones">' +
       '<button type="button" class="rc-icono-btn' + (favorita ? ' rc-icono-activo' : '') + '" data-action="toggle-favorita-receta" data-plantilla="' + p.id + '" aria-label="' + (favorita ? 'Quitar de favoritas' : 'Marcar como favorita') + '" aria-pressed="' + favorita + '"><i data-lucide="heart"' + (favorita ? ' style="fill:currentColor"' : '') + '></i></button>' +
       '<button type="button" class="rc-icono-btn" data-action="toggle-oculta-receta" data-plantilla="' + p.id + '" aria-label="' + (oculta ? 'Mostrar receta' : 'Ocultar receta') + '"><i data-lucide="eye-off"></i></button>' +
-      '</span></div>';
+      '</span></div></div>';
   }
 
   function filaRecetaLista(p, banco, oculta, favorita) {

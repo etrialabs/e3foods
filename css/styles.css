@@ -1036,10 +1036,14 @@ body.sheet-open { overflow: hidden; }
 .rc-tarjeta-foto img, .rc-foto-vacia { width: 100%; height: 100%; object-fit: cover; display: block; }
 .rc-foto-vacia { background: var(--elev2); }
 .rc-tarjeta-tag { position: absolute; top: 9px; left: 9px; background: rgba(255,255,255,.92); backdrop-filter: blur(4px); padding: 4px 9px; border-radius: 999px; font-size: 10.5px; font-weight: 700; color: var(--gold-link); }
-.rc-tarjeta-info { display: block; padding: 11px 12px 10px; }
+.rc-tarjeta-info { display: block; padding: 11px 12px 0; }
 .rc-tarjeta-nombre { display: block; font-family: var(--font-display); font-size: 15.5px; font-weight: 700; color: var(--ink); line-height: 1.15; }
-.rc-tarjeta-meta { display: flex; align-items: center; gap: 5px; margin-top: 7px; color: var(--soft); font-size: 12.5px; font-weight: 600; }
-.rc-tarjeta-acciones { display: flex; gap: 16px; padding: 0 12px 12px; }
+/* Pie unico (Roger 2026-07-22): tiempo y acciones (corazon/ojo) en la misma linea — antes eran
+   dos filas separadas (meta dentro del boton, acciones fuera). Ambas van fuera de
+   rc-tarjeta-abrir porque los botones de accion no pueden anidarse dentro de otro <button>. */
+.rc-tarjeta-pie { display: flex; align-items: center; justify-content: space-between; padding: 7px 12px 10px; }
+.rc-tarjeta-meta { display: flex; align-items: center; gap: 5px; color: var(--soft); font-size: 12.5px; font-weight: 600; }
+.rc-tarjeta-acciones { display: flex; gap: 14px; }
 .rc-tarjeta-acciones .rc-icono-btn { font-size: 18px; }
 .rc-icono-btn { background: none; border: none; cursor: pointer; padding: 0; color: var(--muted); display: flex; }
 .rc-icono-activo { color: var(--danger); }

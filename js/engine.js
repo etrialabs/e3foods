@@ -1658,11 +1658,17 @@
   // ---------------------------------------------------------------
   var CATEGORIAS_DESCUBRIR = [
     { id: 'arroces', kicker: 'Arroces', titulo: 'De la paella al arroz caldoso', test: function (p) { return p.tematica === 'Arroces y fideuà'; } },
-    { id: 'potajes', kicker: 'Cuchara de invierno', titulo: 'Potajes y guisos para los días fríos', test: function (p) { return p.tematica === 'Potajes y guisos' && p.temporada === 'invierno'; } },
-    { id: 'ensaladas', kicker: 'Ensaladas completas', titulo: 'Platos únicos que no dan pereza', test: function (p) { return p.tematica === 'Ensaladas completas'; } },
+    { id: 'potajes', kicker: 'Cuchara de invierno', titulo: 'Potajes y guisos para los días fríos', test: function (p) { return p.tematica === 'Potajes y guisos' && p.temporada === 'invierno'; }, foto: 'assets/descubrir/potajes.jpg' },
+    // Renombrada de "Ensaladas completas" (Roger 2026-07-22) — mismo test, solo copy nueva.
+    { id: 'ensaladas', kicker: 'Frescas', titulo: 'Ensaladas frescas para el calor', test: function (p) { return p.tematica === 'Ensaladas completas'; }, foto: 'assets/descubrir/frescas.jpg' },
     { id: 'cremas', kicker: 'Cremas y sopas', titulo: 'Reconfortantes, con cuchara', test: function (p) { return p.tematica === 'Cremas y sopas'; } },
-    { id: 'rapidas', kicker: 'En poco tiempo', titulo: 'Ideas para cuando no hay tiempo', test: function (p) { return p.esfuerzo === 'rapido'; } }
+    { id: 'rapidas', kicker: 'En poco tiempo', titulo: 'Ideas para cuando no hay tiempo', test: function (p) { return p.esfuerzo === 'rapido'; }, foto: 'assets/descubrir/rapidas.jpg' }
   ];
+
+  // Fijas delante, en este orden, mientras tengan candidatas hoy (Roger 2026-07-22); el resto
+  // (arroces, cremas, temporada) rota por día detrás, como antes. "Verdura para niños" se
+  // consideró y se descartó — el banco no la soporta bien (ver UPGRADES.md §3).
+  var PINNED_DESCUBRIR = ['ensaladas', 'rapidas', 'potajes'];
 
   function categoriasDescubrir(banco, estado, fecha) {
     var disponibles = elaboracionesDisponibles(banco, estado).filter(function (e) { return e.roles.indexOf('principal') !== -1; });
@@ -1678,15 +1684,24 @@
     }
     var conCandidatas = pool.map(function (cat) {
       var candidatas = disponibles.filter(cat.test);
-      return candidatas.length ? { kicker: cat.kicker, titulo: cat.titulo, candidatas: candidatas } : null;
+      if (!candidatas.length) return null;
+      // Rápidas siempre de menos a más tiempo (Roger 2026-07-22) — orden fijo y útil, a
+      // diferencia del resto de categorías, que solo varía qué plato se enseña en la ficha.
+      if (cat.id === 'rapidas') candidatas = candidatas.slice().sort(function (a, b) { return (a.tiempo_min || 0) - (b.tiempo_min || 0); });
+      return { id: cat.id, kicker: cat.kicker, titulo: cat.titulo, foto: cat.foto || null, candidatas: candidatas };
     }).filter(Boolean);
     if (!conCandidatas.length) return [];
+
+    var pinned = PINNED_DESCUBRIR.map(function (id) { return conCandidatas.filter(function (c) { return c.id === id; })[0]; }).filter(Boolean);
+    var pinnedIds = pinned.map(function (c) { return c.id; });
+    var resto = conCandidatas.filter(function (c) { return pinnedIds.indexOf(c.id) === -1; });
     var diaNum = Math.floor(d.getTime() / (24 * 3600 * 1000));
-    var offset = diaNum % conCandidatas.length;
-    var rotado = conCandidatas.slice(offset).concat(conCandidatas.slice(0, offset));
-    return rotado.slice(0, 3).map(function (cat, i) {
+    var offsetResto = resto.length ? diaNum % resto.length : 0;
+    var restoRotado = resto.slice(offsetResto).concat(resto.slice(0, offsetResto));
+
+    return pinned.concat(restoRotado).map(function (cat, i) {
       var elegida = cat.candidatas[(diaNum + i) % cat.candidatas.length];
-      var foto = elegida.foto || (cat.candidatas.filter(function (p) { return p.foto; })[0] || {}).foto || null;
+      var foto = cat.foto || elegida.foto || (cat.candidatas.filter(function (p) { return p.foto; })[0] || {}).foto || null;
       return { kicker: cat.kicker, titulo: cat.titulo, foto: foto, candidatas: cat.candidatas };
     });
   }

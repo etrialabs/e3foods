@@ -388,6 +388,10 @@
     abrirSheet(UI.renderSheetImportarCole(estado));
   }
 
+  function abrirColeSemana() {
+    abrirSheet(UI.renderSheetColeSemana(estado));
+  }
+
   // Importa el menú del cole (F1, 2026-07-17 — versión manual del P1 #2): Roger
   // genera el JSON con el prompt de ChatGPT y se pega aquí, hasta que exista
   // /ai/cole-menu. Al cargar: los menores comen esos mediodías en el cole
@@ -1336,11 +1340,10 @@
         '</div></div>');
     },
     'cole-borrar-confirmar': function () { borrarCole(); },
-    // línea "…en el cole" (banner de despensa, próximos días): no hay pantalla
-    // dedicada de cole todavía, abre el sheet real que ya lista los días
-    // cargados (Roger 2026-07-19: reutilizar, no construir una pantalla nueva
-    // para esto sin que lo pida).
-    'ir-cole': function () { abrirImportarCole(); },
+    // línea "…en el cole" (frase del día, "próximos días"): pantalla de solo lectura
+    // (Roger 2026-07-22 — antes abría el formulario de importar/editar JSON, confuso).
+    // Importar/editar el JSON sigue en el menú hamburguesa ("Importar menú del cole").
+    'ir-cole': function () { abrirColeSemana(); },
     // pager comida/cena de la Home (Roger 2026-07-19, reemplaza foco-flip-comida):
     // el scroll real lo lleva onPagerScroll (gesto), esto es para el segmentado y los puntos.
     'pager-ir': function (btn) { irPager(Number(btn.dataset.pager)); },

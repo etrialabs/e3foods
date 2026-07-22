@@ -1060,6 +1060,14 @@ body.sheet-open { overflow: hidden; }
 .rc-fila-meta { display: flex; align-items: center; gap: 5px; margin-top: 4px; color: var(--soft); font-size: 12px; font-weight: 600; }
 .rc-fila .rc-icono-btn { flex: none; padding: 6px; font-size: 19px; }
 
+/* Menú del cole — lista semanal de solo lectura (Roger 2026-07-22): mismo patrón que
+   .rc-fila, pero el hueco de la foto lleva el día de la semana, sin iconos de acción. */
+.lista-cole { display: flex; flex-direction: column; gap: 10px; }
+.fila-cole { display: flex; align-items: center; gap: 12px; background: var(--panel); border-radius: 16px; padding: 10px; box-shadow: 0 6px 18px -14px rgba(60,45,20,.4); }
+.fila-cole-dia { flex: none; width: 56px; height: 56px; border-radius: 13px; display: flex; align-items: center; justify-content: center; text-align: center; background: var(--elev2); font-family: var(--font-display); font-weight: 700; font-size: 12px; line-height: 1.15; color: var(--gold-link); }
+.fila-cole-info { flex: 1; min-width: 0; }
+.fila-cole-nombre { display: block; font-family: var(--font-display); font-size: 15.5px; font-weight: 700; color: var(--ink); line-height: 1.2; }
+
 /* ---------------------------------------------------------------
    Descubrir — fichas foto+kicker+título (handoff e3Foods.dc.html ~L409-424).
    Contenido PLACEHOLDER explícito (Roger 2026-07-20), ver comentario en

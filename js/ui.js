@@ -1259,6 +1259,29 @@
       '<button type="button" class="menu-dropdown-item" role="menuitem" data-action="menu-sync">Sincronizar familia</button>';
   }
 
+  // Menú del cole — vista semanal de solo lectura (Roger 2026-07-22): el enlace "cole"
+  // de la frase "Erik y Enzo comen en el cole" abría el formulario de importar/editar
+  // JSON — no es lo que se quiere ver desde ahí. Lista de solo lectura, un día por
+  // fila, sin foto (día de la semana en su lugar) y sin favorito/ocultar (no son
+  // recetas del banco, es dato importado). Importar/editar sigue en
+  // renderSheetImportarCole (menú hamburguesa).
+  function renderSheetColeSemana(estado) {
+    var cole = estado && estado.cole;
+    var dias = (cole && cole.dias) ? Object.keys(cole.dias).sort() : [];
+    var filasHtml = dias.length ? '<div class="lista-cole">' + dias.map(function (f) {
+      var d = cole.dias[f];
+      // día de la semana desde la fecha en crudo (diaIndexDesdeFecha busca dentro de un
+      // plan concreto, no sirve aquí: cole.dias puede tener fechas de cualquier semana).
+      var idxSemana = (new Date(f + 'T00:00:00').getDay() + 6) % 7;
+      var nombreDia = NOMBRES_DIA[idxSemana] || '';
+      return '<div class="fila-cole">' +
+        '<span class="fila-cole-dia">' + escapeHtml(nombreDia) + '</span>' +
+        '<span class="fila-cole-info"><span class="fila-cole-nombre">' + escapeHtml(d.resumen || '—') + '</span></span>' +
+        '</div>';
+    }).join('') + '</div>' : '<p class="card-msg">Todavía no hay menú del cole cargado.</p>';
+    return sheetHead('Menú del cole') + '<div class="sheet-body">' + filasHtml + '</div>';
+  }
+
   // Menú del cole (F1, 2026-07-17 — versión manual del P1 #2): se pega el JSON
   // generado con el prompt de ChatGPT (el PDF automático llegará con /ai/cole-menu).
   // Con menú cargado: los peques comen esos mediodías en el cole sin tocar su
@@ -1424,6 +1447,7 @@
     renderPatronGrid: renderPatronGrid,
     renderMenuHamburguesa: renderMenuHamburguesa,
     renderSheetImportarCole: renderSheetImportarCole,
+    renderSheetColeSemana: renderSheetColeSemana,
     renderSheetSync: renderSheetSync,
     renderFormMiembroCompleto: renderFormMiembroCompleto,
     renderWizardBienvenida: renderWizardBienvenida,

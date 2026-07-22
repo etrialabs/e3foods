@@ -661,6 +661,22 @@
   // ---------------------------------------------------------------
   // RECETAS — banco con chips de filtro por categoría
   // ---------------------------------------------------------------
+  // Vegetariana en Recetas (Roger, UPGRADES §2/§6, punto 8): reutiliza la misma lógica de dieta
+  // del motor (categoriaExcluidaPorDieta/opcionAptaParaDieta) en vez de simular un dato nuevo.
+  // Si la proteína es eje (varias opciones), basta con que UNA sea apta (la familia la elige,
+  // igual que mesa mixta real). Si es fija (fijoTodo, p.ej. boloñesa), TODAS las fijas deben ser
+  // aptas — a diferencia de elaboracionViableParaMesa (pensada para vetos/temporada de un
+  // candidato ya resuelto), aquí sí hace falta este caso: una proteína fija de carne no es
+  // vegetariana solo porque no haya eje que adaptar.
+  function esVegetarianaApta(p, banco) {
+    var fijoProteina = (p.ingredientes.fijos || {}).proteina;
+    if (fijoProteina) {
+      return fijoProteina.every(function (id) { var ing = banco.ingredientes[id]; return ing && !E.categoriaExcluidaPorDieta(ing.categoria, 'vegetariana', id); });
+    }
+    if (p.ingredientes.eje === 'proteina') return !!E.opcionAptaParaDieta(p.ingredientes.opciones, 'vegetariana', banco, [], null);
+    return true; // sin grupo proteina interno (lo cubre una complementaria externa) -> no bloquea
+  }
+
   function categoriasDePlantilla(p, banco) {
     var set = {};
     var ids = (p.ingredientes.opciones || []).slice();
@@ -747,9 +763,10 @@
     var categoriasPresentes = {};
     todas.forEach(function (p) { Object.keys(categoriasDePlantilla(p, banco)).forEach(function (c) { categoriasPresentes[c] = 1; }); });
     var categorias = ORDEN_CATEGORIA.filter(function (c) { return categoriasPresentes[c]; });
-    // vegetariana/sin-gluten van siempre, aunque el banco no tenga ese dato
-    // todavía (Roger 2026-07-14) — al elegirlas ninguna plantilla coincide y
-    // se ve el mensaje de "sin resultados" habitual: honesto, no simulado.
+    // vegetariana ya filtra de verdad (2026-07-22, UPGRADES §2/§6 punto 8: reutiliza
+    // categoriaExcluidaPorDieta/opcionAptaParaDieta, cero dato nuevo). sin-gluten sigue sin dato
+    // en el banco (Roger 2026-07-14) — al elegirla ninguna plantilla coincide y se ve el mensaje
+    // de "sin resultados" habitual: honesto, no simulado.
     var chips = ['todas', 'rapidas', 'favoritas'].concat(categorias, ['vegetariana', 'sin-gluten']);
 
     var chipsHtml = chips.map(function (c) {
@@ -761,6 +778,7 @@
     var listaFiltrada = todas;
     if (filtro === 'rapidas') listaFiltrada = todas.filter(function (p) { return p.esfuerzo === 'rapido'; });
     else if (filtro === 'favoritas') listaFiltrada = todas.filter(function (p) { return favoritas.indexOf(p.id) !== -1; });
+    else if (filtro === 'vegetariana') listaFiltrada = todas.filter(function (p) { return esVegetarianaApta(p, banco); });
     else if (filtro !== 'todas') listaFiltrada = todas.filter(function (p) { return categoriasDePlantilla(p, banco)[filtro]; });
     if (busqueda.trim()) {
       var q = normalizarTexto(busqueda);

@@ -996,11 +996,21 @@
   // con el placeholder colgado).
   function pasosDeElaboracion(elaboracion, seleccionEje, banco) {
     var eje = elaboracion.ingredientes.eje;
-    return (elaboracion.pasos || [])
-      .filter(function (paso) {
-        var placeholders = (paso.match(/\{(\w+)\}/g) || []).map(function (p) { return p.slice(1, -1); });
-        return placeholders.every(function (p) { return p === eje; });
-      })
+    var pasos = (elaboracion.pasos || []).filter(function (paso) {
+      var placeholders = (paso.match(/\{(\w+)\}/g) || []).map(function (p) { return p.slice(1, -1); });
+      return placeholders.every(function (p) { return p === eje; });
+    });
+    // pasosPorOpcion (Roger 2026-07-22, hallazgo real: "Ensalada de quinoa con huevo" solo decía
+    // "Preparar huevo" — el nombre sustituido en una frase genérica no dice CÓMO). Cuando existen
+    // instrucciones específicas para el ingrediente EXACTO elegido, sustituyen en su sitio el paso
+    // que menciona el eje; el resto de pasos (sin placeholder) sigue igual. Opt-in por elaboración —
+    // sin entrada para la opción elegida, se usa la sustitución genérica de siempre (sin cambios).
+    var pasosOpcion = eje && elaboracion.pasosPorOpcion && seleccionEje && elaboracion.pasosPorOpcion[seleccionEje];
+    if (pasosOpcion) {
+      var idx = pasos.findIndex(function (p) { return p.indexOf('{' + eje + '}') !== -1; });
+      if (idx !== -1) return pasos.slice(0, idx).concat(pasosOpcion, pasos.slice(idx + 1));
+    }
+    return pasos
       .map(function (paso) {
         if (!eje || !seleccionEje) return paso;
         var ing = banco.ingredientes[seleccionEje];
@@ -1673,6 +1683,7 @@
     cerrarBandaKcal: cerrarBandaKcal, generarCandidatosSlot: generarCandidatosSlot,
     estacionDelMes: estacionDelMes, puntuarCandidato: puntuarCandidato, puntuarSalubridadTecnica: puntuarSalubridadTecnica,
     ocasionDeFecha: ocasionDeFecha, puntuarOcasion: puntuarOcasion, pascuaDomingo: pascuaDomingo,
+    pasosDeElaboracion: pasosDeElaboracion,
     puntuarFavorita: puntuarFavorita, puntuarCole: puntuarCole, puntuarAusenciaEstructural: puntuarAusenciaEstructural,
     idCanonicoCandidato: idCanonicoCandidato, ordenarDeterminista: ordenarDeterminista, elegirTopN: elegirTopN,
     generarCandidatosConRelajacion: generarCandidatosConRelajacion, NIVELES_RELAJACION: NIVELES_RELAJACION,

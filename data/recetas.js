@@ -1532,6 +1532,7 @@
         "Hacer {proteina} a la plancha vuelta y vuelta hasta que esté hecho por dentro.",
         "Emplatar {proteina} con {hidrato} y {verdura} al lado."
       ],
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina"
       ],
@@ -1580,6 +1581,7 @@
         "Hornear 30-35 minutos hasta que {proteina} esté hecho y {hidrato} tierno.",
         "Dejar reposar 5 minutos antes de servir."
       ],
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina"
       ],
@@ -1627,6 +1629,7 @@
         "Cocer a fuego medio 20-25 minutos removiendo de vez en cuando.",
         "Rectificar de sal y dejar reposar antes de servir."
       ],
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina",
         "hidrato",
@@ -1678,6 +1681,7 @@
         "Cocer 15-20 minutos a fuego suave para que se integren los sabores.",
         "Servir bien caliente."
       ],
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina",
         "hidrato",
@@ -1727,6 +1731,7 @@
         "Añadir los garbanzos (previamente en remojo o de bote) y cocer 20 minutos más.",
         "Servir el caldo aparte como sopa y el resto como plato único."
       ],
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina",
         "hidrato",
@@ -1777,6 +1782,7 @@
         "Cocer 15 minutos a fuego suave, moviendo la cazuela (no remover con cuchara) para que ligue.",
         "Dejar reposar unos minutos antes de servir."
       ],
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina",
         "hidrato",
@@ -1826,6 +1832,7 @@
         "Añadir el caldo caliente con azafrán o colorante y cocer 18-20 minutos sin remover.",
         "Dejar reposar 5 minutos tapada con un paño antes de servir."
       ],
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina",
         "hidrato",
@@ -1876,6 +1883,7 @@
         "Hornear a 200°C durante 20-25 minutos hasta que el arroz esté hecho y dorado por arriba.",
         "Dejar reposar 5 minutos antes de servir."
       ],
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina",
         "hidrato",
@@ -1926,6 +1934,7 @@
         "Cocer 18-20 minutos a fuego medio removiendo de vez en cuando, debe quedar caldoso.",
         "Servir inmediatamente en plato hondo."
       ],
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina",
         "hidrato",
@@ -1977,6 +1986,7 @@
         "Incorporar el arroz cocido y saltear todo junto 2-3 minutos.",
         "Rectificar de sal y servir caliente."
       ],
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina",
         "hidrato",
@@ -2030,6 +2040,7 @@
         "Freír {proteina} con la yema jugosa.",
         "Emplatar el arroz en molde, la salsa de tomate al lado y el huevo por encima."
       ],
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina",
         "hidrato",
@@ -2077,6 +2088,7 @@
         "Añadir la carne picada mixta de ternera y cerdo y dorar bien deshaciendo los grumos.",
         "Incorporar el tomate triturado y cocer a fuego lento 15-20 minutos."
       ],
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina",
         "verdura"
@@ -2124,6 +2136,7 @@
         "Incorporar {hidrato} escurrida y saltear todo junto 2 minutos.",
         "Añadir un chorrito de aceite en crudo y servir."
       ],
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina",
         "hidrato",
@@ -2178,6 +2191,7 @@
         "Añadir el atún desmenuzado y calentar 2-3 minutos.",
         "Mezclar con la pasta escurrida y servir."
       ],
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina",
         "hidrato",
@@ -2226,6 +2240,7 @@
         "Montar capas alternando {hidrato}, el relleno y bechamel en una fuente.",
         "Cubrir con queso rallado y hornear a 200°C 20-25 minutos hasta gratinar."
       ],
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina",
         "hidrato",
@@ -2276,6 +2291,7 @@
         "Hornear 50-55 minutos, dando la vuelta a media cocción, hasta dorar.",
         "Dejar reposar 10 minutos antes de trinchar y servir."
       ],
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina"
       ],
@@ -2316,6 +2332,7 @@
         "Colocar {proteina} encima, salpimentar, rociar con limón y aceite.",
         "Hornear 15-18 minutos más hasta que el pescado esté hecho."
       ],
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina"
       ],
@@ -2358,6 +2375,7 @@
         "Hacer un hueco y cascar {proteina} encima, u hornear los huevos aparte al gusto.",
         "Hornear 5-8 minutos más hasta cuajar la clara y servir."
       ],
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina",
         "hidrato",
@@ -2410,6 +2428,7 @@
         "Cuajar en sartén antiadherente por ambos lados al punto deseado.",
         "Dejar reposar unos minutos antes de cortar."
       ],
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina",
         "hidrato"
@@ -2453,6 +2472,7 @@
         "Añadir {verdura} salteada al huevo batido y mezclar.",
         "Cuajar en la sartén por ambos lados y servir caliente."
       ],
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina",
         "verdura"
@@ -2498,6 +2518,7 @@
         "Remover a fuego suave hasta que cuaje cremoso, sin dejar secar.",
         "Servir enseguida con pan si se desea."
       ],
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina",
         "verdura"
@@ -2543,6 +2564,7 @@
         "Triturar hasta obtener una crema fina y rectificar de sal.",
         "Servir con {proteina} picado o rallado por encima."
       ],
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina",
         "hidrato",
@@ -2591,6 +2613,7 @@
         "Triturar hasta obtener una crema fina.",
         "Servir con {proteina} como topping."
       ],
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina",
         "hidrato",
@@ -2639,6 +2662,7 @@
         "Triturar hasta obtener una crema homogénea, ajustando de líquido si hace falta.",
         "Servir con {proteina} por encima."
       ],
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina",
         "hidrato",
@@ -2690,6 +2714,7 @@
         "Triturar hasta obtener una crema fina y rectificar de sal.",
         "Servir con {proteina} picado por encima si se desea."
       ],
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina",
         "hidrato",
@@ -2739,6 +2764,7 @@
         "Mezclar todo en una fuente grande y aliñar con aceite, vinagre y sal.",
         "Servir templado o frío."
       ],
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina"
       ],
@@ -2782,6 +2808,7 @@
         "Mezclar todo con {verdura} y aliñar con aceite de oliva y sal.",
         "Dejar reposar en la nevera 10 minutos antes de servir."
       ],
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina",
         "hidrato"
@@ -2829,6 +2856,7 @@
         "Aliñar con aceite de oliva, vinagre y sal.",
         "Dejar reposar 10 minutos para que se integren los sabores."
       ],
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina",
         "hidrato",
@@ -2879,6 +2907,7 @@
         "Aliñar con aceite de oliva, vinagre y sal.",
         "Servir a temperatura ambiente o fría."
       ],
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina",
         "hidrato",
@@ -2929,6 +2958,7 @@
         "Mezclar {verdura}, {proteina} y los picatostes.",
         "Aliñar con una salsa ligera de yogur o mostaza y aceite, y queso rallado por encima."
       ],
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina"
       ],
@@ -2963,12 +2993,28 @@
       "ninos": true,
       "foto": "assets/banco-fotos/plancha-guarnicion.jpg",
       "pasos": [
-        "Cocer {hidrato} según el envase y dejar enfriar.",
-        "Cortar {verdura} en dados pequeños.",
-        "Preparar {proteina} y desmenuzar o trocear.",
-        "Mezclar todo en una fuente y aliñar con aceite de oliva, limón y sal.",
+        "Lavar la quinoa bajo el grifo con un colador fino unos segundos.",
+        "Hervir el doble de agua que de quinoa, con una pizca de sal, y cocer 12-15 minutos hasta que absorba el agua; dejar reposar 5 minutos y soltar los granos con un tenedor.",
+        "Preparar {proteina}.",
+        "Mezclar todo en una fuente con la quinoa templada y aliñar con aceite de oliva, zumo de limón y sal.",
         "Servir fría o templada."
       ],
+      "pasosPorOpcion": {
+        "huevo": [
+          "Cocer los huevos en un cazo con agua fría; cuando rompa a hervir, contar 10 minutos.",
+          "Enfriarlos bajo el grifo, pelarlos y trocearlos o desmenuzarlos con un tenedor."
+        ],
+        "atun-conserva": [
+          "Escurrir el atún en conserva y desmigarlo con un tenedor."
+        ],
+        "pollo": [
+          "Salpimentar la pechuga de pollo y hacerla a la plancha 4-5 minutos por cada lado.",
+          "Dejar templar y cortar en dados o tiras."
+        ],
+        "garbanzos": [
+          "Escurrir y aclarar los garbanzos cocidos bajo el grifo."
+        ]
+      },
       "grupos": [
         "proteina",
         "hidrato"
@@ -2976,7 +3022,7 @@
       "ingredientes": {
         "eje": "proteina",
         "opciones": [
-          "atun",
+          "atun-conserva",
           "pollo",
           "huevo",
           "garbanzos"
@@ -3015,6 +3061,7 @@
         "Añadir {proteina} y {verdura}, cocinar 8-10 minutos moviendo la cazuela suavemente.",
         "Servir bien caliente con la salsa verde."
       ],
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina",
         "verdura"
@@ -3061,6 +3108,7 @@
         "Preparar una salsa ligera con un poco de nata o caldo y hierbas.",
         "Servir el salmón napado con la salsa junto a {hidrato} y {verdura}."
       ],
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina"
       ],
@@ -3099,6 +3147,7 @@
         "Añadir {proteina} a la salsa y cocinar 6-8 minutos hasta que esté hecho.",
         "Servir con {hidrato} de acompañamiento."
       ],
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina",
         "verdura"
@@ -3144,6 +3193,7 @@
         "Añadir {proteina} en dados y cocinar 4-5 minutos, apagando el fuego para que se haga con el calor residual.",
         "Dejar reposar unos minutos antes de servir."
       ],
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina",
         "hidrato",
@@ -3193,6 +3243,7 @@
         "Hacer {proteina} a la plancha con un poco de aceite y sal, vuelta y vuelta.",
         "Servir con {hidrato} y {verdura} de acompañamiento."
       ],
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina"
       ],
@@ -3233,6 +3284,7 @@
         "Hacer a la plancha 1-2 minutos por lado, son filetes finos y se hacen rápido.",
         "Servir enseguida con {hidrato} y {verdura}."
       ],
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina"
       ],
@@ -3272,6 +3324,7 @@
         "Saltear 2-3 minutos hasta que las gambas cambien de color, sin pasarse de fuego.",
         "Servir muy caliente con {hidrato}."
       ],
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina"
       ],
@@ -3312,6 +3365,7 @@
         "Incorporar los mejillones y tapar hasta que se abran, unos 5-6 minutos.",
         "Servir con {hidrato} para mojar en la salsa."
       ],
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina",
         "verdura"
@@ -3357,6 +3411,7 @@
         "Pintar con huevo batido si se van a hornear.",
         "Hornear a 200°C 15-18 minutos hasta dorar, u freír en aceite caliente."
       ],
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina",
         "hidrato"
@@ -3404,6 +3459,7 @@
         "Rellenar con {proteina} y {verdura}.",
         "Enrollar apretando bien y cortar por la mitad para servir."
       ],
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina",
         "hidrato",
@@ -3456,6 +3512,7 @@
         "Servir el hummus en un plato con un chorrito de aceite de oliva por encima.",
         "Acompañar con {hidrato} y {verdura} en bastones."
       ],
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina"
       ],
@@ -3497,6 +3554,7 @@
         "Marcar el tofu a la plancha hasta que quede dorado por fuera.",
         "Servir todo junto con un chorrito de salsa de soja."
       ],
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina"
       ],
@@ -3536,6 +3594,7 @@
         "Añadir {verdura} y saltear 3-4 minutos sin dejar que se ablanden del todo.",
         "Incorporar {hidrato}, un chorrito de salsa de soja y saltear todo junto 1-2 minutos."
       ],
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina",
         "hidrato",
@@ -3593,6 +3652,7 @@
         "Lavar y cortar {verdura}.",
         "Montar la hamburguesa con {hidrato}, {verdura} y la carne."
       ],
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina",
         "verdura"
@@ -3639,6 +3699,7 @@
         "Añadir queso rallado por encima.",
         "Hornear 10-12 minutos hasta que el borde esté dorado y el queso fundido."
       ],
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina",
         "hidrato",
@@ -3687,6 +3748,7 @@
         "Añadir {proteina} batido en forma de hilos removiendo el caldo (huevo hilado), opcional.",
         "Servir bien caliente."
       ],
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina",
         "hidrato",
@@ -3737,6 +3799,7 @@
         "Preparar {proteina} (huevo duro cortado o pollo a la plancha) como acompañamiento.",
         "Servir la menestra con {proteina} por encima o al lado."
       ],
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina",
         "verdura"
@@ -3786,6 +3849,7 @@
         "Añadir {proteina} (huevo escalfado o bacalao en trozos) y cocinar unos minutos más.",
         "Servir bien caliente."
       ],
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina",
         "hidrato",
@@ -3835,6 +3899,7 @@
         "Cocer las albóndigas en la salsa 15-20 minutos a fuego suave.",
         "Servir con {hidrato} de acompañamiento."
       ],
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina",
         "verdura"
@@ -3880,6 +3945,7 @@
         "Cubrir con caldo y cocer a fuego medio 25-30 minutos hasta que todo esté tierno.",
         "Rectificar de sal y dejar reposar antes de servir."
       ],
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina",
         "hidrato",
@@ -3931,6 +3997,7 @@
         "Añadir {proteina} rallado o picado por encima.",
         "Gratinar en el horno 8-10 minutos hasta dorar."
       ],
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina",
         "hidrato",
@@ -3979,6 +4046,7 @@
         "Colar si se quiere más fino y enfriar en la nevera al menos 30 minutos.",
         "Cocer el huevo 10 minutos, picarlo y servirlo por encima."
       ],
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina",
         "hidrato",
@@ -4027,6 +4095,7 @@
         "Enfriar en la nevera al menos 30 minutos.",
         "Servir con huevo duro picado por encima (y virutas de jamón serrano si tienes)."
       ],
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina",
         "hidrato",
@@ -4076,6 +4145,7 @@
         "Rematar con {proteina} (huevo frito o escalfado encima, o atún integrado).",
         "Servir con pan."
       ],
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina",
         "hidrato",
@@ -4127,6 +4197,7 @@
         "Formar las croquetas y pasarlas por huevo y pan rallado.",
         "Freír en aceite caliente hasta dorar (o al horno/airfryer con un hilo de aceite)."
       ],
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina",
         "hidrato"
@@ -4172,6 +4243,7 @@
         "Cubrir con caldo caliente y cocer 8-10 minutos sin remover.",
         "Devolver {proteina}, apagar y reposar 3 minutos."
       ],
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina",
         "hidrato",
@@ -4221,6 +4293,7 @@
         "Devolver el pollo, mojar con medio vaso de agua (o vino blanco) y guisar tapado 20-25 minutos.",
         "Servir con {hidrato}."
       ],
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina",
         "verdura"
@@ -4265,6 +4338,7 @@
         "Cocer suave 15-20 minutos moviendo la cazuela, sin remover con cuchara.",
         "Reposar unos minutos antes de servir."
       ],
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina",
         "hidrato",
@@ -4313,6 +4387,7 @@
         "\"Asustar\" con un chorrito de agua fría un par de veces durante la cocción.",
         "Reposar 10 minutos, trocear el compango y servir."
       ],
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina",
         "hidrato"
@@ -4358,6 +4433,7 @@
         "Freír en aceite caliente 3-4 minutos por cara hasta dorar; escurrir sobre papel.",
         "Acompañar con {hidrato} y {verdura}."
       ],
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina",
         "hidrato"
@@ -4403,6 +4479,7 @@
         "Pintar con huevo batido y pinchar el centro.",
         "Hornear 30-35 minutos a 180°C hasta dorar."
       ],
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina",
         "hidrato",
@@ -4451,6 +4528,7 @@
         "Cubrir con agua o caldo y cocer 15 minutos.",
         "Añadir el bacalao desmigado, cocer 5 minutos más y servir."
       ],
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina",
         "hidrato",
@@ -4498,6 +4576,7 @@
         "Hacer los huevos encima (escalfados en la propia salsa o a la plancha).",
         "Servir con pan."
       ],
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina",
         "verdura"
@@ -4541,6 +4620,7 @@
         "Batir los huevos, añadirlos y cuajar removiendo suave — queda cremoso, no tortilla.",
         "Salpimentar y servir."
       ],
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina",
         "verdura"
@@ -4585,6 +4665,7 @@
         "Aliñar con aceite de oliva y sal (un puñado de aceitunas negras si tienes).",
         "Servir fría con pan."
       ],
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina",
         "hidrato",
@@ -4633,6 +4714,7 @@
         "Guisar tapado 45-60 minutos hasta que la carne esté melosa.",
         "Servir con {hidrato}."
       ],
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina",
         "verdura"
@@ -4677,6 +4759,7 @@
         "Hornear 10 minutos para asentar.",
         "Rematar con {proteina} (huevo frito o bacalao a la plancha)."
       ],
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina",
         "hidrato",
@@ -4727,6 +4810,7 @@
         "Hacer {proteina} (huevo duro o merluza a la plancha).",
         "Servir todo junto, con el mojo por encima de las papas."
       ],
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina",
         "hidrato",
@@ -4775,6 +4859,7 @@
         "Saltear todo junto 10 minutos (con patata frita en dados si quieres la versión completa).",
         "Rectificar de sal y servir."
       ],
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina",
         "hidrato",
@@ -4823,6 +4908,7 @@
         "Ligar con aceite de oliva a hilo fino hasta conseguir un puré meloso.",
         "Probar de sal y servir templado, con huevo duro en rodajas y nueces si tienes."
       ],
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina",
         "hidrato"
@@ -4866,6 +4952,7 @@
         "Mojar con caldo o agua y hervir 10 minutos.",
         "Escalfar los huevos dentro 3-4 minutos y servir muy caliente."
       ],
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina",
         "hidrato"
@@ -4910,6 +4997,7 @@
         "Añadir el pan y mover sin parar 15-20 minutos hasta que queden migas sueltas.",
         "Devolver {proteina}, mezclar y servir."
       ],
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina",
         "hidrato",
@@ -4958,6 +5046,7 @@
         "Subir el fuego y añadir el bonito en tacos, vuelta y vuelta — que quede jugoso.",
         "Un chorrito de vinagre o vino blanco, mezclar y servir con {hidrato}."
       ],
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina",
         "verdura"
@@ -5002,6 +5091,7 @@
         "Mezclar todo con una vinagreta de aceite, vinagre y sal.",
         "Enfriar 15 minutos en la nevera y servir frío."
       ],
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina",
         "hidrato",
@@ -5051,6 +5141,7 @@
         "Añadir un puñado de arroz y cocer 15-18 minutos.",
         "Reposar 5 minutos antes de servir."
       ],
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina",
         "hidrato",
@@ -5098,6 +5189,7 @@
         "Freír en aceite bien caliente hasta dorar.",
         "Escurrir sobre papel y servir con tiras de pimiento asado y pan."
       ],
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina"
       ],
@@ -5139,6 +5231,7 @@
         "Cocer tapado 8-10 minutos hasta que el pescado esté jugoso.",
         "Servir con el jugo de la cazuela."
       ],
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina",
         "verdura"
@@ -5183,6 +5276,7 @@
         "Enharinar ligero y freír 3-4 minutos por lado.",
         "Acompañar con {hidrato} cocida o panadera."
       ],
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina"
       ],
@@ -5220,6 +5314,7 @@
         "En el mismo aceite bien caliente, freír los huevos de uno en uno regando la yema con la puntilla hecha.",
         "Servir los huevos sobre las patatas y romper la yema en la mesa."
       ],
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina",
         "hidrato"
@@ -5264,6 +5359,7 @@
         "Cocer el huevo aparte 10 minutos y pelarlo.",
         "Escurrir, aliñar en caliente con un buen chorro de aceite de oliva crudo y servir con el huevo en cuartos por encima."
       ],
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina",
         "hidrato",
@@ -5311,6 +5407,7 @@
         "Montar la tabla: {proteina} y el queso que os guste.",
         "A la mesa — cero fogones."
       ],
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina",
         "verdura"

@@ -1471,6 +1471,12 @@
       "fuente": "AC25 (2025) p.31 (misma cita que horno/vapor/plancha/hervido) — envuelto y cocido en su propio jugo, sin grasa añadida; técnica NUEVA (Fase 3, Roger 2026-07-21, borrador §Preparaciones·PESCADO+HUEVOS: \"papillote, o plegar en horno\"), tratada como variante de horno sin factor propio",
       "factor_kcal": null,
       "kcal_extra_racion": null
+    },
+    "coleslaw": {
+      "salubridad": null,
+      "fuente": "HUECO — sin cita AC25/AI22/SENC25 propia; la col cruda es saludable pero el aliño de mayonesa (alto en grasa) no encaja en la cita de \"verdura cruda con aceite de oliva\" que sustenta salubridad=1 en ensalada",
+      "factor_kcal": null,
+      "kcal_extra_racion": 150
     }
   },
   "acabados": {
@@ -7475,6 +7481,31 @@
       "familia": "espinacas-catalana"
     },
     {
+      "id": "coleslaw",
+      "nombre": "Coleslaw",
+      "roles": [
+        "complementaria"
+      ],
+      "origen": "nativo",
+      "tecnicaCoccion": "coleslaw",
+      "acabado": null,
+      "grupos": [
+        "verdura"
+      ],
+      "ingredientes": {
+        "eje": "verdura",
+        "opciones": [
+          "col"
+        ],
+        "fijos": {
+          "verdura": [
+            "zanahoria"
+          ]
+        }
+      },
+      "familia": "ensalada"
+    },
+    {
       "id": "ensalada-solo",
       "nombre": "Ensalada de {verdura}",
       "roles": [
@@ -7571,6 +7602,10 @@
       "complementariaFamilia": "ensalada-mixta"
     },
     {
+      "principalId": "tortilla-patata",
+      "complementariaFamilia": "coleslaw"
+    },
+    {
       "principalId": "tortilla-francesa-verdura",
       "complementariaFamilia": "pan-mojar"
     },
@@ -7591,12 +7626,20 @@
       "complementariaFamilia": "ensalada-mixta"
     },
     {
+      "principalId": "ensalada-completa",
+      "complementariaFamilia": "coleslaw"
+    },
+    {
       "principalId": "ensalada-pasta",
       "complementariaFamilia": "ensalada-solo"
     },
     {
       "principalId": "ensalada-pasta",
       "complementariaFamilia": "ensalada-mixta"
+    },
+    {
+      "principalId": "ensalada-pasta",
+      "complementariaFamilia": "coleslaw"
     },
     {
       "principalId": "ensalada-cesar-casera",
@@ -7611,12 +7654,20 @@
       "complementariaFamilia": "ensalada-mixta"
     },
     {
+      "principalId": "ensalada-cesar-casera",
+      "complementariaFamilia": "coleslaw"
+    },
+    {
       "principalId": "quinoa-ensalada",
       "complementariaFamilia": "ensalada-solo"
     },
     {
       "principalId": "quinoa-ensalada",
       "complementariaFamilia": "ensalada-mixta"
+    },
+    {
+      "principalId": "quinoa-ensalada",
+      "complementariaFamilia": "coleslaw"
     },
     {
       "principalId": "merluza-salsa-verde",
@@ -7647,6 +7698,10 @@
       "complementariaFamilia": "ensalada-mixta"
     },
     {
+      "principalId": "pescaditos-plancha",
+      "complementariaFamilia": "coleslaw"
+    },
+    {
       "principalId": "gallo-plancha",
       "complementariaFamilia": "hidrato-cocido"
     },
@@ -7667,6 +7722,10 @@
       "complementariaFamilia": "ensalada-mixta"
     },
     {
+      "principalId": "gambas-ajillo",
+      "complementariaFamilia": "coleslaw"
+    },
+    {
       "principalId": "mejillones-marinera",
       "complementariaFamilia": "pan-mojar"
     },
@@ -7679,6 +7738,10 @@
       "complementariaFamilia": "ensalada-mixta"
     },
     {
+      "principalId": "empanadillas-caseras",
+      "complementariaFamilia": "coleslaw"
+    },
+    {
       "principalId": "hummus-plato",
       "complementariaFamilia": "pan-mojar"
     },
@@ -7689,6 +7752,10 @@
     {
       "principalId": "hummus-plato",
       "complementariaFamilia": "ensalada-mixta"
+    },
+    {
+      "principalId": "hummus-plato",
+      "complementariaFamilia": "coleslaw"
     },
     {
       "principalId": "tofu-plancha-verduras",
@@ -7719,6 +7786,10 @@
       "complementariaFamilia": "ensalada-mixta"
     },
     {
+      "principalId": "croquetas-caseras",
+      "complementariaFamilia": "coleslaw"
+    },
+    {
       "principalId": "pollo-al-chilindron",
       "complementariaFamilia": "hidrato-cocido"
     },
@@ -7731,12 +7802,20 @@
       "complementariaFamilia": "ensalada-mixta"
     },
     {
+      "principalId": "fabada-asturiana",
+      "complementariaFamilia": "coleslaw"
+    },
+    {
       "principalId": "cachopo",
       "complementariaFamilia": "ensalada-solo"
     },
     {
       "principalId": "cachopo",
       "complementariaFamilia": "ensalada-mixta"
+    },
+    {
+      "principalId": "cachopo",
+      "complementariaFamilia": "coleslaw"
     },
     {
       "principalId": "piperrada-con-huevo",
@@ -7759,12 +7838,20 @@
       "complementariaFamilia": "ensalada-mixta"
     },
     {
+      "principalId": "atascaburras",
+      "complementariaFamilia": "coleslaw"
+    },
+    {
       "principalId": "sopa-castellana",
       "complementariaFamilia": "ensalada-solo"
     },
     {
       "principalId": "sopa-castellana",
       "complementariaFamilia": "ensalada-mixta"
+    },
+    {
+      "principalId": "sopa-castellana",
+      "complementariaFamilia": "coleslaw"
     },
     {
       "principalId": "bonito-encebollado",
@@ -7795,12 +7882,20 @@
       "complementariaFamilia": "ensalada-mixta"
     },
     {
+      "principalId": "trucha-a-la-navarra",
+      "complementariaFamilia": "coleslaw"
+    },
+    {
       "principalId": "huevos-fritos-con-patatas",
       "complementariaFamilia": "ensalada-solo"
     },
     {
       "principalId": "huevos-fritos-con-patatas",
       "complementariaFamilia": "ensalada-mixta"
+    },
+    {
+      "principalId": "huevos-fritos-con-patatas",
+      "complementariaFamilia": "coleslaw"
     },
     {
       "principalId": "cena-de-tabla",
@@ -7819,6 +7914,10 @@
       "complementariaFamilia": "ensalada-mixta"
     },
     {
+      "principalId": "pollo-pepitoria",
+      "complementariaFamilia": "coleslaw"
+    },
+    {
       "principalId": "escabechado",
       "complementariaFamilia": "hidrato-cocido"
     },
@@ -7829,6 +7928,10 @@
     {
       "principalId": "escabechado",
       "complementariaFamilia": "ensalada-mixta"
+    },
+    {
+      "principalId": "escabechado",
+      "complementariaFamilia": "coleslaw"
     },
     {
       "principalId": "estofado-ternera",
@@ -7851,6 +7954,10 @@
       "complementariaFamilia": "ensalada-mixta"
     },
     {
+      "principalId": "magro-tomate",
+      "complementariaFamilia": "coleslaw"
+    },
+    {
       "principalId": "costillas-salsa-barbacoa",
       "complementariaFamilia": "hidrato-gajos"
     },
@@ -7871,6 +7978,10 @@
       "complementariaFamilia": "ensalada-mixta"
     },
     {
+      "principalId": "caldereta-cordero",
+      "complementariaFamilia": "coleslaw"
+    },
+    {
       "principalId": "cordero-asado",
       "complementariaFamilia": "hidrato-panadera"
     },
@@ -7881,6 +7992,10 @@
     {
       "principalId": "cordero-asado",
       "complementariaFamilia": "ensalada-mixta"
+    },
+    {
+      "principalId": "cordero-asado",
+      "complementariaFamilia": "coleslaw"
     },
     {
       "principalId": "solomillo-pedro-ximenez",
@@ -7915,6 +8030,10 @@
       "complementariaFamilia": "ensalada-mixta"
     },
     {
+      "principalId": "escalope-empanado",
+      "complementariaFamilia": "coleslaw"
+    },
+    {
       "principalId": "san-jacobo",
       "complementariaFamilia": "hidrato-cocido"
     },
@@ -7925,6 +8044,10 @@
     {
       "principalId": "san-jacobo",
       "complementariaFamilia": "ensalada-mixta"
+    },
+    {
+      "principalId": "san-jacobo",
+      "complementariaFamilia": "coleslaw"
     },
     {
       "principalId": "flamenquin",
@@ -7939,6 +8062,10 @@
       "complementariaFamilia": "ensalada-mixta"
     },
     {
+      "principalId": "flamenquin",
+      "complementariaFamilia": "coleslaw"
+    },
+    {
       "principalId": "pescado-romana",
       "complementariaFamilia": "hidrato-cocido"
     },
@@ -7949,6 +8076,10 @@
     {
       "principalId": "pescado-romana",
       "complementariaFamilia": "ensalada-mixta"
+    },
+    {
+      "principalId": "pescado-romana",
+      "complementariaFamilia": "coleslaw"
     },
     {
       "principalId": "pescado-papillote",
@@ -7979,6 +8110,10 @@
       "complementariaFamilia": "ensalada-mixta"
     },
     {
+      "principalId": "calamares-plancha",
+      "complementariaFamilia": "coleslaw"
+    },
+    {
       "principalId": "calamares-romana",
       "complementariaFamilia": "hidrato-cocido"
     },
@@ -7989,6 +8124,10 @@
     {
       "principalId": "calamares-romana",
       "complementariaFamilia": "ensalada-mixta"
+    },
+    {
+      "principalId": "calamares-romana",
+      "complementariaFamilia": "coleslaw"
     },
     {
       "principalId": "sepia-plancha",
@@ -8003,6 +8142,10 @@
       "complementariaFamilia": "ensalada-mixta"
     },
     {
+      "principalId": "sepia-plancha",
+      "complementariaFamilia": "coleslaw"
+    },
+    {
       "principalId": "chipirones-plancha",
       "complementariaFamilia": "hidrato-cocido"
     },
@@ -8013,6 +8156,10 @@
     {
       "principalId": "chipirones-plancha",
       "complementariaFamilia": "ensalada-mixta"
+    },
+    {
+      "principalId": "chipirones-plancha",
+      "complementariaFamilia": "coleslaw"
     },
     {
       "principalId": "pulpo-a-feira",
@@ -8021,6 +8168,10 @@
     {
       "principalId": "pulpo-a-feira",
       "complementariaFamilia": "ensalada-mixta"
+    },
+    {
+      "principalId": "pulpo-a-feira",
+      "complementariaFamilia": "coleslaw"
     },
     {
       "principalId": "almejas-marinera",
@@ -8033,6 +8184,10 @@
     {
       "principalId": "almejas-marinera",
       "complementariaFamilia": "ensalada-mixta"
+    },
+    {
+      "principalId": "almejas-marinera",
+      "complementariaFamilia": "coleslaw"
     },
     {
       "principalId": "huevos-al-plato",
@@ -8051,12 +8206,20 @@
       "complementariaFamilia": "ensalada-mixta"
     },
     {
+      "principalId": "canelones-carne",
+      "complementariaFamilia": "coleslaw"
+    },
+    {
       "principalId": "carbonara",
       "complementariaFamilia": "ensalada-solo"
     },
     {
       "principalId": "carbonara",
       "complementariaFamilia": "ensalada-mixta"
+    },
+    {
+      "principalId": "carbonara",
+      "complementariaFamilia": "coleslaw"
     },
     {
       "principalId": "arroz-negro",
@@ -8067,6 +8230,10 @@
       "complementariaFamilia": "ensalada-mixta"
     },
     {
+      "principalId": "arroz-negro",
+      "complementariaFamilia": "coleslaw"
+    },
+    {
       "principalId": "patatas-riojana",
       "complementariaFamilia": "ensalada-solo"
     },
@@ -8075,12 +8242,20 @@
       "complementariaFamilia": "ensalada-mixta"
     },
     {
+      "principalId": "patatas-riojana",
+      "complementariaFamilia": "coleslaw"
+    },
+    {
       "principalId": "fideos-cazuela",
       "complementariaFamilia": "ensalada-solo"
     },
     {
       "principalId": "fideos-cazuela",
       "complementariaFamilia": "ensalada-mixta"
+    },
+    {
+      "principalId": "fideos-cazuela",
+      "complementariaFamilia": "coleslaw"
     }
   ],
   "postres": {
@@ -8188,6 +8363,10 @@
     {
       "id": "st-salsa-barbacoa",
       "nombre": "Salsa barbacoa"
+    },
+    {
+      "id": "st-mayonesa",
+      "nombre": "Mayonesa"
     }
   ]
 };

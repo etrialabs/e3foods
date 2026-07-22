@@ -966,6 +966,22 @@
         'Aliñar con aceite de oliva, sal y un chorrito de vinagre, y servir.'
       ];
     }
+    // Coleslaw (2026-07-22, UPGRADES §3): técnica propia, distinta de 'ensalada' — el aliño es
+    // mayonesa, no aceite de oliva. Combo fijo col+zanahoria (Roger): junta fijos (zanahoria) +
+    // eje elegido (col) en una sola lista, mismo patrón que la rama 'ensalada' de arriba.
+    if (complementaria.tecnicaCoccion === 'coleslaw') {
+      var verdurasCs = [];
+      Object.keys(complementaria.ingredientes.fijos || {}).forEach(function (g) {
+        (complementaria.ingredientes.fijos[g] || []).forEach(function (fid) { var f = banco.ingredientes[fid]; verdurasCs.push((f ? f.nombre : fid).toLowerCase()); });
+      });
+      if (idElegido) verdurasCs.push(nombre);
+      verdurasCs = verdurasCs.filter(function (v, i) { return verdurasCs.indexOf(v) === i; });
+      var listaCs = verdurasCs.length > 1 ? verdurasCs.slice(0, -1).join(', ') + ' y ' + verdurasCs[verdurasCs.length - 1] : verdurasCs[0];
+      return [
+        'Rallar o cortar en tiras muy finas ' + listaCs + '.',
+        'Mezclar con mayonesa, un chorrito de vinagre o limón y sal, y dejar reposar en la nevera 15-20 minutos antes de servir.'
+      ];
+    }
     if (!complementaria.tecnicaCoccion) return ['Servir ' + nombre + ' tal cual, sin cocinar.'];
     var plantillaPaso = PASOS_GENERICOS_COMPLEMENTARIA[complementaria.tecnicaCoccion] || 'Preparar {ingrediente}.';
     return [plantillaPaso.split('{ingrediente}').join(capitaliza(nombre))];

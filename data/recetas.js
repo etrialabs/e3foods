@@ -204,7 +204,8 @@
       "kcal_100g": 155,
       "racion_adulto_g": 120,
       "racion_nino_g": 60,
-      "coste_banda": 1
+      "coste_banda": 1,
+      "unidad_g": 60
     },
     "entrecot-ternera": {
       "nombre": "Entrecot de ternera",
@@ -957,7 +958,8 @@
       "kcal_100g": 57,
       "racion_adulto_g": 125,
       "racion_nino_g": 125,
-      "coste_banda": 1
+      "coste_banda": 1,
+      "unidad_g": 125
     },
     "bechamel": {
       "nombre": "Bechamel casera (leche, harina y mantequilla)",

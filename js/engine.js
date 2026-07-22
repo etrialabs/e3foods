@@ -1492,7 +1492,7 @@
     return Math.round(n / 10) * 10;
   }
 
-  function listaCompra(estado, plan, rango, banco, hoy) {
+  function listaCompra(estado, plan, rango, banco, hoy, soloCena) {
     var hoyISO = hoy || fechaLocalISO();
     var diasRango;
     if (rango === 'hoy') {
@@ -1502,15 +1502,20 @@
       diasRango = plan.dias.map(function (d, idx) { return { dia: d, idx: idx }; });
     }
 
+    // soloCena (Roger 2026-07-22): "Compra hoy" pasadas las 16h ya no necesita ingredientes de
+    // comida (mediodía) — se asume ya cocinada/comprada. Presentacional: solo cambia qué se
+    // ACUMULA en la lista, nunca el plan ni el kcal real de ningún menú. La decisión de LA HORA
+    // vive en ui.js (real reloj, ver saludoHora) — aquí solo se aplica el flag ya calculado.
     var acumulado = {};
     diasRango.forEach(function (entry) {
       var dia = entry.dia, idx = entry.idx;
       ['comida', 'cena'].forEach(function (tipoComida) {
+        if (soloCena && tipoComida === 'comida') return;
         var slot = dia[tipoComida];
         if (!slot || !slot.menu) return;
         (slot.menu.ingredientes || []).forEach(function (linea) {
           var ing = banco.ingredientes[linea.id];
-          if (!acumulado[linea.id]) acumulado[linea.id] = { id: linea.id, nombre: ing ? ing.nombre : linea.id, categoria: ing ? ing.categoria : 'otro', gramos: 0 };
+          if (!acumulado[linea.id]) acumulado[linea.id] = { id: linea.id, nombre: ing ? ing.nombre : linea.id, categoria: ing ? ing.categoria : 'otro', gramos: 0, unidadG: ing && ing.unidad_g };
           acumulado[linea.id].gramos += linea.gramos;
         });
       });
@@ -1521,7 +1526,7 @@
           presentesEnComida(estado, dia.fecha, idx, 'cena').forEach(function (miembro) {
             var esNino = edadEnAnios(miembro.anioNacimiento) < EDAD_MENOR;
             var gramos = esNino ? ingPostre.racion_nino_g : ingPostre.racion_adulto_g;
-            if (!acumulado[postre.id]) acumulado[postre.id] = { id: postre.id, nombre: ingPostre.nombre, categoria: ingPostre.categoria, gramos: 0 };
+            if (!acumulado[postre.id]) acumulado[postre.id] = { id: postre.id, nombre: ingPostre.nombre, categoria: ingPostre.categoria, gramos: 0, unidadG: ingPostre.unidad_g };
             acumulado[postre.id].gramos += gramos;
           });
         }
@@ -1536,7 +1541,7 @@
     ((estado.compra && estado.compra.pendientesManual) || []).forEach(function (id) {
       var ing = banco.ingredientes[id];
       if (!ing) return;
-      if (!acumulado[id]) acumulado[id] = { id: id, nombre: ing.nombre, categoria: ing.categoria, gramos: 0 };
+      if (!acumulado[id]) acumulado[id] = { id: id, nombre: ing.nombre, categoria: ing.categoria, gramos: 0, unidadG: ing.unidad_g };
       acumulado[id].gramos += ing.racion_adulto_g;
     });
 
@@ -1559,7 +1564,11 @@
     ((estado.compra && estado.compra.marcados) || []).forEach(function (id) { marcados[id] = 1; });
     return Object.keys(acumulado).map(function (id) {
       var linea = acumulado[id];
-      return { id: linea.id, nombre: linea.nombre, categoria: linea.categoria, gramos: linea.gramos === null ? null : redondearCantidad(linea.gramos), marcado: !!marcados[id] };
+      // unidades (huevo/yogur): presentacional, igual espíritu que redondearCantidad — no
+      // realimenta el kcal (que sigue calculándose siempre sobre los gramos reales). Mínimo 1
+      // unidad si hay gramos>0, para no mostrar "0 uds" por redondeo hacia abajo.
+      var unidades = (linea.unidadG && linea.gramos) ? Math.max(1, Math.round(linea.gramos / linea.unidadG)) : null;
+      return { id: linea.id, nombre: linea.nombre, categoria: linea.categoria, gramos: linea.gramos === null ? null : redondearCantidad(linea.gramos), unidades: unidades, marcado: !!marcados[id] };
     }).sort(function (a, b) { if (a.categoria !== b.categoria) return a.categoria.localeCompare(b.categoria); return a.nombre.localeCompare(b.nombre); });
   }
 

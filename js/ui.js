@@ -432,7 +432,9 @@
   function filaCompraHtml(item) {
     // gramos null = ítem "¿lo tengo en casa?" (base de despensa/staple, Roger 2026-07-21): sin
     // cantidad real que comprar, solo el check — no se muestra "0 g" ni ninguna cifra inventada.
-    var cantidadHtml = item.gramos == null ? '' : '<span class="check-cantidad">' + item.gramos + ' g</span>';
+    // unidades (huevo/yogur): se compra por piezas, no por gramos — "6 uds" en vez de "750 g".
+    var cantidadHtml = item.unidades != null ? '<span class="check-cantidad">' + item.unidades + (item.unidades === 1 ? ' ud' : ' uds') + '</span>'
+      : item.gramos == null ? '' : '<span class="check-cantidad">' + item.gramos + ' g</span>';
     return '<li class="check-item ' + (item.marcado ? 'check-marcado' : '') + '">' +
       '<label>' +
       '<input type="checkbox" data-action="toggle-compra-item" data-id="' + item.id + '" ' + (item.marcado ? 'checked' : '') + '>' +
@@ -537,7 +539,7 @@
       var juntos = nombresMinors.length <= 1 ? (nombresMinors[0] || '') : nombresMinors.slice(0, -1).join(', ') + ' y ' + nombresMinors[nombresMinors.length - 1];
       coleTextoHtml = escapeHtml(juntos) + ' ' + (nombresMinors.length > 1 ? 'comen' : 'come') + (esHoy ? ' hoy' : '') + ' en el <button type="button" class="ingrediente-link" data-action="ir-cole">cole</button>. ';
     }
-    var itemsHoyReal = E.listaCompra(estado, estado.plan, 'hoy', banco);
+    var itemsHoyReal = E.listaCompra(estado, estado.plan, 'hoy', banco, null, new Date().getHours() >= 16);
     var faltanHoyReal = itemsHoyReal.filter(function (i) { return !i.marcado; });
     var pantryTexto;
     if (!itemsHoyReal.length) pantryTexto = '';
@@ -840,24 +842,28 @@
       '</div>';
   }
 
-  // Frescos/Despensa/Frío (Roger 2026-07-19, handoff + decisión explícita):
-  // taxonomía de conservación, no la nutricional real de categoriasDePlantilla
-  // — deliberadamente distinta, es cómo se compra, no cómo se cuenta la cuota.
-  // Solo agrupa la MISMA lista real (E.listaCompra); "Semana que viene" (3er
-  // segmento) se retira de esta pantalla por decisión de Roger 2026-07-19,
-  // pero estado.compra.marcadosSiguiente y generarPlanSiguiente() no se tocan.
+  // Carne/Pescado/Frutas y verduras/Despensa/Frío (Roger 2026-07-19, ampliado 2026-07-22 a
+  // petición de Roger: "frescos" único no reflejaba cómo se compra de verdad — carnicería,
+  // pescadería y frutería son secciones/tiendas distintas). Taxonomía de conservación+tienda, no
+  // la nutricional real de categoriasDePlantilla — deliberadamente distinta, es cómo se compra, no
+  // cómo se cuenta la cuota. Solo agrupa la MISMA lista real (E.listaCompra); "Semana que viene"
+  // (3er segmento) se retira de esta pantalla por decisión de Roger 2026-07-19, pero
+  // estado.compra.marcadosSiguiente y generarPlanSiguiente() no se tocan.
   var GRUPO_COMPRA = {
-    'pescado-blanco': 'frescos', 'pescado-azul': 'frescos', marisco: 'frescos',
-    'carne-blanca': 'frescos', 'carne-roja': 'frescos', verdura: 'frescos', fruta: 'frescos',
+    'carne-blanca': 'carne', 'carne-roja': 'carne',
+    'pescado-blanco': 'pescado', 'pescado-azul': 'pescado', marisco: 'pescado',
+    verdura: 'verdura', fruta: 'verdura',
     legumbre: 'despensa', cereal: 'despensa', tuberculo: 'despensa', otro: 'despensa',
     huevo: 'frio', lacteo: 'frio'
   };
   var GRUPOS_COMPRA_INFO = {
-    frescos: { nombre: 'Frescos', icono: 'carrot' },
+    carne: { nombre: 'Carne', icono: 'beef' },
+    pescado: { nombre: 'Pescado', icono: 'fish' },
+    verdura: { nombre: 'Frutas y verduras', icono: 'carrot' },
     despensa: { nombre: 'Despensa', icono: 'wheat' },
     frio: { nombre: 'Frío', icono: 'snowflake' }
   };
-  var ORDEN_GRUPO_COMPRA = ['frescos', 'despensa', 'frio'];
+  var ORDEN_GRUPO_COMPRA = ['carne', 'pescado', 'verdura', 'despensa', 'frio'];
 
   // ---------------------------------------------------------------
   // COMPRA — segmentado Hoy/Próximos 7 días + grupos Frescos/Despensa/Frío
@@ -868,7 +874,10 @@
       return '<div class="rc-cabecera"><h1 class="rc-titulo">Compra</h1></div>' +
         '<div class="vista-body rc-body"><p class="card-msg">Todavía no hay semana generada.</p></div>';
     }
-    var items = E.listaCompra(estado, plan, rango === 'hoy' ? 'hoy' : 'semana', banco);
+    // Pasadas las 16h, "Compra hoy" ya no necesita ingredientes de comida (Roger 2026-07-22) —
+    // mismo umbral que comidaProximaPorHora (app.js) y saludoHora (arriba), real reloj del navegador.
+    var soloCena = rango === 'hoy' && new Date().getHours() >= 16;
+    var items = E.listaCompra(estado, plan, rango === 'hoy' ? 'hoy' : 'semana', banco, null, soloCena);
     var marcadosN = items.filter(function (i) { return i.marcado; }).length;
     var pct = items.length ? Math.round(marcadosN / items.length * 100) : 0;
 

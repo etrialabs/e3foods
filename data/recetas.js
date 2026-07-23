@@ -2770,7 +2770,25 @@
         "Mezclar todo en una fuente grande y aliñar con aceite, vinagre y sal.",
         "Servir templado o frío."
       ],
-      "pasosPorOpcion": null,
+      "pasosPorOpcion": {
+        "atun-conserva": [
+          "Escurrir el atún en conserva y desmigarlo con un tenedor."
+        ],
+        "huevo": [
+          "Cocer los huevos en un cazo con agua fría; cuando rompa a hervir, contar 10 minutos.",
+          "Enfriarlos bajo el grifo, pelarlos y trocearlos o desmenuzarlos con un tenedor."
+        ],
+        "pollo": [
+          "Salpimentar la pechuga de pollo y hacerla a la plancha 4-5 minutos por cada lado, hasta que esté dorada por fuera y ya no quede rosada por dentro.",
+          "Dejar templar y cortar en dados o tiras."
+        ],
+        "queso-feta": [
+          "Escurrir el queso feta y desmenuzarlo con un tenedor o cortarlo en dados."
+        ],
+        "garbanzos": [
+          "Escurrir y aclarar los garbanzos cocidos bajo el grifo."
+        ]
+      },
       "grupos": [
         "proteina"
       ],
@@ -3014,7 +3032,7 @@
           "Escurrir el atún en conserva y desmigarlo con un tenedor."
         ],
         "pollo": [
-          "Salpimentar la pechuga de pollo y hacerla a la plancha 4-5 minutos por cada lado.",
+          "Salpimentar la pechuga de pollo y hacerla a la plancha 4-5 minutos por cada lado, hasta que esté dorada por fuera y ya no quede rosada por dentro.",
           "Dejar templar y cortar en dados o tiras."
         ],
         "garbanzos": [

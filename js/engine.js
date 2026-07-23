@@ -938,13 +938,19 @@
   // comensal, ingredientes para la compra) — el paso CARO que el iterator
   // lazy difiere hasta que el caller realmente lo consume (1 o top-3 nevera).
   // ---------------------------------------------------------------
+  // Sin punto de cocción reconocible ni tiempo real (Roger 2026-07-23, hallado al pedir a otra
+  // IA justo ese estándar y comprobar que aquí no se cumplía). Aplican a ingredientes muy
+  // distintos (hervido: arroz/quinoa/patata/puré — horno: patata/brócoli/coliflor/berenjena/
+  // pan), así que se añade el CÓMO comprobar el punto (pinchar, dorado, crujiente) en vez de
+  // un tiempo único que sería falso para la mitad de los casos; donde el rango es razonable
+  // para todos sus usos reales, se añade también.
   var PASOS_GENERICOS_COMPLEMENTARIA = {
-    hervido: 'Cocer {ingrediente} en agua con sal hasta que esté tierno/a.',
-    horno: 'Hornear {ingrediente} a 200°C hasta que esté hecho/a.',
-    frito: 'Freír {ingrediente} en aceite bien caliente hasta dorar.',
-    salteado: 'Saltear {ingrediente} en una sartén con un poco de aceite.',
-    crudo: 'Lavar y preparar {ingrediente} en crudo.',
-    vapor: 'Cocer {ingrediente} al vapor hasta que esté tierno/a.'
+    hervido: 'Cocer {ingrediente} en agua con sal hasta que esté tierno/a — pínchalo con un tenedor o prueba un trozo para comprobar el punto.',
+    horno: 'Hornear {ingrediente} a 200°C hasta que esté dorado por fuera y tierno al pincharlo (unos 20-30 minutos según el tamaño de los trozos).',
+    frito: 'Freír {ingrediente} en aceite bien caliente hasta que esté dorado y crujiente por fuera; escurrir sobre papel absorbente antes de servir.',
+    salteado: 'Saltear {ingrediente} en una sartén con un poco de aceite a fuego medio-alto, removiendo con frecuencia, hasta que esté tierno pero con un punto crujiente (unos 5-8 minutos).',
+    crudo: 'Lavar y preparar {ingrediente} en crudo, cortado al gusto.',
+    vapor: 'Cocer {ingrediente} al vapor unos 8-12 minutos, hasta que esté tierno al pincharlo.'
   };
   function pasosComplementaria(complementaria, idElegido, banco) {
     var ing = banco.ingredientes[idElegido];
@@ -1004,34 +1010,50 @@
     return elaboracion.nombre.split(placeholder).join(texto);
   }
 
-  // Pasos de una elaboración resueltos para SU propio eje — filtra líneas que
-  // mencionen un placeholder de un grupo que ya NO es interno (v2 describía
-  // proteína+hidrato+verdura como un solo texto; en v3 hidrato/verdura externos
-  // tienen su PROPIA elaboración con sus propios pasos vía pasosComplementaria,
-  // así que esas líneas del principal ya no aplican — se descartan, no se dejan
-  // con el placeholder colgado).
+  function listaNatural(nombres) {
+    return nombres.length > 1 ? nombres.slice(0, -1).join(', ') + ' y ' + nombres[nombres.length - 1] : nombres[0];
+  }
+
+  // Pasos de una elaboración resueltos para SU propio eje + sus grupos FIJOS (ingredientes
+  // internos sin elección, ej. atún/patata en marmitako). Bug real (Roger 2026-07-23, hallado en
+  // marmitako: la receta nunca decía qué hacer con el atún, el ingrediente que da nombre al
+  // plato). El filtro anterior descartaba CUALQUIER paso con un placeholder distinto del eje sin
+  // distinguir (a) un grupo FIJO de esta misma elaboración — ingrediente real de este plato, hay
+  // que resolverlo y mostrarlo — de (b) un grupo verdaderamente externo que sirve una
+  // complementaria aparte con sus propios pasos (pasosComplementaria), el único caso donde
+  // descartar es correcto. 60 pasos en 40+ elaboraciones perdían así un ingrediente fijo propio
+  // (arroces, pasta, cremas, verduras al horno...) — a diferencia del caso (b), aquí no hay
+  // ninguna otra sección de la UI que lo compensara.
   function pasosDeElaboracion(elaboracion, seleccionEje, banco) {
     var eje = elaboracion.ingredientes.eje;
+    var fijos = elaboracion.ingredientes.fijos || {};
     var pasos = (elaboracion.pasos || []).filter(function (paso) {
       var placeholders = (paso.match(/\{(\w+)\}/g) || []).map(function (p) { return p.slice(1, -1); });
-      return placeholders.every(function (p) { return p === eje; });
+      return placeholders.every(function (p) { return p === eje || fijos[p]; });
     });
     // pasosPorOpcion (Roger 2026-07-22, hallazgo real: "Ensalada de quinoa con huevo" solo decía
     // "Preparar huevo" — el nombre sustituido en una frase genérica no dice CÓMO). Cuando existen
     // instrucciones específicas para el ingrediente EXACTO elegido, sustituyen en su sitio el paso
-    // que menciona el eje; el resto de pasos (sin placeholder) sigue igual. Opt-in por elaboración —
-    // sin entrada para la opción elegida, se usa la sustitución genérica de siempre (sin cambios).
+    // que menciona el eje; el resto de pasos sigue igual. Opt-in por elaboración — sin entrada
+    // para la opción elegida, se usa la sustitución genérica de siempre (sin cambios).
     var pasosOpcion = eje && elaboracion.pasosPorOpcion && seleccionEje && elaboracion.pasosPorOpcion[seleccionEje];
     if (pasosOpcion) {
       var idx = pasos.findIndex(function (p) { return p.indexOf('{' + eje + '}') !== -1; });
-      if (idx !== -1) return pasos.slice(0, idx).concat(pasosOpcion, pasos.slice(idx + 1));
+      if (idx !== -1) pasos = pasos.slice(0, idx).concat(pasosOpcion, pasos.slice(idx + 1));
     }
-    return pasos
-      .map(function (paso) {
-        if (!eje || !seleccionEje) return paso;
-        var ing = banco.ingredientes[seleccionEje];
-        return paso.split('{' + eje + '}').join(ing ? capitaliza(ing.nombre) : seleccionEje);
+    return pasos.map(function (paso) {
+      return paso.replace(/\{(\w+)\}/g, function (match, placeholder) {
+        if (placeholder === eje && seleccionEje) {
+          var ing = banco.ingredientes[seleccionEje];
+          return ing ? capitaliza(ing.nombre) : seleccionEje;
+        }
+        if (fijos[placeholder]) {
+          var nombres = fijos[placeholder].map(function (id) { var i = banco.ingredientes[id]; return i ? minuscula(i.nombre) : id; });
+          return listaNatural(nombres);
+        }
+        return match;
       });
+    });
   }
 
   function resolverMenu(candidato, ctx) {
@@ -1641,12 +1663,17 @@
     var variantes = elaboracion.ingredientes.eje
       ? elaboracion.ingredientes.opciones.slice(1, 4).map(function (id) { var ing = banco.ingredientes[id]; return ing ? ing.nombre : id; })
       : [];
+    // Bug real (Roger 2026-07-23, hallado en "Ensalada completa de atún"): esta preview no
+    // llevaba los pasos de la complementaria (lavar/cortar verdura, cocer hidrato...) — solo el
+    // nombre. En la vista real de un día sí se ven (renderVistaReceta los pinta aparte, vía
+    // pasosComplementaria); aquí se perdían sin más, dejando el principal a medias ("preparar
+    // atún" → "mezclar todo" sin haber dicho nunca qué hacer con la guarnición).
     var complementariasEjemplo = [];
     (banco.compatibilidad || []).filter(function (c) { return c.principalId === elaboracion.id; }).forEach(function (c) {
       var comp = (banco.elaboraciones || []).filter(function (e) { return e.id === c.complementariaFamilia; })[0];
       if (!comp) return;
       var idEjemplo = comp.ingredientes.opciones[0];
-      complementariasEjemplo.push({ id: comp.id, nombre: resolverNombre(comp, idEjemplo, banco), seleccionEje: idEjemplo });
+      complementariasEjemplo.push({ id: comp.id, nombre: resolverNombre(comp, idEjemplo, banco), seleccionEje: idEjemplo, pasos: pasosComplementaria(comp, idEjemplo, banco) });
     });
     return { id: elaboracion.id, nombre: nombre, pasos: pasos, variantes: variantes, complementariasEjemplo: complementariasEjemplo, seleccionEje: seleccionEje };
   }

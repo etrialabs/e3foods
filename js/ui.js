@@ -836,10 +836,16 @@
       : '';
 
     var pasosHtml = previa.pasos.length
-      ? '<div class="rv-pasos">' + previa.pasos.map(function (p, i) {
-          return '<div class="rv-paso"><span class="rv-paso-num">' + (i + 1) + '</span><span class="rv-paso-texto">' + escapeHtml(p) + '</span></div>';
-        }).join('') + '</div>'
+      ? '<div class="rv-pasos">' + pasosCards(previa.pasos) + '</div>'
       : '<p class="card-msg">Sin pasos detallados para esta receta.</p>';
+    // Pasos de cada complementaria de ejemplo, mismo patrón que renderVistaReceta (Roger
+    // 2026-07-23) — sin esto la preparación de hidrato/verdura desaparecía sin rastro.
+    var complementariasPasosHtml = previa.complementariasEjemplo.map(function (c) {
+      return c.pasos && c.pasos.length
+        ? '<p class="detalle-subtitulo" style="margin-top:18px">' + escapeHtml(c.nombre) + '</p>' +
+          '<div class="rv-pasos">' + pasosCards(c.pasos) + '</div>'
+        : '';
+    }).join('');
 
     return '<div class="rv-hero">' + fotoHtml + '<div class="rv-hero-gradiente"></div>' +
       '<button type="button" class="rv-flotante rv-volver" data-action="receta-volver" aria-label="Volver"><i data-lucide="arrow-left"></i></button>' +
@@ -859,6 +865,7 @@
       (variantes ? '<p class="rv-variantes"><i data-lucide="shuffle"></i>' + escapeHtml(capitaliza(variantes)) + '</p>' : '') +
       '<p class="rv-seccion-titulo">Preparación</p>' +
       pasosHtml +
+      complementariasPasosHtml +
       '</div>';
   }
 

@@ -539,7 +539,8 @@
       var juntos = nombresMinors.length <= 1 ? (nombresMinors[0] || '') : nombresMinors.slice(0, -1).join(', ') + ' y ' + nombresMinors[nombresMinors.length - 1];
       coleTextoHtml = escapeHtml(juntos) + ' ' + (nombresMinors.length > 1 ? 'comen' : 'come') + (esHoy ? ' hoy' : '') + ' en el <button type="button" class="ingrediente-link" data-action="ir-cole">cole</button>. ';
     }
-    var itemsHoyReal = E.listaCompra(estado, estado.plan, 'hoy', banco, null, new Date().getHours() >= 16);
+    // Despensa (staples/recordatorio) fuera del contador de HOY — mismo criterio que renderCompraVista.
+    var itemsHoyReal = E.listaCompra(estado, estado.plan, 'hoy', banco, null, new Date().getHours() >= 16).filter(function (i) { return i.categoria !== 'despensa'; });
     var faltanHoyReal = itemsHoyReal.filter(function (i) { return !i.marcado; });
     var pantryTexto;
     if (!itemsHoyReal.length) pantryTexto = '';
@@ -926,7 +927,7 @@
     }).join('');
 
     var despensaHtml = itemsDespensa.length ? '<details class="cp-despensa">' +
-      '<summary>Revisa si te falta algo de despensa también</summary>' +
+      '<summary>Revisa si te falta algo de despensa</summary>' +
       '<div class="cp-lista"><ul class="lista-check">' + itemsDespensa.map(filaCompraHtml).join('') + '</ul></div>' +
       '</details>' : '';
 

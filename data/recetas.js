@@ -3211,11 +3211,12 @@
       "ninos": true,
       "foto": "assets/banco-fotos/ensalada-lentejas.jpg",
       "pasos": [
-        "Sofreír ajo, cebolla y {verdura} en una olla con aceite de oliva.",
-        "Añadir {hidrato} cascada en trozos irregulares (para que suelte almidón) y rehogar.",
+        "Sofreír ajo, cebolla y {verdura} 10-12 minutos a fuego suave, hasta que esté tierno.",
+        "Añadir {hidrato} cascada en trozos irregulares (no cortada a cuchillo, así suelta almidón) y rehogar 2-3 minutos.",
         "Cubrir con caldo o fumet y cocer 20 minutos hasta que la patata esté tierna.",
         "Añadir {proteina} en dados y cocinar 4-5 minutos, apagando el fuego para que se haga con el calor residual.",
-        "Dejar reposar unos minutos antes de servir."
+        "Dejar reposar unos minutos antes de servir.",
+        "Tip: la patata cascada (no cortada) es lo que espesa el caldo sin necesitar nada más."
       ],
       "pasosPorOpcion": null,
       "grupos": [
@@ -4488,7 +4489,7 @@
         "comida",
         "cena"
       ],
-      "tiempo_min": 45,
+      "tiempo_min": 70,
       "esfuerzo": "medio",
       "temporada": null,
       "region": "galicia",
@@ -4497,11 +4498,12 @@
       "ninos": true,
       "foto": "assets/banco-fotos/ensalada-lentejas.jpg",
       "pasos": [
-        "Hacer un sofrito lento de cebolla abundante y {verdura}.",
-        "Mezclar el sofrito con el atún desmigado.",
+        "Sofreír cebolla abundante y {verdura} 25 minutos a fuego suave, hasta muy tierno.",
+        "Escurrir bien el atún y mezclar con el sofrito templado.",
         "Extender una lámina de masa, repartir el relleno y cubrir con la otra lámina, sellando los bordes.",
         "Pintar con huevo batido y pinchar el centro.",
-        "Hornear 30-35 minutos a 180°C hasta dorar."
+        "Hornear 30-35 minutos a 180°C hasta dorar.",
+        "Tip: masa comprada ahorra ~50 minutos frente a la casera con reposo — para entre semana, compensa."
       ],
       "pasosPorOpcion": null,
       "grupos": [
@@ -4520,7 +4522,7 @@
             "atun-conserva"
           ],
           "hidrato": [
-            "masa-empanadilla"
+            "masa-empanada"
           ]
         }
       }

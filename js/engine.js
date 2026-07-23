@@ -80,6 +80,10 @@
   }
 
   function lunesDeEstaSemana(fechaISOStr) {
+    // Defensa de contrato (bug real 2026-07-23): si llega un objeto Date en vez del string ISO
+    // esperado, la concatenación de abajo daba Invalid Date -> "NaN-NaN-NaN", y el caller que
+    // comparaba contra semanaISO regeneraba el plan en cada carga. Se normaliza en vez de fallar.
+    if (fechaISOStr instanceof Date) fechaISOStr = fechaLocalISO(fechaISOStr);
     var d = new Date((fechaISOStr || fechaLocalISO()) + 'T00:00:00');
     var diaJs = d.getDay();
     var offsetALunes = diaJs === 0 ? -6 : 1 - diaJs;
@@ -728,6 +732,31 @@
     return -n * 8;
   }
 
+  // Recencia de PAR plato+proteína (obra motor de menús paso 2, bug B de la auditoría: un
+  // principal podía rotar bien pero SIEMPRE con la misma proteína concreta — p.ej. "ensalada
+  // completa" siempre con atún — porque la memoria solo existía a nivel de principal, nunca del
+  // par). Mitad de peso que puntuarRecencia (-12/-6): valor PROVISIONAL a propósito, se calibra
+  // con el harness de paso 4 sobre datos reales de producción — aquí solo se cablea el mecanismo.
+  function puntuarRecenciaPar(clavePar, historialPares, semanaISO) {
+    var ultimo = historialPares && historialPares[clavePar];
+    if (!ultimo) return 0;
+    var distancia = semanasEntre(ultimo, semanaISO);
+    if (distancia <= 1) return -8;
+    if (distancia === 2) return -4;
+    return 0;
+  }
+
+  // Repetición de PROTEÍNA CONCRETA (id, no categoría) ya en la semana en curso — el segundo
+  // "nivel de penalización" del par (plan de obra): distinto de puntuarRepeticionSemana (mira el
+  // PRINCIPAL) y de puntuarRecenciaPar (mira el PAR completo, entre semanas) — este mira solo el
+  // ingrediente proteína, aunque cambie de principal (pollo en wrap el lunes y en plancha el
+  // jueves sigue siendo "mucho pollo esta semana"). Mitad de peso que puntuarRepeticionSemana
+  // (-8×n): valor PROVISIONAL, mismo aviso de calibración en paso 4.
+  function puntuarRepeticionProteinaSemana(proteinaId, usosProteinaSemana) {
+    var n = Math.min((usosProteinaSemana && usosProteinaSemana[proteinaId]) || 0, 3);
+    return -n * 4;
+  }
+
   function estacionDelMes(mes) {
     if (mes >= 6 && mes <= 9) return 'verano';
     if (mes >= 11 || mes <= 3) return 'invierno';
@@ -848,6 +877,11 @@
     // mismo contenido que las restricciones, sin una tercera derivación divergente.
     var idsTotal = candidato.ids || componentesDeCandidato(candidato.principal, candidato.seleccionEje, candidato.complementarias).map(function (c) { return c.id; });
     var presentesIds = ctx.presentes.map(function (p) { return p.id; });
+    // par plato+proteína del candidato EN CONSTRUCCIÓN (obra paso 2, bug B): misma derivación de
+    // proteína que usará el resumen canónico persistido después (proteinaDeCandidato), para que
+    // esta señal vea exactamente el mismo par que quedará grabado en historialPares al aceptarse.
+    var proteinaCandidato = proteinaDeCandidato(candidato.principal, candidato.seleccionEje, ctx.banco).proteinaId;
+    var clavePar = candidato.principal.id + '|' + (proteinaCandidato || '-');
 
     return puntuarCuotasPendientes(idsTotal, ctx.contadorCuotas, ctx.cuotas, ctx.banco, senales.slotsRestantes)
       + puntuarCentradoBanda(candidato.kcalTotal, ctx.bandaSlot)
@@ -855,6 +889,8 @@
       + puntuarRecencia(candidato.principal.id, senales.historialPrincipales, senales.semanaISO, senales.gustasPorPrincipal)
       + puntuarNovedad(candidato.principal.id, senales.historialPrincipales)
       + puntuarRepeticionSemana(candidato.principal.id, senales.usosSemana)
+      + puntuarRecenciaPar(clavePar, senales.historialPares, senales.semanaISO)
+      + puntuarRepeticionProteinaSemana(proteinaCandidato, senales.usosProteinaSemana)
       + puntuarTemporada(candidato.principal, senales.estacion)
       + puntuarOcasion(candidato.principal, senales.ocasion)
       + puntuarRegion(candidato.principal, senales.familiaRegion)
@@ -864,6 +900,33 @@
       + puntuarFavorita(candidato.principal.id, senales.favoritas)
       + puntuarAusenciaEstructural(idsTotal, senales.familiaCompleta, presentesIds, ctx.tipoComida, senales.diaIndex, ctx.banco);
   }
+
+  // ---------------------------------------------------------------
+  // Semilla de regeneración (obra motor de menús paso 2, bug C de la auditoría: "Regenerar
+  // semana" dependía de que ALGO en el estado cambiase para dar un resultado distinto — el motor
+  // es puro y determinista por diseño, así que sin una fuente de variación explícita siempre
+  // devolvía exactamente lo mismo). PRNG clásico sin dependencias (hashFnv32 + mulberry32), CERO
+  // Math.random: mismo semillaSlot -> mismo jitter siempre, en cualquier máquina y momento.
+  // ---------------------------------------------------------------
+  function hashFnv32(str) {
+    var h = 0x811c9dc5;
+    for (var i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = (h * 0x01000193) >>> 0; }
+    return h >>> 0;
+  }
+  function mulberry32(seed) {
+    return function () {
+      seed = (seed + 0x6D2B79F5) >>> 0;
+      var t = seed;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  // EPSILON_EMPATE (PROVISIONAL, calibrable en paso 4 con el harness antes/después): el jitter
+  // solo reordena candidatos cuyo gap de score REAL es menor que esto — los casi-empates medidos
+  // en producción eran gap 0 EXACTO entre ~10 combos del mismo principal (misma banda kcal,
+  // mismas señales). Por encima de ε, lo aprendido (recencia/cuotas/favoritas/...) sigue mandando.
+  var EPSILON_EMPATE = 0.5;
 
   // ---------------------------------------------------------------
   // Elegir determinista top-N (§14 punto 4 + §15): tie-breaker TOTAL
@@ -882,8 +945,56 @@
   }
 
   function elegirTopN(candidatos, ctx, senales, n) {
-    var puntuados = candidatos.map(function (c) { return { candidato: c, score: puntuarCandidato(c, ctx, senales), idCanonico: idCanonicoCandidato(c) }; });
+    var puntuados = candidatos.map(function (c) {
+      var idCanonico = idCanonicoCandidato(c);
+      var score = puntuarCandidato(c, ctx, senales);
+      // Jitter determinista SOLO si el caller pasa semillaSlot (bug C) — sin ella, comportamiento
+      // EXACTO de antes de esta obra (ningún test viejo cambia). Mismo semillaSlot+idCanonico ->
+      // mismo número siempre: nunca Math.random, nunca depende de cuándo se ejecuta.
+      if (senales.semillaSlot != null) score += mulberry32(hashFnv32(senales.semillaSlot + '|' + idCanonico))() * EPSILON_EMPATE;
+      return { candidato: c, score: score, idCanonico: idCanonico };
+    });
     return ordenarDeterminista(puntuados).slice(0, n);
+  }
+
+  // ---------------------------------------------------------------
+  // Dedup top-N por PRINCIPAL y PROTEÍNA (obra paso 2, bug real de modo nevera: "3 opciones, 2
+  // iguales" — el top-3 por score puro podía repetir el mismo principal, o el mismo principal+
+  // proteína con una complementaria distinta, ocupando 2 de los 3 huecos con lo que la familia ve
+  // como "el mismo plato"). 3 pasadas sobre la lista YA ordenada (nunca inventa candidatos, solo
+  // decide cuáles de los ya válidos entran): (1) principal Y proteína sin repetir; (2) si aún
+  // faltan, solo principal sin repetir (proteína repetida permitida — otra técnica/complementaria
+  // ya es variedad real); (3) si aún faltan, rellena con lo que quede, en el mismo orden de score.
+  // ---------------------------------------------------------------
+  function dedupTopN(ordenados, n, banco) {
+    var elegidos = [];
+    var principalesVistos = {};
+    var proteinasVistas = {};
+    ordenados.forEach(function (p) {
+      if (elegidos.length >= n) return;
+      var principalId = p.candidato.principal.id;
+      var proteinaId = proteinaDeCandidato(p.candidato.principal, p.candidato.seleccionEje, banco).proteinaId;
+      if (estaEn(principalesVistos, principalId) || (proteinaId && estaEn(proteinasVistas, proteinaId))) return;
+      elegidos.push(p);
+      principalesVistos[principalId] = 1;
+      if (proteinaId) proteinasVistas[proteinaId] = 1;
+    });
+    if (elegidos.length < n) {
+      ordenados.forEach(function (p) {
+        if (elegidos.length >= n || elegidos.indexOf(p) !== -1) return;
+        var principalId = p.candidato.principal.id;
+        if (estaEn(principalesVistos, principalId)) return;
+        elegidos.push(p);
+        principalesVistos[principalId] = 1;
+      });
+    }
+    if (elegidos.length < n) {
+      ordenados.forEach(function (p) {
+        if (elegidos.length >= n || elegidos.indexOf(p) !== -1) return;
+        elegidos.push(p);
+      });
+    }
+    return elegidos;
   }
 
   // ---------------------------------------------------------------
@@ -1287,6 +1398,51 @@
     };
   }
 
+  // ---------------------------------------------------------------
+  // Memoria de PARES plato+proteína (obra motor de menús paso 2, bug B de la auditoría: un
+  // principal podía rotar bien pero SIEMPRE con la misma proteína concreta — p.ej. "ensalada
+  // completa" siempre con atún — porque solo había memoria a nivel de principal). Mismo espíritu
+  // que historialConPlan/usosDePlan (líneas arriba) pero a nivel del PAR: clave
+  // `principalId + '|' + (proteinaId || '-')`, proteinaId vía resumenDeMenu (derive-on-read, cubre
+  // planes guardados sin `resumen` persistido igual que el resto de la suite). Viven DESPUÉS de
+  // resumenDeMenu (no junto a sus análogos de principal) porque lo necesitan para la proteína real.
+  // ---------------------------------------------------------------
+  function historialParesConPlan(estado, plan, lunesActualISO, bancoV3, banco) {
+    var historial = {};
+    var previo = (estado && estado.historialPares) || {};
+    Object.keys(previo).forEach(function (clave) { historial[clave] = previo[clave]; });
+    if (plan && plan.dias) {
+      plan.dias.forEach(function (dia) {
+        ['comida', 'cena'].forEach(function (tipo) {
+          var slot = dia && dia[tipo];
+          if (!slot || !slot.menu || !slot.menu.principalId) return;
+          var proteinaId = resumenDeMenu(slot.menu, bancoV3, estado, banco).proteinaId;
+          historial[slot.menu.principalId + '|' + (proteinaId || '-')] = plan.semanaISO;
+        });
+      });
+    }
+    Object.keys(historial).forEach(function (clave) { if (semanasEntre(historial[clave], lunesActualISO) > HISTORIAL_SEMANAS) delete historial[clave]; });
+    return historial;
+  }
+
+  // Contador de proteína CONCRETA (id, no categoría) ya usada en los días recibidos — segundo
+  // "nivel de penalización" del par (plan de obra): a diferencia de historialParesConPlan (clave
+  // = par completo, memoria ENTRE semanas), este cuenta solo el ingrediente proteína DENTRO de la
+  // semana en curso, sin importar con qué principal — alimenta usosProteinaSemana/
+  // puntuarRepeticionProteinaSemana. Mismo derive-on-read que usosDePlan (vía resumenDeMenu).
+  function usosParesDePlan(dias, bancoV3, estado, banco) {
+    var usos = {};
+    (dias || []).forEach(function (dia) {
+      ['comida', 'cena'].forEach(function (tipo) {
+        var slot = dia && dia[tipo];
+        if (!slot || !slot.menu) return;
+        var proteinaId = resumenDeMenu(slot.menu, bancoV3, estado, banco).proteinaId;
+        if (proteinaId) usos[proteinaId] = (usos[proteinaId] || 0) + 1;
+      });
+    });
+    return usos;
+  }
+
   function contadorInicialDesdeDias(diasPrevios, bancoV3, estado, banco) {
     var contador = {};
     (diasPrevios || []).forEach(function (dia) {
@@ -1334,11 +1490,17 @@
     var contadorFritos = contadorFritosInicialDesdeDias(diasAnteriores, bancoV3, estado, banco);
     var rechazosPorPrincipal = contarRechazosPorPrincipal(estado);
     var historialPrincipales = (estado && estado.historialPrincipales) || null;
+    // Memoria de PARES plato+proteína (obra paso 2, bug B): historialPares vive en estado tal cual
+    // historialPrincipales — memoria ENTRE semanas, se archiva en app.js al pasar de semana.
+    var historialPares = (estado && estado.historialPares) || null;
     var gustasPorPrincipal = contarGustasPorPrincipal(estado);
     var cambiosPorPrincipal = contarCambiosPorPrincipal(estado);
     var estacion = estacionDelMes(new Date(semanaISO + 'T00:00:00').getMonth() + 1);
     var familiaRegion = (estado && estado.familiaRegion) || null;
     var usosSemana = usosDePlan(diasAnteriores);
+    // segundo "nivel de penalización" del par (obra paso 2): proteína CONCRETA ya usada esta
+    // semana, sin importar con qué principal — mismo patrón que usosSemana pero a nivel proteína.
+    var usosProteinaSemana = usosParesDePlan(diasAnteriores, bancoV3, estado, banco);
     var favoritas = (estado && estado.favoritas) || [];
     var dias = [];
     var nivelesRelajacionUsados = [];
@@ -1373,12 +1535,19 @@
         if (!resultado.candidatos.length) { diaActual[tipoComida] = null; return; }
 
         var slotsRestantes = Math.max(1, (7 - i) * 2);
+        // Semilla de regeneración (obra paso 2, bug C): 1 semilla determinista por slot, derivada
+        // del estado + la fecha/comida exactas — semillaRegeneracion solo cambia cuando el usuario
+        // pulsa "Regenerar semana" (app.js), así que un re-render normal no mueve nada; un
+        // "Regenerar" sí, sin tocar Math.random ni el reloj. Ver elegirTopN para el jitter real.
+        var semillaSlot = (estado.nombreFamilia || '') + '|' + semanaISO + '|' + (estado.semillaRegeneracion || 0) + '|' + fecha + '|' + tipoComida;
         var senales = {
           slotsRestantes: slotsRestantes, rechazosPorPrincipal: rechazosPorPrincipal, historialPrincipales: historialPrincipales,
-          semanaISO: semanaISO, gustasPorPrincipal: gustasPorPrincipal, usosSemana: usosSemana, estacion: estacion,
+          historialPares: historialPares,
+          semanaISO: semanaISO, gustasPorPrincipal: gustasPorPrincipal, usosSemana: usosSemana, usosProteinaSemana: usosProteinaSemana, estacion: estacion,
           ocasion: ocasionDeFecha(fecha), // por día (Fase 4), no por semana como estacion — la ventana es de fecha exacta
           familiaRegion: familiaRegion, cambiosPorPrincipal: cambiosPorPrincipal, coleDiaD: coleDiaD, coleDiaDMas1: coleDiaDMas1,
-          favoritas: favoritas, familiaCompleta: estado.familia, diaIndex: i
+          favoritas: favoritas, familiaCompleta: estado.familia, diaIndex: i,
+          semillaSlot: semillaSlot
         };
         resultado.ctxUsado.bandaSlot = resultado.banda;
         // candidatos "nuevos" (sin rastro en historialPrincipales) de ESTE slot, ya válidos
@@ -1400,6 +1569,7 @@
         actualizarContadorCuotas(contadorCuotas, resumenSlot.ids, banco);
         if (resumenSlot.tecnica === 'frito') contadorFritos.n = (contadorFritos.n || 0) + 1;
         usosSemana[menuResuelto.principalId] = (usosSemana[menuResuelto.principalId] || 0) + 1;
+        if (resumenSlot.proteinaId) usosProteinaSemana[resumenSlot.proteinaId] = (usosProteinaSemana[resumenSlot.proteinaId] || 0) + 1;
       });
 
       dias.push(diaActual);
@@ -1493,13 +1663,22 @@
 
     var coleDiaD = tipoComida === 'cena' ? ((estado.cole && estado.cole.dias && estado.cole.dias[fecha]) || null) : null;
     var coleDiaDMas1 = tipoComida === 'cena' ? ((estado.cole && estado.cole.dias && estado.cole.dias[fechaISO(fecha, 1)]) || null) : null;
+    // Semilla de regeneración (obra paso 2, bug C): mismo mecanismo que generarSemana, con
+    // '|cambiar' al final — así "otra cosa" no reproduce el MISMO jitter que se usó al generar
+    // este slot la primera vez (decorrelaciona el reordenamiento de casi-empates entre "la semana
+    // se generó así" y "el usuario pidió cambiar este plato").
+    var semillaSlot = (estado.nombreFamilia || '') + '|' + plan.semanaISO + '|' + (estado.semillaRegeneracion || 0) + '|' + fecha + '|' + tipoComida + '|cambiar';
     var senales = {
       slotsRestantes: Math.max(1, (7 - dia) * 2), rechazosPorPrincipal: contarRechazosPorPrincipal(estado),
-      historialPrincipales: (estado && estado.historialPrincipales) || null, semanaISO: plan.semanaISO,
+      historialPrincipales: (estado && estado.historialPrincipales) || null,
+      historialPares: (estado && estado.historialPares) || null,
+      semanaISO: plan.semanaISO,
       gustasPorPrincipal: contarGustasPorPrincipal(estado), usosSemana: usosDePlan(diasParaContar),
+      usosProteinaSemana: usosParesDePlan(diasParaContar, bancoV3, estado, banco),
       estacion: estacionDelMes(new Date(fecha + 'T00:00:00').getMonth() + 1), ocasion: ocasionDeFecha(fecha), familiaRegion: (estado && estado.familiaRegion) || null,
       cambiosPorPrincipal: contarCambiosPorPrincipal(estado), coleDiaD: coleDiaD, coleDiaDMas1: coleDiaDMas1,
-      favoritas: (estado && estado.favoritas) || [], familiaCompleta: estado.familia, diaIndex: dia
+      favoritas: (estado && estado.favoritas) || [], familiaCompleta: estado.familia, diaIndex: dia,
+      semillaSlot: semillaSlot
     };
 
     var ctxBase = {
@@ -1555,7 +1734,10 @@
       var candidatosOrdenadosPorDisponibilidad = rNevera.candidatos.slice().sort(function (a, b) { return a.faltantesNevera.length - b.faltantesNevera.length; });
       ctxNevera.bandaSlot = rNevera.banda;
       var puntuadosNevera = candidatosOrdenadosPorDisponibilidad.map(function (c) { return { candidato: c, score: puntuarCandidato(c, ctxNevera, senales) - c.faltantesNevera.length * 1000, idCanonico: idCanonicoCandidato(c) }; });
-      var top3Nevera = ordenarDeterminista(puntuadosNevera).slice(0, 3);
+      // dedup top-N por principal Y proteína (obra paso 2, bug real "3 opciones, 2 iguales") — el
+      // orden por disponibilidad/score ya viene resuelto en ordenarDeterminista; dedupTopN solo
+      // decide CUÁLES de esos ya-ordenados entran en las 3 tarjetas finales.
+      var top3Nevera = dedupTopN(ordenarDeterminista(puntuadosNevera), 3, banco);
       if (!top3Nevera.length) return { menu: null, opciones: [] };
       var menusNevera = top3Nevera.map(function (p) { var m = resolverMenu(p.candidato, ctxNevera); m.faltaIngrediente = p.candidato.faltantesNevera[0] || null; return m; });
       return { menu: null, opciones: menusNevera };
@@ -1819,6 +2001,9 @@
     postreDelDia: postreDelDia, resolverMenu: resolverMenu, iterarMenus: iterarMenus,
     contarRechazosPorPrincipal: contarRechazosPorPrincipal, contarGustasPorPrincipal: contarGustasPorPrincipal,
     contarCambiosPorPrincipal: contarCambiosPorPrincipal, historialConPlan: historialConPlan, usosDePlan: usosDePlan,
+    historialParesConPlan: historialParesConPlan, usosParesDePlan: usosParesDePlan,
+    puntuarRecenciaPar: puntuarRecenciaPar, puntuarRepeticionProteinaSemana: puntuarRepeticionProteinaSemana,
+    dedupTopN: dedupTopN, EPSILON_EMPATE: EPSILON_EMPATE,
     generarSemana: generarSemana, regenerarDesde: regenerarDesde, cambiarPlato: cambiarPlato, listaCompra: listaCompra,
     diaIndexDesdeFecha: diaIndexDesdeFecha,
     violaVariedad: violaVariedad, violaProteinaMismaCategoriaMismoDia: violaProteinaMismaCategoriaMismoDia,

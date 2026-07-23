@@ -41,8 +41,12 @@
   // ---------------------------------------------------------------
   // Estado
   // ---------------------------------------------------------------
+  // Versión de esquema del estado persistido (UPGRADES §6 "localStorage sin versión") — sube
+  // cuando el shape de `estado` cambie de una forma que necesite migración activa al cargar.
+  var ESQUEMA_ESTADO = 1;
+
   function estadoVacio() {
-    return { nombreFamilia: '', familiaRegion: null, familia: [], ausenciasPuntuales: {}, plan: null, planSiguiente: null, ocultas: [], favoritas: [], propias: [], compra: { marcados: [], marcadosSiguiente: [] }, valoraciones: {}, historialPrincipales: {}, cambios: {}, paresComplementariaCambiados: {}, cole: null };
+    return { nombreFamilia: '', familiaRegion: null, familia: [], ausenciasPuntuales: {}, plan: null, planSiguiente: null, ocultas: [], favoritas: [], propias: [], compra: { marcados: [], marcadosSiguiente: [] }, valoraciones: {}, historialPrincipales: {}, historialPares: {}, cambios: {}, paresComplementariaCambiados: {}, cole: null, semillaRegeneracion: 0, esquemaVersion: ESQUEMA_ESTADO };
   }
 
   function cargarEstado() {
@@ -50,7 +54,18 @@
       var raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) return estadoVacio();
       var parsed = JSON.parse(raw);
-      return Object.assign(estadoVacio(), parsed);
+      var estadoFinal = Object.assign(estadoVacio(), parsed);
+      // Versión de esquema (deuda UPGRADES §6): un estado guardado SIN esquemaVersion (legacy,
+      // pre-obra) se queda con el default de estadoVacio (=1) gracias al propio Object.assign de
+      // arriba (parsed no trae la clave -> no la pisa) — el resumen canónico del motor ya es
+      // derive-on-read (resumenDeMenu), así que hoy no hace falta ninguna migración activa. Punto
+      // de enganche para cuando sí haga falta una migración real:
+      // futuras migraciones: if (parsed.esquemaVersion < ESQUEMA_ESTADO) { ...migrar aquí...; estadoFinal.esquemaVersion = ESQUEMA_ESTADO; }
+      // Si llega una versión MAYOR que la que conoce este cliente (cliente viejo abriendo un
+      // estado ya migrado por una versión nueva de la app en otro dispositivo sincronizado): NO
+      // tocar nada, dejar el valor tal cual venga — un cliente viejo no debe machacar el progreso
+      // de la migración de uno nuevo.
+      return estadoFinal;
     } catch (e) {
       return estadoVacio();
     }
@@ -188,7 +203,12 @@
     if (!estado.plan || !estado.plan.semanaISO) { estado.planSiguiente = null; return; }
     var lunesSiguiente = E.fechaISO(estado.plan.semanaISO, 7);
     var historialTemp = E.historialConPlan(estado, estado.plan, lunesSiguiente);
-    var estadoParaSiguiente = Object.assign({}, estado, { historialPrincipales: historialTemp });
+    // Memoria de PARES (obra paso 2, bug B): mismo patrón temporal que historialTemp de arriba —
+    // incluye los pares de la semana vigente para que puntuarRecenciaPar tampoco repita en exceso
+    // de una semana a la siguiente, sin tocar estado.historialPares real (solo se archiva de
+    // verdad al pasar de semana, en asegurarPlanVigente).
+    var historialParesTemp = E.historialParesConPlan(estado, estado.plan, lunesSiguiente, BANCO, BANCO);
+    var estadoParaSiguiente = Object.assign({}, estado, { historialPrincipales: historialTemp, historialPares: historialParesTemp });
     // diaPrevio = domingo del plan vigente: la variedad dura ahora cruza la
     // frontera dom→lun (audit 2026-07-20 — antes el lunes de la semana siguiente
     // podía repetir ingredientes del domingo, visible en la tira de 14 días).
@@ -202,13 +222,24 @@
   // ---------------------------------------------------------------
   function asegurarPlanVigente() {
     if (!estado.familia.length) return;
-    var lunesActual = E.lunesDeEstaSemana(new Date());
+    // OJO: string ISO, no new Date() — pasarle el objeto Date producía "NaN-NaN-NaN" (la función
+    // concatena 'T00:00:00' a un string), con lo que la comparación de abajo SIEMPRE fallaba y
+    // esta rama de rollover corría en CADA carga: regeneraba plan+planSiguiente y vaciaba
+    // compra.marcados silenciosamente en cada apertura (bug pre-existente desde el tramo 1,
+    // enmascarado porque el motor determinista regeneraba lo mismo; la memoria de pares del
+    // paso 2 lo hizo visible al realimentar el scoring). Hallado en verificación de navegador
+    // 2026-07-23. engine.lunesDeEstaSemana acepta ahora también un Date por defensa, pero el
+    // contrato canónico es string ISO.
+    var lunesActual = E.lunesDeEstaSemana(E.fechaLocalISO(new Date()));
     if (!estado.plan || estado.plan.semanaISO !== lunesActual) {
       // tramo 1 (2026-07-17): antes de pisar el plan saliente, archivar sus
       // plantillas en el historial — alimenta la rotación entre semanas y la
       // novedad del scoring (engine.puntuarRecencia/puntuarNovedad).
       if (estado.plan && estado.plan.semanaISO) {
         estado.historialPrincipales = E.historialConPlan(estado, estado.plan, lunesActual);
+        // Memoria de PARES (obra paso 2, bug B): mismo punto de archivado que historialPrincipales
+        // — al pasar de semana, el par plato+proteína de cada slot saliente queda registrado.
+        estado.historialPares = E.historialParesConPlan(estado, estado.plan, lunesActual, BANCO, BANCO);
       }
       // poda de datos fechados ya consumidos (audit 2026-07-20): fechas anteriores
       // al lunes vigente no alimentan nada (presencia y cole solo miran el plan en
@@ -638,6 +669,11 @@
 
   function regenerarSemanaCompleta() {
     if (!estado.familia.length) { cerrarSheet(); return; }
+    // Semilla de regeneración (obra paso 2, bug C: "Regenerar" devolvía SIEMPRE lo mismo, el motor
+    // es puro y determinista por diseño). Sube SOLO aquí — el flujo explícito del botón "Regenerar
+    // semana" — nunca en generarPlanSiguiente ni en el primer render, que deben seguir siendo
+    // deterministas frente al mismo estado.
+    estado.semillaRegeneracion = (estado.semillaRegeneracion || 0) + 1;
     estado.plan = E.generarSemana(estado, BANCO, BANCO, 0, null, null, E.fechaLocalISO(new Date()));
     generarPlanSiguiente(); // datos de familia/cole cambiaron — la siguiente no puede quedarse obsoleta
     guardarEstado();

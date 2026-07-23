@@ -84,6 +84,16 @@
     // y `estado` se rebindea, se sube el estado vigente, no el capturado.
     if (window.E3Sync && window.E3Sync.getFamilyId() && remotoListo) {
       window.E3Sync.guardarRemotoDebounced(function () { return estado; });
+      // Histórico write-behind (obra motor de menús paso 3): además del blob meta/estado,
+      // congela cada semana como su propio doc plan/{semanaISO} — sustrato del histórico de 12
+      // meses (F2/F5, swipe entre semanas) que hoy no existe y no se puede rellenar hacia atrás.
+      // Aditivo, el getter serializa el estado vigente al disparar el debounce (igual que arriba);
+      // sync.js corta las escrituras que no cambian el plan.
+      if (window.E3Sync.guardarPlanHistoricoDebounced) {
+        window.E3Sync.guardarPlanHistoricoDebounced(function () {
+          return [E.serializarPlanHistorico(estado.plan), E.serializarPlanHistorico(estado.planSiguiente)];
+        });
+      }
     }
   }
 
@@ -508,6 +518,7 @@
       // y lo escribiría encima en Firestore — se cancela: el remoto es la verdad,
       // y cualquier edición posterior re-dispara su propio push.
       window.E3Sync.cancelarPendiente();
+      if (window.E3Sync.cancelarPlanHistoricoPendiente) window.E3Sync.cancelarPlanHistoricoPendiente(); // idem histórico: no escribir un plan local viejo encima del snapshot que acaba de llegar
       remotoListo = true; // también durante la demo — el gate no debe quedarse cerrado (audit 2026-07-20)
       if (modoDemo) { if (remoto) snapshotDuranteDemo = remoto; return; } // no clobbear el ejemplo; se aplica al salir
       if (remoto) {

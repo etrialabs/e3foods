@@ -187,6 +187,41 @@
     if (debounceTimer) { clearTimeout(debounceTimer); debounceTimer = null; }
   }
 
+  // Histórico write-behind (obra motor de menús paso 3, 2026-07-23): además del
+  // blob meta/estado, cada semana se congela como su propio doc plan/{semanaISO}
+  // (decisión+hechos, serializados por E.serializarPlanHistorico). ADITIVO — NO
+  // toca meta/estado; la partición completa del blob es el paso 5. Se activa cuanto
+  // antes porque el histórico solo existe desde que se escribe (no hay backfill).
+  // Las reglas §4 ya permiten write de plan/{semanaISO} a un uid autorizado
+  // (idénticas a familia/meta, que llevan meses funcionando). `ultimoPlanHistorico`
+  // corta las reescrituras sin cambios reales (un toggle de compra dispara
+  // guardarEstado pero no cambia el plan) — se pierde al recargar, así que la 1ª
+  // escritura tras cada carga puede repetir el doc idéntico: coste marginal aceptado.
+  var planHistoricoTimer = null;
+  var ultimoPlanHistorico = {}; // semanaISO -> JSON del último cuerpo escrito
+  function guardarPlanHistoricoDebounced(getPlanes) {
+    var familyId = getFamilyId();
+    if (!familyId) return;
+    if (planHistoricoTimer) clearTimeout(planHistoricoTimer);
+    planHistoricoTimer = setTimeout(function () {
+      planHistoricoTimer = null;
+      var planes = typeof getPlanes === 'function' ? getPlanes() : getPlanes;
+      (planes || []).forEach(function (plan) {
+        if (!plan || !plan.semanaISO) return;
+        var cuerpo = JSON.stringify(plan);
+        if (ultimoPlanHistorico[plan.semanaISO] === cuerpo) return; // sin cambios reales — no reescribir
+        ultimoPlanHistorico[plan.semanaISO] = cuerpo;
+        var doc = Object.assign({}, plan, { actualizadoEl: firebase.firestore.FieldValue.serverTimestamp() });
+        db.collection('families').doc(familyId).collection('plan').doc(plan.semanaISO).set(doc)
+          .catch(function (err) { console.error('[sync] guardarPlanHistorico falló', err); delete ultimoPlanHistorico[plan.semanaISO]; });
+      });
+    }, 900);
+  }
+
+  function cancelarPlanHistoricoPendiente() {
+    if (planHistoricoTimer) { clearTimeout(planHistoricoTimer); planHistoricoTimer = null; }
+  }
+
   function suscribirEstado(familyId, onChange) {
     return db.collection('families').doc(familyId).collection('meta').doc('estado')
       .onSnapshot(function (snap) {
@@ -208,6 +243,8 @@
     subirEstadoInicial: subirEstadoInicial,
     guardarRemotoDebounced: guardarRemotoDebounced,
     cancelarPendiente: cancelarPendiente,
+    guardarPlanHistoricoDebounced: guardarPlanHistoricoDebounced,
+    cancelarPlanHistoricoPendiente: cancelarPlanHistoricoPendiente,
     suscribirEstado: suscribirEstado
   };
 })();

@@ -1902,6 +1902,45 @@
   }
 
   // ---------------------------------------------------------------
+  // Serialización de una semana para el HISTÓRICO (obra motor de menús paso 3,
+  // 2026-07-23): DECISIÓN + HECHOS servidos, sin la prosa re-derivable del banco
+  // (nombre, pasos, lista de compra). El core de decisión (~400 B/menú) es el
+  // contrato honesto de lo que se sirvió esa semana; re-derivar un menú viejo
+  // contra un banco que evoluciona lo cambiaría retroactivamente, por eso se
+  // congela la decisión+hechos, no el render. Pura y null-safe (slot vacío =
+  // null) — el WRITE a Firestore (sync.js) es quien decide cuándo persistir esto.
+  // El `resumen` canónico ya lleva ids/proteinaId/categorías/técnica; kcalTotal y
+  // kcalPorComensal son el hecho servido (qué comió de verdad cada comensal).
+  // ---------------------------------------------------------------
+  function menuParaHistorico(menu) {
+    if (!menu) return null;
+    return {
+      principalId: menu.principalId,
+      seleccionEje: menu.seleccionEje || null,
+      complementarias: (menu.complementarias || []).map(function (c) { return { id: c.id, seleccionEje: c.seleccionEje || null }; }),
+      componenteExtra: menu.componenteExtra || null,
+      factorRacion: menu.factorRacion || {},
+      adaptaciones: menu.adaptaciones || [],
+      resumen: menu.resumen || null,
+      kcalTotal: menu.kcalTotal != null ? menu.kcalTotal : null,
+      kcalPorComensal: menu.kcalPorComensal || []
+    };
+  }
+  function serializarPlanHistorico(plan) {
+    if (!plan || !plan.semanaISO) return null;
+    return {
+      semanaISO: plan.semanaISO,
+      dias: (plan.dias || []).map(function (d) {
+        return {
+          fecha: d.fecha,
+          comida: menuParaHistorico(d.comida && d.comida.menu),
+          cena: menuParaHistorico(d.cena && d.cena.menu)
+        };
+      })
+    };
+  }
+
+  // ---------------------------------------------------------------
   // Previsualización de una elaboración SIN plan real detrás (pestañas
   // Recetas/Descubrir) — sustituye a "resolverPlato con la primera opción de
   // cada eje" de v2. Devuelve nombre + pasos resueltos con la 1ª opción de su
@@ -1990,6 +2029,7 @@
     resumenCuotasSemana: resumenCuotasSemana, previsualizarElaboracion: previsualizarElaboracion,
     categoriasDescubrir: categoriasDescubrir,
     resumenDeCandidato: resumenDeCandidato, resumenDeMenu: resumenDeMenu,
+    serializarPlanHistorico: serializarPlanHistorico,
     generarCombosComplementarias: generarCombosComplementarias, componentesDeCandidato: componentesDeCandidato,
     cerrarBandaKcal: cerrarBandaKcal, generarCandidatosSlot: generarCandidatosSlot,
     estacionDelMes: estacionDelMes, puntuarCandidato: puntuarCandidato, puntuarSalubridadTecnica: puntuarSalubridadTecnica,

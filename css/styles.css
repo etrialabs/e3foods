@@ -1103,6 +1103,15 @@ body.sheet-open { overflow: hidden; }
 .cp-grupo-titulo i { color: var(--gold); }
 .cp-lista { background: var(--panel); border-radius: 18px; padding: 2px 16px; box-shadow: 0 4px 14px -10px rgba(26,23,18,.3); }
 
+/* Despensa real, desplegable, al final de Compra (Roger 2026-07-23) — checklist "¿lo tengo en
+   casa?" (staples + ingrediente base), no cuenta para el contador de pendientes de arriba. */
+.cp-despensa { margin-top: 20px; }
+.cp-despensa summary { display: flex; align-items: center; min-height: 44px; font-size: 13px; font-weight: 800; letter-spacing: .8px; text-transform: uppercase; color: var(--soft); cursor: pointer; list-style: none; }
+.cp-despensa summary::-webkit-details-marker { display: none; }
+.cp-despensa summary::after { content: '\2304'; margin-left: auto; font-size: 16px; }
+.cp-despensa[open] summary::after { content: '\2303'; }
+.cp-despensa .cp-lista { margin-top: 6px; }
+
 /* ---------------------------------------------------------------
    Familia — lista de miembros + ficha a pantalla completa (Roger
    2026-07-19, handoff Claude Design). La ficha reutiliza .rv-flotante/

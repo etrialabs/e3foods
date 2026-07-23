@@ -868,21 +868,24 @@
   // cómo se cuenta la cuota. Solo agrupa la MISMA lista real (E.listaCompra); "Semana que viene"
   // (3er segmento) se retira de esta pantalla por decisión de Roger 2026-07-19, pero
   // estado.compra.marcadosSiguiente y generarPlanSiguiente() no se tocan.
+  // 'otros' (Roger 2026-07-23: antes 'despensa' — colisionaba de nombre con la despensa REAL
+  // de abajo, el checklist "¿lo tengo en casa?". Estos sí son cantidad real a comprar
+  // (legumbre/cereal/tubérculo sueltos, ej. lentejas/arroz/patata), no un recordatorio).
   var GRUPO_COMPRA = {
     'carne-blanca': 'carne', 'carne-roja': 'carne',
     'pescado-blanco': 'pescado', 'pescado-azul': 'pescado', marisco: 'pescado',
     verdura: 'verdura', fruta: 'verdura',
-    legumbre: 'despensa', cereal: 'despensa', tuberculo: 'despensa', otro: 'despensa',
+    legumbre: 'otros', cereal: 'otros', tuberculo: 'otros', otro: 'otros',
     huevo: 'frio', lacteo: 'frio'
   };
   var GRUPOS_COMPRA_INFO = {
     carne: { nombre: 'Carne', icono: 'beef' },
     pescado: { nombre: 'Pescado', icono: 'fish' },
     verdura: { nombre: 'Frutas y verduras', icono: 'carrot' },
-    despensa: { nombre: 'Despensa', icono: 'wheat' },
+    otros: { nombre: 'Otros', icono: 'wheat' },
     frio: { nombre: 'Frío', icono: 'snowflake' }
   };
-  var ORDEN_GRUPO_COMPRA = ['carne', 'pescado', 'verdura', 'despensa', 'frio'];
+  var ORDEN_GRUPO_COMPRA = ['carne', 'pescado', 'verdura', 'otros', 'frio'];
 
   // ---------------------------------------------------------------
   // COMPRA — segmentado Hoy/Próximos 7 días + grupos Frescos/Despensa/Frío
@@ -896,13 +899,20 @@
     // Pasadas las 16h, "Compra hoy" ya no necesita ingredientes de comida (Roger 2026-07-22) —
     // mismo umbral que comidaProximaPorHora (app.js) y saludoHora (arriba), real reloj del navegador.
     var soloCena = rango === 'hoy' && new Date().getHours() >= 16;
-    var items = E.listaCompra(estado, plan, rango === 'hoy' ? 'hoy' : 'semana', banco, null, soloCena);
+    var todosLosItems = E.listaCompra(estado, plan, rango === 'hoy' ? 'hoy' : 'semana', banco, null, soloCena);
+    // Despensa real (Roger 2026-07-23): categoria==='despensa' son los staples + ingrediente
+    // base (aceite, sal, mayonesa, cebolla, leche...) — gramos siempre null, "¿lo tengo en
+    // casa?", NO cantidad real a comprar. Fuera del contador de pendientes y de los grupos de
+    // arriba; van en su propia sección desplegable al final (no son lo mismo que lentejas/
+    // arroz/patata sueltos, que SÍ son compra real aunque compartieran nombre de grupo antes).
+    var itemsDespensa = todosLosItems.filter(function (i) { return i.categoria === 'despensa'; });
+    var items = todosLosItems.filter(function (i) { return i.categoria !== 'despensa'; });
     var marcadosN = items.filter(function (i) { return i.marcado; }).length;
     var pct = items.length ? Math.round(marcadosN / items.length * 100) : 0;
 
     var porGrupo = {};
     items.forEach(function (item) {
-      var g = GRUPO_COMPRA[item.categoria] || 'despensa';
+      var g = GRUPO_COMPRA[item.categoria] || 'otros';
       if (!porGrupo[g]) porGrupo[g] = [];
       porGrupo[g].push(item);
     });
@@ -914,6 +924,11 @@
         '<div class="cp-lista"><ul class="lista-check">' + porGrupo[g].map(filaCompraHtml).join('') + '</ul></div>' +
         '</div>';
     }).join('');
+
+    var despensaHtml = itemsDespensa.length ? '<details class="cp-despensa">' +
+      '<summary>Revisa si te falta algo de despensa también</summary>' +
+      '<div class="cp-lista"><ul class="lista-check">' + itemsDespensa.map(filaCompraHtml).join('') + '</ul></div>' +
+      '</details>' : '';
 
     return '<div class="rc-cabecera">' +
       '<div><h1 class="rc-titulo">Compra</h1><p class="cp-resumen">' + marcadosN + ' de ' + items.length + ' en el carro</p></div>' +
@@ -927,6 +942,7 @@
       '<button type="button" class="cp-seg-btn' + (rango === '7d' ? ' cp-seg-btn-activo' : '') + '" data-action="segmento-compra" data-rango="7d" aria-pressed="' + (rango === '7d') + '">Próximos 7 días</button>' +
       '</div>' +
       (items.length ? gruposHtml : '<p class="card-msg">Nada pendiente de comprar.</p>') +
+      despensaHtml +
       '</div>';
   }
 

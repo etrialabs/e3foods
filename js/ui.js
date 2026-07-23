@@ -468,8 +468,8 @@
   // un swap inventado. Línea discreta + link al informe completo — decisión
   // del council del 18/19-jul: "respuesta del día primero, informe como
   // línea al final", no un bloque de chips en el cuerpo principal.
-  function renderAvisoEquilibrio(plan, banco) {
-    var resumen = E.resumenCuotasSemana(plan, banco);
+  function renderAvisoEquilibrio(plan, banco, estado) {
+    var resumen = E.resumenCuotasSemana(plan, banco, estado);
     var fallo = resumen.filter(function (r) { return !r.cumplido && ETIQUETA_CUOTA[r.categoria]; })[0];
     var texto = !fallo
       ? 'Semana equilibrada: las 5 categorías están al día.'
@@ -599,7 +599,7 @@
     return renderAppBar() +
       '<div class="vista-body ph-body">' +
       saludoHtml + tiraHtml + pantryHtml + pagerHtml + segHtml + coleCardHtml + proximosHtml +
-      renderAvisoEquilibrio(estado.plan, banco) +
+      renderAvisoEquilibrio(estado.plan, banco, estado) +
       '</div>';
   }
 
@@ -609,8 +609,8 @@
   // valoración externa de producto (2026-07-16); el pill de arriba ya estaba
   // pintado sin acción — esta es esa acción.
   // ---------------------------------------------------------------
-  function renderEquilibrioSemana(plan, banco) {
-    var resumen = E.resumenCuotasSemana(plan, banco);
+  function renderEquilibrioSemana(plan, banco, estado) {
+    var resumen = E.resumenCuotasSemana(plan, banco, estado);
     if (!resumen.length) return '';
     var cumplidas = resumen.filter(function (r) { return r.cumplido; }).length;
     var filas = resumen.map(function (r) {
@@ -654,7 +654,7 @@
     var diasHtml = plan.dias.map(function (d, i) { return renderResumenDia(estado, banco, plan, i, hoyIdx); }).join('');
     return sheetHead('Resumen de la semana') +
       '<div class="sheet-body">' +
-      renderEquilibrioSemana(plan, banco) +
+      renderEquilibrioSemana(plan, banco, estado) +
       '<div class="resumen-semana-lista">' + diasHtml + '</div>' +
       '</div>';
   }

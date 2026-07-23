@@ -942,8 +942,10 @@
     if (slot && slot.menu) {
       var presentesNuevos = E.presentesEnComida(estado, fecha, dia, tipoComida);
       var menuReescalado = E.reescalarMenuParaPresentes(estado, BANCO, BANCO, slot.menu, presentesNuevos, tipoComida, dia, E.fechaLocalISO(new Date()), null);
+      // el menú reescalado trae su propio `resumen` canónico (resolverMenu) — ya no hay que
+      // re-colgarle a mano la decoración del menú viejo
       plan.dias[dia][tipoComida] = menuReescalado
-        ? { menu: Object.assign({}, menuReescalado, { categoriaProteina: slot.menu.categoriaProteina, tecnicaPrincipal: slot.menu.tecnicaPrincipal }) }
+        ? { menu: menuReescalado }
         : null; // nadie presente -> hueco vacío, igual que generarSemana
     }
     guardarEstado();

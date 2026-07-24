@@ -54,6 +54,22 @@
 
   var MAX_COMPLEMENTARIAS_POR_MENU = 2; // proteína ya cubierta por principal; hidrato+verdura como mucho (borrador §15 punto 2, límite duro)
 
+  // Ingredientes que YA SON pan o masa de pan (obra motor 4b, 2026-07-24). Fuente ÚNICA para las
+  // dos reglas que necesitan saberlo: (a) no ofrecer pan de acompañamiento a un plato cuyo propio
+  // hidrato ya es pan/masa — "pan sobre pan", hallazgo real de Roger con "Wrap casero" + barra de
+  // pan de 240 g; (b) la señal del cole (TIPOS_HIDRATO_COLE.pan), que antes llevaba una copia a
+  // mano de esta misma lista.
+  // Por qué una lista y no `ingrediente.categoria`: los 8 son categoria 'cereal' en el banco,
+  // indistinguibles de arroz o pasta. El banco DECLARA una categoría 'pan' en `grupos.hidrato`
+  // que ningún ingrediente usa — arreglar eso (mover los 8 a categoria 'pan') es el fix de fondo,
+  // pero arrastra CATEGORIAS_VEGETARIANA_OK y la agrupación de la lista de la compra: es cambio
+  // de datos con cascada, no cabe en este fix acotado. Anotado en UPGRADES §6.
+  // Mientras tanto, esta lista queda cubierta por el test de listas mágicas (todo id debe existir
+  // en el banco), misma mitigación que IDS_CERDO_CONOCIDOS.
+  var IDS_PAN_Y_MASA = ['pan', 'pan-integral', 'pan-pita', 'pan-hamburguesa', 'tortilla-trigo', 'masa-pizza', 'masa-empanada', 'masa-empanadilla'];
+  var esPanOMasa = {};
+  IDS_PAN_Y_MASA.forEach(function (id) { esPanOMasa[id] = 1; });
+
   // ---------------------------------------------------------------
   // Utilidades (idénticas a engine.js v2 — sin cambios, se re-declaran aquí
   // para que este fichero sea autocontenido durante la obra; se deduplican
@@ -618,9 +634,14 @@
     if (r.kcalTotal > banda.max) return { viable: false, motivo: 'excede banda incluso al factor mínimo (' + r.kcalTotal + '>' + banda.max + ')' };
 
     // corto incluso escalando al máximo — probar el único extra permitido (pan), salvo que el
-    // menú ya tenga pan como hidrato (no duplicar el mismo ingrediente como "extra")
-    var yaTienePan = componentes.some(function (c) { return c.id === ID_PAN_EXTRA; });
-    if (yaTienePan) return { viable: false, motivo: 'corto (' + r.kcalTotal + '<' + banda.min + ') y ya incluye pan, sin más extra posible' };
+    // menú YA lleve pan o masa de pan como hidrato propio. Antes solo se comprobaba el id exacto
+    // 'pan', así que una pizza, un wrap o una empanada recibían una barra de pan encima: 114
+    // candidatos absurdos medidos (45 comida + 69 cena), y el caso real que lo destapó fue un
+    // "Wrap casero" con 240 g de pan añadidos (Roger, 2026-07-23). Cuenta también el pan que
+    // llega como COMPLEMENTARIA (pan-mojar/pan-tostado en gambas al ajillo, almejas...), no solo
+    // el del principal — de ahí que se mire la lista completa de componentes ya resueltos.
+    var yaTienePan = componentes.some(function (c) { return !!esPanOMasa[c.id]; });
+    if (yaTienePan) return { viable: false, motivo: 'corto (' + r.kcalTotal + '<' + banda.min + ') y el menú ya lleva pan/masa, sin más extra posible' };
     // El extra se decide DESPUÉS de todos los checks de restricciones, así que se colaba sin
     // pasar por ninguno: con el pan vetado (alergia/celiaquía) 358 de 1.480 candidatos (24%) lo
     // añadían igual (obra motor paso 4c, 2026-07-24 — fuga no documentada en el plan, hallada al
@@ -850,7 +871,11 @@
   // el malus no debe penalizar la cena de los adultos.
   var TIPOS_HIDRATO_COLE = {
     pasta: { pasta: 1, fideos: 1, 'placas-lasana': 1 }, arroz: { arroz: 1 }, patata: { patata: 1, boniato: 1 },
-    pan: { pan: 1, 'pan-integral': 1, 'pan-pita': 1, 'pan-hamburguesa': 1, 'tortilla-trigo': 1, 'masa-pizza': 1, 'masa-empanadilla': 1 }
+    // pan: derivado de IDS_PAN_Y_MASA (fuente única, declarada arriba) — antes era una copia a
+    // mano de la misma lista a la que le faltaba `masa-empanada`: el menú del cole con pan no
+    // penalizaba una empanada en la cena pero sí una empanadilla. Efecto lateral consciente de
+    // unificar las dos listas en una, no un cambio suelto de la señal del cole.
+    pan: esPanOMasa
   };
   function puntuarCole(idsCandidato, coleDiaD, coleDiaDMas1, presentes, banco) {
     var hayMenorPresente = (presentes || []).some(function (m) { return edadEnAnios(m.anioNacimiento) < EDAD_MENOR; });
@@ -2090,6 +2115,7 @@
     lunesDeEstaSemana: lunesDeEstaSemana, esFinDeSemana: esFinDeSemana, vetosDe: vetosDe,
     mesDeFecha: mesDeFecha, disponibleEnMes: disponibleEnMes,
     IDS_MERCURIO_ALTO: IDS_MERCURIO_ALTO, EDAD_MERCURIO: EDAD_MERCURIO, IDS_CERDO_CONOCIDOS: IDS_CERDO_CONOCIDOS,
+    IDS_PAN_Y_MASA: IDS_PAN_Y_MASA,
     necesidadKcalDia: necesidadKcalDia, objetivoBandaPersona: objetivoBandaPersona,
     bandaAgregadaMesa: bandaAgregadaMesa, capitaliza: capitaliza,
     excluidoPorCole: excluidoPorCole, presentesEnComida: presentesEnComida,

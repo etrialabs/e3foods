@@ -277,22 +277,45 @@
     return encontrada;
   }
 
+  // ¿Son viables los ingredientes FIJOS de una elaboración (principal o complementaria) para esta
+  // mesa? Un fijo NO tiene alternativa: si está vetado, fuera de temporada, o excluido por la
+  // dieta de alguien presente, la elaboración entera es inviable — el mecanismo de mesa mixta
+  // (calcularAdaptaciones) solo sabe sustituir el EJE paramétrico de proteína, nunca un fijo.
+  // Obra motor paso 4c (2026-07-24): esta función centraliza el chequeo que antes estaba
+  // duplicado a medias — los principales comprobaban vetos+temporada en sus fijos pero NO la
+  // dieta (pasta-bolonesa, con carne picada FIJA, se ofrecía a un vegetariano: 67 candidatos
+  // reproducidos), y las complementarias no comprobaban NADA en sus fijos (veto a tomate →
+  // 307/1324 candidatos, 23%, colaban tomate vía los fijos de ensalada-mixta).
+  function fijosViablesParaMesa(elaboracion, presentes, vetosUnion, banco, mes) {
+    var fijos = elaboracion.ingredientes.fijos || {};
+    return Object.keys(fijos).every(function (g) {
+      return (fijos[g] || []).every(function (id) {
+        if (estaEn(vetosUnion, id) || !disponibleEnMes(banco, id, mes)) return false;
+        var ing = banco.ingredientes[id];
+        if (!ing) return true; // id desconocido: no es este el sitio para fallar (validar_elaboraciones lo cubre)
+        return (presentes || []).every(function (m) {
+          return !categoriaExcluidaPorDieta(ing.categoria, m.dieta || 'omnivora', id);
+        });
+      });
+    });
+  }
+
   // ¿Es esta elaboración PRINCIPAL/MIXTA viable para la mesa (vetos + dieta + temporada),
   // considerando solo su eje paramétrico (si lo tiene) y sus ids fijos?
   function elaboracionViableParaMesa(elaboracion, presentes, vetosUnion, banco, mes) {
     // restricción de vetos + temporada: al menos una opción del eje paramétrico (si existe) debe
     // sobrevivir a los vetos Y estar en temporada; los ids fijos NO tienen alternativa — si alguno
-    // está vetado o fuera de temporada, la elaboración entera es inviable para esta mesa/mes.
+    // está vetado, fuera de temporada o prohibido por la dieta de alguien, la elaboración entera
+    // es inviable para esta mesa/mes.
     if (elaboracion.ingredientes.eje) {
       var quedaAlguna = elaboracion.ingredientes.opciones.some(function (id) { return !estaEn(vetosUnion, id) && disponibleEnMes(banco, id, mes); });
       if (!quedaAlguna) return false;
     }
-    var fijosOk = Object.keys(elaboracion.ingredientes.fijos || {}).every(function (g) {
-      return elaboracion.ingredientes.fijos[g].every(function (id) { return !estaEn(vetosUnion, id) && disponibleEnMes(banco, id, mes); });
-    });
-    if (!fijosOk) return false;
+    if (!fijosViablesParaMesa(elaboracion, presentes, vetosUnion, banco, mes)) return false;
 
-    // dieta/mesa mixta: solo aplica si el grupo paramétrico es 'proteina' (única adaptación soportada, §14 confirmado)
+    // dieta sobre el EJE: solo aplica si el grupo paramétrico es 'proteina' — es el único eje que
+    // el motor sabe adaptar por comensal (mesa mixta, foso #1). Que salga cerdo en un plato de eje
+    // proteína con un comensal sin-cerdo NO es un fallo: ese comensal recibe su adaptación.
     if (elaboracion.ingredientes.eje !== 'proteina') return true;
     return (presentes || []).every(function (m) {
       var dieta = m.dieta || 'omnivora';
@@ -445,12 +468,18 @@
     return (complementaria.ingredientes.opciones || []).filter(function (id) { return !estaEn(vetosUnion, id) && disponibleEnMes(banco, id, mes); });
   }
 
-  function generarCombosComplementarias(bancoV3, principalId, gruposFaltantes, vetosUnion, mes) {
+  function generarCombosComplementarias(bancoV3, principalId, gruposFaltantes, vetosUnion, mes, presentes) {
     if (!gruposFaltantes.length) return [[]];
     var porGrupo = gruposFaltantes.map(function (grupo) {
       var compatibles = complementariasCompatibles(bancoV3, principalId, grupo);
       var opciones = [];
       compatibles.forEach(function (comp) {
+        // Los FIJOS de la complementaria (lechuga+tomate de ensalada-mixta, zanahoria de
+        // coleslaw) no tenían NINGÚN chequeo: se colaban aunque estuvieran vetados por una
+        // alergia (obra motor paso 4c, 2026-07-24 — 23% de candidatos con un veto real).
+        // Mismo criterio que los principales: si un fijo no es viable, la complementaria
+        // entera se descarta, no se "arregla" (un fijo no tiene alternativa que elegir).
+        if (!fijosViablesParaMesa(comp, presentes, vetosUnion, bancoV3, mes)) return;
         opcionesDeComplementaria(comp, vetosUnion, bancoV3, mes).forEach(function (id) { opciones.push({ elaboracion: comp, seleccionEje: id }); });
       });
       return opciones;
@@ -579,7 +608,7 @@
     return { kcalTotal: Math.round(kcalTotal), factorRacion: factorRacion };
   }
 
-  function cerrarBandaKcal(principal, seleccionEje, complementarias, presentes, banda, bandaPersonaFn, banco, bancoV3) {
+  function cerrarBandaKcal(principal, seleccionEje, complementarias, presentes, banda, bandaPersonaFn, banco, bancoV3, vetosUnion) {
     var componentes = componentesDeCandidato(principal, seleccionEje, complementarias);
     var kcalAlinio = kcalAlinioPorRacion(principal, complementarias, bancoV3);
     var r = calcularKcalYFactor(componentes, presentes, bandaPersonaFn, banco, bancoV3, kcalAlinio);
@@ -592,6 +621,12 @@
     // menú ya tenga pan como hidrato (no duplicar el mismo ingrediente como "extra")
     var yaTienePan = componentes.some(function (c) { return c.id === ID_PAN_EXTRA; });
     if (yaTienePan) return { viable: false, motivo: 'corto (' + r.kcalTotal + '<' + banda.min + ') y ya incluye pan, sin más extra posible' };
+    // El extra se decide DESPUÉS de todos los checks de restricciones, así que se colaba sin
+    // pasar por ninguno: con el pan vetado (alergia/celiaquía) 358 de 1.480 candidatos (24%) lo
+    // añadían igual (obra motor paso 4c, 2026-07-24 — fuga no documentada en el plan, hallada al
+    // auditar la de complementarias). Un veto NUNCA se relaja: sin pan disponible, el candidato
+    // simplemente no cierra banda y se descarta, como cualquier otro que no llega al mínimo.
+    if (vetosUnion && estaEn(vetosUnion, ID_PAN_EXTRA)) return { viable: false, motivo: 'corto (' + r.kcalTotal + '<' + banda.min + ') y el pan extra está vetado en esta mesa' };
 
     var componentesConExtra = componentes.concat([{ id: ID_PAN_EXTRA, grupo: 'hidrato', tecnicaCoccion: null, acabado: null }]);
     var r2 = calcularKcalYFactor(componentesConExtra, presentes, bandaPersonaFn, banco, bancoV3, kcalAlinio);
@@ -638,7 +673,7 @@
         if (violaCuotaFritos(principal.tecnicaCoccion, ctx.contadorFritos, ctx.cuotaFritos)) { traceDescarta(trace, principal.id, 'cuota máxima de fritos'); return; }
 
         var gruposFaltantes = ['proteina', 'hidrato', 'verdura'].filter(function (g) { return principal.grupos.indexOf(g) === -1; });
-        var combos = generarCombosComplementarias(ctx.bancoV3, principal.id, gruposFaltantes, ctx.vetosUnion, ctx.mes);
+        var combos = generarCombosComplementarias(ctx.bancoV3, principal.id, gruposFaltantes, ctx.vetosUnion, ctx.mes, ctx.presentes);
 
         combos.forEach(function (combo) {
           // ids TOTALES del candidato (eje + fijos del principal + eje Y FIJOS de cada
@@ -659,7 +694,7 @@
             if (faltantesNevera.length > 1) { traceDescarta(trace, principal.id, 'nevera: faltan ' + faltantesNevera.length + ' ingredientes'); return; }
           }
 
-          var cierre = cerrarBandaKcal(principal, opcionEje, combo, ctx.presentes, banda, bandaPersonaFn, ctx.banco, ctx.bancoV3);
+          var cierre = cerrarBandaKcal(principal, opcionEje, combo, ctx.presentes, banda, bandaPersonaFn, ctx.banco, ctx.bancoV3, ctx.vetosUnion);
           if (!cierre.viable) { traceDescarta(trace, principal.id, 'banda kcal: ' + cierre.motivo); return; }
 
           traceSobrevive(trace);
@@ -1278,7 +1313,7 @@
     }
     var banda = bandaAgregadaMesa(presentesNuevos, tipoComida, esFinde, fechaReferencia, margenKcal);
     var bandaPersonaFn = function (p) { return objetivoBandaPersona(p, tipoComida, esFinde, fechaReferencia, margenKcal); };
-    var cierre = cerrarBandaKcal(principal, menuActual.seleccionEje, complementarias, presentesNuevos, banda, bandaPersonaFn, banco, bancoV3);
+    var cierre = cerrarBandaKcal(principal, menuActual.seleccionEje, complementarias, presentesNuevos, banda, bandaPersonaFn, banco, bancoV3, vetosDe(presentesNuevos, fechaReferencia));
     var kcalTotal, factorRacion, componenteExtra;
     if (cierre.viable) {
       kcalTotal = cierre.kcalTotal; factorRacion = cierre.factorRacion; componenteExtra = cierre.componenteExtra;
@@ -1700,13 +1735,13 @@
       var ctxSolo = Object.assign({}, ctxBase, { usadosHoy: {}, usadosAyer: {} });
       var banda = bandaAgregadaMesa(presentes, tipoComida, esFinde, fechaReferencia, MARGEN_KCAL_DEFECTO);
       var bandaPersonaFn = function (p) { return objetivoBandaPersona(p, tipoComida, esFinde, fechaReferencia, MARGEN_KCAL_DEFECTO); };
-      var combos = generarCombosComplementarias(bancoV3, principalActual.id, gruposFaltantes, ctxBase.vetosUnion, ctxBase.mes);
+      var combos = generarCombosComplementarias(bancoV3, principalActual.id, gruposFaltantes, ctxBase.vetosUnion, ctxBase.mes, presentes);
       var idComboActual = (slotActual.menu.complementarias || []).map(function (c) { return c.seleccionEje; }).sort().join(',');
       var candidatosSolo = [];
       combos.forEach(function (combo) {
         var estructura = verificarEstructura(principalActual, combo.map(function (c) { return { elaboracion: c.elaboracion }; }));
         if (!estructura.valido) return;
-        var cierre = cerrarBandaKcal(principalActual, slotActual.menu.seleccionEje, combo, presentes, banda, bandaPersonaFn, banco, bancoV3);
+        var cierre = cerrarBandaKcal(principalActual, slotActual.menu.seleccionEje, combo, presentes, banda, bandaPersonaFn, banco, bancoV3, ctxBase.vetosUnion);
         if (!cierre.viable) return;
         var idCombo = combo.map(function (c) { return c.seleccionEje; }).sort().join(',');
         candidatosSolo.push({ principal: principalActual, seleccionEje: slotActual.menu.seleccionEje, complementarias: combo, kcalTotal: cierre.kcalTotal, factorRacion: cierre.factorRacion, componenteExtra: cierre.componenteExtra, faltantesNevera: [], idCombo: idCombo });
@@ -2062,7 +2097,7 @@
     elaboracionPorId: elaboracionPorId, principalesMixtas: principalesMixtas,
     complementariasCompatibles: complementariasCompatibles,
     categoriaExcluidaPorDieta: categoriaExcluidaPorDieta, opcionAptaParaDieta: opcionAptaParaDieta,
-    elaboracionViableParaMesa: elaboracionViableParaMesa, calcularAdaptaciones: calcularAdaptaciones,
+    elaboracionViableParaMesa: elaboracionViableParaMesa, fijosViablesParaMesa: fijosViablesParaMesa, calcularAdaptaciones: calcularAdaptaciones,
     kcalIngredienteConTecnica: kcalIngredienteConTecnica, kcalAlinioPorRacion: kcalAlinioPorRacion,
     calcularKcalYFactor: calcularKcalYFactor, reescalarMenuParaPresentes: reescalarMenuParaPresentes,
     redondearCantidad: redondearCantidad

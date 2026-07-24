@@ -6430,7 +6430,7 @@
       "tematica": "Pescado y marisco",
       "ocasion": null,
       "ninos": true,
-      "foto": null,
+      "foto": "assets/banco-fotos/sepia-plancha.jpg",
       "pasos": [
         "Limpiar y cortar la sepia en trozos o tiras.",
         "Salpimentar y marcar a la plancha con un chorrito de aceite muy caliente, 3-4 minutos.",

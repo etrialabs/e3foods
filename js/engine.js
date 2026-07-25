@@ -31,7 +31,17 @@
   var FACTOR_ACTIVIDAD_BANDA = { baja: 1.0, media: 1.2, alta: 1.4 };
   var EDAD_MENOR = 12;
 
-  var FACTOR_PERSONA_MIN = 0.75, FACTOR_PERSONA_MAX = 1.25; // borrador §12 INGREDIENTES: escalado por persona
+  // Escalado de ración por persona. MAX subido de 1.25 a 1.35 (Roger, 2026-07-25): con 1.25 el motor
+  // se quedaba corto en cenas normales y tiraba de pan como comodín — 40% de los menús acababan con
+  // pan extra y TODOS ellos ya tenían el factor al tope (medido). Filosofía de Roger, textual: "si
+  // una persona necesita xxxx calorías al día y hacemos una comida razonable, la cena debería ser lo
+  // que le falta; y si una cena ligera no cabe, pues no cabe y se guarda para una cena de fin de
+  // semana con comida más dura". Es decir: primero se sirve más de lo que YA hay en el plato; el pan
+  // es un remate acotado, no el mecanismo para cuadrar; y si aun así no llega, se cambia de plato.
+  // La banda NO se toca: el research (01_Research/2026-07-20_RESEARCH_REPARTO_KCAL_COMIDA_CENA.md)
+  // concluye que la cena al 30% "clava la realidad" medida por ANIBES (30,5%) y el rango oficial es
+  // 25-30% — el problema no era pedir demasiado, era elegir platos ligeros para huecos que no llenan.
+  var FACTOR_PERSONA_MIN = 0.75, FACTOR_PERSONA_MAX = 1.35;
 
   var CATEGORIAS_VEGETARIANA_OK = { legumbre: 1, huevo: 1, lacteo: 1, cereal: 1, tuberculo: 1, verdura: 1, fruta: 1, otro: 1 };
   var CATEGORIAS_SIN_PESCADO_EXCLUIDAS = { 'pescado-blanco': 1, 'pescado-azul': 1, marisco: 1 };
@@ -608,25 +618,33 @@
     }, 0);
   }
 
+  // `comp.noEscalar` (obra 2026-07-25): el pan de remate son DOS REBANADAS, no una ración que crece
+  // con el resto del plato. Antes se multiplicaba por el factor de persona igual que la carne o el
+  // arroz, así que con factor al tope se servían ~2,7 rebanadas y subiendo. Decisión de Roger: "extra
+  // de dos rebanadas de pan como máximo; más pan ya es un exceso o una elaboración con pan". Se
+  // calcula aparte del bloque escalable y se suma tal cual.
   function calcularKcalYFactor(componentes, presentes, bandaPersonaFn, banco, bancoV3, kcalAlinio) {
     var factorRacion = {};
     var kcalTotal = 0;
     presentes.forEach(function (persona) {
       var esNino = edadEnAnios(persona.anioNacimiento) < EDAD_MENOR;
       var kcalBase = kcalAlinio || 0;
+      var kcalFija = 0; // lo que NO escala (pan de remate)
       componentes.forEach(function (comp) {
         var ing = banco.ingredientes[comp.id];
         if (!ing) return;
         var gramos = esNino ? ing.racion_nino_g : ing.racion_adulto_g;
         var kcal100 = kcalIngredienteConTecnica(ing, comp.grupo, comp.tecnicaCoccion, comp.acabado, bancoV3);
-        kcalBase += gramos * kcal100 / 100;
+        if (comp.noEscalar) kcalFija += gramos * kcal100 / 100;
+        else kcalBase += gramos * kcal100 / 100;
       });
       var bandaPersona = bandaPersonaFn(persona);
       var objetivoPersona = bandaPersona ? (bandaPersona[0] + bandaPersona[1]) / 2 : kcalBase;
-      var factorNecesario = kcalBase > 0 ? objetivoPersona / kcalBase : 1;
+      // el factor busca cubrir lo que falta DESPUÉS de contar el pan fijo
+      var factorNecesario = kcalBase > 0 ? Math.max(0, objetivoPersona - kcalFija) / kcalBase : 1;
       var factorClamp = Math.min(FACTOR_PERSONA_MAX, Math.max(FACTOR_PERSONA_MIN, factorNecesario));
       factorRacion[persona.id] = factorClamp;
-      kcalTotal += kcalBase * factorClamp;
+      kcalTotal += kcalBase * factorClamp + kcalFija;
     });
     return { kcalTotal: Math.round(kcalTotal), factorRacion: factorRacion };
   }
@@ -656,7 +674,7 @@
     // simplemente no cierra banda y se descarta, como cualquier otro que no llega al mínimo.
     if (vetosUnion && estaEn(vetosUnion, ID_PAN_EXTRA)) return { viable: false, motivo: 'corto (' + r.kcalTotal + '<' + banda.min + ') y el pan extra está vetado en esta mesa' };
 
-    var componentesConExtra = componentes.concat([{ id: ID_PAN_EXTRA, grupo: 'hidrato', tecnicaCoccion: null, acabado: null }]);
+    var componentesConExtra = componentes.concat([{ id: ID_PAN_EXTRA, grupo: 'hidrato', tecnicaCoccion: null, acabado: null, noEscalar: true }]);
     var r2 = calcularKcalYFactor(componentesConExtra, presentes, bandaPersonaFn, banco, bancoV3, kcalAlinio);
     if (r2.kcalTotal >= banda.min && r2.kcalTotal <= banda.max) {
       return { viable: true, kcalTotal: r2.kcalTotal, factorRacion: r2.factorRacion, componenteExtra: ID_PAN_EXTRA };
@@ -1293,7 +1311,7 @@
     adaptaciones.forEach(function (a) { mapaAdaptaciones[a.miembroId] = a; });
 
     var componentes = componentesDeCandidato(candidato.principal, candidato.seleccionEje, candidato.complementarias);
-    if (candidato.componenteExtra) componentes = componentes.concat([{ id: candidato.componenteExtra, grupo: 'hidrato', tecnicaCoccion: null, acabado: null }]);
+    if (candidato.componenteExtra) componentes = componentes.concat([{ id: candidato.componenteExtra, grupo: 'hidrato', tecnicaCoccion: null, acabado: null, noEscalar: true }]);
 
     var kcalAlinioBase = kcalAlinioPorRacion(candidato.principal, candidato.complementarias, bancoV3);
 
@@ -1311,7 +1329,9 @@
         var ing = banco.ingredientes[idEfectivo];
         if (!ing) return;
         var gramosBase = esNino ? ing.racion_nino_g : ing.racion_adulto_g;
-        var gramos = gramosBase * factor;
+        // el pan de remate NO escala con el resto del plato (ver `noEscalar` en calcularKcalYFactor):
+        // dos rebanadas son dos rebanadas, sirvas más o menos comida
+        var gramos = comp.noEscalar ? gramosBase : gramosBase * factor;
         var kcal100 = kcalIngredienteConTecnica(ing, comp.grupo, comp.tecnicaCoccion, comp.acabado, bancoV3);
         kcalMiembro += gramos * kcal100 / 100;
         var linea = null;

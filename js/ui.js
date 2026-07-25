@@ -510,9 +510,12 @@
     var nombre = (miembroDispositivo || familia[0] || {}).nombre || '';
     var fd = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo'];
     var subtitulo = esHoy ? 'Hoy, ya decidido.' : ('El ' + fd[diaLocal] + ', ya decidido.');
+    // subtítulo tocable = segunda vía de vuelta a hoy, sin añadir nada a la pantalla —
+    // solo cuando estás fuera de hoy (Roger 2026-07-26, refuerzo del chip, no lo sustituye)
+    var subAttrs = esHoy ? '' : ' data-action="volver-a-hoy" tabindex="0" role="button"';
     var saludoHtml = '<section class="ph-saludo">' +
       '<h1 class="ph-saludo-titulo">' + escapeHtml(saludoHora() + (nombre ? ', ' + nombre : '') + '.') + '</h1>' +
-      '<p class="ph-saludo-sub">' + escapeHtml(subtitulo) + '</p>' +
+      '<p class="ph-saludo-sub' + (esHoy ? '' : ' ph-saludo-sub-link') + '"' + subAttrs + '>' + escapeHtml(subtitulo) + '</p>' +
       '</section>';
 
     // ---- tira de 14 días ----
@@ -528,7 +531,21 @@
         (tieneCole ? '<i data-lucide="graduation-cap" class="ph-dia-cole"></i>' : '<span class="ph-dia-cole ph-dia-cole-vacio" aria-hidden="true"></span>') +
         '</button>';
     }).join('');
-    var tiraHtml = '<div class="ph-tira-wrap scroll">' + diasHtml + '</div>';
+    // chip "Hoy": solo existe fuera de hoy, ancla en el lado donde está hoy real
+    // (izquierda si hoy quedó antes que el día elegido, derecha si es al revés) —
+    // columna propia FUERA del scroller, nunca overlay (tapa un día, ya descartado)
+    var chipHtml = '';
+    if (!esHoy && hoyIdxGlobal !== -1) {
+      // el nombre del icono no puede depender del estado (lucide.createIcons() lo
+      // congela en el primer pintado) — icono fijo chevron-left + rotate 180deg
+      // cuando toca apuntar a la derecha, único sitio de la app con este patrón
+      var chipRotado = hoyIdxGlobal >= idx;
+      chipHtml = '<button type="button" class="ph-hoy-chip" data-action="volver-a-hoy" aria-label="Volver a hoy">' +
+        '<span class="ph-dia-letra">HOY</span>' +
+        '<i data-lucide="chevron-left" class="ph-dia-num"' + (chipRotado ? ' style="transform: rotate(180deg)"' : '') + '></i>' +
+        '</button>';
+    }
+    var tiraHtml = '<div class="ph-tira-fila">' + chipHtml + '<div class="ph-tira-wrap scroll">' + diasHtml + '</div></div>';
 
     // ---- banner despensa + cole (cole = día que se está mirando; compra = SIEMPRE hoy real) ----
     var minors = familia.filter(function (m) { return E.edadEnAnios(m.anioNacimiento) < 12; });
@@ -898,7 +915,8 @@
   // ---------------------------------------------------------------
   // COMPRA — segmentado Hoy/Próximos 7 días + grupos Frescos/Despensa/Frío
   // ---------------------------------------------------------------
-  function renderCompraVista(estado, plan, banco, rango) {
+  function renderCompraVista(estado, plan, banco, rango, categoriasAbiertas) {
+    categoriasAbiertas = categoriasAbiertas || {};
     rango = rango === 'hoy' ? 'hoy' : '7d';
     if (!plan) {
       return '<div class="rc-cabecera"><h1 class="rc-titulo">Compra</h1></div>' +
@@ -925,11 +943,24 @@
       porGrupo[g].push(item);
     });
 
+    // categoría completa = colapsa a una línea (progreso visible sin barra de progreso,
+    // Roger 2026-07-26) — pero SIEMPRE reabrible, un check puede haber sido un error y
+    // sin forma de reabrir ese ingrediente queda inalcanzable. No persistido (mismo
+    // criterio que rangoCompra/filtroRecetas): al recargar vuelve a estar plegada, que
+    // es lo correcto porque el estado real es "completa".
     var gruposHtml = ORDEN_GRUPO_COMPRA.filter(function (g) { return porGrupo[g] && porGrupo[g].length; }).map(function (g) {
       var info = GRUPOS_COMPRA_INFO[g];
-      return '<div class="cp-grupo">' +
-        '<p class="cp-grupo-titulo"><i data-lucide="' + info.icono + '"></i>' + info.nombre + '</p>' +
-        '<div class="cp-lista"><ul class="lista-check">' + porGrupo[g].map(filaCompraHtml).join('') + '</ul></div>' +
+      var lista = porGrupo[g];
+      var completo = lista.every(function (i) { return i.marcado; });
+      var abierto = !completo || !!categoriasAbiertas[g];
+      var cabecera = completo
+        ? '<button type="button" class="cp-grupo-titulo cp-grupo-completo" data-action="toggle-categoria-compra" data-grupo="' + g + '" aria-expanded="' + abierto + '">' +
+          '<i data-lucide="' + info.icono + '"></i>' + info.nombre +
+          '<span class="cp-grupo-estado">Completo<i data-lucide="chevron-' + (abierto ? 'up' : 'down') + '"></i></span>' +
+          '</button>'
+        : '<p class="cp-grupo-titulo"><i data-lucide="' + info.icono + '"></i>' + info.nombre + '</p>';
+      return '<div class="cp-grupo' + (completo ? ' cp-grupo-completo-wrap' : '') + '">' + cabecera +
+        (abierto ? '<div class="cp-lista"><ul class="lista-check">' + lista.map(filaCompraHtml).join('') + '</ul></div>' : '') +
         '</div>';
     }).join('');
 
@@ -1277,10 +1308,11 @@
   // para listas cortas de acciones; el sheet de abajo sigue siendo para
   // pantallas con contenido real (Familia, nevera, receta...).
   function renderMenuHamburguesa() {
-    return '<button type="button" class="menu-dropdown-item" role="menuitem" data-action="menu-ir-familia">Familia</button>' +
-      '<button type="button" class="menu-dropdown-item" role="menuitem" data-action="menu-regenerar-semana">Regenerar menús</button>' +
-      '<button type="button" class="menu-dropdown-item" role="menuitem" data-action="menu-importar-cole">Importar menú del cole</button>' +
-      '<button type="button" class="menu-dropdown-item" role="menuitem" data-action="menu-sync">Sincronizar familia</button>';
+    return '<button type="button" class="menu-dropdown-item" role="menuitem" data-action="menu-ir-familia"><i data-lucide="users"></i>Familia</button>' +
+      '<button type="button" class="menu-dropdown-item" role="menuitem" data-action="menu-sync"><i data-lucide="refresh-cw"></i>Sincronizar familia</button>' +
+      '<div class="menu-dropdown-sep" role="separator"></div>' +
+      '<button type="button" class="menu-dropdown-item" role="menuitem" data-action="menu-regenerar-semana"><i data-lucide="sparkles"></i>Regenerar menús</button>' +
+      '<button type="button" class="menu-dropdown-item" role="menuitem" data-action="menu-importar-cole"><i data-lucide="paperclip"></i>Importar menú del cole</button>';
   }
 
   // Menú del cole — vista semanal de solo lectura (Roger 2026-07-22): el enlace "cole"
@@ -1435,21 +1467,32 @@
   // (renderVistaMiembro). Sustituye al sheet "Tu familia" — nombreFamilia/
   // familiaRegion y "recetas ocultas" quedan sin superficie propia en este
   // rediseño (el dato sigue intacto, solo no hay UI para tocarlo hoy).
+  // Cuadrícula de 6 cards visibles sin scroll (Roger 2026-07-25, tras 3 iteraciones) —
+  // misma card que Recetas (.rc-grid/.rc-tarjeta). Tope duro: 189px de alto o la 3ª fila
+  // cae bajo el nav. La edad NO va en la card a propósito (probado: engorda 181→205px y
+  // deja solo 4 filas visibles en vez de 6) — ya está en la ficha del miembro.
   function renderPerfilVista(estado) {
     var familia = estado.familia || [];
-    var filasHtml = familia.map(function (m, idx) {
-      var edad = E.edadEnAnios(m.anioNacimiento);
-      return '<button type="button" class="pf-fila" data-action="abrir-miembro-ficha" data-id="' + m.id + '">' +
-        '<span class="pf-avatar" ' + avatarEstiloColor(m, colorMiembro(idx)) + '>' + avatarInner(m) + '</span>' +
-        '<span class="pf-info"><span class="pf-nombre">' + escapeHtml(m.nombre) + '</span><span class="pf-meta">' + edad + ' años · ' + escapeHtml(etiquetaDieta(m.dieta)) + '</span></span>' +
-        '<i data-lucide="chevron-right"></i>' +
-        '</button>';
+    var cardsHtml = familia.map(function (m, idx) {
+      var restriccion = (m.alergias || '').trim();
+      return '<div class="rc-tarjeta pf-tarjeta">' +
+        '<button type="button" class="rc-tarjeta-abrir" data-action="abrir-miembro-ficha" data-id="' + m.id + '">' +
+        '<span class="rc-tarjeta-foto pf-tarjeta-foto" ' + avatarEstiloColor(m, colorMiembro(idx)) + '>' +
+        (avatarInner(m) ? '<span class="pf-tarjeta-inicial">' + avatarInner(m) + '</span>' : '') +
+        (restriccion ? '<span class="rc-tarjeta-tag pf-tarjeta-tag-alergia">' + escapeHtml(restriccion) + '</span>' : '') +
+        '</span>' +
+        '<span class="rc-tarjeta-info"><span class="rc-tarjeta-nombre">' + escapeHtml(m.nombre) + '</span></span>' +
+        '</button>' +
+        '<div class="rc-tarjeta-pie pf-tarjeta-pie"><span class="rc-tarjeta-meta"><i data-lucide="leaf"></i>' + escapeHtml(etiquetaDieta(m.dieta)) + '</span></div>' +
+        '</div>';
     }).join('');
+    // celda de la cuadrícula, no barra a lo ancho — así no se descuadra con nº impar de miembros
+    var anadirHtml = '<button type="button" class="pf-anadir-celda" data-action="familia-abrir-form-miembro">' +
+      '<span class="pf-anadir-circulo"><i data-lucide="plus"></i></span>Añadir miembro</button>';
 
     return '<div class="rc-cabecera"><div><h1 class="rc-titulo">Familia</h1><p class="cp-resumen">Personaliza el menú para cada uno</p></div></div>' +
       '<div class="vista-body rc-body">' +
-      '<div class="pf-lista">' + filasHtml + '</div>' +
-      '<button type="button" class="pf-anadir" data-action="familia-abrir-form-miembro"><i data-lucide="plus"></i>Añadir miembro</button>' +
+      '<div class="rc-grid pf-grid">' + cardsHtml + anadirHtml + '</div>' +
       '</div>';
   }
 

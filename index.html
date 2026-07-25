@@ -26,7 +26,7 @@
      proyecto — versión FIJADA (no @latest, que el prototipo de Design sí usa) para no
      romper en producción si la librería cambia. -->
 <script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.js"></script>
-<link rel="stylesheet" href="css/styles.css?v=97">
+<link rel="stylesheet" href="css/styles.css?v=99">
 </head>
 <body>
 
@@ -99,6 +99,7 @@
 <div id="menu-dropdown-overlay" class="menu-dropdown-overlay" hidden></div>
 <div id="menu-dropdown" class="menu-dropdown" role="menu" hidden></div>
 
+<div class="bottom-nav-fade" aria-hidden="true"></div>
 <nav class="bottom-nav" aria-label="Navegación principal">
   <button type="button" class="nav-btn active" data-action="ir-vista" data-vista="semana" aria-current="page"><span class="nav-ico"><i data-lucide="calendar-heart"></i></span><span class="nav-label">Semana</span></button>
   <button type="button" class="nav-btn" data-action="ir-vista" data-vista="recetas" aria-current="false"><span class="nav-ico"><i data-lucide="book-open"></i></span><span class="nav-label">Recetas</span></button>
@@ -109,9 +110,9 @@
 
 <!-- Banco de recetas (82 plantillas + postres). Si no carga (404/sintaxis), app.js muestra
      un error visible en vez de arrancar degradado — no hay banco de respaldo. -->
-<script src="data/recetas.js?v=97"></script>
-<script src="js/engine.js?v=97"></script>
-<script src="js/ui.js?v=97"></script>
+<script src="data/recetas.js?v=99"></script>
+<script src="js/engine.js?v=99"></script>
+<script src="js/ui.js?v=99"></script>
 <!-- Firebase compat (multiusuario, Roger 2026-07-14) — build "compat" a propósito:
      el resto del bundle son scripts planos sin módulos ES, esto evita reestructurar
      todo a type="module" solo por esto. -->
@@ -119,7 +120,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-check-compat.js"></script>
-<script src="js/sync.js?v=97"></script>
-<script src="js/app.js?v=97"></script>
+<script src="js/sync.js?v=99"></script>
+<script src="js/app.js?v=99"></script>
 </body>
 </html>

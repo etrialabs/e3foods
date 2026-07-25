@@ -133,11 +133,18 @@
   // pagerIdx: 0 = comida, 1 = cena — qué card del pager está centrada.
   // Por defecto según la hora (mismo criterio que antes en Foco), no fijo.
   function comidaProximaPorHora() { return new Date().getHours() < 16 ? 'comida' : 'cena'; }
+  // Luz de la app según la hora (Roger 2026-07-26) — deriva pura, nunca un ajuste de
+  // usuario. Un solo token opaco por momento (nunca alfa sobre --bg: no da el mismo
+  // color, ver nota en styles.css) para que el degradado de #bottom-nav-fade no
+  // dibuje una banda de tono distinto al fondo real.
+  function momentoDelDia() { var h = new Date().getHours(); return h < 12 ? 'manana' : (h < 20 ? 'tarde' : 'noche'); }
+  function aplicarMomentoDelDia() { document.documentElement.dataset.momento = momentoDelDia(); }
   var pagerIdx = comidaProximaPorHora() === 'cena' ? 1 : 0;
   var filtroRecetas = 'todas'; // estado de UI, no persistido (SPEC: filtroRecetas)
   var busquedaRecetas = ''; // estado de UI, no persistido
   var busquedaTimer = null; // debounce del buscador de Recetas (audit 2026-07-20)
   var rangoCompra = '7d'; // '7d' | 'hoy' — estado de UI, no persistido (SPEC: rangoCompra)
+  var categoriasAbiertasCompra = {}; // grupo -> bool, estado de UI, no persistido (Roger 2026-07-26)
   var recetasView = 'grid'; // 'grid' | 'list' — toggle nuevo del handoff, solo visual
   var vistaPerfil = 'lista'; // 'lista' | futuro detalle-miembro — estado de UI, no persistido
   // Receta a pantalla completa (Roger 2026-07-19, sustituye al sheet): dia/tipo
@@ -292,6 +299,9 @@
   var ultimoHoyISO = E.fechaLocalISO(new Date());
   document.addEventListener('visibilitychange', function () {
     if (document.visibilityState !== 'visible' || modoDemo) return;
+    // el momento del día puede cambiar (tarde→noche) sin que cambie la fecha —
+    // se refresca siempre, fuera del early-return de "mismo día" de abajo.
+    aplicarMomentoDelDia();
     var hoyISOAhora = E.fechaLocalISO(new Date());
     if (hoyISOAhora === ultimoHoyISO) return;
     ultimoHoyISO = hoyISOAhora;
@@ -316,7 +326,7 @@
     document.querySelectorAll('.nav-btn').forEach(function (b) { b.classList.toggle('active', b.dataset.vista === vistaActual); b.setAttribute('aria-current', b.dataset.vista === vistaActual ? 'page' : 'false'); });
     if (vistaActual === 'semana') cont.innerHTML = UI.renderHome(estado, BANCO, diaGlobalActivo(), pagerIdx, obtenerMiembroDispositivo());
     else if (vistaActual === 'recetas') cont.innerHTML = UI.renderRecetasVista(estado, BANCO, filtroRecetas, busquedaRecetas, recetasView);
-    else if (vistaActual === 'compra') cont.innerHTML = UI.renderCompraVista(estado, estado.plan, BANCO, rangoCompra);
+    else if (vistaActual === 'compra') cont.innerHTML = UI.renderCompraVista(estado, estado.plan, BANCO, rangoCompra, categoriasAbiertasCompra);
     else if (vistaActual === 'descubrir') cont.innerHTML = UI.renderDescubrirVista(estado, BANCO);
     else if (vistaActual === 'perfil') cont.innerHTML = (vistaPerfil === 'ficha' && miembroAbierto) ? UI.renderVistaMiembro(estado, BANCO, miembroAbierto, obtenerMiembroDispositivo()) : UI.renderPerfilVista(estado);
     else if (vistaActual === 'receta') cont.innerHTML = !recetaAbierta ? '' :
@@ -332,6 +342,21 @@
     if (vistaActual === 'semana' && pagerIdx === 1) {
       var pagerEl = document.getElementById('home-pager');
       if (pagerEl) pagerEl.scrollLeft = pagerEl.clientWidth + 12;
+    }
+    // misma razón que el pager de arriba: innerHTML resetea scrollLeft de la tira de
+    // 14 días a 0. Además de restaurar, el día activo se centra siempre (Roger 2026-07-26).
+    // Sin animación aquí (re-render, no navegación) — el scroll suave al TOCAR un día
+    // vive en el handler semana-elegir-dia, antes de llamar a render().
+    if (vistaActual === 'semana') {
+      var tira = cont.querySelector('.ph-tira-wrap');
+      var activa = tira && tira.querySelector('.ph-dia-activo');
+      if (tira && activa) {
+        // offsetLeft no es relativo al scroller sino al ancestro posicionado — con el
+        // chip "Hoy" visible el desfase cambia, así que se mide contra el propio scroller.
+        var destino = activa.getBoundingClientRect().left - tira.getBoundingClientRect().left + tira.scrollLeft
+          - (tira.clientWidth - activa.offsetWidth) / 2;
+        tira.scrollLeft = Math.max(0, Math.min(destino, tira.scrollWidth - tira.clientWidth));
+      }
     }
     refrescarIconos();
   }
@@ -1458,10 +1483,12 @@
     'toggle-compra-item': function (btn) { toggleCompraItem(btn.dataset.id); },
     'vaciar-compra': function () { vaciarCompra(); },
     'segmento-compra': function (btn) { rangoCompra = btn.dataset.rango; render(); },
+    'toggle-categoria-compra': function (btn) { var g = btn.dataset.grupo; categoriasAbiertasCompra[g] = !categoriasAbiertasCompra[g]; render(); },
     // tira de 14 días de la Home (Roger 2026-07-19): data-dia-global ya
     // sincronizó diaGlobal antes de llegar aquí (ver dispatcher), así que
     // solo hace falta re-renderizar.
     'semana-elegir-dia': function () { render(); },
+    'volver-a-hoy': function () { diaGlobal = null; render(); },
     'filtro-receta': function (btn) { filtroRecetas = btn.dataset.categoria; render(); },
     'recetas-vista': function (btn) { recetasView = btn.dataset.vista; render(); },
 
@@ -1654,6 +1681,7 @@
     // hamburguesa lo cierra (el propio dropdown no es hijo suyo, es hermano)
     var menuDropdownOverlayEl = document.getElementById('menu-dropdown-overlay');
     if (menuDropdownOverlayEl) menuDropdownOverlayEl.addEventListener('click', cerrarMenuHamburguesa);
+    aplicarMomentoDelDia();
     iniciarEscuchaRemota(); // no-op si este dispositivo no tiene familyId cacheado
     asegurarPlanVigente();
     render();

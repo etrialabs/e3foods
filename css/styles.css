@@ -69,6 +69,14 @@
   --fs-aux: 12.5px;    /* eyebrows, badges, metadatos, chips, nav */
 }
 
+/* Luz de la app según la hora (Roger 2026-07-26) — deriva pura, nunca modo de usuario.
+   Un solo token opaco por momento: con alfa sobre --bg el resultado NO es el color
+   real (#F5F0E8 + rgba(226,205,172,.5) da #ECDFCA, no #F1E9DC) y cualquier otro
+   elemento que use el token directamente (p.ej. .bottom-nav-fade) dibujaría una
+   banda de tono distinto. Todo lo que ya usa var(--bg)/var(--ink) deriva solo. */
+:root[data-momento="manana"] { --bg: #F8F6F1; }
+:root[data-momento="noche"]  { --bg: #F1E9DC; --ink: #211A11; --soft: rgba(33, 26, 17, .62); }
+
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html { -webkit-text-size-adjust: 100%; }
 /* tiras horizontales (días, pager comida/cena, chips de filtro) — scroll real,
@@ -93,6 +101,7 @@ body {
   font-family: var(--font-ui);
   background: var(--bg);
   color: var(--ink);
+  transition: background-color 1.2s ease;
   line-height: 1.5;
   font-size: var(--fs-cuerpo);
   -webkit-font-smoothing: antialiased;
@@ -404,12 +413,34 @@ body.wizard-open { overflow: hidden; }
 .check-item:last-child { border-bottom: none; }
 .check-item label {
   display: flex; align-items: center; gap: var(--space-2); padding: 12px 0;
-  cursor: pointer;
+  cursor: pointer; transition: transform .16s ease;
 }
-.check-item input[type="checkbox"] { width: 22px; height: 22px; flex-shrink: 0; accent-color: var(--gold); }
-.check-texto { flex: 1; font-size: var(--fs-cuerpo); }
+.check-marcado label { transform: translateY(1px); }
+/* checkbox cuadrado + verde de estado al marcar — puerto exacto de e3Foods.dc.html
+   (mockup real, boxStyle/textStyle), mismo patrón ya usado en .fila-nevera:checked */
+.check-item input[type="checkbox"] {
+  width: 22px; height: 22px; flex-shrink: 0; margin: 0; cursor: pointer;
+  appearance: none; -webkit-appearance: none;
+  border-radius: 7px; border: 2px solid rgba(26, 23, 18, .2); background-color: transparent;
+}
+.check-item input[type="checkbox"]:checked {
+  background-color: oklch(0.72 0.16 150); border-color: oklch(0.72 0.16 150);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: center; background-size: 13px 13px;
+}
+/* el gesto más repetido de la app (Roger 2026-07-26): la línea se dibuja de izquierda
+   a derecha, no aparece de golpe — background-image SOBRE el propio texto, no un
+   <span> hermano (cero nodos nuevos por fila en una lista de 40 ítems) */
+.check-texto {
+  flex: 1; font-size: var(--fs-cuerpo);
+  display: inline-block; background-repeat: no-repeat; background-position: 0 54%; background-size: 0% 1.5px;
+  background-image: linear-gradient(currentColor, currentColor);
+  transition: color .22s ease, background-size .18s cubic-bezier(.16,1,.3,1);
+}
 .check-cantidad { font-size: var(--fs-aux); color: var(--soft); }
-.check-marcado .check-texto { text-decoration: line-through; color: var(--soft); }
+/* rgba(26,23,18,.35) literal, no --soft (.62) — el mockup usa un apagado más fuerte
+   específico para ítem ya comprado, distinto del --soft genérico de metadatos */
+.check-marcado .check-texto { background-size: 100% 1.5px; color: rgba(26, 23, 18, .35); }
 
 /* ============================================================
    Cabecera clara SEMANA — app-bar + saludo + card IA (Roger 2026-07-14,
@@ -440,19 +471,24 @@ body.wizard-open { overflow: hidden; }
    del sheet de abajo: listas de acciones cortas, no pantallas con contenido. */
 .menu-dropdown-overlay { position: fixed; inset: 0; z-index: 210; background: transparent; }
 .menu-dropdown {
-  position: fixed; z-index: 211; min-width: 220px; background: var(--panel);
+  position: fixed; z-index: 211; min-width: 248px; background: var(--panel);
   border: 1px solid var(--line-solid); border-radius: 14px;
   box-shadow: 0 8px 24px rgba(8, 18, 34, 0.18);
-  padding: 6px; display: flex; flex-direction: column; gap: 2px;
+  padding: 6px; display: flex; flex-direction: column; gap: 4px;
   animation: menuDropdownIn var(--dur-fast) var(--ease-out);
 }
 @keyframes menuDropdownIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
 .menu-dropdown-item {
-  display: block; width: 100%; text-align: left; background: none; border: none;
-  min-height: 44px; padding: 0 14px; border-radius: 10px;
+  display: flex; align-items: center; gap: 12px;
+  width: 100%; text-align: left; background: none; border: none;
+  min-height: 44px; padding: 0 12px; border-radius: 10px;
   font-size: var(--fs-cuerpo); font-family: inherit; color: var(--ink); cursor: pointer;
 }
+/* icono: --soft, no --gold — dorado sobre blanco da 2.24:1 y aquí el icono
+   es señal de escaneo, no acento decorativo (mismo criterio que .ingrediente-link) */
+.menu-dropdown-item [data-lucide], .menu-dropdown-item svg.lucide { font-size: 19px; color: var(--soft); flex: none; }
 .menu-dropdown-item:active { background: var(--elev2); }
+.menu-dropdown-sep { height: 1px; background: var(--line-solid); margin: 5px 8px; }
 .saludo-titulo { font-family: var(--font-display); font-weight: 400; font-size: 26px; line-height: 1.15; color: var(--ink); margin-bottom: var(--space-3); }
 
 .card-ia {
@@ -671,20 +707,30 @@ body.sheet-open { overflow: hidden; }
 /* ============================================================
    Bottom nav — 4 pestañas de texto, zona del pulgar, punto dorado activo
    ============================================================ */
+/* Nav crema translúcido (Roger 2026-07-25/26, dirección visual — el repo estaba "bien",
+   se quiso otra cosa): sin franja negra, el contenido se difumina detrás. Sin línea
+   separadora — la fusión con la página la da el degradado de .bottom-nav-fade. */
 .bottom-nav {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 100;
-  display: flex; background: var(--ink);
-  border-top: 1px solid rgba(201, 169, 110, .18);
+  display: flex; background: rgba(245, 240, 232, .9);
+  -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px);
   padding-bottom: var(--safe-b);
   height: calc(var(--nav-h) + var(--safe-b));
+}
+@supports not (backdrop-filter: blur(1px)) { .bottom-nav { background: var(--bg); } }
+.bottom-nav-fade {
+  position: fixed; left: 0; right: 0; z-index: 99;
+  bottom: calc(var(--nav-h) + var(--safe-b));
+  height: 22px; pointer-events: none;
+  background: linear-gradient(to top, var(--bg), transparent);
 }
 .nav-btn {
   flex: 1 1 0; min-width: 0; min-height: 44px;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
   background: none; border: none; cursor: pointer;
-  color: rgba(245, 240, 232, 0.6); font-size: var(--fs-aux); font-weight: 600; letter-spacing: 0.2px;
+  color: rgba(26, 23, 18, .55); font-size: var(--fs-aux); font-weight: 600; letter-spacing: 0.2px;
 }
-.nav-btn.active { color: var(--gold); }
+.nav-btn.active { color: oklch(0.6 0.16 55); font-weight: 800; }
 .nav-btn.active .nav-dot { opacity: 1; }
 .nav-ico { line-height: 1; }
 .nav-ico svg { width: 22px; height: 22px; display: block; stroke: currentColor; transition: width var(--dur-base) var(--ease-out), height var(--dur-base) var(--ease-out); }
@@ -815,12 +861,17 @@ body.sheet-open { overflow: hidden; }
 .ph-saludo { margin-bottom: 20px; }
 .ph-saludo-titulo { font-family: var(--font-display); font-weight: 700; font-size: 27px; color: var(--ink); line-height: 1.08; letter-spacing: -.3px; }
 .ph-saludo-sub { font-size: 13.5px; font-weight: 600; color: var(--soft); margin-top: 5px; }
+/* refuerzo de #ph-hoy-chip: solo tocable/subrayado fuera de hoy — en hoy no promete nada */
+.ph-saludo-sub-link { text-decoration: underline; cursor: pointer; }
 
-.ph-tira-wrap { display: flex; gap: 7px; overflow-x: auto; margin: 0 calc(-1 * var(--space-3)) 16px; padding: 2px var(--space-3) 4px; }
-.ph-dia { flex: none; width: 44px; min-height: 46px; border-radius: 14px; border: 1px solid var(--line); background: var(--panel); cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; color: var(--ink); }
-.ph-dia-letra { font-size: 10px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase; opacity: .7; }
-.ph-dia-num { font-size: 15.5px; font-weight: 800; line-height: 1; }
-.ph-dia-cole { font-size: 11px; color: var(--gold-link); margin-top: 1px; }
+/* fila: tira + chip "Hoy" en su propia columna fuera del scroller (Roger 2026-07-26) */
+.ph-tira-fila { display: flex; align-items: stretch; gap: 8px; margin: 0 calc(-1 * var(--space-3)) 16px; padding: 2px var(--space-3) 4px; }
+.ph-tira-wrap { display: flex; gap: 8px; overflow-x: auto; flex: 1; min-width: 0; margin: 0; padding: 0; }
+.ph-hoy-chip { flex: none; width: 48px; min-height: 52px; border-radius: 16px; border: 1px solid var(--line); background: var(--panel); cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; color: var(--ink); box-shadow: 0 4px 12px -6px rgba(26,23,18,.45); }
+.ph-dia { flex: none; width: 48px; min-height: 52px; border-radius: 16px; border: 1px solid var(--line); background: var(--panel); cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; color: var(--ink); }
+.ph-dia-letra { font-size: 10.5px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; opacity: .7; }
+.ph-dia-num { font-size: 17px; font-weight: 800; line-height: 1; }
+.ph-dia-cole { font-size: 11px; color: var(--soft); margin-top: 1px; }
 /* placeholder invisible: reserva el mismo hueco (1em=11px) que el birrete los días sin cole,
    para que la tira de días no cambie de altura ni desalinee el número (Roger 21-jul) */
 .ph-dia-cole-vacio { display: block; width: 1em; height: 1em; }
@@ -874,7 +925,7 @@ body.sheet-open { overflow: hidden; }
 .ph-badge-comida .ph-badge-icono { background: var(--gold-soft); color: var(--gold); }
 .ph-badge-cena .ph-badge-icono { background: rgba(255,255,255,.1); color: oklch(0.82 0.13 82); }
 .ph-badge-texto { font-size: 10.5px; font-weight: 800; letter-spacing: 1px; }
-.ph-badge-comida .ph-badge-texto { color: var(--gold-link); }
+.ph-badge-comida .ph-badge-texto { color: var(--ink); }
 .ph-badge-cena .ph-badge-texto { color: oklch(0.86 0.1 82); }
 
 .ph-avatares { position: absolute; top: 12px; right: 12px; display: flex; }
@@ -932,7 +983,7 @@ body.sheet-open { overflow: hidden; }
 .ph-proximos-lista { display: flex; flex-direction: column; gap: 10px; }
 .ph-proximo { display: flex; align-items: center; gap: 12px; background: var(--panel); border-radius: 17px; padding: 11px; box-shadow: 0 4px 14px -10px rgba(26,23,18,.3); }
 .ph-proximo-fecha { flex: none; width: 46px; height: 46px; border-radius: 13px; background: var(--elev2); display: flex; flex-direction: column; align-items: center; justify-content: center; }
-.ph-proximo-fecha span { font-size: 9px; font-weight: 800; letter-spacing: .4px; color: var(--gold-link); }
+.ph-proximo-fecha span { font-size: 9px; font-weight: 800; letter-spacing: .4px; color: var(--soft); }
 .ph-proximo-fecha b { font-size: 17px; font-weight: 800; color: var(--ink); }
 .ph-proximo-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
 .ph-proximo-linea { display: flex; align-items: center; gap: 7px; background: none; border: none; padding: 0; cursor: pointer; text-align: left; }
@@ -941,7 +992,7 @@ body.sheet-open { overflow: hidden; }
 .ph-proximo-cena i { color: var(--muted); }
 .ph-proximo-cena span { font-weight: 600; color: var(--soft); }
 .ph-proximo-cole i { color: var(--gold-link); }
-.ph-proximo-cole span { color: var(--gold-link); font-weight: 700; }
+.ph-proximo-cole span { color: var(--ink); font-weight: 700; }
 .ph-proximo-foto { flex: none; width: 44px; height: 44px; border-radius: 12px; object-fit: cover; }
 
 .ph-equilibrio-link { display: flex; align-items: center; gap: 9px; width: 100%; background: none; border: none; cursor: pointer; padding: 4px 2px; margin-top: 20px; }
@@ -973,7 +1024,7 @@ body.sheet-open { overflow: hidden; }
 /* mismo bug que .ph-tipo/.ph-badge-icono: SVG (ICONO_SOL/ICONO_LUNA) sin
    stroke:currentColor = invisible, aunque el color se heredara bien. */
 .rv-pill svg { width: 12px; height: 12px; stroke: currentColor; display: block; }
-.rv-pill-comida { background: var(--gold-soft); color: var(--gold); }
+.rv-pill-comida { background: var(--gold-soft); color: var(--ink); }
 .rv-pill-cena { background: #3C4046; color: oklch(0.86 0.1 82); }
 
 .rv-titulo { font-family: var(--font-display); font-size: 28px; font-weight: 800; color: var(--ink); line-height: 1.1; letter-spacing: -.5px; margin-top: 12px; }
@@ -1001,7 +1052,7 @@ body.sheet-open { overflow: hidden; }
 
 .rv-pasos { display: flex; flex-direction: column; gap: 12px; }
 .rv-paso { display: flex; gap: 13px; background: var(--panel); border-radius: 16px; padding: 15px; box-shadow: 0 4px 14px -10px rgba(26,23,18,.3); }
-.rv-paso-num { flex: none; width: 26px; height: 26px; border-radius: 50%; background: var(--gold-soft); color: var(--gold-link); font-weight: 800; font-size: 13px; display: flex; align-items: center; justify-content: center; }
+.rv-paso-num { flex: none; width: 26px; height: 26px; border-radius: 50%; background: var(--gold-soft); color: var(--ink); font-weight: 800; font-size: 13px; display: flex; align-items: center; justify-content: center; }
 .rv-paso-texto { font-size: 14.5px; color: rgba(26,23,18,.8); line-height: 1.5; }
 
 .rv-cta { width: 100%; margin-top: 24px; border: none; cursor: pointer; border-radius: 16px; padding: 16px; background: linear-gradient(180deg, var(--gold-grad-a), var(--gold-grad-b)); box-shadow: 0 10px 24px -10px var(--gold-grad-b); display: flex; align-items: center; justify-content: center; gap: 9px; font-weight: 800; font-size: 15px; color: var(--ink); }
@@ -1035,7 +1086,7 @@ body.sheet-open { overflow: hidden; }
 .rc-tarjeta-foto { display: block; height: 120px; overflow: hidden; position: relative; background: var(--elev2); }
 .rc-tarjeta-foto img, .rc-foto-vacia { width: 100%; height: 100%; object-fit: cover; display: block; }
 .rc-foto-vacia { background: var(--elev2); }
-.rc-tarjeta-tag { position: absolute; top: 9px; left: 9px; background: rgba(255,255,255,.92); backdrop-filter: blur(4px); padding: 4px 9px; border-radius: 999px; font-size: 10.5px; font-weight: 700; color: var(--gold-link); }
+.rc-tarjeta-tag { position: absolute; top: 9px; left: 9px; background: rgba(255,255,255,.92); backdrop-filter: blur(4px); padding: 4px 9px; border-radius: 999px; font-size: 10.5px; font-weight: 700; color: var(--soft); }
 .rc-tarjeta-info { display: block; padding: 11px 12px 0; }
 .rc-tarjeta-nombre { display: block; font-family: var(--font-display); font-size: 15.5px; font-weight: 700; color: var(--ink); line-height: 1.15; }
 /* Pie unico (Roger 2026-07-22): tiempo y acciones (corazon/ojo) en la misma linea — antes eran
@@ -1064,7 +1115,7 @@ body.sheet-open { overflow: hidden; }
    .rc-fila, pero el hueco de la foto lleva el día de la semana, sin iconos de acción. */
 .lista-cole { display: flex; flex-direction: column; gap: 10px; }
 .fila-cole { display: flex; align-items: center; gap: 12px; background: var(--panel); border-radius: 16px; padding: 10px; box-shadow: 0 6px 18px -14px rgba(60,45,20,.4); }
-.fila-cole-dia { flex: none; width: 56px; height: 56px; border-radius: 13px; display: flex; align-items: center; justify-content: center; text-align: center; background: var(--elev2); font-family: var(--font-display); font-weight: 700; font-size: 12px; line-height: 1.15; color: var(--gold-link); }
+.fila-cole-dia { flex: none; width: 56px; height: 56px; border-radius: 13px; display: flex; align-items: center; justify-content: center; text-align: center; background: var(--elev2); font-family: var(--font-display); font-weight: 700; font-size: 12px; line-height: 1.15; color: var(--ink); }
 .fila-cole-info { flex: 1; min-width: 0; }
 .fila-cole-nombre { display: block; font-family: var(--font-display); font-size: 15.5px; font-weight: 700; color: var(--ink); line-height: 1.2; }
 
@@ -1102,6 +1153,13 @@ body.sheet-open { overflow: hidden; }
 .cp-grupo-titulo { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 800; letter-spacing: .8px; text-transform: uppercase; color: var(--soft); margin-bottom: 10px; }
 .cp-grupo-titulo i { color: var(--gold); }
 .cp-lista { background: var(--panel); border-radius: 18px; padding: 2px 16px; box-shadow: 0 4px 14px -10px rgba(26,23,18,.3); }
+/* categoría completa: verde de estado, no la paleta de marca — mismo par que ya usa
+   el check de la nevera (oklch(0.72 0.16 150)). Reabrible: es un botón (Roger 2026-07-26). */
+button.cp-grupo-titulo { width: 100%; border: none; background: none; font: inherit; text-align: left; cursor: pointer; padding: 0; }
+.cp-grupo-completo { color: oklch(0.72 0.16 150); }
+.cp-grupo-completo i:first-child { color: oklch(0.72 0.16 150); }
+.cp-grupo-estado { margin-left: auto; display: flex; align-items: center; gap: 3px; background: oklch(0.96 0.035 150); padding: 3px 9px; border-radius: 999px; font-size: 11px; letter-spacing: .2px; }
+.cp-grupo-completo-wrap { margin-bottom: 12px; }
 
 /* Despensa real, desplegable, al final de Compra (Roger 2026-07-23) — checklist "¿lo tengo en
    casa?" (staples + ingrediente base), no cuenta para el contador de pendientes de arriba. */
@@ -1119,14 +1177,15 @@ body.sheet-open { overflow: hidden; }
    vista de receta) y .foto-tap/.campo-eyebrow/.chip-toggle/.patron-grid/
    .vetos-grid ya existentes (campos reales sin tocar su fontanería).
    --------------------------------------------------------------- */
-.pf-lista { display: flex; flex-direction: column; gap: 12px; }
-.pf-fila { width: 100%; text-align: left; background: var(--panel); border: none; cursor: pointer; border-radius: 18px; padding: 15px; display: flex; align-items: center; gap: 14px; box-shadow: 0 4px 14px -10px rgba(26,23,18,.3); }
-.pf-avatar { flex: none; width: 48px; height: 48px; border-radius: 16px; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 800; background-size: cover; background-position: center; }
-.pf-info { flex: 1; min-width: 0; }
-.pf-nombre { display: block; font-size: 16px; font-weight: 800; color: var(--ink); }
-.pf-meta { display: block; font-size: 13px; color: var(--soft); font-weight: 600; margin-top: 2px; }
-.pf-fila > i { color: var(--muted); flex: none; }
-.pf-anadir { width: 100%; margin-top: 12px; border: 1.5px dashed var(--line-solid); background: none; cursor: pointer; border-radius: 18px; padding: 16px; display: flex; align-items: center; justify-content: center; gap: 8px; color: var(--gold-link); font-weight: 700; font-size: 14.5px; }
+/* Familia en cuadrícula (Roger 2026-07-25): misma card que Recetas (.rc-grid/.rc-tarjeta).
+   Tope duro 189px de alto para 6 cards visibles sin scroll — no añadir texto a la card
+   (la edad se probó y se descartó, ver crónica) sin volver a medir el presupuesto. */
+.pf-tarjeta-foto { display: flex; align-items: center; justify-content: center; }
+.pf-tarjeta-inicial { font-family: var(--font-display); font-size: 42px; font-weight: 400; color: #fff; }
+/* rojo de aviso, no dorado — es una advertencia (alergia), no un acento decorativo */
+.pf-tarjeta-tag-alergia { color: oklch(0.5 0.18 25); }
+.pf-anadir-celda { min-height: 189px; border: 1.5px dashed var(--line-solid); background: none; cursor: pointer; border-radius: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: var(--soft); font-weight: 700; font-size: 14px; }
+.pf-anadir-circulo { width: 44px; height: 44px; border-radius: 50%; border: 1.5px dashed var(--line-solid); display: flex; align-items: center; justify-content: center; color: var(--soft); }
 
 .mf-cabecera { position: relative; height: 60px; }
 .mf-body { padding-top: var(--space-2); }

@@ -176,6 +176,64 @@
   }
 
   // ---------------------------------------------------------------
+  // 1b. Suelo de PROTEÍNA por persona (obra macros, 2026-07-26)
+  // ---------------------------------------------------------------
+  // PRI (Population Reference Intake) de proteína — EFSA 2012, "Scientific Opinion on Dietary
+  // Reference Values for protein", Tabla 11 (p.31). Es la MISMA tabla que adopta AESAN en su
+  // informe de Ingestas Nutricionales de Referencia (AESAN-2019-003, Tabla 2), que a su vez la
+  // hereda de WHO/FAO/UNU (2007).
+  //
+  // ⚠️ POR QUÉ g/kg Y NO "% de las calorías": para PROTEÍNA no existe un rango oficial en % de
+  // energía ni en AESAN ni en EFSA. AESAN publica proteína solo en g/kg (su Tabla 2) y reserva el
+  // %-de-energía para las grasas (Tabla 3) — la distinción es deliberada: la proteína se ancla en
+  // masa corporal, no en energía. El "10-15% VCT" que circula atribuido a SENC 2011 NO está en ese
+  // documento (verificado a texto completo: su tabla de objetivos no tiene fila de proteína).
+  // Medir contra un % de energía inflaba el suelo de los niños al doble de su requerimiento real.
+  //
+  // PRI y no AR: el AR (Average Requirement, 0,66 g/kg en adultos) cubre por definición solo al
+  // 50% de la población — como suelo de adecuación dejaría corta a la mitad de la gente.
+  //
+  // `gd` = el PRI en gramos/día que la propia EFSA publica usando SUS pesos de referencia por
+  // edad/sexo. Gracias a esa columna el suelo NO depende de `peso`, que es campo OPCIONAL en la
+  // app: con la edad basta. Si el peso SÍ está registrado se usa g/kg × peso real, que es más fino
+  // (y no necesita `altura`, a diferencia de Mifflin — así que un miembro con peso pero sin altura
+  // obtiene aquí más precisión de la que hoy obtiene en su banda de kcal).
+  var PRI_PROTEINA = [
+    { edad: 0.5, gkg: 1.31, gd_m: 10, gd_f: 10 }, { edad: 1, gkg: 1.14, gd_m: 11, gd_f: 11 },
+    { edad: 2, gkg: 0.97, gd_m: 12, gd_f: 12 }, { edad: 3, gkg: 0.90, gd_m: 14, gd_f: 13 },
+    { edad: 4, gkg: 0.86, gd_m: 15, gd_f: 15 }, { edad: 5, gkg: 0.85, gd_m: 17, gd_f: 17 },
+    { edad: 6, gkg: 0.89, gd_m: 20, gd_f: 19 }, { edad: 7, gkg: 0.91, gd_m: 22, gd_f: 22 },
+    { edad: 8, gkg: 0.92, gd_m: 25, gd_f: 25 }, { edad: 9, gkg: 0.92, gd_m: 28, gd_f: 28 },
+    { edad: 10, gkg: 0.91, gd_m: 30, gd_f: 31 }, { edad: 11, gkg: 0.905, gd_m: 33, gd_f: 34 },
+    { edad: 12, gkg: 0.895, gd_m: 37, gd_f: 38 }, { edad: 13, gkg: 0.89, gd_m: 42, gd_f: 42 },
+    { edad: 14, gkg: 0.88, gd_m: 47, gd_f: 44 }, { edad: 15, gkg: 0.865, gd_m: 51, gd_f: 45 },
+    { edad: 16, gkg: 0.855, gd_m: 54, gd_f: 45 }, { edad: 17, gkg: 0.845, gd_m: 55, gd_f: 45 },
+    { edad: 18, gkg: 0.83, gd_m: 62, gd_f: 52 }
+  ];
+
+  function priProteinaDiaria(miembro, fechaReferencia) {
+    var edad = edadEnAnios(miembro.anioNacimiento, fechaReferencia);
+    var fila = PRI_PROTEINA[0];
+    for (var i = 0; i < PRI_PROTEINA.length; i++) if (edad >= PRI_PROTEINA[i].edad) fila = PRI_PROTEINA[i];
+    if (miembro.peso) return fila.gkg * miembro.peso;
+    return (miembro.sexo || 'mujer') === 'hombre' ? fila.gd_m : fila.gd_f;
+  }
+
+  // Reparto del PRI diario entre los dos slots que la app planifica. Reutiliza el reparto de
+  // ENERGÍA (comida 35% / cena 30%) — es un SUPUESTO declarado, no un dato de EFSA: el PRI es
+  // diario y ningún organismo lo reparte por comidas. En finde se usa el extremo BAJO del rango a
+  // propósito: siendo un suelo, el extremo bajo es el conservador (menos falsos positivos).
+  function repartoProteina(tipoComida, esFinde) {
+    var r = esFinde ? REPARTO_KCAL.finde[tipoComida] : REPARTO_KCAL.entresemana[tipoComida];
+    if (r == null) return 0;
+    return typeof r === 'number' ? r : r.min;
+  }
+
+  function sueloProteinaPersona(miembro, tipoComida, esFinde, fechaReferencia) {
+    return priProteinaDiaria(miembro, fechaReferencia) * repartoProteina(tipoComida, esFinde);
+  }
+
+  // ---------------------------------------------------------------
   // 2. Banda kcal AGREGADA de mesa (§14 punto 1 — EL cambio central de v3)
   // ---------------------------------------------------------------
   // objetivoBandaPersona: [min, max] de kcal para ESTA persona en este slot,
@@ -975,6 +1033,130 @@
     return bonus;
   }
 
+  // ---------------------------------------------------------------
+  // ADECUACIÓN DE PROTEÍNA (obra macros, 2026-07-26) — la primera señal del motor que lee un macro.
+  //
+  // QUÉ ES Y QUÉ NO ES. Es un SUELO, no un objetivo: penaliza el déficit y da CERO por el exceso.
+  // Esa asimetría no es un detalle, es la pieza que impide que el motor se convierta en un
+  // maximizador de proteína — que empujaría hacia la carne, pelearía contra las cuotas de legumbre
+  // y huevo (mínimos semanales AESAN) y erosionaría la mesa mixta. Mismo criterio, y por el mismo
+  // motivo, que la recalibración asimétrica de puntuarSalubridadTecnica (2026-07-25).
+  //
+  // POR PERSONA, NO POR MESA. La restricción de kcal es AGREGADA de mesa a propósito (§14.1), pero
+  // eso significa que lo que le sobra a un comensal tapa lo que le falta a otro. Medido: con el
+  // agregado no se ve nada, y por persona aparece el hueco. Manda el PEOR comensal — es el
+  // principio 7 del motor ("lo importante es que los niños coman equilibrado") hecho aritmética.
+  //
+  // DATO AUSENTE NUNCA ES CERO. Si a algún ingrediente del menú le falta `proteina_g`, la señal
+  // devuelve 0 (no opina) en vez de contar 0 g. Contarlo como cero penalizaría justo a tofu,
+  // hummus y espinacas-queso — las opciones vegetales — y las expulsaría en silencio del menú.
+  // Es la misma clase de bug que las 3 vías de fuga de vetos y las 3 derivaciones divergentes del
+  // resumen: información que se aplana y se convierte en una afirmación falsa. Test dedicado.
+  //
+  // CUÁNTO MUERDE, medido antes de calibrar: contra el PRI, los niños van al 2,5-2,9× del suelo y
+  // los adultos al 1,8×; los cortos son 3-4% de los slots de adulto y 0% de los de niño. Donde sí
+  // muerde es en un adulto con objetivo de PÉRDIDA de peso (12,4%): la app le resta 500 kcal/día,
+  // las raciones encogen con la energía y la proteína cae con ellas, justo cuando el consenso
+  // FESNAD-SEEDO 2011 (Recomendación 25, grado B) dice que hay que SUBIRLA por encima de
+  // 1,05 g/kg. El PRI no se mueve al recortar energía: por eso el suelo lo detecta y la banda no.
+  // ---------------------------------------------------------------
+  // PESO CALIBRADO CON HARNESS, no elegido a ojo → `node tests/calibrar_proteina.js` (8 semanas ×
+  // 4 perfiles + el escenario exacto del guardarraíl p1). Barrido medido:
+  //
+  //   peso |  cortos vs PRI | pan (escenario p1, tope 25%)
+  //      0 |         4,71%  |  22,0%  <- línea base, motor sin la señal
+  //      6 |         4,09%  |  23,2%
+  //     12 |         3,22%  |  24,4%  <- ELEGIDO
+  //     18 |         2,64%  |  25,0%  ✗ rompe el guardarraíl
+  //     48 |         2,35%  |  25,0%  ✗
+  //
+  // 12 es el MÁXIMO que reduce el déficit sin romper "el pan de remate es excepción, no norma"
+  // (regla de producto de Roger, 2026-07-25, test p1). Subir a 18 daría un tercio más de mejora
+  // pero cruza ese tope: no se relaja un guardarraíl ajeno para que quepa un cambio propio.
+  //
+  // POR QUÉ la señal empuja hacia el pan, que conviene entender antes de subirla: al premiar más
+  // proteína tiende a elegir carnes y pescados magros, que son menos densos en kcal y luego
+  // necesitan el pan de remate para alcanzar la banda. Es exactamente el problema de DENSIDAD
+  // CALÓRICA del plato que ya está diagnosticado en UPGRADES §8.2 como parte del paso 4. Mientras
+  // ese no se resuelva, este peso está topado por él — no por la nutrición.
+  //
+  // Colisiones de categoría, cuotas semanales y variedad: sin cambio en todo el barrido (0/0/48-49
+  // principales distintos). Coste: +2-3 ms por semana generada.
+  var PESO_DEFICIT_PROTEINA = 12;
+
+  function suelosProteinaDeMesa(ctx) {
+    if (ctx._suelosProteina) return ctx._suelosProteina;
+    var out = {};
+    (ctx.presentes || []).forEach(function (m) {
+      out[m.id] = sueloProteinaPersona(m, ctx.tipoComida, ctx.esFinde, ctx.fechaReferencia);
+    });
+    ctx._suelosProteina = out;
+    return out;
+  }
+
+  // Déficit de proteína del candidato: fracción [0..1] del peor comensal, o null si el menú tiene
+  // algún ingrediente sin dato (→ la señal no opina).
+  // `idsTotal` se recibe del llamador a propósito: `puntuarCandidato` ya lo deriva una sola vez
+  // (y cubre los candidatos construidos a mano por cambiarPlato, que no traen `.ids`). Derivarlo
+  // aquí otra vez sería la cuarta derivación del contenido de un menú — exactamente lo que el
+  // resumen canónico del paso 1 vino a eliminar.
+  function deficitProteinaCandidato(candidato, ctx, idsTotal) {
+    var banco = ctx.banco;
+    var ids = (idsTotal || candidato.ids || []).slice();
+    if (candidato.componenteExtra && ids.indexOf(candidato.componenteExtra) === -1) ids.push(candidato.componenteExtra);
+    if (!ids.length) return null;
+
+    // MESA MIXTA: quien tiene adaptación no come la proteína del eje, come la suya. Ignorarlo
+    // mediría a un vegetariano por la carne que no se lleva a la boca.
+    var adaptaciones = calcularAdaptaciones(candidato.principal, candidato.seleccionEje, ctx.presentes, banco, ctx.vetosUnion, ctx.mes);
+    var suelos = suelosProteinaDeMesa(ctx);
+    var peor = 0;
+
+    for (var p = 0; p < ctx.presentes.length; p++) {
+      var m = ctx.presentes[p];
+      var suelo = suelos[m.id];
+      if (!suelo) continue;
+
+      var suya = null;
+      for (var a = 0; a < adaptaciones.length; a++) if (adaptaciones[a].miembroId === m.id) suya = adaptaciones[a].valor;
+      var miProteina = suya || candidato.seleccionEje;
+
+      var esNino = edadEnAnios(m.anioNacimiento, ctx.fechaReferencia) < EDAD_MENOR;
+      var factor = (candidato.factorRacion && candidato.factorRacion[m.id]) || 1;
+      var total = 0;
+
+      for (var k = 0; k < ids.length; k++) {
+        var id = ids[k];
+        // la proteína del eje de OTRO comensal no la come esta persona
+        if (candidato.seleccionEje && id === candidato.seleccionEje && id !== miProteina) continue;
+        var ing = banco.ingredientes[id];
+        if (!ing) continue;
+        if (ing.proteina_g == null) return null; // sin dato -> sin opinión, NUNCA cero
+        var base = esNino ? ing.racion_nino_g : ing.racion_adulto_g;
+        if (!base) continue;
+        total += base * (id === candidato.componenteExtra ? 1 : factor) * ing.proteina_g / 100;
+      }
+      // la proteína adaptada (sustituta) no está en `ids`: se suma aparte
+      if (miProteina && miProteina !== candidato.seleccionEje) {
+        var ingAlt = banco.ingredientes[miProteina];
+        if (!ingAlt) continue;
+        if (ingAlt.proteina_g == null) return null;
+        var baseAlt = esNino ? ingAlt.racion_nino_g : ingAlt.racion_adulto_g;
+        if (baseAlt) total += baseAlt * factor * ingAlt.proteina_g / 100;
+      }
+
+      if (total < suelo) peor = Math.max(peor, (suelo - total) / suelo);
+    }
+    return peor;
+  }
+
+  function puntuarProteinaAdecuacion(candidato, ctx, idsTotal) {
+    if (!PESO_DEFICIT_PROTEINA) return 0;
+    var deficit = deficitProteinaCandidato(candidato, ctx, idsTotal);
+    if (deficit == null) return 0; // menú con algún ingrediente sin macro: la señal calla
+    return -PESO_DEFICIT_PROTEINA * deficit; // saturada: 0 si nadie va corto, nunca bonus
+  }
+
   function puntuarCandidato(candidato, ctx, senales) {
     // mismos ids totales que el check/resumen (generarCandidatosSlot los adjunta al candidato;
     // los caminos que construyen candidatos a mano los re-derivan igual) — las señales ven el
@@ -1001,6 +1183,7 @@
       + puntuarCambios(candidato.principal.id, senales.cambiosPorPrincipal)
       + puntuarCole(idsTotal, senales.coleDiaD, senales.coleDiaDMas1, ctx.presentes, ctx.banco)
       + puntuarSalubridadTecnica(candidato.principal, ctx.bancoV3)
+      + puntuarProteinaAdecuacion(candidato, ctx, idsTotal)
       + puntuarFavorita(candidato.principal.id, senales.favoritas)
       + puntuarAusenciaEstructural(idsTotal, senales.familiaCompleta, presentesIds, ctx.tipoComida, senales.diaIndex, ctx.banco);
   }
@@ -2142,6 +2325,9 @@
     ocasionDeFecha: ocasionDeFecha, puntuarOcasion: puntuarOcasion, pascuaDomingo: pascuaDomingo,
     pasosDeElaboracion: pasosDeElaboracion,
     puntuarFavorita: puntuarFavorita, puntuarCole: puntuarCole, puntuarAusenciaEstructural: puntuarAusenciaEstructural,
+    priProteinaDiaria: priProteinaDiaria, sueloProteinaPersona: sueloProteinaPersona,
+    deficitProteinaCandidato: deficitProteinaCandidato, puntuarProteinaAdecuacion: puntuarProteinaAdecuacion,
+    PESO_DEFICIT_PROTEINA: PESO_DEFICIT_PROTEINA,
     idCanonicoCandidato: idCanonicoCandidato, ordenarDeterminista: ordenarDeterminista, elegirTopN: elegirTopN,
     generarCandidatosConRelajacion: generarCandidatosConRelajacion, NIVELES_RELAJACION: NIVELES_RELAJACION,
     postreDelDia: postreDelDia, resolverMenu: resolverMenu, iterarMenus: iterarMenus,

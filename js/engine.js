@@ -428,6 +428,13 @@
   // fritos: cuenta por tecnicaCoccion==='frito' de la elaboración PRINCIPAL del
   // menú (tramo 2, decisión documentada: la técnica de cocción real determina
   // absorción de aceite, no el acabado/recubrimiento)
+  // ⚠️ La cuota vive en `banco.categorias_cuota.fritos`, NO en `banco.cuota_fritos`. Los callers
+  // le pasaban `bancoV3.cuota_fritos` (inexistente) → llegaba `undefined` y la función se rendía en
+  // la 2ª línea: **la cuota de fritos no se aplicó nunca** (bug hallado 2026-07-25 midiendo por qué
+  // el motor no servía fritos). Estuvo tapado porque la señal de salubridad (±3) era tan fuerte que
+  // ningún frito ganaba un slot jamás — dos fallos que se anulaban: una señal que excluía de facto
+  // escondiendo una cuota muerta. Cuarto caso del mismo patrón "regla declarada que no muerde"
+  // (ver IDS_MERCURIO_ALTO y la categoría `pan` de grupos.hidrato).
   function violaCuotaFritos(tecnicaPrincipal, contadorFritos, cuotaFritos) {
     if (tecnicaPrincipal !== 'frito') return false;
     if (!cuotaFritos || cuotaFritos.max_sem == null) return false;
@@ -901,12 +908,31 @@
   // excluye — principio 8). Técnicas sin cita (salubridad null: guisado/
   // salteado/crudo) NO puntúan — ausencia de señal, no cita positiva (mismo
   // criterio que el research documentó, nunca inventar un nivel neutro).
+  // RECALIBRADA a ASIMÉTRICA (2026-07-25): bonus a la técnica saludable, CERO malus a la fritura.
+  //
+  // Antes era ±3, y ese diferencial de 6 puntos bastaba para que NINGÚN frito ganara jamás un slot:
+  // medido, 0 fritos servidos en 112 slots (8 semanas), con el mejor frito en el puesto 661 de
+  // 1.314 candidatos válidos. La señal no dosificaba, EXCLUÍA — en contra del principio 8 del
+  // proyecto ("la cuota limita con naturalidad, nunca sermonea ni excluye... no excluye alimentos
+  // de la cultura real —embutido, queso, fritura ocasional—, los dosifica") y de la propia cuota
+  // AESAN, que permite hasta 2 fritos por semana. Ninguna familia española pasa dos meses sin unas
+  // croquetas o una tortilla de patata.
+  //
+  // Quien limita la fritura es la CUOTA (restricción dura, y hasta hoy estaba muerta por un bug de
+  // cableado — ver violaCuotaFritos). Esta señal solo debe expresar la preferencia por
+  // plancha/horno/vapor cuando lo demás empata, no vetar por la puerta de atrás.
+  //
+  // Por qué asimétrica y no un ±N más pequeño: medido sobre 18 semanas × 3 tamaños de familia,
+  // cualquier malus simétrico reintroduce la exclusión en las familias pequeñas (con ±1 la de 4
+  // personas llega a 0,72 fritos/semana pero la de 3 se queda en 0,06 — una vez cada 4 meses).
+  // Con el bonus solo: 1,44 · 0,44 · 0,33 fritos/semana según tamaño, ninguno supera la cuota, y el
+  // 50-65% de los platos sigue usando técnica saludable — la preferencia se conserva sin excluir.
+  var BONUS_TECNICA_SALUDABLE = 1; // salubridad 1: plancha, horno, vapor, hervido (cita AESAN)
   function puntuarSalubridadTecnica(principal, bancoV3) {
     var tec = bancoV3.tecnicas_coccion[principal.tecnicaCoccion];
     if (!tec || tec.salubridad == null) return 0;
-    if (tec.salubridad === 1) return 3;
-    if (tec.salubridad === 3) return -3;
-    return 0;
+    if (tec.salubridad === 1) return BONUS_TECNICA_SALUDABLE;
+    return 0; // salubridad 3 (frito): sin malus — lo limita la cuota semanal, no el scoring
   }
 
   // Favoritas (NUEVA v3 con efecto real — MOTOR_RECETAS §11.3 resuelto:
@@ -1586,7 +1612,7 @@
           bancoV3: bancoV3, banco: banco, estado: estado, presentes: presentes, tipoComida: tipoComida, esFinde: esFinde,
           fechaReferencia: fechaReferencia, mes: mesDeFecha(fecha), vetosUnion: vetosDe(presentes, fechaReferencia), vetosViabilidad: vetosDe(presentes, fechaReferencia),
           usadosHoy: usadosHoyAcumulado, usadosAyer: usadosAyer, categoriasProteinaHoy: categoriasProteinaHoyAcumulado,
-          contadorCuotas: contadorCuotas, cuotas: cuotas, contadorFritos: contadorFritos, cuotaFritos: bancoV3.cuota_fritos,
+          contadorCuotas: contadorCuotas, cuotas: cuotas, contadorFritos: contadorFritos, cuotaFritos: cuotas.fritos,
           ignorarEsfuerzo: false
         };
 
@@ -1745,7 +1771,7 @@
       bancoV3: bancoV3, banco: banco, estado: estado, presentes: presentes, tipoComida: tipoComida, esFinde: esFinde,
       fechaReferencia: fechaReferencia, mes: mesDeFecha(fecha), vetosUnion: vetosDe(presentes, fechaReferencia), vetosViabilidad: vetosDe(presentes, fechaReferencia),
       usadosHoy: usadosHoy, usadosAyer: usadosAyer, categoriasProteinaHoy: categoriasProteinaHoy,
-      contadorCuotas: contadorCuotas, cuotas: cuotas, contadorFritos: contadorFritos, cuotaFritos: bancoV3.cuota_fritos,
+      contadorCuotas: contadorCuotas, cuotas: cuotas, contadorFritos: contadorFritos, cuotaFritos: cuotas.fritos,
       ignorarEsfuerzo: false
     };
 

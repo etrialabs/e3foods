@@ -20,7 +20,16 @@
       "kcal_100g": 165,
       "racion_adulto_g": 150,
       "racion_nino_g": 90,
-      "coste_banda": 2
+      "coste_banda": 2,
+      "proteina_g": 31,
+      "grasa_g": 3.6,
+      "hidratos_g": 0,
+      "fibra_g": null,
+      "base_nutricional": "cocido",
+      "nota_base": "kcal_100g (165) y la columna “crudo” del Excel para Pechuga de pollo son el MISMO valor (165/31/3.6/0). Firma matematica confirmada contra USDA FDC (API, en vivo): pollo pechuga sin piel crudo real = 120/22.5/2.62; ratio Excel-crudo/USDA-raw = 1.375/1.378/1.374, practicamente identico en las 3 macros. Tanto el banco como el Excel traen en realidad pechuga de pollo YA COCINADA mal etiquetada como “crudo”. Se usan las macros de esa columna tal cual (31/3.6/0) -- coherentes con el kcal_100g existente, que no se toca.",
+      "origen": "pollo",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Pechuga de pollo/crudo",
+      "confianza_macros": "alta"
     },
     "pavo": {
       "nombre": "Pavo (filete o picado)",
@@ -28,7 +37,16 @@
       "kcal_100g": 110,
       "racion_adulto_g": 150,
       "racion_nino_g": 90,
-      "coste_banda": 2
+      "coste_banda": 2,
+      "proteina_g": 29,
+      "grasa_g": 1.5,
+      "hidratos_g": 0,
+      "fibra_g": null,
+      "base_nutricional": "cocido",
+      "nota_base": "Mismo patron que pollo (misma pieza, pechuga de ave) pero con evidencia mas debil: Excel crudo Pechuga de pavo = 149/29/1.5; ratio frente a referencia externa de pavo crudo (~110/24/<2, busqueda web sin BEDCA directo ni verificacion en fuente primaria) = 1.355/1.208/~2.3 -- mismo sentido en las 3 macros pero no tan limpio como pollo. AVISO: a diferencia de pollo, el kcal_100g del banco (110) NO coincide con la columna crudo del Excel (149) usada aqui para las macros -- son numeros de fuentes distintas que se asume describen el mismo estado (pavo cocinado). Decision heredada de la sesion de analisis previa (_MACROS_ingesta_analisis.md §3a), con respaldo mas debil que pollo -- recomendable que Roger la revise.",
+      "origen": "pavo",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Pechuga de pavo/crudo",
+      "confianza_macros": "media"
     },
     "conejo": {
       "nombre": "Conejo",
@@ -36,7 +54,15 @@
       "kcal_100g": 130,
       "racion_adulto_g": 150,
       "racion_nino_g": 90,
-      "coste_banda": 2
+      "coste_banda": 2,
+      "proteina_g": 23,
+      "grasa_g": 5,
+      "hidratos_g": 0,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "conejo",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Conejo troceado / Lomo de conejo / Muslos de conejo/crudo",
+      "confianza_macros": "alta"
     },
     "ternera-picada": {
       "nombre": "Carne picada de ternera",
@@ -44,7 +70,15 @@
       "kcal_100g": 240,
       "racion_adulto_g": 130,
       "racion_nino_g": 80,
-      "coste_banda": 2
+      "coste_banda": 2,
+      "proteina_g": 26,
+      "grasa_g": 8,
+      "hidratos_g": 0,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "ternera",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Carne picada de ternera/crudo",
+      "confianza_macros": "alta"
     },
     "ternera": {
       "nombre": "Ternera (filete o para guisar)",
@@ -52,7 +86,15 @@
       "kcal_100g": 200,
       "racion_adulto_g": 150,
       "racion_nino_g": 90,
-      "coste_banda": 3
+      "coste_banda": 3,
+      "proteina_g": 26,
+      "grasa_g": 11,
+      "hidratos_g": 0,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "ternera",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Filete de ternera/crudo",
+      "confianza_macros": "alta"
     },
     "cerdo": {
       "nombre": "Cerdo (lomo o solomillo)",
@@ -60,7 +102,15 @@
       "kcal_100g": 180,
       "racion_adulto_g": 150,
       "racion_nino_g": 90,
-      "coste_banda": 2
+      "coste_banda": 2,
+      "proteina_g": 27,
+      "grasa_g": 7,
+      "hidratos_g": 0,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "cerdo",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Lomo de cerdo/crudo",
+      "confianza_macros": "alta"
     },
     "chorizo": {
       "nombre": "Chorizo",
@@ -68,7 +118,16 @@
       "kcal_100g": 323,
       "racion_adulto_g": 60,
       "racion_nino_g": 30,
-      "coste_banda": 2
+      "coste_banda": 2,
+      "proteina_g": 22,
+      "grasa_g": 38,
+      "hidratos_g": 3,
+      "fibra_g": null,
+      "base_nutricional": "cocido",
+      "nota_base": "Embutido curado que se compra listo para comer, sin coccion en casa -- tecnica Excel = “Crudo / sin cocción / conserva” (unica fila para este alimento, sin alternativa cocinada).",
+      "origen": "chorizo",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Chorizo/crudo",
+      "confianza_macros": "media"
     },
     "panceta": {
       "nombre": "Panceta de cerdo",
@@ -76,7 +135,14 @@
       "kcal_100g": 467,
       "racion_adulto_g": 50,
       "racion_nino_g": 25,
-      "coste_banda": 2
+      "coste_banda": 2,
+      "proteina_g": null,
+      "grasa_g": null,
+      "hidratos_g": null,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": null,
+      "confianza_macros": "sin_match"
     },
     "jamon-serrano": {
       "nombre": "Jamón serrano",
@@ -84,7 +150,16 @@
       "kcal_100g": 319,
       "racion_adulto_g": 40,
       "racion_nino_g": 25,
-      "coste_banda": 2
+      "coste_banda": 2,
+      "proteina_g": 30,
+      "grasa_g": 14,
+      "hidratos_g": 0,
+      "fibra_g": null,
+      "base_nutricional": "cocido",
+      "nota_base": "Curado que se compra listo para comer (loncheado), sin coccion en casa -- tecnica Excel = “Crudo / sin cocción / conserva” (unica fila, sin alternativa cocinada).",
+      "origen": "jamon",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Jamón serrano/crudo",
+      "confianza_macros": "media"
     },
     "compango": {
       "nombre": "Compango asturiano (chorizo, morcilla y lacón)",
@@ -92,7 +167,15 @@
       "kcal_100g": 287,
       "racion_adulto_g": 80,
       "racion_nino_g": 40,
-      "coste_banda": 2
+      "coste_banda": 2,
+      "proteina_g": null,
+      "grasa_g": null,
+      "hidratos_g": null,
+      "fibra_g": null,
+      "base_nutricional": "cocido",
+      "nota_base": "Sin match en el Excel (mezcla sin proporcion fija). Mezcla de embutidos curados/cocidos para cocido/fabada (chorizo+morcilla+lacon) -- cada componente individual se compra curado/listo (ver chorizo, morcilla, jamon-serrano en este mismo banco, todos 'cocido'), se declara igual por composicion aunque sin macros propios.",
+      "origen": null,
+      "confianza_macros": "sin_match"
     },
     "ternera-rellena": {
       "nombre": "Ternera rellena de jamón y queso (cachopo)",
@@ -100,7 +183,15 @@
       "kcal_100g": 195,
       "racion_adulto_g": 200,
       "racion_nino_g": 120,
-      "coste_banda": 3
+      "coste_banda": 3,
+      "proteina_g": null,
+      "grasa_g": null,
+      "hidratos_g": null,
+      "fibra_g": null,
+      "base_nutricional": "cocido",
+      "nota_base": "Sin match en el Excel (plato compuesto). Cachopo: ternera rebozada y frita, rellena de jamon y queso -- no existe un estado “crudo” del plato tal como se sirve, se consume ya cocinado.",
+      "origen": null,
+      "confianza_macros": "sin_match"
     },
     "merluza": {
       "nombre": "Merluza",
@@ -108,7 +199,15 @@
       "kcal_100g": 90,
       "racion_adulto_g": 160,
       "racion_nino_g": 100,
-      "coste_banda": 3
+      "coste_banda": 3,
+      "proteina_g": 18,
+      "grasa_g": 0.9,
+      "hidratos_g": 0,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "merluza",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Merluza/crudo",
+      "confianza_macros": "alta"
     },
     "bacalao": {
       "nombre": "Bacalao desalado",
@@ -116,7 +215,16 @@
       "kcal_100g": 110,
       "racion_adulto_g": 160,
       "racion_nino_g": 100,
-      "coste_banda": 2
+      "coste_banda": 2,
+      "proteina_g": 17.5,
+      "grasa_g": 0.7,
+      "hidratos_g": 0,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "nota_base": "Banco = “Bacalao desalado” (bacalao en salazon tras remojo para quitar sal), un estado intermedio que el Excel no modela (solo trae “Bacalao fresco”, 80kcal, nunca salado, y “Bacalao en salazon”, 95kcal, antes de desalar). El desalado NO es coccion (no se aplica calor, solo se retira la sal por remojo en agua) -- el pescado sigue crudo y se cocina despues en casa, por eso se declara 'crudo' pese a no encajar exacto en ninguna fila del Excel. Macros = columna crudo de 'Bacalao fresco' (proxy mas cercano disponible), sin ajustar por el desalado (no hay dato verificable de cuanto cambia).",
+      "origen": "bacalao",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Bacalao fresco/crudo",
+      "confianza_macros": "media"
     },
     "lubina": {
       "nombre": "Lubina",
@@ -124,7 +232,15 @@
       "kcal_100g": 118,
       "racion_adulto_g": 160,
       "racion_nino_g": 100,
-      "coste_banda": 3
+      "coste_banda": 3,
+      "proteina_g": 19.5,
+      "grasa_g": 1.3,
+      "hidratos_g": 0,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "lubina",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Lubina/crudo",
+      "confianza_macros": "alta"
     },
     "gallo": {
       "nombre": "Gallo (filetes)",
@@ -132,7 +248,15 @@
       "kcal_100g": 80,
       "racion_adulto_g": 160,
       "racion_nino_g": 100,
-      "coste_banda": 3
+      "coste_banda": 3,
+      "proteina_g": 17,
+      "grasa_g": 1,
+      "hidratos_g": 0,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "lenguado",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Lenguado/crudo",
+      "confianza_macros": "media"
     },
     "salmon": {
       "nombre": "Salmón",
@@ -140,7 +264,15 @@
       "kcal_100g": 200,
       "racion_adulto_g": 150,
       "racion_nino_g": 90,
-      "coste_banda": 3
+      "coste_banda": 3,
+      "proteina_g": 20,
+      "grasa_g": 13,
+      "hidratos_g": 0,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "salmon",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Salmón/crudo",
+      "confianza_macros": "alta"
     },
     "atun": {
       "nombre": "Atún fresco",
@@ -148,7 +280,15 @@
       "kcal_100g": 130,
       "racion_adulto_g": 150,
       "racion_nino_g": 90,
-      "coste_banda": 3
+      "coste_banda": 3,
+      "proteina_g": 25,
+      "grasa_g": 9,
+      "hidratos_g": 0,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "atun",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Atún fresco/crudo",
+      "confianza_macros": "media"
     },
     "sardinas": {
       "nombre": "Sardinas",
@@ -156,7 +296,15 @@
       "kcal_100g": 170,
       "racion_adulto_g": 150,
       "racion_nino_g": 90,
-      "coste_banda": 2
+      "coste_banda": 2,
+      "proteina_g": 21,
+      "grasa_g": 10,
+      "hidratos_g": 0,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "sardina",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Sardina fresca/crudo",
+      "confianza_macros": "alta"
     },
     "boquerones": {
       "nombre": "Boquerones",
@@ -164,7 +312,15 @@
       "kcal_100g": 130,
       "racion_adulto_g": 120,
       "racion_nino_g": 70,
-      "coste_banda": 1
+      "coste_banda": 1,
+      "proteina_g": 20,
+      "grasa_g": 7,
+      "hidratos_g": 0,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "boqueron",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Boquerón/crudo",
+      "confianza_macros": "alta"
     },
     "bonito": {
       "nombre": "Bonito del norte fresco",
@@ -172,7 +328,15 @@
       "kcal_100g": 138,
       "racion_adulto_g": 150,
       "racion_nino_g": 90,
-      "coste_banda": 2
+      "coste_banda": 2,
+      "proteina_g": 24,
+      "grasa_g": 10,
+      "hidratos_g": 0,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "bonito",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Bonito fresco/crudo",
+      "confianza_macros": "media"
     },
     "trucha": {
       "nombre": "Trucha",
@@ -180,7 +344,15 @@
       "kcal_100g": 90,
       "racion_adulto_g": 160,
       "racion_nino_g": 100,
-      "coste_banda": 2
+      "coste_banda": 2,
+      "proteina_g": 20,
+      "grasa_g": 5,
+      "hidratos_g": 0,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "trucha",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Trucha/crudo",
+      "confianza_macros": "media"
     },
     "gambas": {
       "nombre": "Gambas o langostinos",
@@ -188,7 +360,15 @@
       "kcal_100g": 90,
       "racion_adulto_g": 130,
       "racion_nino_g": 80,
-      "coste_banda": 3
+      "coste_banda": 3,
+      "proteina_g": 24,
+      "grasa_g": 0.5,
+      "hidratos_g": 0.5,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "gamba",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Gambas/crudo",
+      "confianza_macros": "alta"
     },
     "mejillones": {
       "nombre": "Mejillones",
@@ -196,7 +376,15 @@
       "kcal_100g": 85,
       "racion_adulto_g": 200,
       "racion_nino_g": 120,
-      "coste_banda": 2
+      "coste_banda": 2,
+      "proteina_g": 12,
+      "grasa_g": 2,
+      "hidratos_g": 3,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "mejillon",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Mejillones/crudo",
+      "confianza_macros": "alta"
     },
     "huevo": {
       "nombre": "Huevo",
@@ -205,7 +393,15 @@
       "racion_adulto_g": 120,
       "racion_nino_g": 60,
       "coste_banda": 1,
-      "unidad_g": 60
+      "unidad_g": 60,
+      "proteina_g": 12.5,
+      "grasa_g": 10,
+      "hidratos_g": 1,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "huevo",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Huevos/crudo",
+      "confianza_macros": "alta"
     },
     "entrecot-ternera": {
       "nombre": "Entrecot de ternera",
@@ -213,7 +409,15 @@
       "kcal_100g": 180,
       "racion_adulto_g": 150,
       "racion_nino_g": 90,
-      "coste_banda": 3
+      "coste_banda": 3,
+      "proteina_g": 25,
+      "grasa_g": 12,
+      "hidratos_g": 0,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "ternera",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Entrecot de ternera/crudo",
+      "confianza_macros": "alta"
     },
     "solomillo-ternera": {
       "nombre": "Solomillo de ternera",
@@ -221,7 +425,15 @@
       "kcal_100g": 126,
       "racion_adulto_g": 150,
       "racion_nino_g": 90,
-      "coste_banda": 3
+      "coste_banda": 3,
+      "proteina_g": 27,
+      "grasa_g": 5,
+      "hidratos_g": 0,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "ternera",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Solomillo de ternera/crudo",
+      "confianza_macros": "alta"
     },
     "carrillera-ternera": {
       "nombre": "Carrillera de ternera",
@@ -229,7 +441,15 @@
       "kcal_100g": 130,
       "racion_adulto_g": 160,
       "racion_nino_g": 100,
-      "coste_banda": 2
+      "coste_banda": 2,
+      "proteina_g": 20,
+      "grasa_g": 11,
+      "hidratos_g": 0,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "ternera",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Carrillera de ternera/crudo",
+      "confianza_macros": "alta"
     },
     "rabo-ternera": {
       "nombre": "Rabo de ternera",
@@ -237,7 +457,15 @@
       "kcal_100g": 200,
       "racion_adulto_g": 180,
       "racion_nino_g": 110,
-      "coste_banda": 2
+      "coste_banda": 2,
+      "proteina_g": 19,
+      "grasa_g": 20,
+      "hidratos_g": 0,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "ternera",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Rabo de ternera/crudo",
+      "confianza_macros": "alta"
     },
     "chuletas-cerdo": {
       "nombre": "Chuletas de cerdo",
@@ -245,7 +473,15 @@
       "kcal_100g": 180,
       "racion_adulto_g": 200,
       "racion_nino_g": 120,
-      "coste_banda": 1
+      "coste_banda": 1,
+      "proteina_g": 24,
+      "grasa_g": 12,
+      "hidratos_g": 0,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "cerdo",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Chuletas de cerdo/crudo",
+      "confianza_macros": "alta"
     },
     "costillas-cerdo": {
       "nombre": "Costillas de cerdo",
@@ -253,7 +489,15 @@
       "kcal_100g": 250,
       "racion_adulto_g": 220,
       "racion_nino_g": 130,
-      "coste_banda": 1
+      "coste_banda": 1,
+      "proteina_g": 20,
+      "grasa_g": 20,
+      "hidratos_g": 0,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "cerdo",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Costillas de cerdo/crudo",
+      "confianza_macros": "alta"
     },
     "secreto-iberico": {
       "nombre": "Secreto ibérico",
@@ -261,7 +505,15 @@
       "kcal_100g": 290,
       "racion_adulto_g": 150,
       "racion_nino_g": 90,
-      "coste_banda": 2
+      "coste_banda": 2,
+      "proteina_g": 20,
+      "grasa_g": 25,
+      "hidratos_g": 0,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "cerdo",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Secreto de cerdo/crudo",
+      "confianza_macros": "media"
     },
     "presa-iberica": {
       "nombre": "Presa ibérica",
@@ -269,7 +521,15 @@
       "kcal_100g": 210,
       "racion_adulto_g": 150,
       "racion_nino_g": 90,
-      "coste_banda": 2
+      "coste_banda": 2,
+      "proteina_g": 21,
+      "grasa_g": 23,
+      "hidratos_g": 0,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "cerdo",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Presa de cerdo/crudo",
+      "confianza_macros": "media"
     },
     "salchichas-cerdo": {
       "nombre": "Salchichas frescas",
@@ -277,7 +537,15 @@
       "kcal_100g": 168,
       "racion_adulto_g": 150,
       "racion_nino_g": 90,
-      "coste_banda": 1
+      "coste_banda": 1,
+      "proteina_g": 14,
+      "grasa_g": 25,
+      "hidratos_g": 1,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "cerdo",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Butifarra fresca / Salchichas frescas/crudo",
+      "confianza_macros": "alta"
     },
     "butifarra-fresca": {
       "nombre": "Butifarra fresca",
@@ -285,7 +553,15 @@
       "kcal_100g": 230,
       "racion_adulto_g": 150,
       "racion_nino_g": 90,
-      "coste_banda": 1
+      "coste_banda": 1,
+      "proteina_g": 14,
+      "grasa_g": 25,
+      "hidratos_g": 1,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "cerdo",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Butifarra fresca / Salchichas frescas/crudo",
+      "confianza_macros": "alta"
     },
     "butifarra-blanca": {
       "nombre": "Butifarra blanca",
@@ -293,7 +569,16 @@
       "kcal_100g": 240,
       "racion_adulto_g": 150,
       "racion_nino_g": 90,
-      "coste_banda": 2
+      "coste_banda": 2,
+      "proteina_g": 15,
+      "grasa_g": 27,
+      "hidratos_g": 1.5,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "nota_base": "Pese a ser un embutido, el Excel la modela con tecnicas de coccion (plancha/horno/parrilla/guiso/frito), NO con “Crudo / sin cocción / conserva” como fuet/salchichon/morcilla/sobrasada -- la butifarra blanca cruda se cocina en casa (no se come tal cual se compra). Ademas kcal_100g del banco (240) esta POR DEBAJO de la propia columna crudo del Excel (320) y muy por debajo de todas sus columnas cocinado (427-522), señal consistente con que el banco referencia un embutido fresco sin cocinar, no uno listo para comer.",
+      "origen": "cerdo",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Butifarra blanca/crudo",
+      "confianza_macros": "alta"
     },
     "butifarra-negra": {
       "nombre": "Butifarra negra",
@@ -301,7 +586,16 @@
       "kcal_100g": 290,
       "racion_adulto_g": 150,
       "racion_nino_g": 90,
-      "coste_banda": 2
+      "coste_banda": 2,
+      "proteina_g": 12,
+      "grasa_g": 35,
+      "hidratos_g": 2,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "nota_base": "Mismo caso que butifarra-blanca: el Excel la modela con tecnicas de coccion (plancha/horno/parrilla/guiso/frito), a diferencia de morcilla (que en el Excel SI es “Crudo / sin cocción / conserva”) pese a ser un embutido de sangre muy similar -- se respeta la distincion que hace el propio Excel. kcal_100g del banco (290) esta por debajo de la columna crudo del Excel (380) y de todas las cocinado (502-595), consistente con estado crudo.",
+      "origen": "cerdo",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Butifarra negra / negra de huevo/crudo",
+      "confianza_macros": "alta"
     },
     "cordero-pierna": {
       "nombre": "Pierna de cordero",
@@ -309,7 +603,15 @@
       "kcal_100g": 182,
       "racion_adulto_g": 200,
       "racion_nino_g": 120,
-      "coste_banda": 3
+      "coste_banda": 3,
+      "proteina_g": 22,
+      "grasa_g": 14,
+      "hidratos_g": 0,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "cordero",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Pierna de cordero/crudo",
+      "confianza_macros": "alta"
     },
     "cordero-paletilla": {
       "nombre": "Paletilla de cordero",
@@ -317,7 +619,15 @@
       "kcal_100g": 205,
       "racion_adulto_g": 200,
       "racion_nino_g": 120,
-      "coste_banda": 2
+      "coste_banda": 2,
+      "proteina_g": 21,
+      "grasa_g": 15,
+      "hidratos_g": 0,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "cordero",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Paletilla de cordero/crudo",
+      "confianza_macros": "alta"
     },
     "cordero-chuletas": {
       "nombre": "Chuletas de cordero",
@@ -325,7 +635,15 @@
       "kcal_100g": 228,
       "racion_adulto_g": 200,
       "racion_nino_g": 120,
-      "coste_banda": 3
+      "coste_banda": 3,
+      "proteina_g": 23,
+      "grasa_g": 17,
+      "hidratos_g": 0,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "cordero",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Chuletas de cordero/crudo",
+      "confianza_macros": "alta"
     },
     "cordero-cuello": {
       "nombre": "Cuello de cordero",
@@ -333,7 +651,15 @@
       "kcal_100g": 275,
       "racion_adulto_g": 200,
       "racion_nino_g": 120,
-      "coste_banda": 2
+      "coste_banda": 2,
+      "proteina_g": 19,
+      "grasa_g": 14,
+      "hidratos_g": 0,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "cordero",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Cuello de cordero/crudo",
+      "confianza_macros": "alta"
     },
     "alitas-pollo": {
       "nombre": "Alitas de pollo",
@@ -341,7 +667,15 @@
       "kcal_100g": 217,
       "racion_adulto_g": 200,
       "racion_nino_g": 120,
-      "coste_banda": 1
+      "coste_banda": 1,
+      "proteina_g": 19,
+      "grasa_g": 13,
+      "hidratos_g": 0,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "pollo",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Alitas de pollo/crudo",
+      "confianza_macros": "alta"
     },
     "carne-picada-mixta": {
       "nombre": "Carne picada mixta",
@@ -349,7 +683,15 @@
       "kcal_100g": 190,
       "racion_adulto_g": 130,
       "racion_nino_g": 80,
-      "coste_banda": 1
+      "coste_banda": 1,
+      "proteina_g": 26,
+      "grasa_g": 8,
+      "hidratos_g": 0,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "ternera",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Carne picada de ternera/crudo",
+      "confianza_macros": "baja"
     },
     "jamon-cocido": {
       "nombre": "Jamón cocido",
@@ -357,7 +699,16 @@
       "kcal_100g": 106,
       "racion_adulto_g": 50,
       "racion_nino_g": 30,
-      "coste_banda": 2
+      "coste_banda": 2,
+      "proteina_g": 20,
+      "grasa_g": 4,
+      "hidratos_g": 1,
+      "fibra_g": null,
+      "base_nutricional": "cocido",
+      "nota_base": "Jamon cocido (york) es por nombre y proceso un producto YA cocido de fabrica (no jamon crudo) que se consume habitualmente en frio, sin coccion adicional en casa -- se usa la referencia base del Excel (columna “crudo” = 120kcal/20/4/1, el estado “tal cual se compra” antes de las tecnicas OPCIONALES de plancha/horno que el Excel tambien modela para quien decide calentarlo).",
+      "origen": "jamon cocido",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Jamón cocido/crudo",
+      "confianza_macros": "alta"
     },
     "fuet": {
       "nombre": "Fuet",
@@ -365,7 +716,16 @@
       "kcal_100g": 473,
       "racion_adulto_g": 30,
       "racion_nino_g": 20,
-      "coste_banda": 2
+      "coste_banda": 2,
+      "proteina_g": 25,
+      "grasa_g": 32,
+      "hidratos_g": 2,
+      "fibra_g": null,
+      "base_nutricional": "cocido",
+      "nota_base": "Embutido curado que se compra listo para comer, sin coccion en casa -- tecnica Excel = “Crudo / sin cocción / conserva” (unica fila para este alimento, sin alternativa cocinada).",
+      "origen": "fuet",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Fuet/crudo",
+      "confianza_macros": "alta"
     },
     "salchichon": {
       "nombre": "Salchichón",
@@ -373,7 +733,16 @@
       "kcal_100g": 438,
       "racion_adulto_g": 30,
       "racion_nino_g": 20,
-      "coste_banda": 2
+      "coste_banda": 2,
+      "proteina_g": 24,
+      "grasa_g": 35,
+      "hidratos_g": 1,
+      "fibra_g": null,
+      "base_nutricional": "cocido",
+      "nota_base": "Embutido curado que se compra listo para comer, sin coccion en casa -- tecnica Excel = “Crudo / sin cocción / conserva” (unica fila para este alimento, sin alternativa cocinada).",
+      "origen": "salchichon",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Salchichón/crudo",
+      "confianza_macros": "alta"
     },
     "morcilla": {
       "nombre": "Morcilla",
@@ -381,7 +750,16 @@
       "kcal_100g": 323,
       "racion_adulto_g": 60,
       "racion_nino_g": 30,
-      "coste_banda": 1
+      "coste_banda": 1,
+      "proteina_g": 14,
+      "grasa_g": 33,
+      "hidratos_g": 4,
+      "fibra_g": null,
+      "base_nutricional": "cocido",
+      "nota_base": "Embutido curado que se compra listo para comer, sin coccion en casa -- tecnica Excel = “Crudo / sin cocción / conserva” (unica fila para este alimento, sin alternativa cocinada).",
+      "origen": "morcilla",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Morcilla/crudo",
+      "confianza_macros": "alta"
     },
     "sobrasada": {
       "nombre": "Sobrasada",
@@ -389,7 +767,16 @@
       "kcal_100g": 608,
       "racion_adulto_g": 30,
       "racion_nino_g": 20,
-      "coste_banda": 2
+      "coste_banda": 2,
+      "proteina_g": 10,
+      "grasa_g": 60,
+      "hidratos_g": 2,
+      "fibra_g": null,
+      "base_nutricional": "cocido",
+      "nota_base": "Embutido curado que se compra listo para comer, sin coccion en casa -- tecnica Excel = “Crudo / sin cocción / conserva” (unica fila para este alimento, sin alternativa cocinada).",
+      "origen": "sobrasada",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Sobrasada/crudo",
+      "confianza_macros": "alta"
     },
     "lomo-embuchado": {
       "nombre": "Lomo embuchado",
@@ -397,7 +784,16 @@
       "kcal_100g": 321,
       "racion_adulto_g": 30,
       "racion_nino_g": 20,
-      "coste_banda": 3
+      "coste_banda": 3,
+      "proteina_g": 35,
+      "grasa_g": 22,
+      "hidratos_g": 0,
+      "fibra_g": null,
+      "base_nutricional": "cocido",
+      "nota_base": "Embutido curado que se compra listo para comer, sin coccion en casa -- tecnica Excel = “Crudo / sin cocción / conserva” (unica fila para este alimento, sin alternativa cocinada).",
+      "origen": "lomo embuchado",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Lomo embuchado/crudo",
+      "confianza_macros": "alta"
     },
     "queso-curado": {
       "nombre": "Queso curado",
@@ -405,7 +801,16 @@
       "kcal_100g": 448,
       "racion_adulto_g": 40,
       "racion_nino_g": 25,
-      "coste_banda": 3
+      "coste_banda": 3,
+      "proteina_g": 32,
+      "grasa_g": 32,
+      "hidratos_g": 0,
+      "fibra_g": null,
+      "base_nutricional": "cocido",
+      "nota_base": "Producto que se compra listo (queso), no se cocina en casa en el uso habitual de la app -- se usa la columna “crudo” del Excel, que para queso es la referencia “tal cual se compra” (las tecnicas de horno/plancha/parrilla del Excel modelan un gratinado opcional, no el consumo por defecto).",
+      "origen": "queso",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Queso manchego/crudo",
+      "confianza_macros": "media"
     },
     "dorada": {
       "nombre": "Dorada",
@@ -413,7 +818,15 @@
       "kcal_100g": 125,
       "racion_adulto_g": 160,
       "racion_nino_g": 100,
-      "coste_banda": 2
+      "coste_banda": 2,
+      "proteina_g": 19,
+      "grasa_g": 1.2,
+      "hidratos_g": 0,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "dorada",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Dorada/crudo",
+      "confianza_macros": "alta"
     },
     "lenguado": {
       "nombre": "Lenguado",
@@ -421,7 +834,15 @@
       "kcal_100g": 79,
       "racion_adulto_g": 160,
       "racion_nino_g": 100,
-      "coste_banda": 3
+      "coste_banda": 3,
+      "proteina_g": 17,
+      "grasa_g": 1,
+      "hidratos_g": 0,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "lenguado",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Lenguado/crudo",
+      "confianza_macros": "alta"
     },
     "rape": {
       "nombre": "Rape",
@@ -429,7 +850,15 @@
       "kcal_100g": 70,
       "racion_adulto_g": 160,
       "racion_nino_g": 100,
-      "coste_banda": 3
+      "coste_banda": 3,
+      "proteina_g": 16,
+      "grasa_g": 0.8,
+      "hidratos_g": 0,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "rape",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Rape/crudo",
+      "confianza_macros": "alta"
     },
     "calamar": {
       "nombre": "Calamar",
@@ -437,7 +866,15 @@
       "kcal_100g": 72,
       "racion_adulto_g": 160,
       "racion_nino_g": 100,
-      "coste_banda": 2
+      "coste_banda": 2,
+      "proteina_g": 16,
+      "grasa_g": 1,
+      "hidratos_g": 1,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "calamar",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Calamar/crudo",
+      "confianza_macros": "alta"
     },
     "sepia": {
       "nombre": "Sepia",
@@ -445,7 +882,15 @@
       "kcal_100g": 80,
       "racion_adulto_g": 160,
       "racion_nino_g": 100,
-      "coste_banda": 2
+      "coste_banda": 2,
+      "proteina_g": 16,
+      "grasa_g": 1,
+      "hidratos_g": 1,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "sepia",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Sepia/crudo",
+      "confianza_macros": "alta"
     },
     "chipiron": {
       "nombre": "Chipirón",
@@ -453,7 +898,15 @@
       "kcal_100g": 72,
       "racion_adulto_g": 160,
       "racion_nino_g": 100,
-      "coste_banda": 3
+      "coste_banda": 3,
+      "proteina_g": 16,
+      "grasa_g": 1.5,
+      "hidratos_g": 1,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "chipiron",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Chipirón/crudo",
+      "confianza_macros": "alta"
     },
     "pulpo": {
       "nombre": "Pulpo",
@@ -461,7 +914,15 @@
       "kcal_100g": 91,
       "racion_adulto_g": 160,
       "racion_nino_g": 100,
-      "coste_banda": 2
+      "coste_banda": 2,
+      "proteina_g": 15,
+      "grasa_g": 1,
+      "hidratos_g": 2,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "pulpo",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Pulpo/crudo",
+      "confianza_macros": "alta"
     },
     "almejas": {
       "nombre": "Almejas",
@@ -469,7 +930,15 @@
       "kcal_100g": 48,
       "racion_adulto_g": 180,
       "racion_nino_g": 110,
-      "coste_banda": 3
+      "coste_banda": 3,
+      "proteina_g": 10,
+      "grasa_g": 0.5,
+      "hidratos_g": 2,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "almeja",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Almejas/crudo",
+      "confianza_macros": "alta"
     },
     "atun-conserva": {
       "nombre": "Atún en conserva",
@@ -477,7 +946,16 @@
       "kcal_100g": 101,
       "racion_adulto_g": 65,
       "racion_nino_g": 40,
-      "coste_banda": 2
+      "coste_banda": 2,
+      "proteina_g": 25,
+      "grasa_g": 1,
+      "hidratos_g": 0,
+      "fibra_g": null,
+      "base_nutricional": "cocido",
+      "nota_base": "Conserva comprada lista para comer, sin transformacion en casa -- tecnica Excel = “Crudo / sin cocción / conserva” (unica fila para este alimento, sin alternativa cocinada), coincide con el estado del kcal_100g del banco.",
+      "origen": "atun",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Atún en conserva/crudo",
+      "confianza_macros": "alta"
     },
     "anchoas-conserva": {
       "nombre": "Anchoas en conserva",
@@ -485,7 +963,16 @@
       "kcal_100g": 203,
       "racion_adulto_g": 25,
       "racion_nino_g": 15,
-      "coste_banda": 3
+      "coste_banda": 3,
+      "proteina_g": 29,
+      "grasa_g": 9,
+      "hidratos_g": 0,
+      "fibra_g": null,
+      "base_nutricional": "cocido",
+      "nota_base": "Conserva comprada lista para comer, sin transformacion en casa -- tecnica Excel = “Crudo / sin cocción / conserva” (unica fila para este alimento, sin alternativa cocinada), coincide con el estado del kcal_100g del banco.",
+      "origen": "anchoa conserva",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Anchoas en conserva/crudo",
+      "confianza_macros": "alta"
     },
     "col": {
       "nombre": "Col",
@@ -493,7 +980,15 @@
       "kcal_100g": 25,
       "racion_adulto_g": 200,
       "racion_nino_g": 120,
-      "coste_banda": 1
+      "coste_banda": 1,
+      "proteina_g": 1.3,
+      "grasa_g": 0.1,
+      "hidratos_g": 5,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "col",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Col/crudo",
+      "confianza_macros": "alta"
     },
     "habas-tiernas": {
       "nombre": "Habas tiernas",
@@ -507,7 +1002,15 @@
         3,
         4,
         5
-      ]
+      ],
+      "proteina_g": 6,
+      "grasa_g": 0.5,
+      "hidratos_g": 11,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "haba tierna",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Habas tiernas/crudo",
+      "confianza_macros": "media"
     },
     "esparrago-blanco": {
       "nombre": "Espárrago blanco",
@@ -515,7 +1018,15 @@
       "kcal_100g": 20,
       "racion_adulto_g": 125,
       "racion_nino_g": 75,
-      "coste_banda": 2
+      "coste_banda": 2,
+      "proteina_g": 1.8,
+      "grasa_g": 0.2,
+      "hidratos_g": 2.5,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "esparrago",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Espárrago blanco/crudo",
+      "confianza_macros": "alta"
     },
     "esparrago-verde": {
       "nombre": "Espárrago verde",
@@ -529,7 +1040,15 @@
         4,
         5,
         6
-      ]
+      ],
+      "proteina_g": 2.2,
+      "grasa_g": 0.2,
+      "hidratos_g": 2,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "esparrago",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Espárrago verde/crudo",
+      "confianza_macros": "alta"
     },
     "niscalos": {
       "nombre": "Níscalos",
@@ -543,7 +1062,15 @@
         10,
         11,
         12
-      ]
+      ],
+      "proteina_g": 2,
+      "grasa_g": 0.3,
+      "hidratos_g": 3,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "niscalo",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Níscalo/crudo",
+      "confianza_macros": "alta"
     },
     "boletus": {
       "nombre": "Boletus",
@@ -556,7 +1083,15 @@
         9,
         10,
         11
-      ]
+      ],
+      "proteina_g": 3,
+      "grasa_g": 0.5,
+      "hidratos_g": 3,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "boletus",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Boletus/crudo",
+      "confianza_macros": "alta"
     },
     "cebolla": {
       "nombre": "Cebolla",
@@ -565,7 +1100,15 @@
       "racion_adulto_g": 80,
       "racion_nino_g": 50,
       "coste_banda": 1,
-      "base": true
+      "base": true,
+      "proteina_g": 1.1,
+      "grasa_g": 0.1,
+      "hidratos_g": 7,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "cebolla",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Cebolla/crudo",
+      "confianza_macros": "media"
     },
     "cebolleta": {
       "nombre": "Cebolleta",
@@ -574,7 +1117,15 @@
       "racion_adulto_g": 40,
       "racion_nino_g": 25,
       "coste_banda": 1,
-      "base": true
+      "base": true,
+      "proteina_g": 1,
+      "grasa_g": 0.1,
+      "hidratos_g": 6,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "cebolleta",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Cebolleta/crudo",
+      "confianza_macros": "alta"
     },
     "aguacate": {
       "nombre": "Aguacate",
@@ -582,7 +1133,15 @@
       "kcal_100g": 145,
       "racion_adulto_g": 90,
       "racion_nino_g": 55,
-      "coste_banda": 2
+      "coste_banda": 2,
+      "proteina_g": 2,
+      "grasa_g": 15,
+      "hidratos_g": 2,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "aguacate",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Aguacate/crudo",
+      "confianza_macros": "media"
     },
     "masa-empanada": {
       "nombre": "Masa de empanada",
@@ -590,7 +1149,15 @@
       "kcal_100g": 385,
       "racion_adulto_g": 100,
       "racion_nino_g": 60,
-      "coste_banda": 2
+      "coste_banda": 2,
+      "proteina_g": 6,
+      "grasa_g": 15,
+      "hidratos_g": 35,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "masa",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Masa de empanada/crudo",
+      "confianza_macros": "alta"
     },
     "noquis": {
       "nombre": "Ñoquis",
@@ -598,7 +1165,15 @@
       "kcal_100g": 160,
       "racion_adulto_g": 200,
       "racion_nino_g": 120,
-      "coste_banda": 2
+      "coste_banda": 2,
+      "proteina_g": 3.5,
+      "grasa_g": 0.5,
+      "hidratos_g": 33,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "pasta",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Ñoquis/crudo",
+      "confianza_macros": "alta"
     },
     "maiz": {
       "nombre": "Maíz dulce",
@@ -606,7 +1181,15 @@
       "kcal_100g": 85,
       "racion_adulto_g": 60,
       "racion_nino_g": 40,
-      "coste_banda": 1
+      "coste_banda": 1,
+      "proteina_g": 3.3,
+      "grasa_g": 1.2,
+      "hidratos_g": 17,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "maiz",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Maíz/crudo",
+      "confianza_macros": "alta"
     },
     "arroz-bomba": {
       "nombre": "Arroz bomba",
@@ -614,7 +1197,15 @@
       "kcal_100g": 350,
       "racion_adulto_g": 80,
       "racion_nino_g": 50,
-      "coste_banda": 2
+      "coste_banda": 2,
+      "proteina_g": 6.5,
+      "grasa_g": 0.7,
+      "hidratos_g": 80,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "arroz",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Arroz arborio / Arroz bomba / Arroz redondo/crudo",
+      "confianza_macros": "alta"
     },
     "garbanzos": {
       "nombre": "Garbanzos cocidos",
@@ -622,7 +1213,16 @@
       "kcal_100g": 120,
       "racion_adulto_g": 200,
       "racion_nino_g": 130,
-      "coste_banda": 1
+      "coste_banda": 1,
+      "proteina_g": 6.3,
+      "grasa_g": 2,
+      "hidratos_g": 15,
+      "fibra_g": null,
+      "base_nutricional": "cocido",
+      "nota_base": "Banco mide legumbre YA COCIDA (nombre + racion_adulto_g≈200g solo tienen sentido cocida; 120kcal_100g actual no se toca). El Excel no trae fila de legumbre YA cocida como tal, pero SI trae la tecnica “Hervido / cocido normal” con columna cocinado propia por alimento (no es el factor generico de la hoja 'Equivalencia Cocciones', es un valor calculado por fila en Tabla Master) -- se usa esa columna cocinado de Garbanzo castellano / Garbanzo pedrosillano/Hervido, que ademas valida bien contra el kcal_100g ya existente del banco.",
+      "origen": "garbanzo",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Garbanzo castellano / Garbanzo pedrosillano/Hervido - cocido normal (col. cocinado)",
+      "confianza_macros": "baja"
     },
     "lentejas": {
       "nombre": "Lentejas cocidas",
@@ -630,7 +1230,16 @@
       "kcal_100g": 116,
       "racion_adulto_g": 200,
       "racion_nino_g": 130,
-      "coste_banda": 1
+      "coste_banda": 1,
+      "proteina_g": 8.3,
+      "grasa_g": 0.3,
+      "hidratos_g": 18,
+      "fibra_g": null,
+      "base_nutricional": "cocido",
+      "nota_base": "Banco mide legumbre YA COCIDA (nombre + racion_adulto_g≈200g solo tienen sentido cocida; 116kcal_100g actual no se toca). El Excel no trae fila de legumbre YA cocida como tal, pero SI trae la tecnica “Hervido / cocido normal” con columna cocinado propia por alimento (no es el factor generico de la hoja 'Equivalencia Cocciones', es un valor calculado por fila en Tabla Master) -- se usa esa columna cocinado de Lenteja pardina/Hervido, que ademas valida bien contra el kcal_100g ya existente del banco.",
+      "origen": "lenteja",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Lenteja pardina/Hervido - cocido normal (col. cocinado)",
+      "confianza_macros": "baja"
     },
     "alubias-blancas": {
       "nombre": "Alubias blancas cocidas",
@@ -638,7 +1247,16 @@
       "kcal_100g": 120,
       "racion_adulto_g": 200,
       "racion_nino_g": 130,
-      "coste_banda": 1
+      "coste_banda": 1,
+      "proteina_g": 7.3,
+      "grasa_g": 0.5,
+      "hidratos_g": 18.3,
+      "fibra_g": null,
+      "base_nutricional": "cocido",
+      "nota_base": "Banco mide legumbre YA COCIDA (nombre + racion_adulto_g≈200g solo tienen sentido cocida; 120kcal_100g actual no se toca). El Excel no trae fila de legumbre YA cocida como tal, pero SI trae la tecnica “Hervido / cocido normal” con columna cocinado propia por alimento (no es el factor generico de la hoja 'Equivalencia Cocciones', es un valor calculado por fila en Tabla Master) -- se usa esa columna cocinado de Judía blanca/Hervido, que ademas valida bien contra el kcal_100g ya existente del banco.",
+      "origen": "judia blanca",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Judía blanca/Hervido - cocido normal (col. cocinado)",
+      "confianza_macros": "baja"
     },
     "edamame": {
       "nombre": "Edamame (soja verde)",
@@ -646,7 +1264,15 @@
       "kcal_100g": 120,
       "racion_adulto_g": 150,
       "racion_nino_g": 90,
-      "coste_banda": 1
+      "coste_banda": 1,
+      "proteina_g": null,
+      "grasa_g": null,
+      "hidratos_g": null,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "nota_base": "Sin match en el Excel. Se compra congelado (en vaina o desgranado) y se hierve brevemente antes de comer -- se declara 'crudo' por defecto (estado de compra habitual, congelado sin cocer) a falta de dato que permita verificar lo contrario; sin impacto numerico real porque no hay macros (sin_match).",
+      "origen": null,
+      "confianza_macros": "sin_match"
     },
     "tofu": {
       "nombre": "Tofu",
@@ -654,7 +1280,15 @@
       "kcal_100g": 90,
       "racion_adulto_g": 150,
       "racion_nino_g": 90,
-      "coste_banda": 2
+      "coste_banda": 2,
+      "proteina_g": null,
+      "grasa_g": null,
+      "hidratos_g": null,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "nota_base": "Sin match en el Excel. El tofu es un producto procesado (soja cuajada, cocida durante la produccion) que se compra listo para comer -- caso ambiguo (mas cerca de 'producto ya elaborado' que de 'ingrediente crudo que se cocina'), pero se declara 'crudo' por defecto ante la falta de dato Excel que lo confirme como 'cocido' (mismo criterio conservador que edamame); sin impacto numerico real porque no hay macros (sin_match).",
+      "origen": null,
+      "confianza_macros": "sin_match"
     },
     "hummus": {
       "nombre": "Hummus",
@@ -662,7 +1296,15 @@
       "kcal_100g": 170,
       "racion_adulto_g": 100,
       "racion_nino_g": 60,
-      "coste_banda": 2
+      "coste_banda": 2,
+      "proteina_g": null,
+      "grasa_g": null,
+      "hidratos_g": null,
+      "fibra_g": null,
+      "base_nutricional": "cocido",
+      "nota_base": "Sin match en el Excel (plato compuesto sin receta fija). Preparacion lista para comer (garbanzo cocido + tahini + aceite + limon triturados) -- no existe “hummus crudo”, es un plato ya elaborado.",
+      "origen": null,
+      "confianza_macros": "sin_match"
     },
     "legumbres-variadas": {
       "nombre": "Legumbres variadas cocidas",
@@ -670,7 +1312,16 @@
       "kcal_100g": 119,
       "racion_adulto_g": 200,
       "racion_nino_g": 130,
-      "coste_banda": 1
+      "coste_banda": 1,
+      "proteina_g": 8.3,
+      "grasa_g": 0.3,
+      "hidratos_g": 18,
+      "fibra_g": null,
+      "base_nutricional": "cocido",
+      "nota_base": "Banco mide legumbre YA COCIDA (nombre + racion_adulto_g≈200g solo tienen sentido cocida; 119kcal_100g actual no se toca). El Excel no trae fila de legumbre YA cocida como tal, pero SI trae la tecnica “Hervido / cocido normal” con columna cocinado propia por alimento (no es el factor generico de la hoja 'Equivalencia Cocciones', es un valor calculado por fila en Tabla Master) -- se usa esa columna cocinado de Lenteja pardina/Hervido, que ademas valida bien contra el kcal_100g ya existente del banco.",
+      "origen": "lenteja",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Lenteja pardina/Hervido - cocido normal (col. cocinado)",
+      "confianza_macros": "baja"
     },
     "arroz": {
       "nombre": "Arroz",
@@ -678,7 +1329,15 @@
       "kcal_100g": 360,
       "racion_adulto_g": 80,
       "racion_nino_g": 50,
-      "coste_banda": 1
+      "coste_banda": 1,
+      "proteina_g": 6.5,
+      "grasa_g": 0.7,
+      "hidratos_g": 80,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "arroz",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Arroz arborio / Arroz bomba / Arroz redondo/crudo",
+      "confianza_macros": "alta"
     },
     "pasta": {
       "nombre": "Pasta",
@@ -686,7 +1345,15 @@
       "kcal_100g": 360,
       "racion_adulto_g": 80,
       "racion_nino_g": 50,
-      "coste_banda": 1
+      "coste_banda": 1,
+      "proteina_g": 13,
+      "grasa_g": 1.5,
+      "hidratos_g": 74,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "pasta",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Pasta seca/crudo",
+      "confianza_macros": "alta"
     },
     "cuscus": {
       "nombre": "Cuscús",
@@ -694,7 +1361,15 @@
       "kcal_100g": 360,
       "racion_adulto_g": 70,
       "racion_nino_g": 45,
-      "coste_banda": 1
+      "coste_banda": 1,
+      "proteina_g": 12,
+      "grasa_g": 2,
+      "hidratos_g": 68,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "cuscus",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Cuscús/crudo",
+      "confianza_macros": "alta"
     },
     "quinoa": {
       "nombre": "Quinoa",
@@ -702,7 +1377,15 @@
       "kcal_100g": 370,
       "racion_adulto_g": 70,
       "racion_nino_g": 45,
-      "coste_banda": 2
+      "coste_banda": 2,
+      "proteina_g": 14,
+      "grasa_g": 6,
+      "hidratos_g": 52,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "quinoa",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Quinoa/crudo",
+      "confianza_macros": "alta"
     },
     "pan-integral": {
       "nombre": "Pan integral",
@@ -710,7 +1393,15 @@
       "kcal_100g": 250,
       "racion_adulto_g": 60,
       "racion_nino_g": 40,
-      "coste_banda": 1
+      "coste_banda": 1,
+      "proteina_g": 13,
+      "grasa_g": 4,
+      "hidratos_g": 41,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "pan integral",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Pan integral/crudo",
+      "confianza_macros": "alta"
     },
     "fideos": {
       "nombre": "Fideos",
@@ -718,7 +1409,15 @@
       "kcal_100g": 360,
       "racion_adulto_g": 70,
       "racion_nino_g": 45,
-      "coste_banda": 1
+      "coste_banda": 1,
+      "proteina_g": 12,
+      "grasa_g": 1.5,
+      "hidratos_g": 73,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "pasta",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Fideos cabello / Fideos nº0 / Fideos para fideuá/crudo",
+      "confianza_macros": "alta"
     },
     "masa-empanadilla": {
       "nombre": "Masa de empanadilla",
@@ -726,7 +1425,15 @@
       "kcal_100g": 310,
       "racion_adulto_g": 90,
       "racion_nino_g": 60,
-      "coste_banda": 2
+      "coste_banda": 2,
+      "proteina_g": 6,
+      "grasa_g": 18,
+      "hidratos_g": 38,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "masa",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Masa de empanadilla / Oblea de empanadilla/crudo",
+      "confianza_macros": "alta"
     },
     "tortilla-trigo": {
       "nombre": "Tortilla de trigo (wrap)",
@@ -734,7 +1441,15 @@
       "kcal_100g": 290,
       "racion_adulto_g": 70,
       "racion_nino_g": 40,
-      "coste_banda": 2
+      "coste_banda": 2,
+      "proteina_g": 9,
+      "grasa_g": 1.5,
+      "hidratos_g": 55,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "pan",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Pan de barra / Pan de payés/crudo",
+      "confianza_macros": "media"
     },
     "pan-hamburguesa": {
       "nombre": "Pan de hamburguesa",
@@ -742,7 +1457,15 @@
       "kcal_100g": 260,
       "racion_adulto_g": 60,
       "racion_nino_g": 45,
-      "coste_banda": 2
+      "coste_banda": 2,
+      "proteina_g": 9,
+      "grasa_g": 1.5,
+      "hidratos_g": 55,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "pan",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Pan de barra / Pan de payés/crudo",
+      "confianza_macros": "media"
     },
     "masa-pizza": {
       "nombre": "Masa de pizza",
@@ -750,7 +1473,15 @@
       "kcal_100g": 270,
       "racion_adulto_g": 150,
       "racion_nino_g": 100,
-      "coste_banda": 2
+      "coste_banda": 2,
+      "proteina_g": 9,
+      "grasa_g": 1.5,
+      "hidratos_g": 55,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "pan",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Pan de barra / Pan de payés/crudo",
+      "confianza_macros": "media"
     },
     "placas-lasana": {
       "nombre": "Placas de lasaña",
@@ -758,7 +1489,15 @@
       "kcal_100g": 350,
       "racion_adulto_g": 90,
       "racion_nino_g": 60,
-      "coste_banda": 2
+      "coste_banda": 2,
+      "proteina_g": 13,
+      "grasa_g": 1.5,
+      "hidratos_g": 74,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "pasta",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Pasta seca/crudo",
+      "confianza_macros": "media"
     },
     "pan-pita": {
       "nombre": "Pan de pita",
@@ -766,7 +1505,15 @@
       "kcal_100g": 275,
       "racion_adulto_g": 60,
       "racion_nino_g": 40,
-      "coste_banda": 2
+      "coste_banda": 2,
+      "proteina_g": 9,
+      "grasa_g": 1.5,
+      "hidratos_g": 55,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "pan",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Pan de barra / Pan de payés/crudo",
+      "confianza_macros": "media"
     },
     "pan": {
       "nombre": "Pan (barra)",
@@ -774,7 +1521,15 @@
       "kcal_100g": 240,
       "racion_adulto_g": 60,
       "racion_nino_g": 40,
-      "coste_banda": 1
+      "coste_banda": 1,
+      "proteina_g": 9,
+      "grasa_g": 1.5,
+      "hidratos_g": 55,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "pan",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Pan de barra / Pan de payés/crudo",
+      "confianza_macros": "alta"
     },
     "patata": {
       "nombre": "Patata",
@@ -782,7 +1537,15 @@
       "kcal_100g": 77,
       "racion_adulto_g": 220,
       "racion_nino_g": 130,
-      "coste_banda": 1
+      "coste_banda": 1,
+      "proteina_g": 2,
+      "grasa_g": 0.1,
+      "hidratos_g": 17,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "patata",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Patata/crudo",
+      "confianza_macros": "alta"
     },
     "boniato": {
       "nombre": "Boniato",
@@ -790,7 +1553,15 @@
       "kcal_100g": 86,
       "racion_adulto_g": 200,
       "racion_nino_g": 120,
-      "coste_banda": 1
+      "coste_banda": 1,
+      "proteina_g": 1.6,
+      "grasa_g": 0.1,
+      "hidratos_g": 20,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "boniato",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Boniato/crudo",
+      "confianza_macros": "alta"
     },
     "brocoli": {
       "nombre": "Brócoli",
@@ -798,7 +1569,15 @@
       "kcal_100g": 34,
       "racion_adulto_g": 180,
       "racion_nino_g": 100,
-      "coste_banda": 1
+      "coste_banda": 1,
+      "proteina_g": 2.8,
+      "grasa_g": 0.4,
+      "hidratos_g": 4,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "brocoli",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Brócoli/crudo",
+      "confianza_macros": "alta"
     },
     "judias-verdes": {
       "nombre": "Judías verdes",
@@ -806,7 +1585,15 @@
       "kcal_100g": 31,
       "racion_adulto_g": 180,
       "racion_nino_g": 100,
-      "coste_banda": 1
+      "coste_banda": 1,
+      "proteina_g": 1.8,
+      "grasa_g": 0.2,
+      "hidratos_g": 5,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "judia verde",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Judía verde/crudo",
+      "confianza_macros": "alta"
     },
     "calabacin": {
       "nombre": "Calabacín",
@@ -814,7 +1601,15 @@
       "kcal_100g": 17,
       "racion_adulto_g": 200,
       "racion_nino_g": 120,
-      "coste_banda": 1
+      "coste_banda": 1,
+      "proteina_g": 1.2,
+      "grasa_g": 0.3,
+      "hidratos_g": 2.2,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "calabacin",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Calabacín/crudo",
+      "confianza_macros": "alta"
     },
     "zanahoria": {
       "nombre": "Zanahoria",
@@ -822,7 +1617,15 @@
       "kcal_100g": 41,
       "racion_adulto_g": 150,
       "racion_nino_g": 90,
-      "coste_banda": 1
+      "coste_banda": 1,
+      "proteina_g": 0.9,
+      "grasa_g": 0.2,
+      "hidratos_g": 8,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "zanahoria",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Zanahoria/crudo",
+      "confianza_macros": "alta"
     },
     "pimiento": {
       "nombre": "Pimiento",
@@ -830,7 +1633,15 @@
       "kcal_100g": 30,
       "racion_adulto_g": 150,
       "racion_nino_g": 90,
-      "coste_banda": 1
+      "coste_banda": 1,
+      "proteina_g": 1,
+      "grasa_g": 0.3,
+      "hidratos_g": 5,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "pimiento",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Pimiento rojo/crudo",
+      "confianza_macros": "media"
     },
     "espinacas": {
       "nombre": "Espinacas",
@@ -838,7 +1649,15 @@
       "kcal_100g": 23,
       "racion_adulto_g": 150,
       "racion_nino_g": 90,
-      "coste_banda": 1
+      "coste_banda": 1,
+      "proteina_g": 2.9,
+      "grasa_g": 0.4,
+      "hidratos_g": 1.4,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "espinaca",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Espinacas/crudo",
+      "confianza_macros": "alta"
     },
     "champinones": {
       "nombre": "Champiñones",
@@ -846,7 +1665,15 @@
       "kcal_100g": 22,
       "racion_adulto_g": 150,
       "racion_nino_g": 90,
-      "coste_banda": 1
+      "coste_banda": 1,
+      "proteina_g": 2.5,
+      "grasa_g": 0.3,
+      "hidratos_g": 3,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "champinon",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Champiñón/crudo",
+      "confianza_macros": "alta"
     },
     "berenjena": {
       "nombre": "Berenjena",
@@ -854,7 +1681,15 @@
       "kcal_100g": 25,
       "racion_adulto_g": 180,
       "racion_nino_g": 100,
-      "coste_banda": 1
+      "coste_banda": 1,
+      "proteina_g": 1,
+      "grasa_g": 0.2,
+      "hidratos_g": 3,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "berenjena",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Berenjena/crudo",
+      "confianza_macros": "alta"
     },
     "tomate": {
       "nombre": "Tomate",
@@ -862,7 +1697,15 @@
       "kcal_100g": 18,
       "racion_adulto_g": 150,
       "racion_nino_g": 90,
-      "coste_banda": 1
+      "coste_banda": 1,
+      "proteina_g": 0.9,
+      "grasa_g": 0.2,
+      "hidratos_g": 3.5,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "tomate",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Tomate pera/crudo",
+      "confianza_macros": "alta"
     },
     "guisantes": {
       "nombre": "Guisantes",
@@ -870,7 +1713,15 @@
       "kcal_100g": 80,
       "racion_adulto_g": 120,
       "racion_nino_g": 80,
-      "coste_banda": 1
+      "coste_banda": 1,
+      "proteina_g": 5,
+      "grasa_g": 0.4,
+      "hidratos_g": 12,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "guisante",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Guisante fresco/crudo",
+      "confianza_macros": "alta"
     },
     "coliflor": {
       "nombre": "Coliflor",
@@ -878,7 +1729,15 @@
       "kcal_100g": 25,
       "racion_adulto_g": 200,
       "racion_nino_g": 110,
-      "coste_banda": 1
+      "coste_banda": 1,
+      "proteina_g": 1.9,
+      "grasa_g": 0.3,
+      "hidratos_g": 3,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "coliflor",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Coliflor/crudo",
+      "confianza_macros": "alta"
     },
     "puerro": {
       "nombre": "Puerro",
@@ -886,7 +1745,15 @@
       "kcal_100g": 61,
       "racion_adulto_g": 120,
       "racion_nino_g": 70,
-      "coste_banda": 1
+      "coste_banda": 1,
+      "proteina_g": 1.5,
+      "grasa_g": 0.3,
+      "hidratos_g": 5,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "puerro",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Puerro/crudo",
+      "confianza_macros": "media"
     },
     "acelgas": {
       "nombre": "Acelgas",
@@ -894,7 +1761,15 @@
       "kcal_100g": 19,
       "racion_adulto_g": 180,
       "racion_nino_g": 100,
-      "coste_banda": 1
+      "coste_banda": 1,
+      "proteina_g": 1.8,
+      "grasa_g": 0.2,
+      "hidratos_g": 3,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "acelga",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Acelgas/crudo",
+      "confianza_macros": "alta"
     },
     "alcachofa": {
       "nombre": "Alcachofa",
@@ -902,7 +1777,15 @@
       "kcal_100g": 47,
       "racion_adulto_g": 200,
       "racion_nino_g": 110,
-      "coste_banda": 2
+      "coste_banda": 2,
+      "proteina_g": 3,
+      "grasa_g": 0.2,
+      "hidratos_g": 5,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "alcachofa",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Alcachofa/crudo",
+      "confianza_macros": "media"
     },
     "calabaza": {
       "nombre": "Calabaza",
@@ -910,7 +1793,15 @@
       "kcal_100g": 26,
       "racion_adulto_g": 200,
       "racion_nino_g": 110,
-      "coste_banda": 1
+      "coste_banda": 1,
+      "proteina_g": 1,
+      "grasa_g": 0.1,
+      "hidratos_g": 6,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "calabaza",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Calabaza/crudo",
+      "confianza_macros": "alta"
     },
     "lechuga": {
       "nombre": "Lechuga",
@@ -918,7 +1809,15 @@
       "kcal_100g": 15,
       "racion_adulto_g": 100,
       "racion_nino_g": 60,
-      "coste_banda": 1
+      "coste_banda": 1,
+      "proteina_g": 1.4,
+      "grasa_g": 0.2,
+      "hidratos_g": 1.5,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "lechuga",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Lechuga/crudo",
+      "confianza_macros": "alta"
     },
     "pepino": {
       "nombre": "Pepino",
@@ -926,7 +1825,15 @@
       "kcal_100g": 12,
       "racion_adulto_g": 100,
       "racion_nino_g": 60,
-      "coste_banda": 1
+      "coste_banda": 1,
+      "proteina_g": 0.7,
+      "grasa_g": 0.1,
+      "hidratos_g": 2,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "pepino",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Pepino/crudo",
+      "confianza_macros": "alta"
     },
     "espinacas-queso": {
       "nombre": "Relleno de espinacas y queso",
@@ -934,7 +1841,15 @@
       "kcal_100g": 120,
       "racion_adulto_g": 90,
       "racion_nino_g": 60,
-      "coste_banda": 2
+      "coste_banda": 2,
+      "proteina_g": null,
+      "grasa_g": null,
+      "hidratos_g": null,
+      "fibra_g": null,
+      "base_nutricional": "cocido",
+      "nota_base": "Sin match en el Excel (relleno compuesto sin receta fija). Relleno ya cocinado (espinacas salteadas + queso) tal como se usa en el plato -- no existe un estado crudo del relleno como ingrediente independiente.",
+      "origen": null,
+      "confianza_macros": "sin_match"
     },
     "queso-fresco": {
       "nombre": "Queso fresco",
@@ -942,7 +1857,16 @@
       "kcal_100g": 110,
       "racion_adulto_g": 80,
       "racion_nino_g": 50,
-      "coste_banda": 2
+      "coste_banda": 2,
+      "proteina_g": 8,
+      "grasa_g": 7,
+      "hidratos_g": 3,
+      "fibra_g": null,
+      "base_nutricional": "cocido",
+      "nota_base": "Producto que se compra listo (queso), no se cocina en casa en el uso habitual de la app -- se usa la columna “crudo” del Excel, que para queso es la referencia “tal cual se compra” (las tecnicas de horno/plancha/parrilla del Excel modelan un gratinado opcional, no el consumo por defecto).",
+      "origen": "queso",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Queso fresco / Mató/crudo",
+      "confianza_macros": "alta"
     },
     "queso-feta": {
       "nombre": "Queso feta",
@@ -950,7 +1874,16 @@
       "kcal_100g": 260,
       "racion_adulto_g": 50,
       "racion_nino_g": 30,
-      "coste_banda": 3
+      "coste_banda": 3,
+      "proteina_g": 22,
+      "grasa_g": 22,
+      "hidratos_g": 2,
+      "fibra_g": null,
+      "base_nutricional": "cocido",
+      "nota_base": "Producto que se compra listo (queso), no se cocina en casa en el uso habitual de la app -- se usa la columna “crudo” del Excel, que para queso es la referencia “tal cual se compra” (las tecnicas de horno/plancha/parrilla del Excel modelan un gratinado opcional, no el consumo por defecto).",
+      "origen": "queso",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Queso en lonchas/crudo",
+      "confianza_macros": "media"
     },
     "yogur": {
       "nombre": "Yogur natural",
@@ -959,7 +1892,15 @@
       "racion_adulto_g": 125,
       "racion_nino_g": 125,
       "coste_banda": 1,
-      "unidad_g": 125
+      "unidad_g": 125,
+      "proteina_g": 4,
+      "grasa_g": 3,
+      "hidratos_g": 4.5,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "yogur",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Yogur natural/crudo",
+      "confianza_macros": "alta"
     },
     "bechamel": {
       "nombre": "Bechamel casera (leche, harina y mantequilla)",
@@ -967,7 +1908,15 @@
       "kcal_100g": 152,
       "racion_adulto_g": 100,
       "racion_nino_g": 60,
-      "coste_banda": 1
+      "coste_banda": 1,
+      "proteina_g": null,
+      "grasa_g": null,
+      "hidratos_g": null,
+      "fibra_g": null,
+      "base_nutricional": "cocido",
+      "nota_base": "Sin match en el Excel (plato compuesto sin receta fija). Salsa cocinada (roux de mantequilla+harina+leche) -- no existe “bechamel cruda”, es una preparacion que por definicion ya esta cocinada.",
+      "origen": null,
+      "confianza_macros": "sin_match"
     },
     "leche": {
       "nombre": "Leche entera",
@@ -976,7 +1925,15 @@
       "racion_adulto_g": 220,
       "racion_nino_g": 200,
       "coste_banda": 1,
-      "base": true
+      "base": true,
+      "proteina_g": 3.3,
+      "grasa_g": 3.6,
+      "hidratos_g": 4.8,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "leche",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Leche entera/crudo",
+      "confianza_macros": "alta"
     },
     "nata": {
       "nombre": "Nata líquida para cocinar",
@@ -985,7 +1942,15 @@
       "racion_adulto_g": 40,
       "racion_nino_g": 30,
       "coste_banda": 2,
-      "base": true
+      "base": true,
+      "proteina_g": 2,
+      "grasa_g": 35,
+      "hidratos_g": 3,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "nata",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Nata líquida/crudo",
+      "confianza_macros": "media"
     },
     "mantequilla": {
       "nombre": "Mantequilla",
@@ -994,7 +1959,16 @@
       "racion_adulto_g": 12,
       "racion_nino_g": 8,
       "coste_banda": 2,
-      "base": true
+      "base": true,
+      "proteina_g": 0.6,
+      "grasa_g": 81,
+      "hidratos_g": 0.6,
+      "fibra_g": null,
+      "base_nutricional": "cocido",
+      "nota_base": "Producto que se compra ya elaborado (batido de nata en fabrica), sin transformacion en casa -- tecnica Excel = “Crudo / sin cocción / conserva” (unica fila), mismo patron que jamon/embutidos curados.",
+      "origen": "mantequilla",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Mantequilla/crudo",
+      "confianza_macros": "alta"
     },
     "queso-rallado": {
       "nombre": "Queso rallado para gratinar",
@@ -1003,7 +1977,16 @@
       "racion_adulto_g": 25,
       "racion_nino_g": 15,
       "coste_banda": 2,
-      "base": true
+      "base": true,
+      "proteina_g": 25,
+      "grasa_g": 28,
+      "hidratos_g": 1,
+      "fibra_g": null,
+      "base_nutricional": "cocido",
+      "nota_base": "Producto que se compra listo (queso), no se cocina en casa en el uso habitual de la app -- se usa la columna “crudo” del Excel, que para queso es la referencia “tal cual se compra” (las tecnicas de horno/plancha/parrilla del Excel modelan un gratinado opcional, no el consumo por defecto).",
+      "origen": "queso",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Queso rallado/crudo",
+      "confianza_macros": "alta"
     },
     "leche-sin-lactosa": {
       "nombre": "Leche sin lactosa",
@@ -1011,7 +1994,15 @@
       "kcal_100g": 63,
       "racion_adulto_g": 220,
       "racion_nino_g": 200,
-      "coste_banda": 1
+      "coste_banda": 1,
+      "proteina_g": 3.2,
+      "grasa_g": 1.5,
+      "hidratos_g": 5,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "leche",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Leche sin lactosa/crudo",
+      "confianza_macros": "media"
     },
     "bebida-avena": {
       "nombre": "Bebida de avena",
@@ -1019,7 +2010,15 @@
       "kcal_100g": 40,
       "racion_adulto_g": 220,
       "racion_nino_g": 200,
-      "coste_banda": 2
+      "coste_banda": 2,
+      "proteina_g": 2,
+      "grasa_g": 1.5,
+      "hidratos_g": 5,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "leche vegetal",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Leche vegetal (avena/soja)/crudo",
+      "confianza_macros": "alta"
     },
     "bebida-soja": {
       "nombre": "Bebida de soja",
@@ -1027,7 +2026,15 @@
       "kcal_100g": 40,
       "racion_adulto_g": 220,
       "racion_nino_g": 200,
-      "coste_banda": 1
+      "coste_banda": 1,
+      "proteina_g": 2,
+      "grasa_g": 1.5,
+      "hidratos_g": 5,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "leche vegetal",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Leche vegetal (avena/soja)/crudo",
+      "confianza_macros": "alta"
     },
     "yogur-sin-lactosa": {
       "nombre": "Yogur sin lactosa",
@@ -1035,7 +2042,15 @@
       "kcal_100g": 60,
       "racion_adulto_g": 125,
       "racion_nino_g": 125,
-      "coste_banda": 2
+      "coste_banda": 2,
+      "proteina_g": 4,
+      "grasa_g": 2,
+      "hidratos_g": 5,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "yogur",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Yogur sin lactosa/crudo",
+      "confianza_macros": "alta"
     },
     "helado": {
       "nombre": "Helado (vainilla o chocolate)",
@@ -1043,7 +2058,16 @@
       "kcal_100g": 190,
       "racion_adulto_g": 70,
       "racion_nino_g": 50,
-      "coste_banda": 2
+      "coste_banda": 2,
+      "proteina_g": 3.5,
+      "grasa_g": 11,
+      "hidratos_g": 23,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "nota_base": "Postre elaborado que se compra listo (no se 'cocina' en casa), pero el Excel lo modela con tecnicas de vapor/microondas/horno (no con 'Crudo / sin cocción / conserva' como jamon/embutidos/mantequilla) -- se mantiene 'crudo' por defecto siguiendo la clasificacion tecnica del propio Excel, aunque es un caso limitrofe (ver informe final: decision de criterio sin cobertura explicita de la spec).",
+      "origen": "helado",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Helado vainilla/crudo",
+      "confianza_macros": "media"
     },
     "compota": {
       "nombre": "Compota de manzana o pera",
@@ -1051,7 +2075,16 @@
       "kcal_100g": 70,
       "racion_adulto_g": 110,
       "racion_nino_g": 80,
-      "coste_banda": 2
+      "coste_banda": 2,
+      "proteina_g": 0.3,
+      "grasa_g": 0.2,
+      "hidratos_g": 17,
+      "fibra_g": null,
+      "base_nutricional": "cocido",
+      "nota_base": "Compota es por definicion fruta ya cocinada/reducida con azucar -- no existe “compota cruda”, y la fruta sin cocinar ya se traza aparte en el banco (manzana, pera, con su propia ficha). La columna “crudo” del Excel para “Compota de manzana/pera” representa ya el preparado cocinado de base (70kcal), antes de tecnicas de reduccion adicional (Hervido/Vapor/Horno, que suben a 74-96kcal) que no son el uso por defecto.",
+      "origen": "compota",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Compota de manzana / Compota de pera/crudo",
+      "confianza_macros": "alta"
     },
     "naranja": {
       "nombre": "Naranja",
@@ -1070,7 +2103,15 @@
         10,
         11,
         12
-      ]
+      ],
+      "proteina_g": 0.9,
+      "grasa_g": 0.1,
+      "hidratos_g": 10,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "naranja",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Naranja/crudo",
+      "confianza_macros": "alta"
     },
     "mandarina": {
       "nombre": "Mandarina",
@@ -1089,7 +2130,15 @@
         10,
         11,
         12
-      ]
+      ],
+      "proteina_g": 0.8,
+      "grasa_g": 0.2,
+      "hidratos_g": 11,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "mandarina",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Mandarina/crudo",
+      "confianza_macros": "alta"
     },
     "fresa": {
       "nombre": "Fresas",
@@ -1104,7 +2153,15 @@
         3,
         4,
         5
-      ]
+      ],
+      "proteina_g": 0.7,
+      "grasa_g": 0.3,
+      "hidratos_g": 6,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "fresa",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Fresa / Fresón/crudo",
+      "confianza_macros": "alta"
     },
     "cereza": {
       "nombre": "Cerezas",
@@ -1119,7 +2176,15 @@
         6,
         7,
         8
-      ]
+      ],
+      "proteina_g": 1,
+      "grasa_g": 0.2,
+      "hidratos_g": 13,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "cereza",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Cereza / Picota/crudo",
+      "confianza_macros": "alta"
     },
     "albaricoque": {
       "nombre": "Albaricoques",
@@ -1133,7 +2198,15 @@
         6,
         7,
         8
-      ]
+      ],
+      "proteina_g": 1.4,
+      "grasa_g": 0.1,
+      "hidratos_g": 8,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "albaricoque",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Albaricoque/crudo",
+      "confianza_macros": "alta"
     },
     "melocoton": {
       "nombre": "Melocotón",
@@ -1150,7 +2223,15 @@
         8,
         9,
         10
-      ]
+      ],
+      "proteina_g": 0.9,
+      "grasa_g": 0.2,
+      "hidratos_g": 9,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "melocoton",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Melocotón/crudo",
+      "confianza_macros": "alta"
     },
     "sandia": {
       "nombre": "Sandía",
@@ -1165,7 +2246,15 @@
         7,
         8,
         9
-      ]
+      ],
+      "proteina_g": 0.6,
+      "grasa_g": 0.2,
+      "hidratos_g": 6,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "sandia",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Sandía/crudo",
+      "confianza_macros": "media"
     },
     "melon": {
       "nombre": "Melón",
@@ -1180,7 +2269,15 @@
         7,
         8,
         9
-      ]
+      ],
+      "proteina_g": 0.6,
+      "grasa_g": 0.2,
+      "hidratos_g": 7,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "melon",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Melón/crudo",
+      "confianza_macros": "alta"
     },
     "uva": {
       "nombre": "Uvas",
@@ -1195,7 +2292,15 @@
         10,
         11,
         12
-      ]
+      ],
+      "proteina_g": 0.6,
+      "grasa_g": 0.2,
+      "hidratos_g": 16,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "uva",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Uva tinta/crudo",
+      "confianza_macros": "alta"
     },
     "caqui": {
       "nombre": "Caqui",
@@ -1210,7 +2315,15 @@
         10,
         11,
         12
-      ]
+      ],
+      "proteina_g": 0.6,
+      "grasa_g": 0.2,
+      "hidratos_g": 16,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "caqui",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Caqui / Persimón/crudo",
+      "confianza_macros": "alta"
     },
     "manzana": {
       "nombre": "Manzana",
@@ -1218,7 +2331,15 @@
       "kcal_100g": 50,
       "racion_adulto_g": 170,
       "racion_nino_g": 100,
-      "coste_banda": 1
+      "coste_banda": 1,
+      "proteina_g": 0.3,
+      "grasa_g": 0.2,
+      "hidratos_g": 12,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "manzana",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Manzana golden/crudo",
+      "confianza_macros": "alta"
     },
     "pera": {
       "nombre": "Pera",
@@ -1239,7 +2360,15 @@
         10,
         11,
         12
-      ]
+      ],
+      "proteina_g": 0.4,
+      "grasa_g": 0.1,
+      "hidratos_g": 13,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "pera",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Pera conferencia/crudo",
+      "confianza_macros": "media"
     },
     "platano": {
       "nombre": "Plátano",
@@ -1247,7 +2376,15 @@
       "kcal_100g": 89,
       "racion_adulto_g": 120,
       "racion_nino_g": 80,
-      "coste_banda": 1
+      "coste_banda": 1,
+      "proteina_g": 1.1,
+      "grasa_g": 0.3,
+      "hidratos_g": 20,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "platano",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Plátano / Banana/crudo",
+      "confianza_macros": "alta"
     },
     "kiwi": {
       "nombre": "Kiwi",
@@ -1265,7 +2402,15 @@
         10,
         11,
         12
-      ]
+      ],
+      "proteina_g": 1.1,
+      "grasa_g": 0.5,
+      "hidratos_g": 13,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "kiwi",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Kiwi/crudo",
+      "confianza_macros": "alta"
     },
     "ciruela": {
       "nombre": "Ciruelas",
@@ -1280,7 +2425,15 @@
         7,
         8,
         9
-      ]
+      ],
+      "proteina_g": 0.7,
+      "grasa_g": 0.3,
+      "hidratos_g": 10,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "ciruela",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Ciruela/crudo",
+      "confianza_macros": "alta"
     },
     "pina": {
       "nombre": "Piña",
@@ -1288,7 +2441,15 @@
       "kcal_100g": 50,
       "racion_adulto_g": 170,
       "racion_nino_g": 100,
-      "coste_banda": 2
+      "coste_banda": 2,
+      "proteina_g": 0.5,
+      "grasa_g": 0.1,
+      "hidratos_g": 11,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "pina",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Piña/crudo",
+      "confianza_macros": "alta"
     },
     "granada": {
       "nombre": "Granada",
@@ -1301,7 +2462,15 @@
         9,
         10,
         11
-      ]
+      ],
+      "proteina_g": 1,
+      "grasa_g": 1,
+      "hidratos_g": 15,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "granada",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Granada/crudo",
+      "confianza_macros": "alta"
     },
     "higo": {
       "nombre": "Higos",
@@ -1316,7 +2485,15 @@
         8,
         9,
         10
-      ]
+      ],
+      "proteina_g": 0.8,
+      "grasa_g": 0.3,
+      "hidratos_g": 16,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "higo",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Higo/crudo",
+      "confianza_macros": "alta"
     },
     "mango": {
       "nombre": "Mango",
@@ -1324,7 +2501,15 @@
       "kcal_100g": 60,
       "racion_adulto_g": 170,
       "racion_nino_g": 100,
-      "coste_banda": 2
+      "coste_banda": 2,
+      "proteina_g": 0.8,
+      "grasa_g": 0.4,
+      "hidratos_g": 13,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "mango",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Mango/crudo",
+      "confianza_macros": "alta"
     },
     "nectarina": {
       "nombre": "Nectarinas",
@@ -1341,7 +2526,15 @@
         8,
         9,
         10
-      ]
+      ],
+      "proteina_g": 1.1,
+      "grasa_g": 0.3,
+      "hidratos_g": 9,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "nectarina",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Nectarina/crudo",
+      "confianza_macros": "alta"
     },
     "frambuesa": {
       "nombre": "Frambuesas",
@@ -1349,7 +2542,15 @@
       "kcal_100g": 40,
       "racion_adulto_g": 120,
       "racion_nino_g": 80,
-      "coste_banda": 3
+      "coste_banda": 3,
+      "proteina_g": 1.2,
+      "grasa_g": 0.5,
+      "hidratos_g": 5,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "frambuesa",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Frambuesa/crudo",
+      "confianza_macros": "alta"
     },
     "arandanos": {
       "nombre": "Arándanos",
@@ -1357,7 +2558,15 @@
       "kcal_100g": 45,
       "racion_adulto_g": 120,
       "racion_nino_g": 80,
-      "coste_banda": 3
+      "coste_banda": 3,
+      "proteina_g": 1,
+      "grasa_g": 0.5,
+      "hidratos_g": 8,
+      "fibra_g": null,
+      "base_nutricional": "crudo",
+      "origen": "arandano",
+      "fuente_macros": "Excel maestro Roger 2026-07 · Arándanos/crudo",
+      "confianza_macros": "alta"
     }
   },
   "categorias_cuota": {

@@ -24,12 +24,17 @@
       "proteina_g": 31,
       "grasa_g": 3.6,
       "hidratos_g": 0,
-      "fibra_g": null,
+      "fibra_g": 0.0,
       "base_nutricional": "cocido",
       "nota_base": "kcal_100g (165) y la columna “crudo” del Excel para Pechuga de pollo son el MISMO valor (165/31/3.6/0). Firma matematica confirmada contra USDA FDC (API, en vivo): pollo pechuga sin piel crudo real = 120/22.5/2.62; ratio Excel-crudo/USDA-raw = 1.375/1.378/1.374, practicamente identico en las 3 macros. Tanto el banco como el Excel traen en realidad pechuga de pollo YA COCINADA mal etiquetada como “crudo”. Se usan las macros de esa columna tal cual (31/3.6/0) -- coherentes con el kcal_100g existente, que no se toca.",
       "origen": "pollo",
       "fuente_macros": "Excel maestro Roger 2026-07 · Pechuga de pollo/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": 1.01,
+      "grasa_monoinsaturada_g": 1.24,
+      "grasa_poliinsaturada_g": 0.77,
+      "fuente_nutri_ext": "USDA FoodData Central: Chicken, broilers or fryers, breast, meat only, cooked, roasted (fdcId 171477, SR Legacy)",
+      "confianza_nutri_ext": "alta"
     },
     "pavo": {
       "nombre": "Pavo (filete o picado)",
@@ -41,12 +46,17 @@
       "proteina_g": 29,
       "grasa_g": 1.5,
       "hidratos_g": 0,
-      "fibra_g": null,
+      "fibra_g": 0.0,
       "base_nutricional": "cocido",
       "nota_base": "Mismo patron que pollo (misma pieza, pechuga de ave) pero con evidencia mas debil: Excel crudo Pechuga de pavo = 149/29/1.5; ratio frente a referencia externa de pavo crudo (~110/24/<2, busqueda web sin BEDCA directo ni verificacion en fuente primaria) = 1.355/1.208/~2.3 -- mismo sentido en las 3 macros pero no tan limpio como pollo. AVISO: a diferencia de pollo, el kcal_100g del banco (110) NO coincide con la columna crudo del Excel (149) usada aqui para las macros -- son numeros de fuentes distintas que se asume describen el mismo estado (pavo cocinado). Decision heredada de la sesion de analisis previa (_MACROS_ingesta_analisis.md §3a), con respaldo mas debil que pollo -- recomendable que Roger la revise.",
       "origen": "pavo",
       "fuente_macros": "Excel maestro Roger 2026-07 · Pechuga de pavo/crudo",
-      "confianza_macros": "media"
+      "confianza_macros": "media",
+      "grasa_saturada_g": 0.593,
+      "grasa_monoinsaturada_g": 0.626,
+      "grasa_poliinsaturada_g": 0.528,
+      "fuente_nutri_ext": "USDA FoodData Central: Turkey, whole, breast, meat only, cooked, roasted (fdcId 171496, SR Legacy)",
+      "confianza_nutri_ext": "alta"
     },
     "conejo": {
       "nombre": "Conejo",
@@ -58,11 +68,16 @@
       "proteina_g": 23,
       "grasa_g": 5,
       "hidratos_g": 0,
-      "fibra_g": null,
+      "fibra_g": 0.0,
       "base_nutricional": "crudo",
       "origen": "conejo",
       "fuente_macros": "Excel maestro Roger 2026-07 · Conejo troceado / Lomo de conejo / Muslos de conejo/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": 1.66,
+      "grasa_monoinsaturada_g": 1.5,
+      "grasa_poliinsaturada_g": 1.08,
+      "fuente_nutri_ext": "USDA FoodData Central: Game meat, rabbit, domesticated, composite of cuts, raw (fdcId 172521, SR Legacy)",
+      "confianza_nutri_ext": "alta"
     },
     "ternera-picada": {
       "nombre": "Carne picada de ternera",
@@ -74,11 +89,16 @@
       "proteina_g": 26,
       "grasa_g": 8,
       "hidratos_g": 0,
-      "fibra_g": null,
+      "fibra_g": 0.0,
       "base_nutricional": "crudo",
       "origen": "ternera",
       "fuente_macros": "Excel maestro Roger 2026-07 · Carne picada de ternera/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": 7.94,
+      "grasa_monoinsaturada_g": 7.97,
+      "grasa_poliinsaturada_g": 0.699,
+      "fuente_nutri_ext": "USDA FoodData Central: Beef, Australian, imported, grass-fed, ground, 85% lean / 15% fat, raw (fdcId 173068, SR Legacy)",
+      "confianza_nutri_ext": "alta"
     },
     "ternera": {
       "nombre": "Ternera (filete o para guisar)",
@@ -90,11 +110,16 @@
       "proteina_g": 26,
       "grasa_g": 11,
       "hidratos_g": 0,
-      "fibra_g": null,
+      "fibra_g": 0,
       "base_nutricional": "crudo",
       "origen": "ternera",
       "fuente_macros": "Excel maestro Roger 2026-07 · Filete de ternera/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": 1.7,
+      "grasa_monoinsaturada_g": 1.7,
+      "grasa_poliinsaturada_g": 0.238,
+      "fuente_nutri_ext": "USDA FoodData Central: Beef, round, top round, boneless, choice, raw (fdcId 2646173, Foundation)",
+      "confianza_nutri_ext": "alta"
     },
     "cerdo": {
       "nombre": "Cerdo (lomo o solomillo)",
@@ -106,11 +131,16 @@
       "proteina_g": 27,
       "grasa_g": 7,
       "hidratos_g": 0,
-      "fibra_g": null,
+      "fibra_g": 0,
       "base_nutricional": "crudo",
       "origen": "cerdo",
       "fuente_macros": "Excel maestro Roger 2026-07 · Lomo de cerdo/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": 3.28,
+      "grasa_monoinsaturada_g": 3.95,
+      "grasa_poliinsaturada_g": 1.38,
+      "fuente_nutri_ext": "USDA FoodData Central: Pork, loin, boneless, raw (fdcId 2646168, Foundation)",
+      "confianza_nutri_ext": "alta"
     },
     "chorizo": {
       "nombre": "Chorizo",
@@ -122,12 +152,17 @@
       "proteina_g": 22,
       "grasa_g": 38,
       "hidratos_g": 3,
-      "fibra_g": null,
+      "fibra_g": 0.0,
       "base_nutricional": "cocido",
       "nota_base": "Embutido curado que se compra listo para comer, sin coccion en casa -- tecnica Excel = “Crudo / sin cocción / conserva” (unica fila para este alimento, sin alternativa cocinada).",
       "origen": "chorizo",
       "fuente_macros": "Excel maestro Roger 2026-07 · Chorizo/crudo",
-      "confianza_macros": "media"
+      "confianza_macros": "media",
+      "grasa_saturada_g": 8.6,
+      "grasa_monoinsaturada_g": 10.6,
+      "grasa_poliinsaturada_g": 4.3,
+      "fuente_nutri_ext": "USDA FoodData Central: Sausage, pork, chorizo, link or ground, raw (fdcId 173859, SR Legacy)",
+      "confianza_nutri_ext": "alta - coincide nombre exacto, aunque banco modela cocido"
     },
     "panceta": {
       "nombre": "Panceta de cerdo",
@@ -139,10 +174,15 @@
       "proteina_g": null,
       "grasa_g": null,
       "hidratos_g": null,
-      "fibra_g": null,
+      "fibra_g": 0,
       "base_nutricional": "crudo",
       "origen": null,
-      "confianza_macros": "sin_match"
+      "confianza_macros": "sin_match",
+      "grasa_saturada_g": null,
+      "grasa_monoinsaturada_g": null,
+      "grasa_poliinsaturada_g": null,
+      "fuente_nutri_ext": "USDA FoodData Central: Pork, belly, with skin, raw (fdcId 2727576, Foundation)",
+      "confianza_nutri_ext": "alta"
     },
     "jamon-serrano": {
       "nombre": "Jamón serrano",
@@ -154,12 +194,17 @@
       "proteina_g": 30,
       "grasa_g": 14,
       "hidratos_g": 0,
-      "fibra_g": null,
+      "fibra_g": 0.0,
       "base_nutricional": "cocido",
       "nota_base": "Curado que se compra listo para comer (loncheado), sin coccion en casa -- tecnica Excel = “Crudo / sin cocción / conserva” (unica fila, sin alternativa cocinada).",
       "origen": "jamon",
       "fuente_macros": "Excel maestro Roger 2026-07 · Jamón serrano/crudo",
-      "confianza_macros": "media"
+      "confianza_macros": "media",
+      "grasa_saturada_g": 7.14,
+      "grasa_monoinsaturada_g": null,
+      "grasa_poliinsaturada_g": null,
+      "fuente_nutri_ext": "USDA FoodData Central: TAPAS ESSENTIALS, SERRANO HAM, SLICED SPANISH DRY-CURED HAM (fdcId 518712, Branded)",
+      "confianza_nutri_ext": "alta"
     },
     "compango": {
       "nombre": "Compango asturiano (chorizo, morcilla y lacón)",
@@ -175,7 +220,13 @@
       "base_nutricional": "cocido",
       "nota_base": "Sin match en el Excel (mezcla sin proporcion fija). Mezcla de embutidos curados/cocidos para cocido/fabada (chorizo+morcilla+lacon) -- cada componente individual se compra curado/listo (ver chorizo, morcilla, jamon-serrano en este mismo banco, todos 'cocido'), se declara igual por composicion aunque sin macros propios.",
       "origen": null,
-      "confianza_macros": "sin_match"
+      "confianza_macros": "sin_match",
+      "grasa_saturada_g": null,
+      "grasa_monoinsaturada_g": null,
+      "grasa_poliinsaturada_g": null,
+      "fuente_nutri_ext": null,
+      "confianza_nutri_ext": null,
+      "nota_nutri_ext": "plato compuesto (chorizo+morcilla+lacon) - sin ingrediente unico USDA aplicable"
     },
     "ternera-rellena": {
       "nombre": "Ternera rellena de jamón y queso (cachopo)",
@@ -191,7 +242,13 @@
       "base_nutricional": "cocido",
       "nota_base": "Sin match en el Excel (plato compuesto). Cachopo: ternera rebozada y frita, rellena de jamon y queso -- no existe un estado “crudo” del plato tal como se sirve, se consume ya cocinado.",
       "origen": null,
-      "confianza_macros": "sin_match"
+      "confianza_macros": "sin_match",
+      "grasa_saturada_g": null,
+      "grasa_monoinsaturada_g": null,
+      "grasa_poliinsaturada_g": null,
+      "fuente_nutri_ext": null,
+      "confianza_nutri_ext": null,
+      "nota_nutri_ext": "plato compuesto (cachopo) - sin ingrediente unico USDA aplicable"
     },
     "merluza": {
       "nombre": "Merluza",
@@ -203,11 +260,16 @@
       "proteina_g": 18,
       "grasa_g": 0.9,
       "hidratos_g": 0,
-      "fibra_g": null,
+      "fibra_g": 0,
       "base_nutricional": "crudo",
       "origen": "merluza",
       "fuente_macros": "Excel maestro Roger 2026-07 · Merluza/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": 0.35,
+      "grasa_monoinsaturada_g": 0.43,
+      "grasa_poliinsaturada_g": 0.46,
+      "fuente_nutri_ext": "BEDCA (Base de Datos Española de Composición de Alimentos): Merluza fresca / Hake, raw (Merluccius merluccius) - fibra ya confirmada en 0 vía USDA, coincide",
+      "confianza_nutri_ext": "alta - dato español directo, sustituye proxy USDA (haddock)"
     },
     "bacalao": {
       "nombre": "Bacalao desalado",
@@ -219,12 +281,17 @@
       "proteina_g": 17.5,
       "grasa_g": 0.7,
       "hidratos_g": 0,
-      "fibra_g": null,
+      "fibra_g": 0,
       "base_nutricional": "crudo",
       "nota_base": "Banco = “Bacalao desalado” (bacalao en salazon tras remojo para quitar sal), un estado intermedio que el Excel no modela (solo trae “Bacalao fresco”, 80kcal, nunca salado, y “Bacalao en salazon”, 95kcal, antes de desalar). El desalado NO es coccion (no se aplica calor, solo se retira la sal por remojo en agua) -- el pescado sigue crudo y se cocina despues en casa, por eso se declara 'crudo' pese a no encajar exacto en ninguna fila del Excel. Macros = columna crudo de 'Bacalao fresco' (proxy mas cercano disponible), sin ajustar por el desalado (no hay dato verificable de cuanto cambia).",
       "origen": "bacalao",
       "fuente_macros": "Excel maestro Roger 2026-07 · Bacalao fresco/crudo",
-      "confianza_macros": "media"
+      "confianza_macros": "media",
+      "grasa_saturada_g": 0.044,
+      "grasa_monoinsaturada_g": 0.026,
+      "grasa_poliinsaturada_g": 0.081,
+      "fuente_nutri_ext": "USDA FoodData Central: Fish, cod, Atlantic, wild caught, raw (fdcId 2684444, Foundation)",
+      "confianza_nutri_ext": "alta"
     },
     "lubina": {
       "nombre": "Lubina",
@@ -236,11 +303,16 @@
       "proteina_g": 19.5,
       "grasa_g": 1.3,
       "hidratos_g": 0,
-      "fibra_g": null,
+      "fibra_g": 0.0,
       "base_nutricional": "crudo",
       "origen": "lubina",
       "fuente_macros": "Excel maestro Roger 2026-07 · Lubina/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": 0.511,
+      "grasa_monoinsaturada_g": 0.424,
+      "grasa_poliinsaturada_g": 0.743,
+      "fuente_nutri_ext": "USDA FoodData Central: Fish, sea bass, mixed species, raw (fdcId 175142, SR Legacy)",
+      "confianza_nutri_ext": "alta"
     },
     "gallo": {
       "nombre": "Gallo (filetes)",
@@ -252,11 +324,16 @@
       "proteina_g": 17,
       "grasa_g": 1,
       "hidratos_g": 0,
-      "fibra_g": null,
+      "fibra_g": 0.0,
       "base_nutricional": "crudo",
       "origen": "lenguado",
       "fuente_macros": "Excel maestro Roger 2026-07 · Lenguado/crudo",
-      "confianza_macros": "media"
+      "confianza_macros": "media",
+      "grasa_saturada_g": 0.441,
+      "grasa_monoinsaturada_g": 0.535,
+      "grasa_poliinsaturada_g": 0.374,
+      "fuente_nutri_ext": "USDA FoodData Central: Fish, flatfish (flounder and sole species), raw (fdcId 174196, SR Legacy)",
+      "confianza_nutri_ext": "alta"
     },
     "salmon": {
       "nombre": "Salmón",
@@ -268,11 +345,16 @@
       "proteina_g": 20,
       "grasa_g": 13,
       "hidratos_g": 0,
-      "fibra_g": null,
+      "fibra_g": 0,
       "base_nutricional": "crudo",
       "origen": "salmon",
       "fuente_macros": "Excel maestro Roger 2026-07 · Salmón/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": 2.28,
+      "grasa_monoinsaturada_g": 5.01,
+      "grasa_poliinsaturada_g": 4.06,
+      "fuente_nutri_ext": "USDA FoodData Central: Fish, salmon, Atlantic, farm raised, raw (fdcId 2684441, Foundation)",
+      "confianza_nutri_ext": "alta"
     },
     "atun": {
       "nombre": "Atún fresco",
@@ -284,11 +366,16 @@
       "proteina_g": 25,
       "grasa_g": 9,
       "hidratos_g": 0,
-      "fibra_g": null,
+      "fibra_g": 0.0,
       "base_nutricional": "crudo",
       "origen": "atun",
       "fuente_macros": "Excel maestro Roger 2026-07 · Atún fresco/crudo",
-      "confianza_macros": "media"
+      "confianza_macros": "media",
+      "grasa_saturada_g": 1.26,
+      "grasa_monoinsaturada_g": 1.6,
+      "grasa_poliinsaturada_g": 1.43,
+      "fuente_nutri_ext": "USDA FoodData Central: Fish, tuna, fresh, bluefin, raw (fdcId 173706, SR Legacy)",
+      "confianza_nutri_ext": "alta"
     },
     "sardinas": {
       "nombre": "Sardinas",
@@ -300,11 +387,16 @@
       "proteina_g": 21,
       "grasa_g": 10,
       "hidratos_g": 0,
-      "fibra_g": null,
+      "fibra_g": 0.0,
       "base_nutricional": "crudo",
       "origen": "sardina",
       "fuente_macros": "Excel maestro Roger 2026-07 · Sardina fresca/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": 3.26,
+      "grasa_monoinsaturada_g": 5.46,
+      "grasa_poliinsaturada_g": 3.35,
+      "fuente_nutri_ext": "USDA FoodData Central: Fish, mackerel, Atlantic, raw (fdcId 175119, SR Legacy)",
+      "confianza_nutri_ext": "media - proxy caballa, sardina fresca cruda no existe en USDA"
     },
     "boquerones": {
       "nombre": "Boquerones",
@@ -316,11 +408,16 @@
       "proteina_g": 20,
       "grasa_g": 7,
       "hidratos_g": 0,
-      "fibra_g": null,
+      "fibra_g": 0.0,
       "base_nutricional": "crudo",
       "origen": "boqueron",
       "fuente_macros": "Excel maestro Roger 2026-07 · Boquerón/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": 1.28,
+      "grasa_monoinsaturada_g": 1.18,
+      "grasa_poliinsaturada_g": 1.64,
+      "fuente_nutri_ext": "USDA FoodData Central: Fish, anchovy, european, raw (fdcId 174182, SR Legacy)",
+      "confianza_nutri_ext": "alta"
     },
     "bonito": {
       "nombre": "Bonito del norte fresco",
@@ -332,11 +429,16 @@
       "proteina_g": 24,
       "grasa_g": 10,
       "hidratos_g": 0,
-      "fibra_g": null,
+      "fibra_g": 0.0,
       "base_nutricional": "crudo",
       "origen": "bonito",
       "fuente_macros": "Excel maestro Roger 2026-07 · Bonito fresco/crudo",
-      "confianza_macros": "media"
+      "confianza_macros": "media",
+      "grasa_saturada_g": 1.26,
+      "grasa_monoinsaturada_g": 1.6,
+      "grasa_poliinsaturada_g": 1.43,
+      "fuente_nutri_ext": "USDA FoodData Central: Fish, tuna, fresh, bluefin, raw (fdcId 173706, SR Legacy)",
+      "confianza_nutri_ext": "alta"
     },
     "trucha": {
       "nombre": "Trucha",
@@ -348,11 +450,16 @@
       "proteina_g": 20,
       "grasa_g": 5,
       "hidratos_g": 0,
-      "fibra_g": null,
+      "fibra_g": 0.0,
       "base_nutricional": "crudo",
       "origen": "trucha",
       "fuente_macros": "Excel maestro Roger 2026-07 · Trucha/crudo",
-      "confianza_macros": "media"
+      "confianza_macros": "media",
+      "grasa_saturada_g": 1.15,
+      "grasa_monoinsaturada_g": 3.25,
+      "grasa_poliinsaturada_g": 1.5,
+      "fuente_nutri_ext": "USDA FoodData Central: Fish, trout, mixed species, raw (fdcId 175153, SR Legacy)",
+      "confianza_nutri_ext": "alta"
     },
     "gambas": {
       "nombre": "Gambas o langostinos",
@@ -364,11 +471,16 @@
       "proteina_g": 24,
       "grasa_g": 0.5,
       "hidratos_g": 0.5,
-      "fibra_g": null,
+      "fibra_g": 0,
       "base_nutricional": "crudo",
       "origen": "gamba",
       "fuente_macros": "Excel maestro Roger 2026-07 · Gambas/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": null,
+      "grasa_monoinsaturada_g": null,
+      "grasa_poliinsaturada_g": null,
+      "fuente_nutri_ext": "USDA FoodData Central: Crustaceans, shrimp, farm raised, raw (fdcId 2684443, Foundation)",
+      "confianza_nutri_ext": "alta"
     },
     "mejillones": {
       "nombre": "Mejillones",
@@ -380,11 +492,16 @@
       "proteina_g": 12,
       "grasa_g": 2,
       "hidratos_g": 3,
-      "fibra_g": null,
+      "fibra_g": 0.0,
       "base_nutricional": "crudo",
       "origen": "mejillon",
       "fuente_macros": "Excel maestro Roger 2026-07 · Mejillones/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": 0.425,
+      "grasa_monoinsaturada_g": 0.507,
+      "grasa_poliinsaturada_g": 0.606,
+      "fuente_nutri_ext": "USDA FoodData Central: Mollusks, mussel, blue, raw (fdcId 174216, SR Legacy)",
+      "confianza_nutri_ext": "alta"
     },
     "huevo": {
       "nombre": "Huevo",
@@ -397,11 +514,16 @@
       "proteina_g": 12.5,
       "grasa_g": 10,
       "hidratos_g": 1,
-      "fibra_g": null,
+      "fibra_g": 0.0,
       "base_nutricional": "crudo",
       "origen": "huevo",
       "fuente_macros": "Excel maestro Roger 2026-07 · Huevos/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": 3.13,
+      "grasa_monoinsaturada_g": 3.66,
+      "grasa_poliinsaturada_g": 1.91,
+      "fuente_nutri_ext": "USDA FoodData Central: Egg, whole, raw, fresh (fdcId 171287, SR Legacy)",
+      "confianza_nutri_ext": "alta"
     },
     "entrecot-ternera": {
       "nombre": "Entrecot de ternera",
@@ -413,11 +535,16 @@
       "proteina_g": 25,
       "grasa_g": 12,
       "hidratos_g": 0,
-      "fibra_g": null,
+      "fibra_g": 0,
       "base_nutricional": "crudo",
       "origen": "ternera",
       "fuente_macros": "Excel maestro Roger 2026-07 · Entrecot de ternera/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": 2.38,
+      "grasa_monoinsaturada_g": 2.59,
+      "grasa_poliinsaturada_g": 0.278,
+      "fuente_nutri_ext": "USDA FoodData Central: Beef, short loin (NY strip steak), raw (fdcId 2727572, Foundation)",
+      "confianza_nutri_ext": "alta"
     },
     "solomillo-ternera": {
       "nombre": "Solomillo de ternera",
@@ -429,11 +556,16 @@
       "proteina_g": 27,
       "grasa_g": 5,
       "hidratos_g": 0,
-      "fibra_g": null,
+      "fibra_g": 0,
       "base_nutricional": "crudo",
       "origen": "ternera",
       "fuente_macros": "Excel maestro Roger 2026-07 · Solomillo de ternera/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": 2.12,
+      "grasa_monoinsaturada_g": 2.34,
+      "grasa_poliinsaturada_g": 0.45,
+      "fuente_nutri_ext": "USDA FoodData Central: Beef, tenderloin steak, raw (fdcId 2727573, Foundation)",
+      "confianza_nutri_ext": "alta"
     },
     "carrillera-ternera": {
       "nombre": "Carrillera de ternera",
@@ -445,11 +577,16 @@
       "proteina_g": 20,
       "grasa_g": 11,
       "hidratos_g": 0,
-      "fibra_g": null,
+      "fibra_g": 0,
       "base_nutricional": "crudo",
       "origen": "ternera",
       "fuente_macros": "Excel maestro Roger 2026-07 · Carrillera de ternera/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": 6.34,
+      "grasa_monoinsaturada_g": 7.02,
+      "grasa_poliinsaturada_g": 0.556,
+      "fuente_nutri_ext": "USDA FoodData Central: Beef, chuck, roast, boneless, choice, raw (fdcId 2646174, Foundation)",
+      "confianza_nutri_ext": "media - proxy chuck, no existe corte exacto carrillera en USDA"
     },
     "rabo-ternera": {
       "nombre": "Rabo de ternera",
@@ -461,11 +598,16 @@
       "proteina_g": 19,
       "grasa_g": 20,
       "hidratos_g": 0,
-      "fibra_g": null,
+      "fibra_g": 0.0,
       "base_nutricional": "crudo",
       "origen": "ternera",
       "fuente_macros": "Excel maestro Roger 2026-07 · Rabo de ternera/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": 6.73,
+      "grasa_monoinsaturada_g": 7.35,
+      "grasa_poliinsaturada_g": 0.727,
+      "fuente_nutri_ext": "USDA FoodData Central: Beef, oxtails (fdcId 2705843, Survey (FNDDS))",
+      "confianza_nutri_ext": "alta"
     },
     "chuletas-cerdo": {
       "nombre": "Chuletas de cerdo",
@@ -477,11 +619,16 @@
       "proteina_g": 24,
       "grasa_g": 12,
       "hidratos_g": 0,
-      "fibra_g": null,
+      "fibra_g": 0.0,
       "base_nutricional": "crudo",
       "origen": "cerdo",
       "fuente_macros": "Excel maestro Roger 2026-07 · Chuletas de cerdo/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": 2.99,
+      "grasa_monoinsaturada_g": 3.55,
+      "grasa_poliinsaturada_g": 1.19,
+      "fuente_nutri_ext": "USDA FoodData Central: Pork, fresh, loin, center loin (chops), bone-in, separable lean and fat, raw (fdcId 168238, SR Legacy)",
+      "confianza_nutri_ext": "alta"
     },
     "costillas-cerdo": {
       "nombre": "Costillas de cerdo",
@@ -493,11 +640,16 @@
       "proteina_g": 20,
       "grasa_g": 20,
       "hidratos_g": 0,
-      "fibra_g": null,
+      "fibra_g": 0,
       "base_nutricional": "crudo",
       "origen": "cerdo",
       "fuente_macros": "Excel maestro Roger 2026-07 · Costillas de cerdo/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": 6.28,
+      "grasa_monoinsaturada_g": 7.78,
+      "grasa_poliinsaturada_g": 2.55,
+      "fuente_nutri_ext": "USDA FoodData Central: Pork, ground, raw (fdcId 2514745, Foundation)",
+      "confianza_nutri_ext": "alta"
     },
     "secreto-iberico": {
       "nombre": "Secreto ibérico",
@@ -509,11 +661,16 @@
       "proteina_g": 20,
       "grasa_g": 25,
       "hidratos_g": 0,
-      "fibra_g": null,
+      "fibra_g": 0.0,
       "base_nutricional": "crudo",
       "origen": "cerdo",
       "fuente_macros": "Excel maestro Roger 2026-07 · Secreto de cerdo/crudo",
-      "confianza_macros": "media"
+      "confianza_macros": "media",
+      "grasa_saturada_g": 6.24,
+      "grasa_monoinsaturada_g": 8.01,
+      "grasa_poliinsaturada_g": 1.92,
+      "fuente_nutri_ext": "USDA FoodData Central: Pork, fresh, shoulder, whole, separable lean and fat, raw (fdcId 167843, SR Legacy)",
+      "confianza_nutri_ext": "alta"
     },
     "presa-iberica": {
       "nombre": "Presa ibérica",
@@ -525,11 +682,16 @@
       "proteina_g": 21,
       "grasa_g": 23,
       "hidratos_g": 0,
-      "fibra_g": null,
+      "fibra_g": 0.0,
       "base_nutricional": "crudo",
       "origen": "cerdo",
       "fuente_macros": "Excel maestro Roger 2026-07 · Presa de cerdo/crudo",
-      "confianza_macros": "media"
+      "confianza_macros": "media",
+      "grasa_saturada_g": 6.24,
+      "grasa_monoinsaturada_g": 8.01,
+      "grasa_poliinsaturada_g": 1.92,
+      "fuente_nutri_ext": "USDA FoodData Central: Pork, fresh, shoulder, whole, separable lean and fat, raw (fdcId 167843, SR Legacy)",
+      "confianza_nutri_ext": "alta"
     },
     "salchichas-cerdo": {
       "nombre": "Salchichas frescas",
@@ -541,11 +703,16 @@
       "proteina_g": 14,
       "grasa_g": 25,
       "hidratos_g": 1,
-      "fibra_g": null,
+      "fibra_g": 0.0,
       "base_nutricional": "crudo",
       "origen": "cerdo",
       "fuente_macros": "Excel maestro Roger 2026-07 · Butifarra fresca / Salchichas frescas/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": 8.62,
+      "grasa_monoinsaturada_g": 11.0,
+      "grasa_poliinsaturada_g": 4.39,
+      "fuente_nutri_ext": "USDA FoodData Central: Sausage, Italian, pork, mild, raw (fdcId 171631, SR Legacy)",
+      "confianza_nutri_ext": "media - proxy salchicha italiana"
     },
     "butifarra-fresca": {
       "nombre": "Butifarra fresca",
@@ -557,11 +724,16 @@
       "proteina_g": 14,
       "grasa_g": 25,
       "hidratos_g": 1,
-      "fibra_g": null,
+      "fibra_g": 0.0,
       "base_nutricional": "crudo",
       "origen": "cerdo",
       "fuente_macros": "Excel maestro Roger 2026-07 · Butifarra fresca / Salchichas frescas/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": 8.62,
+      "grasa_monoinsaturada_g": 11.0,
+      "grasa_poliinsaturada_g": 4.39,
+      "fuente_nutri_ext": "USDA FoodData Central: Sausage, Italian, pork, mild, raw (fdcId 171631, SR Legacy)",
+      "confianza_nutri_ext": "media - proxy salchicha italiana, butifarra no existe en USDA"
     },
     "butifarra-blanca": {
       "nombre": "Butifarra blanca",
@@ -578,7 +750,13 @@
       "nota_base": "Pese a ser un embutido, el Excel la modela con tecnicas de coccion (plancha/horno/parrilla/guiso/frito), NO con “Crudo / sin cocción / conserva” como fuet/salchichon/morcilla/sobrasada -- la butifarra blanca cruda se cocina en casa (no se come tal cual se compra). Ademas kcal_100g del banco (240) esta POR DEBAJO de la propia columna crudo del Excel (320) y muy por debajo de todas sus columnas cocinado (427-522), señal consistente con que el banco referencia un embutido fresco sin cocinar, no uno listo para comer.",
       "origen": "cerdo",
       "fuente_macros": "Excel maestro Roger 2026-07 · Butifarra blanca/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": null,
+      "grasa_monoinsaturada_g": null,
+      "grasa_poliinsaturada_g": null,
+      "fuente_nutri_ext": null,
+      "confianza_nutri_ext": null,
+      "nota_nutri_ext": "embutido especifico cat/es - sin match USDA fiable"
     },
     "butifarra-negra": {
       "nombre": "Butifarra negra",
@@ -590,12 +768,17 @@
       "proteina_g": 12,
       "grasa_g": 35,
       "hidratos_g": 2,
-      "fibra_g": null,
+      "fibra_g": 0.0,
       "base_nutricional": "crudo",
       "nota_base": "Mismo caso que butifarra-blanca: el Excel la modela con tecnicas de coccion (plancha/horno/parrilla/guiso/frito), a diferencia de morcilla (que en el Excel SI es “Crudo / sin cocción / conserva”) pese a ser un embutido de sangre muy similar -- se respeta la distincion que hace el propio Excel. kcal_100g del banco (290) esta por debajo de la columna crudo del Excel (380) y de todas las cocinado (502-595), consistente con estado crudo.",
       "origen": "cerdo",
       "fuente_macros": "Excel maestro Roger 2026-07 · Butifarra negra / negra de huevo/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": 13.4,
+      "grasa_monoinsaturada_g": 15.9,
+      "grasa_poliinsaturada_g": 3.46,
+      "fuente_nutri_ext": "USDA FoodData Central: Blood sausage (fdcId 171618, SR Legacy)",
+      "confianza_nutri_ext": "alta"
     },
     "cordero-pierna": {
       "nombre": "Pierna de cordero",
@@ -607,11 +790,16 @@
       "proteina_g": 22,
       "grasa_g": 14,
       "hidratos_g": 0,
-      "fibra_g": null,
+      "fibra_g": 0.0,
       "base_nutricional": "crudo",
       "origen": "cordero",
       "fuente_macros": "Excel maestro Roger 2026-07 · Pierna de cordero/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": 7.43,
+      "grasa_monoinsaturada_g": 7.0,
+      "grasa_poliinsaturada_g": 1.35,
+      "fuente_nutri_ext": "USDA FoodData Central: Lamb, leg, whole (shank and sirloin), separable lean and fat, trimmed to 1/4\" fat, choice, raw (fdcId 174311, SR Legacy)",
+      "confianza_nutri_ext": "alta"
     },
     "cordero-paletilla": {
       "nombre": "Paletilla de cordero",
@@ -623,11 +811,16 @@
       "proteina_g": 21,
       "grasa_g": 15,
       "hidratos_g": 0,
-      "fibra_g": null,
+      "fibra_g": 0.0,
       "base_nutricional": "crudo",
       "origen": "cordero",
       "fuente_macros": "Excel maestro Roger 2026-07 · Paletilla de cordero/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": 9.28,
+      "grasa_monoinsaturada_g": 8.79,
+      "grasa_poliinsaturada_g": 1.71,
+      "fuente_nutri_ext": "USDA FoodData Central: Lamb, shoulder, whole (arm and blade), separable lean and fat, trimmed to 1/4\" fat, choice, raw (fdcId 172496, SR Legacy)",
+      "confianza_nutri_ext": "alta"
     },
     "cordero-chuletas": {
       "nombre": "Chuletas de cordero",
@@ -639,11 +832,16 @@
       "proteina_g": 23,
       "grasa_g": 17,
       "hidratos_g": 0,
-      "fibra_g": null,
+      "fibra_g": 0.0,
       "base_nutricional": "crudo",
       "origen": "cordero",
       "fuente_macros": "Excel maestro Roger 2026-07 · Chuletas de cordero/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": 11.2,
+      "grasa_monoinsaturada_g": 7.46,
+      "grasa_poliinsaturada_g": 0.967,
+      "fuente_nutri_ext": "USDA FoodData Central: Lamb, New Zealand, imported, loin chop, separable lean and fat, raw (fdcId 172517, SR Legacy)",
+      "confianza_nutri_ext": "alta"
     },
     "cordero-cuello": {
       "nombre": "Cuello de cordero",
@@ -655,11 +853,16 @@
       "proteina_g": 19,
       "grasa_g": 14,
       "hidratos_g": 0,
-      "fibra_g": null,
+      "fibra_g": 0.0,
       "base_nutricional": "crudo",
       "origen": "cordero",
       "fuente_macros": "Excel maestro Roger 2026-07 · Cuello de cordero/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": 7.51,
+      "grasa_monoinsaturada_g": 4.99,
+      "grasa_poliinsaturada_g": 0.683,
+      "fuente_nutri_ext": "USDA FoodData Central: Lamb, New Zealand, imported, neck chops, separable lean and fat, raw (fdcId 172637, SR Legacy)",
+      "confianza_nutri_ext": "alta"
     },
     "alitas-pollo": {
       "nombre": "Alitas de pollo",
@@ -671,11 +874,16 @@
       "proteina_g": 19,
       "grasa_g": 13,
       "hidratos_g": 0,
-      "fibra_g": null,
+      "fibra_g": 0,
       "base_nutricional": "crudo",
       "origen": "pollo",
       "fuente_macros": "Excel maestro Roger 2026-07 · Alitas de pollo/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": 3.54,
+      "grasa_monoinsaturada_g": 5.42,
+      "grasa_poliinsaturada_g": 2.5,
+      "fuente_nutri_ext": "USDA FoodData Central: Chicken, wing, meat and skin, raw (fdcId 2727568, Foundation)",
+      "confianza_nutri_ext": "alta"
     },
     "carne-picada-mixta": {
       "nombre": "Carne picada mixta",
@@ -687,11 +895,16 @@
       "proteina_g": 26,
       "grasa_g": 8,
       "hidratos_g": 0,
-      "fibra_g": null,
+      "fibra_g": 0,
       "base_nutricional": "crudo",
       "origen": "ternera",
       "fuente_macros": "Excel maestro Roger 2026-07 · Carne picada de ternera/crudo",
-      "confianza_macros": "baja"
+      "confianza_macros": "baja",
+      "grasa_saturada_g": 6.28,
+      "grasa_monoinsaturada_g": 7.78,
+      "grasa_poliinsaturada_g": 2.55,
+      "fuente_nutri_ext": "USDA FoodData Central: Pork, ground, raw (fdcId 2514745, Foundation)",
+      "confianza_nutri_ext": "alta"
     },
     "jamon-cocido": {
       "nombre": "Jamón cocido",
@@ -703,12 +916,17 @@
       "proteina_g": 20,
       "grasa_g": 4,
       "hidratos_g": 1,
-      "fibra_g": null,
+      "fibra_g": 0.0,
       "base_nutricional": "cocido",
       "nota_base": "Jamon cocido (york) es por nombre y proceso un producto YA cocido de fabrica (no jamon crudo) que se consume habitualmente en frio, sin coccion adicional en casa -- se usa la referencia base del Excel (columna “crudo” = 120kcal/20/4/1, el estado “tal cual se compra” antes de las tecnicas OPCIONALES de plancha/horno que el Excel tambien modela para quien decide calentarlo).",
       "origen": "jamon cocido",
       "fuente_macros": "Excel maestro Roger 2026-07 · Jamón cocido/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": 0.87,
+      "grasa_monoinsaturada_g": 1.24,
+      "grasa_poliinsaturada_g": 0.23,
+      "fuente_nutri_ext": "USDA FoodData Central: Ham, honey, smoked, cooked (fdcId 174611, SR Legacy)",
+      "confianza_nutri_ext": "alta"
     },
     "fuet": {
       "nombre": "Fuet",
@@ -725,7 +943,13 @@
       "nota_base": "Embutido curado que se compra listo para comer, sin coccion en casa -- tecnica Excel = “Crudo / sin cocción / conserva” (unica fila para este alimento, sin alternativa cocinada).",
       "origen": "fuet",
       "fuente_macros": "Excel maestro Roger 2026-07 · Fuet/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": null,
+      "grasa_monoinsaturada_g": null,
+      "grasa_poliinsaturada_g": null,
+      "fuente_nutri_ext": null,
+      "confianza_nutri_ext": null,
+      "nota_nutri_ext": "embutido curado especifico cat/es - sin match USDA fiable"
     },
     "salchichon": {
       "nombre": "Salchichón",
@@ -737,12 +961,17 @@
       "proteina_g": 24,
       "grasa_g": 35,
       "hidratos_g": 1,
-      "fibra_g": null,
+      "fibra_g": 0.0,
       "base_nutricional": "cocido",
       "nota_base": "Embutido curado que se compra listo para comer, sin coccion en casa -- tecnica Excel = “Crudo / sin cocción / conserva” (unica fila para este alimento, sin alternativa cocinada).",
       "origen": "salchichon",
       "fuente_macros": "Excel maestro Roger 2026-07 · Salchichón/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": 9.86,
+      "grasa_monoinsaturada_g": 10.6,
+      "grasa_poliinsaturada_g": 1.04,
+      "fuente_nutri_ext": "USDA FoodData Central: Salami, cooked, beef (fdcId 172935, SR Legacy)",
+      "confianza_nutri_ext": "alta"
     },
     "morcilla": {
       "nombre": "Morcilla",
@@ -754,12 +983,17 @@
       "proteina_g": 14,
       "grasa_g": 33,
       "hidratos_g": 4,
-      "fibra_g": null,
+      "fibra_g": 0.0,
       "base_nutricional": "cocido",
       "nota_base": "Embutido curado que se compra listo para comer, sin coccion en casa -- tecnica Excel = “Crudo / sin cocción / conserva” (unica fila para este alimento, sin alternativa cocinada).",
       "origen": "morcilla",
       "fuente_macros": "Excel maestro Roger 2026-07 · Morcilla/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": 13.4,
+      "grasa_monoinsaturada_g": 15.9,
+      "grasa_poliinsaturada_g": 3.46,
+      "fuente_nutri_ext": "USDA FoodData Central: Blood sausage (fdcId 171618, SR Legacy)",
+      "confianza_nutri_ext": "alta"
     },
     "sobrasada": {
       "nombre": "Sobrasada",
@@ -776,7 +1010,13 @@
       "nota_base": "Embutido curado que se compra listo para comer, sin coccion en casa -- tecnica Excel = “Crudo / sin cocción / conserva” (unica fila para este alimento, sin alternativa cocinada).",
       "origen": "sobrasada",
       "fuente_macros": "Excel maestro Roger 2026-07 · Sobrasada/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": null,
+      "grasa_monoinsaturada_g": null,
+      "grasa_poliinsaturada_g": null,
+      "fuente_nutri_ext": null,
+      "confianza_nutri_ext": null,
+      "nota_nutri_ext": "embutido untable especifico balear - sin match USDA fiable"
     },
     "lomo-embuchado": {
       "nombre": "Lomo embuchado",
@@ -788,12 +1028,17 @@
       "proteina_g": 35,
       "grasa_g": 22,
       "hidratos_g": 0,
-      "fibra_g": null,
+      "fibra_g": 0.0,
       "base_nutricional": "cocido",
       "nota_base": "Embutido curado que se compra listo para comer, sin coccion en casa -- tecnica Excel = “Crudo / sin cocción / conserva” (unica fila para este alimento, sin alternativa cocinada).",
       "origen": "lomo embuchado",
       "fuente_macros": "Excel maestro Roger 2026-07 · Lomo embuchado/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": 1.6,
+      "grasa_monoinsaturada_g": 2.49,
+      "grasa_poliinsaturada_g": 0.44,
+      "fuente_nutri_ext": "USDA FoodData Central: Pork, cured, ham, extra lean (approximately 4% fat), canned, roasted (fdcId 168280, SR Legacy)",
+      "confianza_nutri_ext": "media - proxy jamon curado enlatado extra magro, no existe lomo embuchado en USDA"
     },
     "queso-curado": {
       "nombre": "Queso curado",
@@ -805,12 +1050,17 @@
       "proteina_g": 32,
       "grasa_g": 32,
       "hidratos_g": 0,
-      "fibra_g": null,
+      "fibra_g": 0.0,
       "base_nutricional": "cocido",
       "nota_base": "Producto que se compra listo (queso), no se cocina en casa en el uso habitual de la app -- se usa la columna “crudo” del Excel, que para queso es la referencia “tal cual se compra” (las tecnicas de horno/plancha/parrilla del Excel modelan un gratinado opcional, no el consumo por defecto).",
       "origen": "queso",
       "fuente_macros": "Excel maestro Roger 2026-07 · Queso manchego/crudo",
-      "confianza_macros": "media"
+      "confianza_macros": "media",
+      "grasa_saturada_g": 14.8,
+      "grasa_monoinsaturada_g": 7.52,
+      "grasa_poliinsaturada_g": 0.569,
+      "fuente_nutri_ext": "USDA FoodData Central: Cheese, parmesan, hard (fdcId 170848, SR Legacy)",
+      "confianza_nutri_ext": "media - proxy parmesano, no existe queso curado espanol generico"
     },
     "dorada": {
       "nombre": "Dorada",
@@ -822,11 +1072,16 @@
       "proteina_g": 19,
       "grasa_g": 1.2,
       "hidratos_g": 0,
-      "fibra_g": null,
+      "fibra_g": 0.0,
       "base_nutricional": "crudo",
       "origen": "dorada",
       "fuente_macros": "Excel maestro Roger 2026-07 · Dorada/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": 0.511,
+      "grasa_monoinsaturada_g": 0.424,
+      "grasa_poliinsaturada_g": 0.743,
+      "fuente_nutri_ext": "USDA FoodData Central: Fish, sea bass, mixed species, raw (fdcId 175142, SR Legacy)",
+      "confianza_nutri_ext": "alta"
     },
     "lenguado": {
       "nombre": "Lenguado",
@@ -838,11 +1093,16 @@
       "proteina_g": 17,
       "grasa_g": 1,
       "hidratos_g": 0,
-      "fibra_g": null,
+      "fibra_g": 0.0,
       "base_nutricional": "crudo",
       "origen": "lenguado",
       "fuente_macros": "Excel maestro Roger 2026-07 · Lenguado/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": 0.441,
+      "grasa_monoinsaturada_g": 0.535,
+      "grasa_poliinsaturada_g": 0.374,
+      "fuente_nutri_ext": "USDA FoodData Central: Fish, flatfish (flounder and sole species), raw (fdcId 174196, SR Legacy)",
+      "confianza_nutri_ext": "alta"
     },
     "rape": {
       "nombre": "Rape",
@@ -854,11 +1114,16 @@
       "proteina_g": 16,
       "grasa_g": 0.8,
       "hidratos_g": 0,
-      "fibra_g": null,
+      "fibra_g": 0.0,
       "base_nutricional": "crudo",
       "origen": "rape",
       "fuente_macros": "Excel maestro Roger 2026-07 · Rape/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": 0.34,
+      "grasa_monoinsaturada_g": 0.24,
+      "grasa_poliinsaturada_g": 0.61,
+      "fuente_nutri_ext": "USDA FoodData Central: Fish, monkfish, raw (fdcId 173676, SR Legacy)",
+      "confianza_nutri_ext": "alta"
     },
     "calamar": {
       "nombre": "Calamar",
@@ -870,11 +1135,16 @@
       "proteina_g": 16,
       "grasa_g": 1,
       "hidratos_g": 1,
-      "fibra_g": null,
+      "fibra_g": 0.0,
       "base_nutricional": "crudo",
       "origen": "calamar",
       "fuente_macros": "Excel maestro Roger 2026-07 · Calamar/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": 0.358,
+      "grasa_monoinsaturada_g": 0.107,
+      "grasa_poliinsaturada_g": 0.524,
+      "fuente_nutri_ext": "USDA FoodData Central: Mollusks, squid, mixed species, raw (fdcId 174223, SR Legacy)",
+      "confianza_nutri_ext": "alta"
     },
     "sepia": {
       "nombre": "Sepia",
@@ -886,11 +1156,16 @@
       "proteina_g": 16,
       "grasa_g": 1,
       "hidratos_g": 1,
-      "fibra_g": null,
+      "fibra_g": 0.0,
       "base_nutricional": "crudo",
       "origen": "sepia",
       "fuente_macros": "Excel maestro Roger 2026-07 · Sepia/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": 0.118,
+      "grasa_monoinsaturada_g": 0.081,
+      "grasa_poliinsaturada_g": 0.134,
+      "fuente_nutri_ext": "USDA FoodData Central: Mollusks, cuttlefish, mixed species, raw (fdcId 174215, SR Legacy)",
+      "confianza_nutri_ext": "alta"
     },
     "chipiron": {
       "nombre": "Chipirón",
@@ -902,11 +1177,16 @@
       "proteina_g": 16,
       "grasa_g": 1.5,
       "hidratos_g": 1,
-      "fibra_g": null,
+      "fibra_g": 0.0,
       "base_nutricional": "crudo",
       "origen": "chipiron",
       "fuente_macros": "Excel maestro Roger 2026-07 · Chipirón/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": 0.358,
+      "grasa_monoinsaturada_g": 0.107,
+      "grasa_poliinsaturada_g": 0.524,
+      "fuente_nutri_ext": "USDA FoodData Central: Mollusks, squid, mixed species, raw (fdcId 174223, SR Legacy)",
+      "confianza_nutri_ext": "alta"
     },
     "pulpo": {
       "nombre": "Pulpo",
@@ -918,11 +1198,16 @@
       "proteina_g": 15,
       "grasa_g": 1,
       "hidratos_g": 2,
-      "fibra_g": null,
+      "fibra_g": 0.0,
       "base_nutricional": "crudo",
       "origen": "pulpo",
       "fuente_macros": "Excel maestro Roger 2026-07 · Pulpo/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": 0.227,
+      "grasa_monoinsaturada_g": 0.162,
+      "grasa_poliinsaturada_g": 0.239,
+      "fuente_nutri_ext": "USDA FoodData Central: Mollusks, octopus, common, raw (fdcId 174218, SR Legacy)",
+      "confianza_nutri_ext": "alta"
     },
     "almejas": {
       "nombre": "Almejas",
@@ -934,11 +1219,16 @@
       "proteina_g": 10,
       "grasa_g": 0.5,
       "hidratos_g": 2,
-      "fibra_g": null,
+      "fibra_g": 0.0,
       "base_nutricional": "crudo",
       "origen": "almeja",
       "fuente_macros": "Excel maestro Roger 2026-07 · Almejas/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": 0.187,
+      "grasa_monoinsaturada_g": 0.12,
+      "grasa_poliinsaturada_g": 0.192,
+      "fuente_nutri_ext": "USDA FoodData Central: Mollusks, clam, mixed species, raw (fdcId 174214, SR Legacy)",
+      "confianza_nutri_ext": "alta"
     },
     "atun-conserva": {
       "nombre": "Atún en conserva",
@@ -950,12 +1240,17 @@
       "proteina_g": 25,
       "grasa_g": 1,
       "hidratos_g": 0,
-      "fibra_g": null,
+      "fibra_g": 0,
       "base_nutricional": "cocido",
       "nota_base": "Conserva comprada lista para comer, sin transformacion en casa -- tecnica Excel = “Crudo / sin cocción / conserva” (unica fila para este alimento, sin alternativa cocinada), coincide con el estado del kcal_100g del banco.",
       "origen": "atun",
       "fuente_macros": "Excel maestro Roger 2026-07 · Atún en conserva/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": 0.224,
+      "grasa_monoinsaturada_g": 0.114,
+      "grasa_poliinsaturada_g": 0.259,
+      "fuente_nutri_ext": "USDA FoodData Central: Fish, tuna, light, canned in water, drained solids (fdcId 334194, Foundation)",
+      "confianza_nutri_ext": "alta"
     },
     "anchoas-conserva": {
       "nombre": "Anchoas en conserva",
@@ -967,12 +1262,17 @@
       "proteina_g": 29,
       "grasa_g": 9,
       "hidratos_g": 0,
-      "fibra_g": null,
+      "fibra_g": 0,
       "base_nutricional": "cocido",
       "nota_base": "Conserva comprada lista para comer, sin transformacion en casa -- tecnica Excel = “Crudo / sin cocción / conserva” (unica fila para este alimento, sin alternativa cocinada), coincide con el estado del kcal_100g del banco.",
       "origen": "anchoa conserva",
       "fuente_macros": "Excel maestro Roger 2026-07 · Anchoas en conserva/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": 2.2,
+      "grasa_monoinsaturada_g": 3.77,
+      "grasa_poliinsaturada_g": 2.56,
+      "fuente_nutri_ext": "USDA FoodData Central: Anchovies, canned in olive oil, with salt, drained (fdcId 2747652, Foundation)",
+      "confianza_nutri_ext": "alta"
     },
     "col": {
       "nombre": "Col",
@@ -984,11 +1284,16 @@
       "proteina_g": 1.3,
       "grasa_g": 0.1,
       "hidratos_g": 5,
-      "fibra_g": null,
+      "fibra_g": 2.5,
       "base_nutricional": "crudo",
       "origen": "col",
       "fuente_macros": "Excel maestro Roger 2026-07 · Col/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": null,
+      "grasa_monoinsaturada_g": null,
+      "grasa_poliinsaturada_g": null,
+      "fuente_nutri_ext": "USDA FoodData Central: Cabbage, green, raw (fdcId 2346407, Foundation)",
+      "confianza_nutri_ext": "alta"
     },
     "habas-tiernas": {
       "nombre": "Habas tiernas",
@@ -1006,11 +1311,16 @@
       "proteina_g": 6,
       "grasa_g": 0.5,
       "hidratos_g": 11,
-      "fibra_g": null,
+      "fibra_g": 3.3,
       "base_nutricional": "crudo",
       "origen": "haba tierna",
       "fuente_macros": "Excel maestro Roger 2026-07 · Habas tiernas/crudo",
-      "confianza_macros": "media"
+      "confianza_macros": "media",
+      "grasa_saturada_g": 0.088,
+      "grasa_monoinsaturada_g": 0.095,
+      "grasa_poliinsaturada_g": 0.008,
+      "fuente_nutri_ext": "USDA FoodData Central: Hyacinth-beans, immature seeds, raw (fdcId 169234, SR Legacy)",
+      "confianza_nutri_ext": "alta"
     },
     "esparrago-blanco": {
       "nombre": "Espárrago blanco",
@@ -1022,11 +1332,16 @@
       "proteina_g": 1.8,
       "grasa_g": 0.2,
       "hidratos_g": 2.5,
-      "fibra_g": null,
+      "fibra_g": 1.88,
       "base_nutricional": "crudo",
       "origen": "esparrago",
       "fuente_macros": "Excel maestro Roger 2026-07 · Espárrago blanco/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": null,
+      "grasa_monoinsaturada_g": null,
+      "grasa_poliinsaturada_g": null,
+      "fuente_nutri_ext": "USDA FoodData Central: Asparagus, green, raw (fdcId 2710823, Foundation)",
+      "confianza_nutri_ext": "alta"
     },
     "esparrago-verde": {
       "nombre": "Espárrago verde",
@@ -1044,11 +1359,16 @@
       "proteina_g": 2.2,
       "grasa_g": 0.2,
       "hidratos_g": 2,
-      "fibra_g": null,
+      "fibra_g": 1.88,
       "base_nutricional": "crudo",
       "origen": "esparrago",
       "fuente_macros": "Excel maestro Roger 2026-07 · Espárrago verde/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": null,
+      "grasa_monoinsaturada_g": null,
+      "grasa_poliinsaturada_g": null,
+      "fuente_nutri_ext": "USDA FoodData Central: Asparagus, green, raw (fdcId 2710823, Foundation)",
+      "confianza_nutri_ext": "alta"
     },
     "niscalos": {
       "nombre": "Níscalos",
@@ -1066,11 +1386,16 @@
       "proteina_g": 2,
       "grasa_g": 0.3,
       "hidratos_g": 3,
-      "fibra_g": null,
+      "fibra_g": 3.8,
       "base_nutricional": "crudo",
       "origen": "niscalo",
       "fuente_macros": "Excel maestro Roger 2026-07 · Níscalo/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": null,
+      "grasa_monoinsaturada_g": null,
+      "grasa_poliinsaturada_g": null,
+      "fuente_nutri_ext": "USDA FoodData Central: Mushrooms, Chanterelle, raw (fdcId 168422, SR Legacy)",
+      "confianza_nutri_ext": "alta"
     },
     "boletus": {
       "nombre": "Boletus",
@@ -1087,11 +1412,16 @@
       "proteina_g": 3,
       "grasa_g": 0.5,
       "hidratos_g": 3,
-      "fibra_g": null,
+      "fibra_g": 1.3,
       "base_nutricional": "crudo",
       "origen": "boletus",
       "fuente_macros": "Excel maestro Roger 2026-07 · Boletus/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": 0.01,
+      "grasa_monoinsaturada_g": 0.044,
+      "grasa_poliinsaturada_g": 0.296,
+      "fuente_nutri_ext": "USDA FoodData Central: Mushrooms, portabella, raw (fdcId 169255, SR Legacy)",
+      "confianza_nutri_ext": "alta"
     },
     "cebolla": {
       "nombre": "Cebolla",
@@ -1104,11 +1434,16 @@
       "proteina_g": 1.1,
       "grasa_g": 0.1,
       "hidratos_g": 7,
-      "fibra_g": null,
+      "fibra_g": 2.2,
       "base_nutricional": "crudo",
       "origen": "cebolla",
       "fuente_macros": "Excel maestro Roger 2026-07 · Cebolla/crudo",
-      "confianza_macros": "media"
+      "confianza_macros": "media",
+      "grasa_saturada_g": null,
+      "grasa_monoinsaturada_g": null,
+      "grasa_poliinsaturada_g": null,
+      "fuente_nutri_ext": "USDA FoodData Central: Onions, red, raw (fdcId 790577, Foundation)",
+      "confianza_nutri_ext": "alta"
     },
     "cebolleta": {
       "nombre": "Cebolleta",
@@ -1121,11 +1456,16 @@
       "proteina_g": 1,
       "grasa_g": 0.1,
       "hidratos_g": 6,
-      "fibra_g": null,
+      "fibra_g": 2.3,
       "base_nutricional": "crudo",
       "origen": "cebolleta",
       "fuente_macros": "Excel maestro Roger 2026-07 · Cebolleta/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": null,
+      "grasa_monoinsaturada_g": null,
+      "grasa_poliinsaturada_g": null,
+      "fuente_nutri_ext": "USDA FoodData Central: Green onion, (scallion), bulb and greens, root removed, raw (fdcId 2727585, Foundation)",
+      "confianza_nutri_ext": "alta"
     },
     "aguacate": {
       "nombre": "Aguacate",
@@ -1137,11 +1477,16 @@
       "proteina_g": 2,
       "grasa_g": 15,
       "hidratos_g": 2,
-      "fibra_g": null,
+      "fibra_g": 6.7,
       "base_nutricional": "crudo",
       "origen": "aguacate",
       "fuente_macros": "Excel maestro Roger 2026-07 · Aguacate/crudo",
-      "confianza_macros": "media"
+      "confianza_macros": "media",
+      "grasa_saturada_g": 2.13,
+      "grasa_monoinsaturada_g": 9.8,
+      "grasa_poliinsaturada_g": 1.82,
+      "fuente_nutri_ext": "USDA FoodData Central: Avocado, Hass, peeled, raw (fdcId 2710824, Foundation)",
+      "confianza_nutri_ext": "alta"
     },
     "masa-empanada": {
       "nombre": "Masa de empanada",
@@ -1153,11 +1498,16 @@
       "proteina_g": 6,
       "grasa_g": 15,
       "hidratos_g": 35,
-      "fibra_g": null,
+      "fibra_g": 1.8,
       "base_nutricional": "crudo",
       "origen": "masa",
       "fuente_macros": "Excel maestro Roger 2026-07 · Masa de empanada/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": 9.6,
+      "grasa_monoinsaturada_g": 10.2,
+      "grasa_poliinsaturada_g": 3.29,
+      "fuente_nutri_ext": "USDA FoodData Central: Pie crust, refrigerated, regular, unbaked (fdcId 167932, SR Legacy)",
+      "confianza_nutri_ext": "media - proxy generico masa laminada, no existe empanada en USDA"
     },
     "noquis": {
       "nombre": "Ñoquis",
@@ -1173,7 +1523,13 @@
       "base_nutricional": "crudo",
       "origen": "pasta",
       "fuente_macros": "Excel maestro Roger 2026-07 · Ñoquis/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": null,
+      "grasa_monoinsaturada_g": null,
+      "grasa_poliinsaturada_g": null,
+      "fuente_nutri_ext": null,
+      "confianza_nutri_ext": null,
+      "nota_nutri_ext": "USDA solo tiene marcas comerciales (Branded) para gnocchi, sin entrada generica fiable"
     },
     "maiz": {
       "nombre": "Maíz dulce",
@@ -1185,11 +1541,16 @@
       "proteina_g": 3.3,
       "grasa_g": 1.2,
       "hidratos_g": 17,
-      "fibra_g": null,
+      "fibra_g": 2.43,
       "base_nutricional": "crudo",
       "origen": "maiz",
       "fuente_macros": "Excel maestro Roger 2026-07 · Maíz/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": null,
+      "grasa_monoinsaturada_g": null,
+      "grasa_poliinsaturada_g": null,
+      "fuente_nutri_ext": "USDA FoodData Central: Corn, sweet, yellow and white kernels,  fresh, raw (fdcId 2710826, Foundation)",
+      "confianza_nutri_ext": "alta"
     },
     "arroz-bomba": {
       "nombre": "Arroz bomba",
@@ -1201,11 +1562,16 @@
       "proteina_g": 6.5,
       "grasa_g": 0.7,
       "hidratos_g": 80,
-      "fibra_g": null,
+      "fibra_g": 0.149,
       "base_nutricional": "crudo",
       "origen": "arroz",
       "fuente_macros": "Excel maestro Roger 2026-07 · Arroz arborio / Arroz bomba / Arroz redondo/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": null,
+      "grasa_monoinsaturada_g": null,
+      "grasa_poliinsaturada_g": null,
+      "fuente_nutri_ext": "USDA FoodData Central: Rice, white, long grain, unenriched, raw (fdcId 2512381, Foundation)",
+      "confianza_nutri_ext": "alta"
     },
     "garbanzos": {
       "nombre": "Garbanzos cocidos",
@@ -1217,12 +1583,17 @@
       "proteina_g": 6.3,
       "grasa_g": 2,
       "hidratos_g": 15,
-      "fibra_g": null,
+      "fibra_g": 7.6,
       "base_nutricional": "cocido",
       "nota_base": "Banco mide legumbre YA COCIDA (nombre + racion_adulto_g≈200g solo tienen sentido cocida; 120kcal_100g actual no se toca). El Excel no trae fila de legumbre YA cocida como tal, pero SI trae la tecnica “Hervido / cocido normal” con columna cocinado propia por alimento (no es el factor generico de la hoja 'Equivalencia Cocciones', es un valor calculado por fila en Tabla Master) -- se usa esa columna cocinado de Garbanzo castellano / Garbanzo pedrosillano/Hervido, que ademas valida bien contra el kcal_100g ya existente del banco.",
       "origen": "garbanzo",
       "fuente_macros": "Excel maestro Roger 2026-07 · Garbanzo castellano / Garbanzo pedrosillano/Hervido - cocido normal (col. cocinado)",
-      "confianza_macros": "baja"
+      "confianza_macros": "baja",
+      "grasa_saturada_g": 0.269,
+      "grasa_monoinsaturada_g": 0.583,
+      "grasa_poliinsaturada_g": 1.16,
+      "fuente_nutri_ext": "USDA FoodData Central: Chickpeas (garbanzo beans, bengal gram), mature seeds, cooked, boiled, without salt (fdcId 173757, SR Legacy)",
+      "confianza_nutri_ext": "alta"
     },
     "lentejas": {
       "nombre": "Lentejas cocidas",
@@ -1234,12 +1605,17 @@
       "proteina_g": 8.3,
       "grasa_g": 0.3,
       "hidratos_g": 18,
-      "fibra_g": null,
+      "fibra_g": 7.9,
       "base_nutricional": "cocido",
       "nota_base": "Banco mide legumbre YA COCIDA (nombre + racion_adulto_g≈200g solo tienen sentido cocida; 116kcal_100g actual no se toca). El Excel no trae fila de legumbre YA cocida como tal, pero SI trae la tecnica “Hervido / cocido normal” con columna cocinado propia por alimento (no es el factor generico de la hoja 'Equivalencia Cocciones', es un valor calculado por fila en Tabla Master) -- se usa esa columna cocinado de Lenteja pardina/Hervido, que ademas valida bien contra el kcal_100g ya existente del banco.",
       "origen": "lenteja",
       "fuente_macros": "Excel maestro Roger 2026-07 · Lenteja pardina/Hervido - cocido normal (col. cocinado)",
-      "confianza_macros": "baja"
+      "confianza_macros": "baja",
+      "grasa_saturada_g": 0.053,
+      "grasa_monoinsaturada_g": 0.064,
+      "grasa_poliinsaturada_g": 0.175,
+      "fuente_nutri_ext": "USDA FoodData Central: Lentils, mature seeds, cooked, boiled, without salt (fdcId 172421, SR Legacy)",
+      "confianza_nutri_ext": "alta"
     },
     "alubias-blancas": {
       "nombre": "Alubias blancas cocidas",
@@ -1251,12 +1627,17 @@
       "proteina_g": 7.3,
       "grasa_g": 0.5,
       "hidratos_g": 18.3,
-      "fibra_g": null,
+      "fibra_g": 6.3,
       "base_nutricional": "cocido",
       "nota_base": "Banco mide legumbre YA COCIDA (nombre + racion_adulto_g≈200g solo tienen sentido cocida; 120kcal_100g actual no se toca). El Excel no trae fila de legumbre YA cocida como tal, pero SI trae la tecnica “Hervido / cocido normal” con columna cocinado propia por alimento (no es el factor generico de la hoja 'Equivalencia Cocciones', es un valor calculado por fila en Tabla Master) -- se usa esa columna cocinado de Judía blanca/Hervido, que ademas valida bien contra el kcal_100g ya existente del banco.",
       "origen": "judia blanca",
       "fuente_macros": "Excel maestro Roger 2026-07 · Judía blanca/Hervido - cocido normal (col. cocinado)",
-      "confianza_macros": "baja"
+      "confianza_macros": "baja",
+      "grasa_saturada_g": 0.091,
+      "grasa_monoinsaturada_g": 0.031,
+      "grasa_poliinsaturada_g": 0.152,
+      "fuente_nutri_ext": "USDA FoodData Central: Beans, white, mature seeds, cooked, boiled, without salt (fdcId 175203, SR Legacy)",
+      "confianza_nutri_ext": "alta"
     },
     "edamame": {
       "nombre": "Edamame (soja verde)",
@@ -1268,11 +1649,16 @@
       "proteina_g": null,
       "grasa_g": null,
       "hidratos_g": null,
-      "fibra_g": null,
+      "fibra_g": 6.23,
       "base_nutricional": "crudo",
       "nota_base": "Sin match en el Excel. Se compra congelado (en vaina o desgranado) y se hierve brevemente antes de comer -- se declara 'crudo' por defecto (estado de compra habitual, congelado sin cocer) a falta de dato que permita verificar lo contrario; sin impacto numerico real porque no hay macros (sin_match).",
       "origen": null,
-      "confianza_macros": "sin_match"
+      "confianza_macros": "sin_match",
+      "grasa_saturada_g": 1.15,
+      "grasa_monoinsaturada_g": 2.22,
+      "grasa_poliinsaturada_g": 4.07,
+      "fuente_nutri_ext": "USDA FoodData Central: Edamame, frozen, prepared (fdcId 2758981, Foundation)",
+      "confianza_nutri_ext": "alta"
     },
     "tofu": {
       "nombre": "Tofu",
@@ -1284,11 +1670,16 @@
       "proteina_g": null,
       "grasa_g": null,
       "hidratos_g": null,
-      "fibra_g": null,
+      "fibra_g": 2.3,
       "base_nutricional": "crudo",
       "nota_base": "Sin match en el Excel. El tofu es un producto procesado (soja cuajada, cocida durante la produccion) que se compra listo para comer -- caso ambiguo (mas cerca de 'producto ya elaborado' que de 'ingrediente crudo que se cocina'), pero se declara 'crudo' por defecto ante la falta de dato Excel que lo confirme como 'cocido' (mismo criterio conservador que edamame); sin impacto numerico real porque no hay macros (sin_match).",
       "origen": null,
-      "confianza_macros": "sin_match"
+      "confianza_macros": "sin_match",
+      "grasa_saturada_g": 1.26,
+      "grasa_monoinsaturada_g": 1.92,
+      "grasa_poliinsaturada_g": 4.92,
+      "fuente_nutri_ext": "USDA FoodData Central: Tofu, raw, firm, prepared with calcium sulfate (fdcId 172475, SR Legacy)",
+      "confianza_nutri_ext": "alta"
     },
     "hummus": {
       "nombre": "Hummus",
@@ -1300,11 +1691,16 @@
       "proteina_g": null,
       "grasa_g": null,
       "hidratos_g": null,
-      "fibra_g": null,
+      "fibra_g": 5.5,
       "base_nutricional": "cocido",
       "nota_base": "Sin match en el Excel (plato compuesto sin receta fija). Preparacion lista para comer (garbanzo cocido + tahini + aceite + limon triturados) -- no existe “hummus crudo”, es un plato ya elaborado.",
       "origen": null,
-      "confianza_macros": "sin_match"
+      "confianza_macros": "sin_match",
+      "grasa_saturada_g": 2.56,
+      "grasa_monoinsaturada_g": 5.34,
+      "grasa_poliinsaturada_g": 8.81,
+      "fuente_nutri_ext": "USDA FoodData Central: Hummus, commercial (fdcId 174289, SR Legacy)",
+      "confianza_nutri_ext": "alta"
     },
     "legumbres-variadas": {
       "nombre": "Legumbres variadas cocidas",
@@ -1316,12 +1712,17 @@
       "proteina_g": 8.3,
       "grasa_g": 0.3,
       "hidratos_g": 18,
-      "fibra_g": null,
+      "fibra_g": 7.3,
       "base_nutricional": "cocido",
       "nota_base": "Banco mide legumbre YA COCIDA (nombre + racion_adulto_g≈200g solo tienen sentido cocida; 119kcal_100g actual no se toca). El Excel no trae fila de legumbre YA cocida como tal, pero SI trae la tecnica “Hervido / cocido normal” con columna cocinado propia por alimento (no es el factor generico de la hoja 'Equivalencia Cocciones', es un valor calculado por fila en Tabla Master) -- se usa esa columna cocinado de Lenteja pardina/Hervido, que ademas valida bien contra el kcal_100g ya existente del banco.",
       "origen": "lenteja",
       "fuente_macros": "Excel maestro Roger 2026-07 · Lenteja pardina/Hervido - cocido normal (col. cocinado)",
-      "confianza_macros": "baja"
+      "confianza_macros": "baja",
+      "grasa_saturada_g": 0.026,
+      "grasa_monoinsaturada_g": 0.009,
+      "grasa_poliinsaturada_g": 0.042,
+      "fuente_nutri_ext": "USDA FoodData Central: Yardlong bean, cooked, boiled, drained, with salt (fdcId 169359, SR Legacy)",
+      "confianza_nutri_ext": "alta"
     },
     "arroz": {
       "nombre": "Arroz",
@@ -1333,11 +1734,16 @@
       "proteina_g": 6.5,
       "grasa_g": 0.7,
       "hidratos_g": 80,
-      "fibra_g": null,
+      "fibra_g": 0.149,
       "base_nutricional": "crudo",
       "origen": "arroz",
       "fuente_macros": "Excel maestro Roger 2026-07 · Arroz arborio / Arroz bomba / Arroz redondo/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": null,
+      "grasa_monoinsaturada_g": null,
+      "grasa_poliinsaturada_g": null,
+      "fuente_nutri_ext": "USDA FoodData Central: Rice, white, long grain, unenriched, raw (fdcId 2512381, Foundation)",
+      "confianza_nutri_ext": "alta"
     },
     "pasta": {
       "nombre": "Pasta",
@@ -1349,11 +1755,16 @@
       "proteina_g": 13,
       "grasa_g": 1.5,
       "hidratos_g": 74,
-      "fibra_g": null,
+      "fibra_g": 3.2,
       "base_nutricional": "crudo",
       "origen": "pasta",
       "fuente_macros": "Excel maestro Roger 2026-07 · Pasta seca/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": 0.277,
+      "grasa_monoinsaturada_g": 0.171,
+      "grasa_poliinsaturada_g": 0.564,
+      "fuente_nutri_ext": "USDA FoodData Central: Pasta, dry, enriched (fdcId 169736, SR Legacy)",
+      "confianza_nutri_ext": "alta"
     },
     "cuscus": {
       "nombre": "Cuscús",
@@ -1365,11 +1776,16 @@
       "proteina_g": 12,
       "grasa_g": 2,
       "hidratos_g": 68,
-      "fibra_g": null,
+      "fibra_g": 5.0,
       "base_nutricional": "crudo",
       "origen": "cuscus",
       "fuente_macros": "Excel maestro Roger 2026-07 · Cuscús/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": 0.117,
+      "grasa_monoinsaturada_g": 0.089,
+      "grasa_poliinsaturada_g": 0.252,
+      "fuente_nutri_ext": "USDA FoodData Central: Couscous, dry (fdcId 169699, SR Legacy)",
+      "confianza_nutri_ext": "alta"
     },
     "quinoa": {
       "nombre": "Quinoa",
@@ -1381,11 +1797,16 @@
       "proteina_g": 14,
       "grasa_g": 6,
       "hidratos_g": 52,
-      "fibra_g": null,
+      "fibra_g": 7.0,
       "base_nutricional": "crudo",
       "origen": "quinoa",
       "fuente_macros": "Excel maestro Roger 2026-07 · Quinoa/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": 0.706,
+      "grasa_monoinsaturada_g": 1.61,
+      "grasa_poliinsaturada_g": 3.29,
+      "fuente_nutri_ext": "USDA FoodData Central: Quinoa, uncooked (fdcId 168874, SR Legacy)",
+      "confianza_nutri_ext": "alta"
     },
     "pan-integral": {
       "nombre": "Pan integral",
@@ -1397,11 +1818,16 @@
       "proteina_g": 13,
       "grasa_g": 4,
       "hidratos_g": 41,
-      "fibra_g": null,
+      "fibra_g": 6.0,
       "base_nutricional": "crudo",
       "origen": "pan integral",
       "fuente_macros": "Excel maestro Roger 2026-07 · Pan integral/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": null,
+      "grasa_monoinsaturada_g": null,
+      "grasa_poliinsaturada_g": null,
+      "fuente_nutri_ext": "USDA FoodData Central: Bread, 100% whole wheat, commercial (fdcId 2758994, Foundation)",
+      "confianza_nutri_ext": "alta"
     },
     "fideos": {
       "nombre": "Fideos",
@@ -1413,11 +1839,16 @@
       "proteina_g": 12,
       "grasa_g": 1.5,
       "hidratos_g": 73,
-      "fibra_g": null,
+      "fibra_g": 3.2,
       "base_nutricional": "crudo",
       "origen": "pasta",
       "fuente_macros": "Excel maestro Roger 2026-07 · Fideos cabello / Fideos nº0 / Fideos para fideuá/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": 0.277,
+      "grasa_monoinsaturada_g": 0.171,
+      "grasa_poliinsaturada_g": 0.564,
+      "fuente_nutri_ext": "USDA FoodData Central: Pasta, dry, enriched (fdcId 169736, SR Legacy)",
+      "confianza_nutri_ext": "alta"
     },
     "masa-empanadilla": {
       "nombre": "Masa de empanadilla",
@@ -1429,11 +1860,16 @@
       "proteina_g": 6,
       "grasa_g": 18,
       "hidratos_g": 38,
-      "fibra_g": null,
+      "fibra_g": 1.8,
       "base_nutricional": "crudo",
       "origen": "masa",
       "fuente_macros": "Excel maestro Roger 2026-07 · Masa de empanadilla / Oblea de empanadilla/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": 9.6,
+      "grasa_monoinsaturada_g": 10.2,
+      "grasa_poliinsaturada_g": 3.29,
+      "fuente_nutri_ext": "USDA FoodData Central: Pie crust, refrigerated, regular, unbaked (fdcId 167932, SR Legacy)",
+      "confianza_nutri_ext": "media - proxy generico masa laminada, no existe empanadilla en USDA"
     },
     "tortilla-trigo": {
       "nombre": "Tortilla de trigo (wrap)",
@@ -1445,11 +1881,16 @@
       "proteina_g": 9,
       "grasa_g": 1.5,
       "hidratos_g": 55,
-      "fibra_g": null,
+      "fibra_g": 3.5,
       "base_nutricional": "crudo",
       "origen": "pan",
       "fuente_macros": "Excel maestro Roger 2026-07 · Pan de barra / Pan de payés/crudo",
-      "confianza_macros": "media"
+      "confianza_macros": "media",
+      "grasa_saturada_g": 4.1,
+      "grasa_monoinsaturada_g": 4.54,
+      "grasa_poliinsaturada_g": 1.52,
+      "fuente_nutri_ext": "USDA FoodData Central: Wheat flour, white, tortilla mix, enriched (fdcId 169724, SR Legacy)",
+      "confianza_nutri_ext": "alta"
     },
     "pan-hamburguesa": {
       "nombre": "Pan de hamburguesa",
@@ -1461,11 +1902,16 @@
       "proteina_g": 9,
       "grasa_g": 1.5,
       "hidratos_g": 55,
-      "fibra_g": null,
+      "fibra_g": 1.8,
       "base_nutricional": "crudo",
       "origen": "pan",
       "fuente_macros": "Excel maestro Roger 2026-07 · Pan de barra / Pan de payés/crudo",
-      "confianza_macros": "media"
+      "confianza_macros": "media",
+      "grasa_saturada_g": 0.842,
+      "grasa_monoinsaturada_g": 0.748,
+      "grasa_poliinsaturada_g": 1.78,
+      "fuente_nutri_ext": "USDA FoodData Central: Rolls, hamburger or hotdog, plain (fdcId 172796, SR Legacy)",
+      "confianza_nutri_ext": "alta"
     },
     "masa-pizza": {
       "nombre": "Masa de pizza",
@@ -1477,11 +1923,16 @@
       "proteina_g": 9,
       "grasa_g": 1.5,
       "hidratos_g": 55,
-      "fibra_g": null,
+      "fibra_g": 1.8,
       "base_nutricional": "crudo",
       "origen": "pan",
       "fuente_macros": "Excel maestro Roger 2026-07 · Pan de barra / Pan de payés/crudo",
-      "confianza_macros": "media"
+      "confianza_macros": "media",
+      "grasa_saturada_g": 9.6,
+      "grasa_monoinsaturada_g": 10.2,
+      "grasa_poliinsaturada_g": 3.29,
+      "fuente_nutri_ext": "USDA FoodData Central: Pie crust, refrigerated, regular, unbaked (fdcId 167932, SR Legacy)",
+      "confianza_nutri_ext": "media - proxy masa generica, no existe masa de pizza cruda especifica"
     },
     "placas-lasana": {
       "nombre": "Placas de lasaña",
@@ -1493,11 +1944,16 @@
       "proteina_g": 13,
       "grasa_g": 1.5,
       "hidratos_g": 74,
-      "fibra_g": null,
+      "fibra_g": 3.2,
       "base_nutricional": "crudo",
       "origen": "pasta",
       "fuente_macros": "Excel maestro Roger 2026-07 · Pasta seca/crudo",
-      "confianza_macros": "media"
+      "confianza_macros": "media",
+      "grasa_saturada_g": 0.277,
+      "grasa_monoinsaturada_g": 0.171,
+      "grasa_poliinsaturada_g": 0.564,
+      "fuente_nutri_ext": "USDA FoodData Central: Pasta, dry, enriched (fdcId 169736, SR Legacy)",
+      "confianza_nutri_ext": "media - proxy pasta generica, no existe placa de lasana especifica"
     },
     "pan-pita": {
       "nombre": "Pan de pita",
@@ -1509,11 +1965,16 @@
       "proteina_g": 9,
       "grasa_g": 1.5,
       "hidratos_g": 55,
-      "fibra_g": null,
+      "fibra_g": 2.2,
       "base_nutricional": "crudo",
       "origen": "pan",
       "fuente_macros": "Excel maestro Roger 2026-07 · Pan de barra / Pan de payés/crudo",
-      "confianza_macros": "media"
+      "confianza_macros": "media",
+      "grasa_saturada_g": null,
+      "grasa_monoinsaturada_g": null,
+      "grasa_poliinsaturada_g": null,
+      "fuente_nutri_ext": "USDA FoodData Central: Bread, white, commercial (fdcId 2758993, Foundation)",
+      "confianza_nutri_ext": "alta"
     },
     "pan": {
       "nombre": "Pan (barra)",
@@ -1525,11 +1986,16 @@
       "proteina_g": 9,
       "grasa_g": 1.5,
       "hidratos_g": 55,
-      "fibra_g": null,
+      "fibra_g": 2.9,
       "base_nutricional": "crudo",
       "origen": "pan",
       "fuente_macros": "Excel maestro Roger 2026-07 · Pan de barra / Pan de payés/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": null,
+      "grasa_monoinsaturada_g": null,
+      "grasa_poliinsaturada_g": null,
+      "fuente_nutri_ext": "USDA FoodData Central: Bread, white, commercial (fdcId 2758993, Foundation)",
+      "confianza_nutri_ext": "alta"
     },
     "patata": {
       "nombre": "Patata",
@@ -1541,11 +2007,16 @@
       "proteina_g": 2,
       "grasa_g": 0.1,
       "hidratos_g": 17,
-      "fibra_g": null,
+      "fibra_g": 2.1,
       "base_nutricional": "crudo",
       "origen": "patata",
       "fuente_macros": "Excel maestro Roger 2026-07 · Patata/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": 0.025,
+      "grasa_monoinsaturada_g": 0.002,
+      "grasa_poliinsaturada_g": 0.042,
+      "fuente_nutri_ext": "USDA FoodData Central: Potatoes, flesh and skin, raw (fdcId 170026, SR Legacy)",
+      "confianza_nutri_ext": "alta"
     },
     "boniato": {
       "nombre": "Boniato",
@@ -1557,11 +2028,16 @@
       "proteina_g": 1.6,
       "grasa_g": 0.1,
       "hidratos_g": 20,
-      "fibra_g": null,
+      "fibra_g": 3.0,
       "base_nutricional": "crudo",
       "origen": "boniato",
       "fuente_macros": "Excel maestro Roger 2026-07 · Boniato/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": null,
+      "grasa_monoinsaturada_g": null,
+      "grasa_poliinsaturada_g": null,
+      "fuente_nutri_ext": "USDA FoodData Central: Sweet potatoes, orange flesh, without skin, raw (fdcId 2346404, Foundation)",
+      "confianza_nutri_ext": "alta"
     },
     "brocoli": {
       "nombre": "Brócoli",
@@ -1573,11 +2049,16 @@
       "proteina_g": 2.8,
       "grasa_g": 0.4,
       "hidratos_g": 4,
-      "fibra_g": null,
+      "fibra_g": 2.4,
       "base_nutricional": "crudo",
       "origen": "brocoli",
       "fuente_macros": "Excel maestro Roger 2026-07 · Brócoli/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": 0.039,
+      "grasa_monoinsaturada_g": 0.011,
+      "grasa_poliinsaturada_g": 0.017,
+      "fuente_nutri_ext": "USDA FoodData Central: Broccoli, raw (fdcId 747447, Foundation)",
+      "confianza_nutri_ext": "alta"
     },
     "judias-verdes": {
       "nombre": "Judías verdes",
@@ -1589,11 +2070,16 @@
       "proteina_g": 1.8,
       "grasa_g": 0.2,
       "hidratos_g": 5,
-      "fibra_g": null,
+      "fibra_g": 3.01,
       "base_nutricional": "crudo",
       "origen": "judia verde",
       "fuente_macros": "Excel maestro Roger 2026-07 · Judía verde/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": null,
+      "grasa_monoinsaturada_g": null,
+      "grasa_poliinsaturada_g": null,
+      "fuente_nutri_ext": "USDA FoodData Central: Beans, snap, green, raw (fdcId 2346400, Foundation)",
+      "confianza_nutri_ext": "alta"
     },
     "calabacin": {
       "nombre": "Calabacín",
@@ -1605,11 +2091,16 @@
       "proteina_g": 1.2,
       "grasa_g": 0.3,
       "hidratos_g": 2.2,
-      "fibra_g": null,
+      "fibra_g": 0.752,
       "base_nutricional": "crudo",
       "origen": "calabacin",
       "fuente_macros": "Excel maestro Roger 2026-07 · Calabacín/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": null,
+      "grasa_monoinsaturada_g": null,
+      "grasa_poliinsaturada_g": null,
+      "fuente_nutri_ext": "USDA FoodData Central: Squash, summer, green, zucchini, includes skin, raw (fdcId 2685568, Foundation)",
+      "confianza_nutri_ext": "alta"
     },
     "zanahoria": {
       "nombre": "Zanahoria",
@@ -1621,11 +2112,16 @@
       "proteina_g": 0.9,
       "grasa_g": 0.2,
       "hidratos_g": 8,
-      "fibra_g": null,
+      "fibra_g": 2.69,
       "base_nutricional": "crudo",
       "origen": "zanahoria",
       "fuente_macros": "Excel maestro Roger 2026-07 · Zanahoria/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": null,
+      "grasa_monoinsaturada_g": null,
+      "grasa_poliinsaturada_g": null,
+      "fuente_nutri_ext": "USDA FoodData Central: Carrots, baby, raw (fdcId 2258587, Foundation)",
+      "confianza_nutri_ext": "alta"
     },
     "pimiento": {
       "nombre": "Pimiento",
@@ -1637,11 +2133,16 @@
       "proteina_g": 1,
       "grasa_g": 0.3,
       "hidratos_g": 5,
-      "fibra_g": null,
+      "fibra_g": 1.16,
       "base_nutricional": "crudo",
       "origen": "pimiento",
       "fuente_macros": "Excel maestro Roger 2026-07 · Pimiento rojo/crudo",
-      "confianza_macros": "media"
+      "confianza_macros": "media",
+      "grasa_saturada_g": null,
+      "grasa_monoinsaturada_g": null,
+      "grasa_poliinsaturada_g": null,
+      "fuente_nutri_ext": "USDA FoodData Central: Peppers, bell, red, raw (fdcId 2258590, Foundation)",
+      "confianza_nutri_ext": "alta"
     },
     "espinacas": {
       "nombre": "Espinacas",
@@ -1653,11 +2154,16 @@
       "proteina_g": 2.9,
       "grasa_g": 0.4,
       "hidratos_g": 1.4,
-      "fibra_g": null,
+      "fibra_g": 2.2,
       "base_nutricional": "crudo",
       "origen": "espinaca",
       "fuente_macros": "Excel maestro Roger 2026-07 · Espinacas/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": 0.063,
+      "grasa_monoinsaturada_g": 0.01,
+      "grasa_poliinsaturada_g": 0.165,
+      "fuente_nutri_ext": "USDA FoodData Central: Spinach, raw (fdcId 168462, SR Legacy)",
+      "confianza_nutri_ext": "alta"
     },
     "champinones": {
       "nombre": "Champiñones",
@@ -1669,11 +2175,16 @@
       "proteina_g": 2.5,
       "grasa_g": 0.3,
       "hidratos_g": 3,
-      "fibra_g": null,
+      "fibra_g": 1.0,
       "base_nutricional": "crudo",
       "origen": "champinon",
       "fuente_macros": "Excel maestro Roger 2026-07 · Champiñón/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": 0.05,
+      "grasa_monoinsaturada_g": 0.0,
+      "grasa_poliinsaturada_g": 0.16,
+      "fuente_nutri_ext": "USDA FoodData Central: Mushrooms, white, raw (fdcId 169251, SR Legacy)",
+      "confianza_nutri_ext": "alta"
     },
     "berenjena": {
       "nombre": "Berenjena",
@@ -1685,11 +2196,16 @@
       "proteina_g": 1,
       "grasa_g": 0.2,
       "hidratos_g": 3,
-      "fibra_g": null,
+      "fibra_g": 2.45,
       "base_nutricional": "crudo",
       "origen": "berenjena",
       "fuente_macros": "Excel maestro Roger 2026-07 · Berenjena/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": null,
+      "grasa_monoinsaturada_g": null,
+      "grasa_poliinsaturada_g": null,
+      "fuente_nutri_ext": "USDA FoodData Central: Eggplant, raw (fdcId 2685577, Foundation)",
+      "confianza_nutri_ext": "alta"
     },
     "tomate": {
       "nombre": "Tomate",
@@ -1701,11 +2217,16 @@
       "proteina_g": 0.9,
       "grasa_g": 0.2,
       "hidratos_g": 3.5,
-      "fibra_g": null,
+      "fibra_g": 1.2,
       "base_nutricional": "crudo",
       "origen": "tomate",
       "fuente_macros": "Excel maestro Roger 2026-07 · Tomate pera/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": 0.028,
+      "grasa_monoinsaturada_g": 0.031,
+      "grasa_poliinsaturada_g": 0.083,
+      "fuente_nutri_ext": "USDA FoodData Central: Tomatoes, red, ripe, raw, year round average (fdcId 170457, SR Legacy)",
+      "confianza_nutri_ext": "alta"
     },
     "guisantes": {
       "nombre": "Guisantes",
@@ -1717,11 +2238,16 @@
       "proteina_g": 5,
       "grasa_g": 0.4,
       "hidratos_g": 12,
-      "fibra_g": null,
+      "fibra_g": 5.7,
       "base_nutricional": "crudo",
       "origen": "guisante",
       "fuente_macros": "Excel maestro Roger 2026-07 · Guisante fresco/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": 0.071,
+      "grasa_monoinsaturada_g": 0.035,
+      "grasa_poliinsaturada_g": 0.187,
+      "fuente_nutri_ext": "USDA FoodData Central: Peas, green, raw (fdcId 170419, SR Legacy)",
+      "confianza_nutri_ext": "alta"
     },
     "coliflor": {
       "nombre": "Coliflor",
@@ -1733,11 +2259,16 @@
       "proteina_g": 1.9,
       "grasa_g": 0.3,
       "hidratos_g": 3,
-      "fibra_g": null,
+      "fibra_g": 1.95,
       "base_nutricional": "crudo",
       "origen": "coliflor",
       "fuente_macros": "Excel maestro Roger 2026-07 · Coliflor/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": null,
+      "grasa_monoinsaturada_g": null,
+      "grasa_poliinsaturada_g": null,
+      "fuente_nutri_ext": "USDA FoodData Central: Cauliflower, raw (fdcId 2685573, Foundation)",
+      "confianza_nutri_ext": "alta"
     },
     "puerro": {
       "nombre": "Puerro",
@@ -1749,11 +2280,16 @@
       "proteina_g": 1.5,
       "grasa_g": 0.3,
       "hidratos_g": 5,
-      "fibra_g": null,
+      "fibra_g": 3.0,
       "base_nutricional": "crudo",
       "origen": "puerro",
       "fuente_macros": "Excel maestro Roger 2026-07 · Puerro/crudo",
-      "confianza_macros": "media"
+      "confianza_macros": "media",
+      "grasa_saturada_g": null,
+      "grasa_monoinsaturada_g": null,
+      "grasa_poliinsaturada_g": null,
+      "fuente_nutri_ext": "USDA FoodData Central: Leeks, bulb and greens, root removed, raw (fdcId 2727584, Foundation)",
+      "confianza_nutri_ext": "alta"
     },
     "acelgas": {
       "nombre": "Acelgas",
@@ -1765,11 +2301,16 @@
       "proteina_g": 1.8,
       "grasa_g": 0.2,
       "hidratos_g": 3,
-      "fibra_g": null,
+      "fibra_g": 1.6,
       "base_nutricional": "crudo",
       "origen": "acelga",
       "fuente_macros": "Excel maestro Roger 2026-07 · Acelgas/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": 0.03,
+      "grasa_monoinsaturada_g": 0.04,
+      "grasa_poliinsaturada_g": 0.07,
+      "fuente_nutri_ext": "USDA FoodData Central: Chard, swiss, raw (fdcId 169991, SR Legacy)",
+      "confianza_nutri_ext": "alta"
     },
     "alcachofa": {
       "nombre": "Alcachofa",
@@ -1781,11 +2322,16 @@
       "proteina_g": 3,
       "grasa_g": 0.2,
       "hidratos_g": 5,
-      "fibra_g": null,
+      "fibra_g": 5.4,
       "base_nutricional": "crudo",
       "origen": "alcachofa",
       "fuente_macros": "Excel maestro Roger 2026-07 · Alcachofa/crudo",
-      "confianza_macros": "media"
+      "confianza_macros": "media",
+      "grasa_saturada_g": 0.036,
+      "grasa_monoinsaturada_g": 0.005,
+      "grasa_poliinsaturada_g": 0.064,
+      "fuente_nutri_ext": "USDA FoodData Central: Artichokes, (globe or french), raw (fdcId 169205, SR Legacy)",
+      "confianza_nutri_ext": "alta"
     },
     "calabaza": {
       "nombre": "Calabaza",
@@ -1797,11 +2343,16 @@
       "proteina_g": 1,
       "grasa_g": 0.1,
       "hidratos_g": 6,
-      "fibra_g": null,
+      "fibra_g": 0.5,
       "base_nutricional": "crudo",
       "origen": "calabaza",
       "fuente_macros": "Excel maestro Roger 2026-07 · Calabaza/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": 0.052,
+      "grasa_monoinsaturada_g": 0.013,
+      "grasa_poliinsaturada_g": 0.005,
+      "fuente_nutri_ext": "USDA FoodData Central: Winter squash, raw (fdcId 2709693, Survey (FNDDS))",
+      "confianza_nutri_ext": "alta"
     },
     "lechuga": {
       "nombre": "Lechuga",
@@ -1813,11 +2364,16 @@
       "proteina_g": 1.4,
       "grasa_g": 0.2,
       "hidratos_g": 1.5,
-      "fibra_g": null,
+      "fibra_g": 1.2,
       "base_nutricional": "crudo",
       "origen": "lechuga",
       "fuente_macros": "Excel maestro Roger 2026-07 · Lechuga/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": null,
+      "grasa_monoinsaturada_g": null,
+      "grasa_poliinsaturada_g": null,
+      "fuente_nutri_ext": "USDA FoodData Central: Lettuce, iceberg, raw (fdcId 2346388, Foundation)",
+      "confianza_nutri_ext": "alta"
     },
     "pepino": {
       "nombre": "Pepino",
@@ -1829,11 +2385,16 @@
       "proteina_g": 0.7,
       "grasa_g": 0.1,
       "hidratos_g": 2,
-      "fibra_g": null,
+      "fibra_g": 0.7,
       "base_nutricional": "crudo",
       "origen": "pepino",
       "fuente_macros": "Excel maestro Roger 2026-07 · Pepino/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": null,
+      "grasa_monoinsaturada_g": null,
+      "grasa_poliinsaturada_g": null,
+      "fuente_nutri_ext": "USDA FoodData Central: Cucumber, with peel, raw (fdcId 2346406, Foundation)",
+      "confianza_nutri_ext": "alta"
     },
     "espinacas-queso": {
       "nombre": "Relleno de espinacas y queso",
@@ -1849,7 +2410,13 @@
       "base_nutricional": "cocido",
       "nota_base": "Sin match en el Excel (relleno compuesto sin receta fija). Relleno ya cocinado (espinacas salteadas + queso) tal como se usa en el plato -- no existe un estado crudo del relleno como ingrediente independiente.",
       "origen": null,
-      "confianza_macros": "sin_match"
+      "confianza_macros": "sin_match",
+      "grasa_saturada_g": null,
+      "grasa_monoinsaturada_g": null,
+      "grasa_poliinsaturada_g": null,
+      "fuente_nutri_ext": null,
+      "confianza_nutri_ext": null,
+      "nota_nutri_ext": "relleno compuesto - sin ingrediente unico USDA aplicable"
     },
     "queso-fresco": {
       "nombre": "Queso fresco",
@@ -1861,12 +2428,17 @@
       "proteina_g": 8,
       "grasa_g": 7,
       "hidratos_g": 3,
-      "fibra_g": null,
+      "fibra_g": 0.0,
       "base_nutricional": "cocido",
       "nota_base": "Producto que se compra listo (queso), no se cocina en casa en el uso habitual de la app -- se usa la columna “crudo” del Excel, que para queso es la referencia “tal cual se compra” (las tecnicas de horno/plancha/parrilla del Excel modelan un gratinado opcional, no el consumo por defecto).",
       "origen": "queso",
       "fuente_macros": "Excel maestro Roger 2026-07 · Queso fresco / Mató/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": 12.9,
+      "grasa_monoinsaturada_g": 5.97,
+      "grasa_poliinsaturada_g": 1.11,
+      "fuente_nutri_ext": "USDA FoodData Central: Cheese, fresh, queso fresco (fdcId 172223, SR Legacy)",
+      "confianza_nutri_ext": "alta"
     },
     "queso-feta": {
       "nombre": "Queso feta",
@@ -1878,12 +2450,17 @@
       "proteina_g": 22,
       "grasa_g": 22,
       "hidratos_g": 2,
-      "fibra_g": null,
+      "fibra_g": 0,
       "base_nutricional": "cocido",
       "nota_base": "Producto que se compra listo (queso), no se cocina en casa en el uso habitual de la app -- se usa la columna “crudo” del Excel, que para queso es la referencia “tal cual se compra” (las tecnicas de horno/plancha/parrilla del Excel modelan un gratinado opcional, no el consumo por defecto).",
       "origen": "queso",
       "fuente_macros": "Excel maestro Roger 2026-07 · Queso en lonchas/crudo",
-      "confianza_macros": "media"
+      "confianza_macros": "media",
+      "grasa_saturada_g": 11.2,
+      "grasa_monoinsaturada_g": 4.18,
+      "grasa_poliinsaturada_g": null,
+      "fuente_nutri_ext": "USDA FoodData Central: Cheese, feta, whole milk, crumbled (fdcId 2259796, Foundation)",
+      "confianza_nutri_ext": "alta"
     },
     "yogur": {
       "nombre": "Yogur natural",
@@ -1896,11 +2473,16 @@
       "proteina_g": 4,
       "grasa_g": 3,
       "hidratos_g": 4.5,
-      "fibra_g": null,
+      "fibra_g": 0,
       "base_nutricional": "crudo",
       "origen": "yogur",
       "fuente_macros": "Excel maestro Roger 2026-07 · Yogur natural/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": 2.32,
+      "grasa_monoinsaturada_g": 0.874,
+      "grasa_poliinsaturada_g": null,
+      "fuente_nutri_ext": "USDA FoodData Central: Yogurt, plain, whole milk (fdcId 2259793, Foundation)",
+      "confianza_nutri_ext": "alta"
     },
     "bechamel": {
       "nombre": "Bechamel casera (leche, harina y mantequilla)",
@@ -1916,7 +2498,13 @@
       "base_nutricional": "cocido",
       "nota_base": "Sin match en el Excel (plato compuesto sin receta fija). Salsa cocinada (roux de mantequilla+harina+leche) -- no existe “bechamel cruda”, es una preparacion que por definicion ya esta cocinada.",
       "origen": null,
-      "confianza_macros": "sin_match"
+      "confianza_macros": "sin_match",
+      "grasa_saturada_g": null,
+      "grasa_monoinsaturada_g": null,
+      "grasa_poliinsaturada_g": null,
+      "fuente_nutri_ext": null,
+      "confianza_nutri_ext": null,
+      "nota_nutri_ext": "salsa compuesta (leche+harina+mantequilla) - sin ingrediente unico USDA aplicable"
     },
     "leche": {
       "nombre": "Leche entera",
@@ -1929,11 +2517,16 @@
       "proteina_g": 3.3,
       "grasa_g": 3.6,
       "hidratos_g": 4.8,
-      "fibra_g": null,
+      "fibra_g": 0,
       "base_nutricional": "crudo",
       "origen": "leche",
       "fuente_macros": "Excel maestro Roger 2026-07 · Leche entera/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": 1.86,
+      "grasa_monoinsaturada_g": 0.688,
+      "grasa_poliinsaturada_g": 0.108,
+      "fuente_nutri_ext": "USDA FoodData Central: Milk, whole, 3.25% milkfat, with added vitamin D (fdcId 746782, Foundation)",
+      "confianza_nutri_ext": "alta"
     },
     "nata": {
       "nombre": "Nata líquida para cocinar",
@@ -1946,11 +2539,16 @@
       "proteina_g": 2,
       "grasa_g": 35,
       "hidratos_g": 3,
-      "fibra_g": null,
+      "fibra_g": 0,
       "base_nutricional": "crudo",
       "origen": "nata",
       "fuente_macros": "Excel maestro Roger 2026-07 · Nata líquida/crudo",
-      "confianza_macros": "media"
+      "confianza_macros": "media",
+      "grasa_saturada_g": 20.4,
+      "grasa_monoinsaturada_g": 7.34,
+      "grasa_poliinsaturada_g": null,
+      "fuente_nutri_ext": "USDA FoodData Central: Cream, heavy (fdcId 2346386, Foundation)",
+      "confianza_nutri_ext": "alta"
     },
     "mantequilla": {
       "nombre": "Mantequilla",
@@ -1963,12 +2561,17 @@
       "proteina_g": 0.6,
       "grasa_g": 81,
       "hidratos_g": 0.6,
-      "fibra_g": null,
+      "fibra_g": 0,
       "base_nutricional": "cocido",
       "nota_base": "Producto que se compra ya elaborado (batido de nata en fabrica), sin transformacion en casa -- tecnica Excel = “Crudo / sin cocción / conserva” (unica fila), mismo patron que jamon/embutidos curados.",
       "origen": "mantequilla",
       "fuente_macros": "Excel maestro Roger 2026-07 · Mantequilla/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": 45.6,
+      "grasa_monoinsaturada_g": 16.9,
+      "grasa_poliinsaturada_g": 2.52,
+      "fuente_nutri_ext": "USDA FoodData Central: Butter, stick, salted (fdcId 790508, Foundation)",
+      "confianza_nutri_ext": "alta"
     },
     "queso-rallado": {
       "nombre": "Queso rallado para gratinar",
@@ -1981,12 +2584,17 @@
       "proteina_g": 25,
       "grasa_g": 28,
       "hidratos_g": 1,
-      "fibra_g": null,
+      "fibra_g": 0.0,
       "base_nutricional": "cocido",
       "nota_base": "Producto que se compra listo (queso), no se cocina en casa en el uso habitual de la app -- se usa la columna “crudo” del Excel, que para queso es la referencia “tal cual se compra” (las tecnicas de horno/plancha/parrilla del Excel modelan un gratinado opcional, no el consumo por defecto).",
       "origen": "queso",
       "fuente_macros": "Excel maestro Roger 2026-07 · Queso rallado/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": 11.5,
+      "grasa_monoinsaturada_g": 5.1,
+      "grasa_poliinsaturada_g": 0.861,
+      "fuente_nutri_ext": "USDA FoodData Central: Cheese, mozzarella, low moisture, part-skim, shredded (fdcId 170900, SR Legacy)",
+      "confianza_nutri_ext": "alta"
     },
     "leche-sin-lactosa": {
       "nombre": "Leche sin lactosa",
@@ -1998,11 +2606,16 @@
       "proteina_g": 3.2,
       "grasa_g": 1.5,
       "hidratos_g": 5,
-      "fibra_g": null,
+      "fibra_g": 0.0,
       "base_nutricional": "crudo",
       "origen": "leche",
       "fuente_macros": "Excel maestro Roger 2026-07 · Leche sin lactosa/crudo",
-      "confianza_macros": "media"
+      "confianza_macros": "media",
+      "grasa_saturada_g": 1.25,
+      "grasa_monoinsaturada_g": null,
+      "grasa_poliinsaturada_g": null,
+      "fuente_nutri_ext": "USDA FoodData Central: LACTOSE FREE REDUCED FAT MILK (fdcId 2466947, Branded)",
+      "confianza_nutri_ext": "alta"
     },
     "bebida-avena": {
       "nombre": "Bebida de avena",
@@ -2014,11 +2627,16 @@
       "proteina_g": 2,
       "grasa_g": 1.5,
       "hidratos_g": 5,
-      "fibra_g": null,
+      "fibra_g": 0.0,
       "base_nutricional": "crudo",
       "origen": "leche vegetal",
       "fuente_macros": "Excel maestro Roger 2026-07 · Leche vegetal (avena/soja)/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": null,
+      "grasa_monoinsaturada_g": null,
+      "grasa_poliinsaturada_g": null,
+      "fuente_nutri_ext": "USDA FoodData Central: Oat milk, unsweetened, plain, refrigerated (fdcId 2257046, Foundation)",
+      "confianza_nutri_ext": "alta"
     },
     "bebida-soja": {
       "nombre": "Bebida de soja",
@@ -2030,11 +2648,16 @@
       "proteina_g": 2,
       "grasa_g": 1.5,
       "hidratos_g": 5,
-      "fibra_g": null,
+      "fibra_g": 0.0,
       "base_nutricional": "crudo",
       "origen": "leche vegetal",
       "fuente_macros": "Excel maestro Roger 2026-07 · Leche vegetal (avena/soja)/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": 0.314,
+      "grasa_monoinsaturada_g": 0.416,
+      "grasa_poliinsaturada_g": 1.15,
+      "fuente_nutri_ext": "USDA FoodData Central: Soy milk, unsweetened, plain, shelf stable (fdcId 1999630, Foundation)",
+      "confianza_nutri_ext": "alta"
     },
     "yogur-sin-lactosa": {
       "nombre": "Yogur sin lactosa",
@@ -2046,11 +2669,16 @@
       "proteina_g": 4,
       "grasa_g": 2,
       "hidratos_g": 5,
-      "fibra_g": null,
+      "fibra_g": 0.0,
       "base_nutricional": "crudo",
       "origen": "yogur",
       "fuente_macros": "Excel maestro Roger 2026-07 · Yogur sin lactosa/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": 1.0,
+      "grasa_monoinsaturada_g": null,
+      "grasa_poliinsaturada_g": null,
+      "fuente_nutri_ext": "USDA FoodData Central: PLAIN LACTOSE FREE YOGURT, PLAIN (fdcId 2266947, Branded)",
+      "confianza_nutri_ext": "media - fuente Branded, marca unica no generico"
     },
     "helado": {
       "nombre": "Helado (vainilla o chocolate)",
@@ -2062,12 +2690,17 @@
       "proteina_g": 3.5,
       "grasa_g": 11,
       "hidratos_g": 23,
-      "fibra_g": null,
+      "fibra_g": 0.7,
       "base_nutricional": "crudo",
       "nota_base": "Postre elaborado que se compra listo (no se 'cocina' en casa), pero el Excel lo modela con tecnicas de vapor/microondas/horno (no con 'Crudo / sin cocción / conserva' como jamon/embutidos/mantequilla) -- se mantiene 'crudo' por defecto siguiendo la clasificacion tecnica del propio Excel, aunque es un caso limitrofe (ver informe final: decision de criterio sin cobertura explicita de la spec).",
       "origen": "helado",
       "fuente_macros": "Excel maestro Roger 2026-07 · Helado vainilla/crudo",
-      "confianza_macros": "media"
+      "confianza_macros": "media",
+      "grasa_saturada_g": 6.79,
+      "grasa_monoinsaturada_g": 2.97,
+      "grasa_poliinsaturada_g": 0.452,
+      "fuente_nutri_ext": "USDA FoodData Central: Ice creams, vanilla (fdcId 167575, SR Legacy)",
+      "confianza_nutri_ext": "alta"
     },
     "compota": {
       "nombre": "Compota de manzana o pera",
@@ -2079,12 +2712,17 @@
       "proteina_g": 0.3,
       "grasa_g": 0.2,
       "hidratos_g": 17,
-      "fibra_g": null,
+      "fibra_g": 1.1,
       "base_nutricional": "cocido",
       "nota_base": "Compota es por definicion fruta ya cocinada/reducida con azucar -- no existe “compota cruda”, y la fruta sin cocinar ya se traza aparte en el banco (manzana, pera, con su propia ficha). La columna “crudo” del Excel para “Compota de manzana/pera” representa ya el preparado cocinado de base (70kcal), antes de tecnicas de reduccion adicional (Hervido/Vapor/Horno, que suben a 74-96kcal) que no son el uso por defecto.",
       "origen": "compota",
       "fuente_macros": "Excel maestro Roger 2026-07 · Compota de manzana / Compota de pera/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": null,
+      "grasa_monoinsaturada_g": null,
+      "grasa_poliinsaturada_g": null,
+      "fuente_nutri_ext": "USDA FoodData Central: Applesauce, unsweetened, with added vitamin C (fdcId 2346414, Foundation)",
+      "confianza_nutri_ext": "alta"
     },
     "naranja": {
       "nombre": "Naranja",
@@ -2107,11 +2745,16 @@
       "proteina_g": 0.9,
       "grasa_g": 0.1,
       "hidratos_g": 10,
-      "fibra_g": null,
+      "fibra_g": 2.0,
       "base_nutricional": "crudo",
       "origen": "naranja",
       "fuente_macros": "Excel maestro Roger 2026-07 · Naranja/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": null,
+      "grasa_monoinsaturada_g": null,
+      "grasa_poliinsaturada_g": null,
+      "fuente_nutri_ext": "USDA FoodData Central: Oranges, raw, navels (fdcId 746771, Foundation)",
+      "confianza_nutri_ext": "alta"
     },
     "mandarina": {
       "nombre": "Mandarina",
@@ -2134,11 +2777,16 @@
       "proteina_g": 0.8,
       "grasa_g": 0.2,
       "hidratos_g": 11,
-      "fibra_g": null,
+      "fibra_g": 1.8,
       "base_nutricional": "crudo",
       "origen": "mandarina",
       "fuente_macros": "Excel maestro Roger 2026-07 · Mandarina/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": 0.039,
+      "grasa_monoinsaturada_g": 0.06,
+      "grasa_poliinsaturada_g": 0.065,
+      "fuente_nutri_ext": "USDA FoodData Central: Tangerines, (mandarin oranges), raw (fdcId 169105, SR Legacy)",
+      "confianza_nutri_ext": "alta"
     },
     "fresa": {
       "nombre": "Fresas",
@@ -2157,11 +2805,16 @@
       "proteina_g": 0.7,
       "grasa_g": 0.3,
       "hidratos_g": 6,
-      "fibra_g": null,
+      "fibra_g": 2.0,
       "base_nutricional": "crudo",
       "origen": "fresa",
       "fuente_macros": "Excel maestro Roger 2026-07 · Fresa / Fresón/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": null,
+      "grasa_monoinsaturada_g": null,
+      "grasa_poliinsaturada_g": null,
+      "fuente_nutri_ext": "USDA FoodData Central: Strawberries, raw (fdcId 2346409, Foundation)",
+      "confianza_nutri_ext": "alta"
     },
     "cereza": {
       "nombre": "Cerezas",
@@ -2180,11 +2833,16 @@
       "proteina_g": 1,
       "grasa_g": 0.2,
       "hidratos_g": 13,
-      "fibra_g": null,
+      "fibra_g": 2.1,
       "base_nutricional": "crudo",
       "origen": "cereza",
       "fuente_macros": "Excel maestro Roger 2026-07 · Cereza / Picota/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": null,
+      "grasa_monoinsaturada_g": null,
+      "grasa_poliinsaturada_g": null,
+      "fuente_nutri_ext": "USDA FoodData Central: Cherries, sweet, dark red, raw (fdcId 2346399, Foundation)",
+      "confianza_nutri_ext": "alta"
     },
     "albaricoque": {
       "nombre": "Albaricoques",
@@ -2202,11 +2860,16 @@
       "proteina_g": 1.4,
       "grasa_g": 0.1,
       "hidratos_g": 8,
-      "fibra_g": null,
+      "fibra_g": 1.51,
       "base_nutricional": "crudo",
       "origen": "albaricoque",
       "fuente_macros": "Excel maestro Roger 2026-07 · Albaricoque/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": null,
+      "grasa_monoinsaturada_g": null,
+      "grasa_poliinsaturada_g": null,
+      "fuente_nutri_ext": "USDA FoodData Central: Apricot, with skin, raw (fdcId 2710815, Foundation)",
+      "confianza_nutri_ext": "alta"
     },
     "melocoton": {
       "nombre": "Melocotón",
@@ -2227,11 +2890,16 @@
       "proteina_g": 0.9,
       "grasa_g": 0.2,
       "hidratos_g": 9,
-      "fibra_g": null,
+      "fibra_g": 1.5,
       "base_nutricional": "crudo",
       "origen": "melocoton",
       "fuente_macros": "Excel maestro Roger 2026-07 · Melocotón/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": null,
+      "grasa_monoinsaturada_g": null,
+      "grasa_poliinsaturada_g": null,
+      "fuente_nutri_ext": "USDA FoodData Central: Peaches, yellow, raw (fdcId 325430, Foundation)",
+      "confianza_nutri_ext": "alta"
     },
     "sandia": {
       "nombre": "Sandía",
@@ -2250,11 +2918,16 @@
       "proteina_g": 0.6,
       "grasa_g": 0.2,
       "hidratos_g": 6,
-      "fibra_g": null,
+      "fibra_g": 0.4,
       "base_nutricional": "crudo",
       "origen": "sandia",
       "fuente_macros": "Excel maestro Roger 2026-07 · Sandía/crudo",
-      "confianza_macros": "media"
+      "confianza_macros": "media",
+      "grasa_saturada_g": null,
+      "grasa_monoinsaturada_g": null,
+      "grasa_poliinsaturada_g": null,
+      "fuente_nutri_ext": "USDA FoodData Central: Watermelon, seedless, flesh only, raw (fdcId 2747675, Foundation)",
+      "confianza_nutri_ext": "alta"
     },
     "melon": {
       "nombre": "Melón",
@@ -2273,11 +2946,16 @@
       "proteina_g": 0.6,
       "grasa_g": 0.2,
       "hidratos_g": 7,
-      "fibra_g": null,
+      "fibra_g": 0.8,
       "base_nutricional": "crudo",
       "origen": "melon",
       "fuente_macros": "Excel maestro Roger 2026-07 · Melón/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": null,
+      "grasa_monoinsaturada_g": null,
+      "grasa_poliinsaturada_g": null,
+      "fuente_nutri_ext": "USDA FoodData Central: Melons, cantaloupe, raw (fdcId 746770, Foundation)",
+      "confianza_nutri_ext": "alta"
     },
     "uva": {
       "nombre": "Uvas",
@@ -2296,11 +2974,16 @@
       "proteina_g": 0.6,
       "grasa_g": 0.2,
       "hidratos_g": 16,
-      "fibra_g": null,
+      "fibra_g": 0.9,
       "base_nutricional": "crudo",
       "origen": "uva",
       "fuente_macros": "Excel maestro Roger 2026-07 · Uva tinta/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": 0.054,
+      "grasa_monoinsaturada_g": 0.007,
+      "grasa_poliinsaturada_g": 0.048,
+      "fuente_nutri_ext": "USDA FoodData Central: Grapes, red or green (European type, such as Thompson seedless), raw (fdcId 174683, SR Legacy)",
+      "confianza_nutri_ext": "alta"
     },
     "caqui": {
       "nombre": "Caqui",
@@ -2319,11 +3002,16 @@
       "proteina_g": 0.6,
       "grasa_g": 0.2,
       "hidratos_g": 16,
-      "fibra_g": null,
+      "fibra_g": 3.6,
       "base_nutricional": "crudo",
       "origen": "caqui",
       "fuente_macros": "Excel maestro Roger 2026-07 · Caqui / Persimón/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": 0.02,
+      "grasa_monoinsaturada_g": 0.037,
+      "grasa_poliinsaturada_g": 0.043,
+      "fuente_nutri_ext": "USDA FoodData Central: Persimmons, japanese, raw (fdcId 169941, SR Legacy)",
+      "confianza_nutri_ext": "alta"
     },
     "manzana": {
       "nombre": "Manzana",
@@ -2335,11 +3023,16 @@
       "proteina_g": 0.3,
       "grasa_g": 0.2,
       "hidratos_g": 12,
-      "fibra_g": null,
+      "fibra_g": 2.08,
       "base_nutricional": "crudo",
       "origen": "manzana",
       "fuente_macros": "Excel maestro Roger 2026-07 · Manzana golden/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": null,
+      "grasa_monoinsaturada_g": null,
+      "grasa_poliinsaturada_g": null,
+      "fuente_nutri_ext": "USDA FoodData Central: Apples, fuji, with skin, raw (fdcId 1750340, Foundation)",
+      "confianza_nutri_ext": "alta"
     },
     "pera": {
       "nombre": "Pera",
@@ -2364,11 +3057,16 @@
       "proteina_g": 0.4,
       "grasa_g": 0.1,
       "hidratos_g": 13,
-      "fibra_g": null,
+      "fibra_g": 3.1,
       "base_nutricional": "crudo",
       "origen": "pera",
       "fuente_macros": "Excel maestro Roger 2026-07 · Pera conferencia/crudo",
-      "confianza_macros": "media"
+      "confianza_macros": "media",
+      "grasa_saturada_g": null,
+      "grasa_monoinsaturada_g": null,
+      "grasa_poliinsaturada_g": null,
+      "fuente_nutri_ext": "USDA FoodData Central: Pears, raw, bartlett (fdcId 746773, Foundation)",
+      "confianza_nutri_ext": "alta"
     },
     "platano": {
       "nombre": "Plátano",
@@ -2380,11 +3078,16 @@
       "proteina_g": 1.1,
       "grasa_g": 0.3,
       "hidratos_g": 20,
-      "fibra_g": null,
+      "fibra_g": 1.7,
       "base_nutricional": "crudo",
       "origen": "platano",
       "fuente_macros": "Excel maestro Roger 2026-07 · Plátano / Banana/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": null,
+      "grasa_monoinsaturada_g": null,
+      "grasa_poliinsaturada_g": null,
+      "fuente_nutri_ext": "USDA FoodData Central: Bananas, overripe, raw (fdcId 1105073, Foundation)",
+      "confianza_nutri_ext": "alta"
     },
     "kiwi": {
       "nombre": "Kiwi",
@@ -2406,11 +3109,16 @@
       "proteina_g": 1.1,
       "grasa_g": 0.5,
       "hidratos_g": 13,
-      "fibra_g": null,
+      "fibra_g": 3.0,
       "base_nutricional": "crudo",
       "origen": "kiwi",
       "fuente_macros": "Excel maestro Roger 2026-07 · Kiwi/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": null,
+      "grasa_monoinsaturada_g": null,
+      "grasa_poliinsaturada_g": null,
+      "fuente_nutri_ext": "USDA FoodData Central: Kiwifruit, green, raw (fdcId 327046, Foundation)",
+      "confianza_nutri_ext": "alta"
     },
     "ciruela": {
       "nombre": "Ciruelas",
@@ -2429,11 +3137,16 @@
       "proteina_g": 0.7,
       "grasa_g": 0.3,
       "hidratos_g": 10,
-      "fibra_g": null,
+      "fibra_g": 1.35,
       "base_nutricional": "crudo",
       "origen": "ciruela",
       "fuente_macros": "Excel maestro Roger 2026-07 · Ciruela/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": null,
+      "grasa_monoinsaturada_g": null,
+      "grasa_poliinsaturada_g": null,
+      "fuente_nutri_ext": "USDA FoodData Central: Plum, black, with skin, raw (fdcId 2710837, Foundation)",
+      "confianza_nutri_ext": "alta"
     },
     "pina": {
       "nombre": "Piña",
@@ -2445,11 +3158,16 @@
       "proteina_g": 0.5,
       "grasa_g": 0.1,
       "hidratos_g": 11,
-      "fibra_g": null,
+      "fibra_g": 0.935,
       "base_nutricional": "crudo",
       "origen": "pina",
       "fuente_macros": "Excel maestro Roger 2026-07 · Piña/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": null,
+      "grasa_monoinsaturada_g": null,
+      "grasa_poliinsaturada_g": null,
+      "fuente_nutri_ext": "USDA FoodData Central: Pineapple, raw (fdcId 2346398, Foundation)",
+      "confianza_nutri_ext": "alta"
     },
     "granada": {
       "nombre": "Granada",
@@ -2466,11 +3184,16 @@
       "proteina_g": 1,
       "grasa_g": 1,
       "hidratos_g": 15,
-      "fibra_g": null,
+      "fibra_g": 4.0,
       "base_nutricional": "crudo",
       "origen": "granada",
       "fuente_macros": "Excel maestro Roger 2026-07 · Granada/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": 0.12,
+      "grasa_monoinsaturada_g": 0.093,
+      "grasa_poliinsaturada_g": 0.079,
+      "fuente_nutri_ext": "USDA FoodData Central: Pomegranates, raw (fdcId 169134, SR Legacy)",
+      "confianza_nutri_ext": "alta"
     },
     "higo": {
       "nombre": "Higos",
@@ -2489,11 +3212,16 @@
       "proteina_g": 0.8,
       "grasa_g": 0.3,
       "hidratos_g": 16,
-      "fibra_g": null,
+      "fibra_g": 2.9,
       "base_nutricional": "crudo",
       "origen": "higo",
       "fuente_macros": "Excel maestro Roger 2026-07 · Higo/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": 0.06,
+      "grasa_monoinsaturada_g": 0.066,
+      "grasa_poliinsaturada_g": 0.144,
+      "fuente_nutri_ext": "USDA FoodData Central: Figs, raw (fdcId 173021, SR Legacy)",
+      "confianza_nutri_ext": "alta"
     },
     "mango": {
       "nombre": "Mango",
@@ -2505,11 +3233,16 @@
       "proteina_g": 0.8,
       "grasa_g": 0.4,
       "hidratos_g": 13,
-      "fibra_g": null,
+      "fibra_g": 1.29,
       "base_nutricional": "crudo",
       "origen": "mango",
       "fuente_macros": "Excel maestro Roger 2026-07 · Mango/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": null,
+      "grasa_monoinsaturada_g": null,
+      "grasa_poliinsaturada_g": null,
+      "fuente_nutri_ext": "USDA FoodData Central: Mango, Ataulfo, peeled, raw (fdcId 2710834, Foundation)",
+      "confianza_nutri_ext": "alta"
     },
     "nectarina": {
       "nombre": "Nectarinas",
@@ -2530,11 +3263,16 @@
       "proteina_g": 1.1,
       "grasa_g": 0.3,
       "hidratos_g": 9,
-      "fibra_g": null,
+      "fibra_g": 1.5,
       "base_nutricional": "crudo",
       "origen": "nectarina",
       "fuente_macros": "Excel maestro Roger 2026-07 · Nectarina/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": 0.0,
+      "grasa_monoinsaturada_g": 0.0,
+      "grasa_poliinsaturada_g": 0.0,
+      "fuente_nutri_ext": "USDA FoodData Central: Nectarines, raw (fdcId 327357, Foundation)",
+      "confianza_nutri_ext": "alta"
     },
     "frambuesa": {
       "nombre": "Frambuesas",
@@ -2546,11 +3284,16 @@
       "proteina_g": 1.2,
       "grasa_g": 0.5,
       "hidratos_g": 5,
-      "fibra_g": null,
+      "fibra_g": 6.5,
       "base_nutricional": "crudo",
       "origen": "frambuesa",
       "fuente_macros": "Excel maestro Roger 2026-07 · Frambuesa/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": null,
+      "grasa_monoinsaturada_g": null,
+      "grasa_poliinsaturada_g": null,
+      "fuente_nutri_ext": "USDA FoodData Central: Raspberries, raw (fdcId 2346410, Foundation)",
+      "confianza_nutri_ext": "alta"
     },
     "arandanos": {
       "nombre": "Arándanos",
@@ -2562,11 +3305,16 @@
       "proteina_g": 1,
       "grasa_g": 0.5,
       "hidratos_g": 8,
-      "fibra_g": null,
+      "fibra_g": 2.4,
       "base_nutricional": "crudo",
       "origen": "arandano",
       "fuente_macros": "Excel maestro Roger 2026-07 · Arándanos/crudo",
-      "confianza_macros": "alta"
+      "confianza_macros": "alta",
+      "grasa_saturada_g": null,
+      "grasa_monoinsaturada_g": null,
+      "grasa_poliinsaturada_g": null,
+      "fuente_nutri_ext": "USDA FoodData Central: Blueberries, raw (fdcId 2346411, Foundation)",
+      "confianza_nutri_ext": "alta"
     }
   },
   "categorias_cuota": {

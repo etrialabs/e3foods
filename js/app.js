@@ -137,7 +137,10 @@
   // usuario. Un solo token opaco por momento (nunca alfa sobre --bg: no da el mismo
   // color, ver nota en styles.css) para que el degradado de #bottom-nav-fade no
   // dibuje una banda de tono distinto al fondo real.
-  function momentoDelDia() { var h = new Date().getHours(); return h < 12 ? 'manana' : (h < 20 ? 'tarde' : 'noche'); }
+  // bug real 2026-07-26: h<12 metía la madrugada (00:00-05:59) en "manana" (el tono
+  // mas claro, casi blanco) — a la 1:56 AM Roger vio el degradado "blanco" por esto,
+  // no por un fallo de cableado CSS. La madrugada sigue siendo noche.
+  function momentoDelDia() { var h = new Date().getHours(); return h < 6 ? 'noche' : (h < 12 ? 'manana' : (h < 20 ? 'tarde' : 'noche')); }
   function aplicarMomentoDelDia() { document.documentElement.dataset.momento = momentoDelDia(); }
   var pagerIdx = comidaProximaPorHora() === 'cena' ? 1 : 0;
   var filtroRecetas = 'todas'; // estado de UI, no persistido (SPEC: filtroRecetas)

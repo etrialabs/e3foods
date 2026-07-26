@@ -712,7 +712,11 @@ body.sheet-open { overflow: hidden; }
    separadora — la fusión con la página la da el degradado de .bottom-nav-fade. */
 .bottom-nav {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 100;
-  display: flex; background: rgba(245, 240, 232, .9);
+  display: flex;
+  /* color-mix sobre --bg, NUNCA un rgba fijo (bug real 2026-07-26: el pie no seguía la
+     hora, se quedaba clavado en el tono de tarde) — un único origen de verdad, el pie
+     coincide con la pantalla en los 3 momentos sin poder desincronizarse */
+  background: color-mix(in srgb, var(--bg) 90%, transparent);
   -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px);
   padding-bottom: var(--safe-b);
   height: calc(var(--nav-h) + var(--safe-b));
@@ -867,8 +871,12 @@ body.sheet-open { overflow: hidden; }
 /* fila: tira + chip "Hoy" en su propia columna fuera del scroller (Roger 2026-07-26) */
 .ph-tira-fila { display: flex; align-items: stretch; gap: 8px; margin: 0 calc(-1 * var(--space-3)) 16px; padding: 2px var(--space-3) 4px; }
 .ph-tira-wrap { display: flex; gap: 8px; overflow-x: auto; flex: 1; min-width: 0; margin: 0; padding: 0; }
-.ph-hoy-chip { flex: none; width: 48px; min-height: 52px; border-radius: 16px; border: 1px solid var(--line); background: var(--panel); cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; color: var(--ink); box-shadow: 0 4px 12px -6px rgba(26,23,18,.45); }
-.ph-dia { flex: none; width: 48px; min-height: 52px; border-radius: 16px; border: 1px solid var(--line); background: var(--panel); cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; color: var(--ink); }
+/* 54px, no los 48 del mockup (Roger 2026-07-26, captura real iPhone 16 Pro): a 48px cabían
+   7 píldoras completas en vez de 6 — el ancho útil real del dispositivo es ~385-390px,
+   bastante más que lo medido antes por el navegador (poco fiable esta sesión). 54+gap8=62px
+   por día: 6 completas (364px) + la 7ª solo se asoma, nunca entera. */
+.ph-hoy-chip { flex: none; width: 54px; min-height: 56px; border-radius: 16px; border: 1px solid var(--line); background: var(--panel); cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; color: var(--ink); box-shadow: 0 4px 12px -6px rgba(26,23,18,.45); }
+.ph-dia { flex: none; width: 54px; min-height: 56px; border-radius: 16px; border: 1px solid var(--line); background: var(--panel); cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; color: var(--ink); }
 .ph-dia-letra { font-size: 10.5px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; opacity: .7; }
 .ph-dia-num { font-size: 17px; font-weight: 800; line-height: 1; }
 .ph-dia-cole { font-size: 11px; color: var(--soft); margin-top: 1px; }

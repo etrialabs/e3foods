@@ -451,9 +451,8 @@
   }
 
   // Etiquetas del nav inferior (backlog-v3 #18): viven en index.html, no en ningun
-  // render() -- t() no las toca solo. "Compra" se queda en castellano: no hay
-  // traduccion fuente para la palabra sola (el diseno solo trae "La compra").
-  var NAV_KEYS = { semana: 'semana', recetas: 'recetas', descubrir: 'descubrir', perfil: 'familia' };
+  // render() -- t() no las toca solo.
+  var NAV_KEYS = { semana: 'semana', recetas: 'recetas', descubrir: 'descubrir', compra: 'nav_compra', perfil: 'familia' };
   function actualizarNavLabels() {
     document.querySelectorAll('.nav-btn').forEach(function (btn) {
       var clave = NAV_KEYS[btn.dataset.vista];
@@ -934,7 +933,7 @@
     formEditId = miembroId || null;
     var existente = miembroId ? estado.familia.find(function (m) { return m.id === miembroId; }) : null;
     formFotoActual = existente ? (existente.foto || null) : null;
-    abrirSheet(UI.sheetHead(existente ? 'Editar miembro' : 'Nuevo miembro') +
+    abrirSheet(UI.sheetHead(existente ? 'Editar miembro' : I18N.t('nuevo_miembro')) +
       '<div class="sheet-body">' + UI.renderFormMiembroCompleto(existente, !existente) + '</div>');
   }
 

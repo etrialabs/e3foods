@@ -18,16 +18,20 @@
   var ETIQUETAS_DIETA = { omnivora: 'De todo', vegetariana: 'Vegetariana', 'sin-pescado': 'Sin pescado', 'sin-cerdo': 'Sin cerdo', 'sin-lactosa': 'Sin lactosa' };
   var ETIQUETAS_PATRON = { casa: 'Casa', fuera: 'Fuera', cole: 'Cole' };
 
-  // categoría de ingrediente -> etiqueta ES, para chips de RECETAS y secciones de COMPRA
-  var ETIQUETAS_CATEGORIA = {
-    'pescado-blanco': 'Pescado blanco', 'pescado-azul': 'Pescado azul', 'marisco': 'Marisco',
-    'carne-blanca': 'Carne blanca', 'carne-roja': 'Carne roja', 'legumbre': 'Legumbre',
-    'huevo': 'Huevo', 'lacteo': 'Lácteo', 'cereal': 'Cereal', 'tuberculo': 'Tubérculo',
-    'verdura': 'Vegetal', 'fruta': 'Fruta', 'otro': 'Otro',
-    // Roger 2026-07-14: chips presentes aunque el banco no tiene el dato para
-    // filtrar de verdad todavía — ver nota en renderRecetasVista.
-    'vegetariana': 'Vegetariana', 'sin-gluten': 'Sin gluten'
-  };
+  // categoría de ingrediente -> etiqueta, para chips de RECETAS y secciones de COMPRA.
+  // Función, no objeto estático (backlog-v3 #18): el idioma cambia en caliente. 'fruta'
+  // sin traducción fuente (no está en el diseño de referencia) -- se queda en castellano.
+  function ETIQUETAS_CATEGORIA() {
+    return {
+      'pescado-blanco': t('cat_pescado_blanco'), 'pescado-azul': t('cat_pescado_azul'), 'marisco': t('cat_marisco'),
+      'carne-blanca': t('cat_carne_blanca'), 'carne-roja': t('cat_carne_roja'), 'legumbre': t('cat_legumbre'),
+      'huevo': t('cat_huevo'), 'lacteo': t('cat_lacteo'), 'cereal': t('cat_cereal'), 'tuberculo': t('cat_tuberculo'),
+      'verdura': t('cat_verdura'), 'fruta': 'Fruta', 'otro': t('cat_otro'),
+      // Roger 2026-07-14: chips presentes aunque el banco no tiene el dato para
+      // filtrar de verdad todavía — ver nota en renderRecetasVista.
+      'vegetariana': t('cat_vegetariana'), 'sin-gluten': t('cat_sin_gluten')
+    };
+  }
   var ORDEN_CATEGORIA = ['pescado-blanco', 'pescado-azul', 'marisco', 'carne-blanca', 'carne-roja', 'legumbre', 'huevo', 'lacteo', 'cereal', 'tuberculo', 'verdura', 'fruta', 'otro'];
   // claves de categorias_cuota que no son una categoría de ingrediente real (agregado
   // pescado-total) — ETIQUETAS_CATEGORIA no las cubre, etiqueta aparte para el resumen semanal
@@ -159,9 +163,9 @@
 
   function saludoHora() {
     var h = new Date().getHours();
-    if (h < 12) return 'Buenos días';
-    if (h < 20) return 'Buenas tardes';
-    return 'Buenas noches';
+    if (h < 12) return t('saludo_manana');
+    if (h < 20) return t('saludo_tarde');
+    return t('saludo_noche');
   }
 
   // iconos de sol/luna — mismo estilo de línea que el nav (24x24, stroke)
@@ -348,8 +352,8 @@
   function textoComensalesReceta(estado, mesa) {
     var nombres = mesa.presentes.map(function (p) { return p.nombre; });
     if (!nombres.length) return 'Nadie marcado hoy en esta comida.';
-    if (nombres.length === (estado.familia || []).length) return 'Le gusta a toda la familia.';
-    return 'Comen: ' + nombres.join(', ') + '.';
+    if (nombres.length === (estado.familia || []).length) return t('le_gusta_a_toda_la_familia');
+    return t('comen_prefijo') + nombres.join(', ') + '.';
   }
 
   function pasosCards(lista) {
@@ -512,8 +516,8 @@
     var familia = estado.familia || [];
     var miembroDispositivo = miembroDispositivoId && familia.filter(function (m) { return m.id === miembroDispositivoId; })[0];
     var nombre = (miembroDispositivo || familia[0] || {}).nombre || '';
-    var fd = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo'];
-    var subtitulo = esHoy ? 'Hoy, ya decidido.' : ('El ' + fd[diaLocal] + ', ya decidido.');
+    var fd = I18N.diasMinuscula();
+    var subtitulo = esHoy ? t('subtitulo_hoy') : (t('subtitulo_prefijo_dia') + fd[diaLocal] + t('subtitulo_sufijo_dia'));
     // subtítulo tocable = segunda vía de vuelta a hoy, sin añadir nada a la pantalla —
     // solo cuando estás fuera de hoy (Roger 2026-07-26, refuerzo del chip, no lo sustituye)
     var subAttrs = esHoy ? '' : ' data-action="volver-a-hoy" tabindex="0" role="button"';
@@ -565,8 +569,8 @@
     var faltanHoyReal = itemsHoyReal.filter(function (i) { return !i.marcado; });
     var pantryTexto;
     if (!itemsHoyReal.length) pantryTexto = '';
-    else if (!faltanHoyReal.length) pantryTexto = 'Tienes todo lo que necesitas para cocinar hoy.';
-    else pantryTexto = faltanHoyReal.length + ' ingrediente' + (faltanHoyReal.length === 1 ? '' : 's') + ' en tu lista — <button type="button" class="ingrediente-link" data-action="ir-compra-hoy">revísala</button> antes de cocinar.';
+    else if (!faltanHoyReal.length) pantryTexto = t('pantry_todo_listo');
+    else pantryTexto = faltanHoyReal.length + ' ingrediente' + (faltanHoyReal.length === 1 ? '' : 's') + ' en tu lista — <button type="button" class="ingrediente-link" data-action="ir-compra-hoy">' + t('revisala') + '</button>' + t('pantry_antes_de_cocinar');
     var pantryOk = itemsHoyReal.length > 0 && !faltanHoyReal.length;
     var pantryHtml = (coleTextoHtml || pantryTexto)
       ? '<div class="ph-pantry' + (pantryOk ? ' ph-pantry-ok' : '') + '"><span class="ph-pantry-icono"><i data-lucide="shopping-basket"></i></span>' +
@@ -635,7 +639,7 @@
     if (!resumen.length) return '';
     var cumplidas = resumen.filter(function (r) { return r.cumplido; }).length;
     var filas = resumen.map(function (r) {
-      var etiqueta = ETIQUETA_CUOTA_AGREGADA[r.categoria] || ETIQUETAS_CATEGORIA[r.categoria] || capitaliza(r.categoria.replace(/-/g, ' '));
+      var etiqueta = ETIQUETA_CUOTA_AGREGADA[r.categoria] || ETIQUETAS_CATEGORIA()[r.categoria] || capitaliza(r.categoria.replace(/-/g, ' '));
       // min_sem=0 (p.ej. carne-roja) significa "sin mínimo, solo techo" — mostrar
       // "N de 0" leería como un objetivo incumplido cuando en realidad no hay suelo;
       // el dato relevante ahí es el máximo, no el mínimo trivial.
@@ -738,7 +742,7 @@
   // — ambos reales. El mock también pedía "Saludables", pero el banco no tiene
   // ese dato y UI_MOBILE.md prohíbe lenguaje de dieta ("healthy"): se omite en
   // vez de simularlo.
-  var ETIQUETA_CHIP_ESPECIAL = { todas: 'Todas', rapidas: 'Rápidas', favoritas: 'Favoritas' };
+  function ETIQUETA_CHIP_ESPECIAL() { return { todas: t('chip_todas'), rapidas: t('chip_rapidas'), favoritas: t('chip_favoritas') }; }
 
   function tarjetaRecetaGrid(p, banco, oculta, favorita) {
     // lazy (audit 2026-07-20): el grid pinta hasta 82 <img> de golpe — hoy son 4
@@ -794,7 +798,7 @@
 
     var chipsHtml = chips.map(function (c) {
       var activo = c === filtro;
-      var nombre = ETIQUETA_CHIP_ESPECIAL[c] || ETIQUETAS_CATEGORIA[c] || capitaliza(c);
+      var nombre = ETIQUETA_CHIP_ESPECIAL()[c] || ETIQUETAS_CATEGORIA()[c] || capitaliza(c);
       return '<button type="button" class="rc-chip' + (activo ? ' rc-chip-activo' : '') + '" data-action="filtro-receta" data-categoria="' + c + '" aria-pressed="' + activo + '">' + escapeHtml(nombre) + '</button>';
     }).join('');
 

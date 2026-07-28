@@ -1186,13 +1186,14 @@ button.cp-grupo-titulo { width: 100%; border: none; background: none; font: inhe
    .vetos-grid ya existentes (campos reales sin tocar su fontanería).
    --------------------------------------------------------------- */
 /* Familia en cuadrícula (Roger 2026-07-25): misma card que Recetas (.rc-grid/.rc-tarjeta).
-   Tope duro 189px de alto para 6 cards visibles sin scroll — no añadir texto a la card
-   (la edad se probó y se descartó, ver crónica) sin volver a medir el presupuesto. */
-.pf-tarjeta-foto { display: flex; align-items: center; justify-content: center; }
+   No añadir texto a la card (la edad se probó y se descartó, ver crónica) sin volver a medir
+   el presupuesto de alto. Foto cuadrada (handoff backlog-v2 #11, 2026-07-28) sustituye el tope
+   duro de 189px que fijaba 6 cards visibles sin scroll — presupuesto de alto por re-medir. */
+.pf-tarjeta-foto { display: flex; align-items: center; justify-content: center; aspect-ratio: 1 / 1; height: auto; background-size: cover; background-position: center; }
 .pf-tarjeta-inicial { font-family: var(--font-display); font-size: 42px; font-weight: 400; color: #fff; }
 /* rojo de aviso, no dorado — es una advertencia (alergia), no un acento decorativo */
 .pf-tarjeta-tag-alergia { color: oklch(0.5 0.18 25); }
-.pf-anadir-celda { min-height: 189px; border: 1.5px dashed var(--line-solid); background: none; cursor: pointer; border-radius: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: var(--soft); font-weight: 700; font-size: 14px; }
+.pf-anadir-celda { min-height: 218px; border: 1.5px dashed var(--line-solid); background: none; cursor: pointer; border-radius: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: var(--soft); font-weight: 700; font-size: 14px; }
 .pf-anadir-circulo { width: 44px; height: 44px; border-radius: 50%; border: 1.5px dashed var(--line-solid); display: flex; align-items: center; justify-content: center; color: var(--soft); }
 
 .mf-cabecera { position: relative; height: 60px; }

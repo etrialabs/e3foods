@@ -587,10 +587,10 @@
       '<span class="ph-cole-sub">Ajustamos las cenas para compensar</span></span>' +
       '<i data-lucide="upload" class="ph-cole-flecha"></i></button>';
 
-    // ---- próximos días (4, tras hoy real) ----
+    // ---- próximos días (7, tras hoy real) ----
     var inicioProximos = (hoyIdxGlobal !== -1 ? hoyIdxGlobal : idx) + 1;
     var proximosItems = '';
-    for (var p = inicioProximos; p < Math.min(inicioProximos + 4, plan14.length); p++) {
+    for (var p = inicioProximos; p < Math.min(inicioProximos + 7, plan14.length); p++) {
       var pd = plan14[p];
       var pLocal = p % 7;
       var pComidaPl = pd.comida ? E.elaboracionPorId(banco, estado, pd.comida.menu.principalId) : null;

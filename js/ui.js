@@ -9,8 +9,12 @@
   'use strict';
 
   var E = global.E3Engine;
-  var NOMBRES_DIA = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
-  var NOMBRES_DIA_CORTO = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+  var I18N = global.E3I18n;
+  var t = I18N.t;
+  // Funciones, no arrays estaticos: el idioma puede cambiar en caliente (backlog-v3 #18)
+  // y estos nombres se leen en cada render, nunca se cachean al cargar el script.
+  function NOMBRES_DIA() { return I18N.diasLargo(); }
+  function NOMBRES_DIA_CORTO() { return I18N.diasCorto(); }
   var ETIQUETAS_DIETA = { omnivora: 'De todo', vegetariana: 'Vegetariana', 'sin-pescado': 'Sin pescado', 'sin-cerdo': 'Sin cerdo', 'sin-lactosa': 'Sin lactosa' };
   var ETIQUETAS_PATRON = { casa: 'Casa', fuera: 'Fuera', cole: 'Cole' };
 
@@ -302,9 +306,9 @@
   // (fecha+tipoComida) — no se puede rellenar retroactivamente, así que solo se
   // ofrece para hoy o días ya pasados (no tiene sentido valorar una cena futura).
   var VALORACIONES = [
-    { valor: 'gusta', emoji: '😍', etiqueta: 'Les encantó' },
-    { valor: 'neutro', emoji: '🙂', etiqueta: 'Bien' },
-    { valor: 'no-gusta', emoji: '😕', etiqueta: 'No tanto' }
+    { valor: 'gusta', emoji: '😍', get etiqueta() { return t('valoracion_gusta'); } },
+    { valor: 'neutro', emoji: '🙂', get etiqueta() { return t('valoracion_neutro'); } },
+    { valor: 'no-gusta', emoji: '😕', get etiqueta() { return t('valoracion_no_gusta'); } }
   ];
 
   function renderValoracion(estado, fecha, tipoComida) {
@@ -317,7 +321,7 @@
         'data-action="valorar-plato" data-fecha="' + fecha + '" data-tipo="' + tipoComida + '" data-valor="' + v.valor + '" ' +
         'aria-pressed="' + !!activo + '" aria-label="' + escapeHtml(v.etiqueta) + '">' + v.emoji + '</button>';
     }).join('');
-    return '<div class="valoracion-fila"><p class="detalle-subtitulo">¿Qué tal esta comida?</p>' +
+    return '<div class="valoracion-fila"><p class="detalle-subtitulo">' + t('que_tal_esta_comida') + '</p>' +
       '<div class="valoracion-botones">' + botones + '</div></div>';
   }
 
@@ -415,14 +419,14 @@
       '<div class="rv-stat"><i data-lucide="leaf"></i><span class="rv-stat-valor">' + tag + '</span></div>' +
       '</div>' +
       (mesa.miembrosDelSlot.length ? '<div class="rv-comensales"><span class="ph-avatares">' + avataresReceta(estado, mesa) + '</span><span class="rv-comensales-texto">' + escapeHtml(textoComensalesReceta(estado, mesa)) + '</span></div>' : '') +
-      '<p class="rv-seccion-titulo">Ingredientes</p>' +
+      '<p class="rv-seccion-titulo">' + t('ingredientes') + '</p>' +
       '<div class="rv-ingredientes">' + ingredientesHtml + '</div>' +
-      '<p class="rv-seccion-titulo">Preparación</p>' +
+      '<p class="rv-seccion-titulo">' + t('preparacion') + '</p>' +
       pasosHtml +
       complementariasHtml +
       pasosAdaptadosHtml +
       renderValoracion(estado, dia.fecha, tipoComida) +
-      '<button type="button" class="rv-cta" data-action="ir-vista" data-vista="compra"><i data-lucide="shopping-basket"></i>Ver en la lista de la compra</button>' +
+      '<button type="button" class="rv-cta" data-action="ir-vista" data-vista="compra"><i data-lucide="shopping-basket"></i>' + t('ver_en_la_lista_de_la_compra') + '</button>' +
       '</div>';
   }
 
@@ -524,7 +528,7 @@
       var tieneCole = !!(estado.cole && estado.cole.dias && estado.cole.dias[dia.fecha]);
       var clases = 'ph-dia' + (i === idx ? ' ph-dia-activo' : '') + (i === hoyIdxGlobal ? ' ph-dia-hoy' : '');
       return '<button type="button" class="' + clases + '" data-action="semana-elegir-dia" data-dia-global="' + i + '" aria-pressed="' + (i === idx) + '">' +
-        '<span class="ph-dia-letra">' + NOMBRES_DIA_CORTO[i % 7].charAt(0) + '</span>' +
+        '<span class="ph-dia-letra">' + NOMBRES_DIA_CORTO()[i % 7].charAt(0) + '</span>' +
         '<span class="ph-dia-num">' + d.getDate() + '</span>' +
         // El hueco del birrete se reserva SIEMPRE (placeholder vacío sin cole) para que todos los
         // días tengan la misma altura y el número quede a la misma línea, haya cole o no (Roger 21-jul).
@@ -575,16 +579,16 @@
       '<div class="ph-pager-slide">' + renderCardPager(estado, banco, planDia, diaLocal, 'cena') + '</div>' +
       '</div>';
     var segHtml = '<div class="ph-seg">' +
-      '<button type="button" id="pager-seg-comida" class="ph-seg-btn' + (pagerIdx === 0 ? ' pager-seg-activo' : '') + '" data-action="pager-ir" data-pager="0"><i data-lucide="sun"></i>Comida</button>' +
-      '<button type="button" id="pager-seg-cena" class="ph-seg-btn' + (pagerIdx === 1 ? ' pager-seg-activo' : '') + '" data-action="pager-ir" data-pager="1"><i data-lucide="moon"></i>Cena</button>' +
+      '<button type="button" id="pager-seg-comida" class="ph-seg-btn' + (pagerIdx === 0 ? ' pager-seg-activo' : '') + '" data-action="pager-ir" data-pager="0"><i data-lucide="sun"></i>' + t('boton_comida') + '</button>' +
+      '<button type="button" id="pager-seg-cena" class="ph-seg-btn' + (pagerIdx === 1 ? ' pager-seg-activo' : '') + '" data-action="pager-ir" data-pager="1"><i data-lucide="moon"></i>' + t('boton_cena') + '</button>' +
       '</div>';
 
     // ---- subir menú del cole ----
     var tieneCargado = !!(estado.cole && estado.cole.dias && Object.keys(estado.cole.dias).length);
     var coleCardHtml = '<button type="button" class="ph-cole-card" data-action="menu-importar-cole">' +
       '<span class="ph-cole-icono"><i data-lucide="paperclip"></i></span>' +
-      '<span class="ph-cole-texto"><span class="ph-cole-titulo">' + (tieneCargado ? 'Actualizar menú del cole' : 'Subir menú del cole') + '</span>' +
-      '<span class="ph-cole-sub">Ajustamos las cenas para compensar</span></span>' +
+      '<span class="ph-cole-texto"><span class="ph-cole-titulo">' + (tieneCargado ? 'Actualizar menú del cole' : t('subir_menu_del_cole')) + '</span>' +
+      '<span class="ph-cole-sub">' + t('ajustamos_las_cenas_para_compensar') + '</span></span>' +
       '<i data-lucide="upload" class="ph-cole-flecha"></i></button>';
 
     // ---- próximos días (7, tras hoy real) ----
@@ -600,7 +604,7 @@
       var pColeDia = estado.cole && estado.cole.dias && estado.cole.dias[pd.fecha];
       var pFotoPl = pCenaPl || pComidaPl;
       proximosItems += '<div class="ph-proximo">' +
-        '<div class="ph-proximo-fecha"><span>' + NOMBRES_DIA_CORTO[pLocal].toUpperCase() + '</span><b>' + new Date(pd.fecha + 'T00:00:00').getDate() + '</b></div>' +
+        '<div class="ph-proximo-fecha"><span>' + NOMBRES_DIA_CORTO()[pLocal].toUpperCase() + '</span><b>' + new Date(pd.fecha + 'T00:00:00').getDate() + '</b></div>' +
         '<div class="ph-proximo-info">' +
         (pColeDia && pColeDia.resumen ? '<button type="button" class="ph-proximo-linea ph-proximo-cole" data-action="ir-cole"><i data-lucide="graduation-cap"></i><span>' + escapeHtml(pColeDia.resumen) + '</span></button>' : '') +
         '<button type="button" class="ph-proximo-linea" data-action="abrir-receta" data-dia="' + pLocal + '" data-tipo="comida" data-dia-global="' + p + '"><i data-lucide="sun"></i><span>' + escapeHtml(pComidaNombre) + '</span></button>' +
@@ -610,7 +614,7 @@
         '</div>';
     }
     var proximosHtml = proximosItems
-      ? '<section class="ph-proximos"><p class="ph-proximos-titulo">Próximos días</p><div class="ph-proximos-lista">' + proximosItems + '</div></section>'
+      ? '<section class="ph-proximos"><p class="ph-proximos-titulo">' + t('proximos_dias') + '</p><div class="ph-proximos-lista">' + proximosItems + '</div></section>'
       : '';
 
     return renderAppBar() +
@@ -659,7 +663,7 @@
     var dia = plan.dias[diaIndex];
     var esHoy = diaIndex === hoyIdx;
     return '<div class="resumen-semana-dia">' +
-      '<p class="resumen-semana-fecha">' + NOMBRES_DIA[diaIndex] + ' ' + fechaCorta(dia.fecha) + (esHoy ? ' <span class="badge badge-hoy">HOY</span>' : '') + '</p>' +
+      '<p class="resumen-semana-fecha">' + NOMBRES_DIA()[diaIndex] + ' ' + fechaCorta(dia.fecha) + (esHoy ? ' <span class="badge badge-hoy">HOY</span>' : '') + '</p>' +
       '<p class="resumen-semana-plato"><span class="resumen-semana-ico">' + ICONO_SOL + '</span>' + escapeHtml(nombreCortoSlot(estado, banco, dia.comida)) + '</p>' +
       '<p class="resumen-semana-plato"><span class="resumen-semana-ico">' + ICONO_LUNA + '</span>' + escapeHtml(nombreCortoSlot(estado, banco, dia.cena)) + '</p>' +
       '</div>';
@@ -808,17 +812,17 @@
       ? (vista === 'list'
         ? '<div class="rc-lista">' + listaFiltrada.map(function (p) { return filaRecetaLista(p, banco, ocultas.indexOf(p.id) !== -1, favoritas.indexOf(p.id) !== -1); }).join('') + '</div>'
         : '<div class="rc-grid">' + listaFiltrada.map(function (p) { return tarjetaRecetaGrid(p, banco, ocultas.indexOf(p.id) !== -1, favoritas.indexOf(p.id) !== -1); }).join('') + '</div>')
-      : '<p class="card-msg">No hay recetas en esta categoría.</p>';
+      : '<p class="card-msg">' + t('no_hay_recetas_en_esta_categoria') + '</p>';
 
     return '<div class="rc-cabecera">' +
-      '<h1 class="rc-titulo">Recetas</h1>' +
+      '<h1 class="rc-titulo">' + t('recetas') + '</h1>' +
       '<div class="rc-vista-toggle">' +
       '<button type="button" class="rc-vista-btn' + (vista === 'list' ? ' rc-vista-btn-activo' : '') + '" data-action="recetas-vista" data-vista="list" aria-label="Vista de lista" aria-pressed="' + (vista === 'list') + '"><i data-lucide="list"></i></button>' +
       '<button type="button" class="rc-vista-btn' + (vista === 'grid' ? ' rc-vista-btn-activo' : '') + '" data-action="recetas-vista" data-vista="grid" aria-label="Vista de cuadrícula" aria-pressed="' + (vista === 'grid') + '"><i data-lucide="layout-grid"></i></button>' +
       '</div></div>' +
       '<div class="vista-body rc-body">' +
       '<label class="rc-buscador"><i data-lucide="search"></i>' +
-      '<input type="search" id="recetas-buscador" placeholder="Buscar plato o ingrediente" value="' + escapeHtml(busqueda) + '"></label>' +
+      '<input type="search" id="recetas-buscador" placeholder="' + t('buscar_plato_o_ingrediente') + '" value="' + escapeHtml(busqueda) + '"></label>' +
       '<div class="rc-chips scroll">' + chipsHtml + '</div>' +
       listaHtml +
       renderFormRecetaPropia(banco) +
@@ -880,7 +884,7 @@
       '</div>' +
       (acompText ? '<p class="rv-variantes"><i data-lucide="info"></i>' + escapeHtml(acompText) + '</p>' : '') +
       (variantes ? '<p class="rv-variantes"><i data-lucide="shuffle"></i>' + escapeHtml(capitaliza(variantes)) + '</p>' : '') +
-      '<p class="rv-seccion-titulo">Preparación</p>' +
+      '<p class="rv-seccion-titulo">' + t('preparacion') + '</p>' +
       pasosHtml +
       complementariasPasosHtml +
       '</div>';
@@ -915,6 +919,47 @@
   // ---------------------------------------------------------------
   // COMPRA — segmentado Hoy/Próximos 7 días + grupos Frescos/Despensa/Frío
   // ---------------------------------------------------------------
+  // Domingo de batch (handoff backlog-v3 #17, 2026-07-28): pantalla propia, no cabe en
+  // Semana (no es receta ni menú). Contenido literal del diseño de referencia -- SIN
+  // fotos (el banco solo tenía 4 y ninguna correspondía a estas bases, v2 #16) y las
+  // cantidades son estimaciones de una familia de 4, declaradas como tales.
+  function renderBatch() {
+    var b = I18N.BATCH[I18N.getLang()];
+    var statsHtml = b.stats.map(function (s) {
+      return '<div class="batch-stat"><span class="batch-stat-v">' + escapeHtml(s.v) + '</span><span class="batch-stat-k">' + escapeHtml(s.k) + '</span></div>';
+    }).join('');
+    var basesHtml = b.bases.map(function (base) {
+      var chips = base.dest.map(function (d) { return '<span class="batch-base-chip">' + escapeHtml(d) + '</span>'; }).join('');
+      return '<div class="batch-base">' +
+        '<div class="batch-base-cabecera"><span class="batch-base-num">' + escapeHtml(base.n) + '</span>' +
+        '<span class="batch-base-info"><span class="batch-base-nombre">' + escapeHtml(base.name) + '</span><span class="batch-base-qty">' + escapeHtml(base.qty) + '</span></span></div>' +
+        '<p class="batch-base-nota">' + escapeHtml(base.note) + '</p>' +
+        '<div class="batch-base-chips">' + chips + '</div>' +
+        '</div>';
+    }).join('');
+    var pasosHtml = b.pasos.map(function (p) {
+      return '<div class="batch-paso' + (p.hi ? ' batch-paso-hi' : '') + '"><span class="batch-paso-hora">' + escapeHtml(p.t) + '</span><p class="batch-paso-txt">' + escapeHtml(p.txt) + '</p></div>';
+    }).join('');
+    var freezerHtml = b.freezer.map(function (f) {
+      return '<div class="batch-freezer-fila"><i data-lucide="snowflake" class="batch-freezer-icono"></i>' +
+        '<span class="batch-freezer-info"><span class="batch-freezer-label">' + escapeHtml(f.label) + '</span><span class="batch-freezer-meta">' + escapeHtml(f.qty) + ' · ' + escapeHtml(f.dura) + '</span></span></div>';
+    }).join('');
+    return '<div class="mf-cabecera"><button type="button" class="rv-flotante rv-volver" data-action="batch-volver" aria-label="Volver"><i data-lucide="arrow-left"></i></button></div>' +
+      '<div class="vista-body batch-body">' +
+      '<h1 class="batch-titulo">' + t('domingo_de_batch') + '</h1>' +
+      '<p class="batch-bajada">' + t('una_tarde_de_cocina_y_media_semana_resuelt') + '</p>' +
+      '<div class="batch-stats">' + statsHtml + '</div>' +
+      '<p class="rv-seccion-titulo">' + t('lo_que_cocinas') + '</p>' +
+      '<div class="batch-bases">' + basesHtml + '</div>' +
+      '<p class="rv-seccion-titulo">' + t('el_orden_de_la_tarde') + '</p>' +
+      '<div class="batch-pasos">' + pasosHtml + '</div>' +
+      '<p class="rv-seccion-titulo">' + t('al_congelador') + '</p>' +
+      '<div class="batch-freezer">' + freezerHtml + '</div>' +
+      '<button type="button" class="btn-cta-gradiente batch-anadir-btn" data-action="batch-anadir-compra">' + t('anadir_las_bases_a_la_compra') + '</button>' +
+      '<p class="batch-apoyo">' + t('las_cinco_bases_cubren_siete_comidas_de_la') + '</p>' +
+      '</div>';
+  }
+
   function renderCompraVista(estado, plan, banco, rango, categoriasAbiertas) {
     categoriasAbiertas = categoriasAbiertas || {};
     rango = rango === 'hoy' ? 'hoy' : '7d';
@@ -956,7 +1001,7 @@
       var cabecera = completo
         ? '<button type="button" class="cp-grupo-titulo cp-grupo-completo" data-action="toggle-categoria-compra" data-grupo="' + g + '" aria-expanded="' + abierto + '">' +
           '<i data-lucide="' + info.icono + '"></i>' + info.nombre +
-          '<span class="cp-grupo-estado">Completo<i data-lucide="chevron-' + (abierto ? 'up' : 'down') + '"></i></span>' +
+          '<span class="cp-grupo-estado">' + t('completo') + '<i data-lucide="chevron-' + (abierto ? 'up' : 'down') + '"></i></span>' +
           '</button>'
         : '<p class="cp-grupo-titulo"><i data-lucide="' + info.icono + '"></i>' + info.nombre + '</p>';
       return '<div class="cp-grupo' + (completo ? ' cp-grupo-completo-wrap' : '') + '">' + cabecera +
@@ -978,7 +1023,7 @@
       '<div class="vista-body rc-body">' +
       '<div class="cp-seg">' +
       '<button type="button" class="cp-seg-btn' + (rango === 'hoy' ? ' cp-seg-btn-activo' : '') + '" data-action="segmento-compra" data-rango="hoy" aria-pressed="' + (rango === 'hoy') + '">Hoy</button>' +
-      '<button type="button" class="cp-seg-btn' + (rango === '7d' ? ' cp-seg-btn-activo' : '') + '" data-action="segmento-compra" data-rango="7d" aria-pressed="' + (rango === '7d') + '">Próximos 7 días</button>' +
+      '<button type="button" class="cp-seg-btn' + (rango === '7d' ? ' cp-seg-btn-activo' : '') + '" data-action="segmento-compra" data-rango="7d" aria-pressed="' + (rango === '7d') + '">' + t('proximos_7_dias') + '</button>' +
       '</div>' +
       (items.length ? gruposHtml : '<p class="card-msg">Nada pendiente de comprar.</p>') +
       despensaHtml +
@@ -998,20 +1043,20 @@
   function renderSheetCambiarInicio(estado, banco, dia, tipoComida) {
     return sheetHead('Cambiar ' + (tipoComida === 'comida' ? 'comida' : 'cena')) +
       '<div class="sheet-body">' +
-      '<p class="card-msg">¿Qué cambiamos?</p>' +
+      '<p class="card-msg">' + t('que_cambiamos') + '</p>' +
       '<button type="button" class="sheet-fila-opcion" data-action="modo-otro-menu" data-dia="' + dia + '" data-tipo="' + tipoComida + '">' +
       '<span class="sheet-fila-opcion-icono sheet-fila-opcion-icono-gold"><i data-lucide="shuffle"></i></span>' +
-      '<span class="sheet-fila-opcion-texto"><span class="sheet-fila-opcion-titulo">Otro menú</span><span class="sheet-fila-opcion-sub">Un menú completo distinto</span></span>' +
+      '<span class="sheet-fila-opcion-texto"><span class="sheet-fila-opcion-titulo">' + t('otro_menu') + '</span><span class="sheet-fila-opcion-sub">' + t('un_menu_completo_distinto') + '</span></span>' +
       '<i data-lucide="chevron-right" class="sheet-fila-opcion-chevron"></i>' +
       '</button>' +
       '<button type="button" class="sheet-fila-opcion" data-action="modo-nevera" data-dia="' + dia + '" data-tipo="' + tipoComida + '">' +
       '<span class="sheet-fila-opcion-icono sheet-fila-opcion-icono-azul"><i data-lucide="refrigerator"></i></span>' +
-      '<span class="sheet-fila-opcion-texto"><span class="sheet-fila-opcion-titulo">Con lo que hay en la nevera</span><span class="sheet-fila-opcion-sub">Recetas con lo de tu nevera</span></span>' +
+      '<span class="sheet-fila-opcion-texto"><span class="sheet-fila-opcion-titulo">' + t('con_lo_que_hay_en_la_nevera') + '</span><span class="sheet-fila-opcion-sub">Recetas con lo de tu nevera</span></span>' +
       '<i data-lucide="chevron-right" class="sheet-fila-opcion-chevron"></i>' +
       '</button>' +
       '<button type="button" class="sheet-fila-opcion" data-action="modo-solo-complementaria" data-dia="' + dia + '" data-tipo="' + tipoComida + '">' +
       '<span class="sheet-fila-opcion-icono sheet-fila-opcion-icono-gold"><i data-lucide="salad"></i></span>' +
-      '<span class="sheet-fila-opcion-texto"><span class="sheet-fila-opcion-titulo">Cambiar solo el acompañamiento</span><span class="sheet-fila-opcion-sub">Mismo plato principal, otra guarnición</span></span>' +
+      '<span class="sheet-fila-opcion-texto"><span class="sheet-fila-opcion-titulo">' + t('cambiar_solo_el_acompanamiento') + '</span><span class="sheet-fila-opcion-sub">' + t('mismo_plato_principal_otra_guarnicion') + '</span></span>' +
       '<i data-lucide="chevron-right" class="sheet-fila-opcion-chevron"></i>' +
       '</button>' +
       '</div>';
@@ -1025,17 +1070,17 @@
     var micHtml = TIENE_VOZ
       ? '<button type="button" class="btn-filtro-icono btn-mic" data-action="nevera-voz" aria-label="Buscar por voz"><i data-lucide="mic"></i></button>'
       : '';
-    return sheetHead('Con lo que hay en la nevera') +
+    return sheetHead(t('con_lo_que_hay_en_la_nevera')) +
       '<div class="sheet-body">' +
-      '<p class="card-msg">Marca lo que tienes en casa y buscamos un plato que se pueda montar con eso.</p>' +
+      '<p class="card-msg">' + t('marca_lo_que_tienes_en_casa_y_buscamos_un') + '</p>' +
       '<div class="nevera-top">' +
       '<div class="nevera-buscador-fila">' +
       '<label class="rc-buscador"><i data-lucide="search"></i>' +
-      '<input type="search" id="nevera-buscador" placeholder="Buscar ingrediente" autocomplete="off"></label>' +
+      '<input type="search" id="nevera-buscador" placeholder="' + t('buscar_ingrediente') + '" autocomplete="off"></label>' +
       micHtml +
       '</div>' +
       '<div class="nevera-seleccion" id="nevera-seleccion" hidden></div>' +
-      '<button type="button" class="btn-cta-gradiente" id="nevera-confirmar" data-action="confirmar-nevera" data-dia="' + dia + '" data-tipo="' + tipoComida + '">Buscar plato</button>' +
+      '<button type="button" class="btn-cta-gradiente" id="nevera-confirmar" data-action="confirmar-nevera" data-dia="' + dia + '" data-tipo="' + tipoComida + '">' + t('buscar_plato') + '</button>' +
       '</div>' +
       '<ul class="lista-nevera" id="lista-nevera-checks">' + filas + '</ul>' +
       '</div>';
@@ -1047,7 +1092,7 @@
   // disponibles, aviso + CTA para añadirlo a la compra en vez de descartarla.
   function renderOpcionesNevera(banco, opciones, dia, tipoComida) {
     if (!opciones || !opciones.length) {
-      return sheetHead('Con lo que hay en la nevera') +
+      return sheetHead(t('con_lo_que_hay_en_la_nevera')) +
         '<div class="sheet-body"><p class="card-msg">No encontramos ningún menú que se pueda montar con eso — prueba a marcar algún ingrediente más.</p></div>';
     }
     var filas = opciones.map(function (m, i) {
@@ -1109,7 +1154,7 @@
         '<input type="text" id="mf-nombre" class="input-editorial" maxlength="30" placeholder="Nombre" value="' + escapeHtml(miembro.nombre || '') + '" autocomplete="off"></label>' +
       '<div class="fila-sexo-anio">' +
         '<div class="campo-corto"><span class="campo-eyebrow">Sexo</span>' + chipToggle('mf-sexo', OPCIONES_SEXO, miembro.sexo, 'mujer') + '</div>' +
-        '<div class="campo-corto"><span class="campo-eyebrow">Año de nacimiento</span>' +
+        '<div class="campo-corto"><span class="campo-eyebrow">' + t('ano_de_nacimiento') + '</span>' +
           '<input type="number" inputmode="numeric" id="mf-anio" class="input-editorial input-corto" placeholder="p.ej. 1985" min="1920" max="' + anioActual + '" value="' + (miembro.anioNacimiento || '') + '"></div>' +
       '</div>' +
       '<p class="wizard-incentivo">Si me cuentas un poco más, te ayudaré mejor.</p>' +
@@ -1121,7 +1166,7 @@
           '<div class="campo-corto"><span class="campo-eyebrow">Peso (kg)</span><input type="number" id="mf-peso" class="input-editorial input-corto" min="1" max="200" value="' + (miembro.peso || '') + '"></div>' +
         '</div>' +
         '<span class="campo-eyebrow">Actividad</span>' + chipToggle('mf-actividad', OPCIONES_ACTIVIDAD, miembro.actividad, '') +
-        '<span class="campo-eyebrow">Tipo de dieta</span>' + chipToggle('mf-dieta', OPCIONES_DIETA, miembro.dieta, 'omnivora') +
+        '<span class="campo-eyebrow">' + t('tipo_de_dieta') + '</span>' + chipToggle('mf-dieta', OPCIONES_DIETA, miembro.dieta, 'omnivora') +
         '</div>' +
       '</details>' +
       '<div class="fila-botones">' +
@@ -1222,9 +1267,9 @@
   function renderPatronGrid(miembro, tipo) {
     var valores = (miembro.patron && miembro.patron[tipo]) || PATRON_TODO_CASA;
     return '<div class="patron-grid">' + valores.map(function (v, i) {
-      var etiqueta = NOMBRES_DIA[i] + ': ' + ETIQUETAS_PATRON[v] + '. Toca para cambiar.';
+      var etiqueta = NOMBRES_DIA()[i] + ': ' + ETIQUETAS_PATRON[v] + '. Toca para cambiar.';
       return '<button type="button" class="patron-celda patron-' + v + '" data-action="toggle-patron" data-id="' + miembro.id + '" data-tipo="' + tipo + '" data-dia="' + i + '" aria-label="' + escapeHtml(etiqueta) + '">' +
-        '<span class="patron-dia">' + NOMBRES_DIA_CORTO[i] + '</span><span class="patron-valor">' + ABREV_PATRON[v] + '</span></button>';
+        '<span class="patron-dia">' + NOMBRES_DIA_CORTO()[i] + '</span><span class="patron-valor">' + ABREV_PATRON[v] + '</span></button>';
     }).join('') + '</div>';
   }
 
@@ -1248,6 +1293,40 @@
         'data-action="miembro-set-campo" data-campo="' + campo + '" data-id="' + id + '" data-valor="' + o.valor + '" ' +
         'aria-pressed="' + activo + '">' + escapeHtml(o.etiqueta) + '</button>';
     }).join('') + '</div>';
+  }
+
+  // Selector de idioma (handoff backlog-v3 #19, 2026-07-28): dos puntos de entrada,
+  // menú hamburguesa y último campo de la ficha de miembro — opcionesIdioma() alimenta
+  // el <select> de la ficha, renderSheetIdioma() la hoja completa con banderas.
+  function opcionesIdioma() {
+    var actual = I18N.getLang();
+    return I18N.LANGUAGES.map(function (l) {
+      return '<option value="' + l.code + '"' + (l.code === actual ? ' selected' : '') + '>' + escapeHtml(l.name) + '</option>';
+    }).join('');
+  }
+
+  function bandaEstilo(l) {
+    return l.code === 'en'
+      ? 'background-color:' + I18N.FLAG_EN_BG_COLOR + ';background-image:' + I18N.FLAG_EN_BG_IMAGE
+      : 'background-image:' + l.flag;
+  }
+
+  function renderSheetIdioma() {
+    var actual = I18N.getLang();
+    var filas = I18N.LANGUAGES.map(function (l) {
+      var activo = l.code === actual;
+      return '<button type="button" class="idioma-fila" data-action="elegir-idioma" data-lang="' + l.code + '" aria-pressed="' + activo + '">' +
+        '<span class="idioma-bandera" style="' + bandaEstilo(l) + '"></span>' +
+        '<span class="idioma-nombre">' + escapeHtml(l.name) + '</span>' +
+        '<span class="idioma-check' + (activo ? ' idioma-check-activo' : '') + '" aria-hidden="true">' + (activo ? '✓' : '') + '</span>' +
+        '</button>';
+    }).join('');
+    return sheetHead(t('idioma_titulo')) +
+      '<div class="sheet-body">' +
+      '<p class="detalle-subtitulo">' + t('idioma_subtitulo') + '</p>' +
+      '<div class="idioma-lista">' + filas + '</div>' +
+      '<button type="button" class="btn-cta-gradiente" data-action="cerrar-sheet">' + t('hecho') + '</button>' +
+      '</div>';
   }
 
   // Ficha de miembro — pantalla completa (Roger 2026-07-19, handoff Claude
@@ -1278,10 +1357,10 @@
       '<input type="file" accept="image/*" hidden data-foto-input="' + miembro.id + '">' +
       '<h1 class="mf-nombre-titulo">' + escapeHtml(miembro.nombre) + '</h1>' +
       '</div>' +
-      '<div class="mf-campo"><span class="campo-eyebrow">Nombre</span><input type="text" class="input-editorial" data-campo="nombre" data-id="' + miembro.id + '" value="' + escapeHtml(miembro.nombre) + '" maxlength="30"></div>' +
+      '<div class="mf-campo"><span class="campo-eyebrow">' + t('nombre') + '</span><input type="text" class="input-editorial" data-campo="nombre" data-id="' + miembro.id + '" value="' + escapeHtml(miembro.nombre) + '" maxlength="30"></div>' +
       '<div class="mf-fila-2">' +
       '<div class="mf-campo"><span class="campo-eyebrow">Sexo</span>' + chipToggleMiembro('sexo', OPCIONES_SEXO, miembro.sexo || 'mujer', miembro.id) + '</div>' +
-      '<div class="mf-campo"><span class="campo-eyebrow">Año de nacimiento</span><input type="number" inputmode="numeric" class="input-editorial" data-campo="anioNacimiento" data-id="' + miembro.id + '" value="' + (miembro.anioNacimiento || '') + '" min="1920" max="' + new Date().getFullYear() + '"></div>' +
+      '<div class="mf-campo"><span class="campo-eyebrow">' + t('ano_de_nacimiento') + '</span><input type="number" inputmode="numeric" class="input-editorial" data-campo="anioNacimiento" data-id="' + miembro.id + '" value="' + (miembro.anioNacimiento || '') + '" min="1920" max="' + new Date().getFullYear() + '"></div>' +
       '</div>' +
       '<div class="mf-fila-2">' +
       '<div class="mf-campo"><span class="campo-eyebrow">Altura (cm, opcional)</span><input type="number" class="input-editorial" data-campo="altura" data-id="' + miembro.id + '" value="' + (miembro.altura || '') + '" min="30" max="230"></div>' +
@@ -1291,10 +1370,11 @@
       (E.edadEnAnios(miembro.anioNacimiento) >= 12
         ? '<div class="mf-campo"><span class="campo-eyebrow">Objetivo de peso</span>' + chipToggleMiembro('objetivo', OPCIONES_OBJETIVO, miembro.objetivo || 'mantenimiento', miembro.id) + '</div>'
         : '') +
-      '<div class="mf-campo"><span class="campo-eyebrow">Tipo de dieta</span>' + chipToggleMiembro('dieta', OPCIONES_DIETA, miembro.dieta || 'omnivora', miembro.id) + '</div>' +
-      '<div class="mf-campo"><span class="campo-eyebrow">Alergias / restricciones</span><input type="text" class="input-editorial" data-campo="alergias" data-id="' + miembro.id + '" value="' + escapeHtml(miembro.alergias || '') + '" placeholder="Ninguna"></div>' +
-      '<div class="mf-campo"><span class="campo-eyebrow">Le gusta</span><input type="text" class="input-editorial" data-campo="leGusta" data-id="' + miembro.id + '" value="' + escapeHtml(miembro.leGusta || '') + '" placeholder="Platos favoritos"></div>' +
-      '<div class="mf-campo"><span class="campo-eyebrow">No le gusta</span><input type="text" class="input-editorial" data-campo="noLeGusta" data-id="' + miembro.id + '" value="' + escapeHtml(miembro.noLeGusta || '') + '" placeholder="Ingredientes a evitar"></div>' +
+      '<div class="mf-campo"><span class="campo-eyebrow">' + t('tipo_de_dieta') + '</span>' + chipToggleMiembro('dieta', OPCIONES_DIETA, miembro.dieta || 'omnivora', miembro.id) + '</div>' +
+      '<div class="mf-campo"><span class="campo-eyebrow">' + t('alergias_restricciones') + '</span><input type="text" class="input-editorial" data-campo="alergias" data-id="' + miembro.id + '" value="' + escapeHtml(miembro.alergias || '') + '" placeholder="' + t('ninguna') + '"></div>' +
+      '<div class="mf-campo"><span class="campo-eyebrow">' + t('le_gusta') + '</span><input type="text" class="input-editorial" data-campo="leGusta" data-id="' + miembro.id + '" value="' + escapeHtml(miembro.leGusta || '') + '" placeholder="' + t('platos_favoritos') + '"></div>' +
+      '<div class="mf-campo"><span class="campo-eyebrow">' + t('no_le_gusta') + '</span><input type="text" class="input-editorial" data-campo="noLeGusta" data-id="' + miembro.id + '" value="' + escapeHtml(miembro.noLeGusta || '') + '" placeholder="' + t('ingredientes_a_evitar') + '"></div>' +
+      '<div class="mf-campo"><span class="campo-eyebrow">' + t('idioma_campo') + '</span><select class="input-editorial" id="mf-idioma-app">' + opcionesIdioma() + '</select></div>' +
       '<p class="rv-seccion-titulo">Patrón — comida</p>' + renderPatronGrid(miembro, 'comida') +
       '<p class="rv-seccion-titulo">Patrón — cena</p>' + renderPatronGrid(miembro, 'cena') +
       '<p class="rv-seccion-titulo">Vetos (no le gusta / alergia)</p>' + renderVetos(miembro, banco) +
@@ -1308,11 +1388,14 @@
   // para listas cortas de acciones; el sheet de abajo sigue siendo para
   // pantallas con contenido real (Familia, nevera, receta...).
   function renderMenuHamburguesa() {
-    return '<button type="button" class="menu-dropdown-item" role="menuitem" data-action="menu-ir-familia"><i data-lucide="users"></i>Familia</button>' +
-      '<button type="button" class="menu-dropdown-item" role="menuitem" data-action="menu-sync"><i data-lucide="refresh-cw"></i>Sincronizar familia</button>' +
+    return '<button type="button" class="menu-dropdown-item" role="menuitem" data-action="menu-ir-familia"><i data-lucide="users"></i>' + t('familia') + '</button>' +
+      '<button type="button" class="menu-dropdown-item" role="menuitem" data-action="menu-ir-batch"><i data-lucide="chef-hat"></i>' + t('domingo_de_batch') + '</button>' +
+      '<button type="button" class="menu-dropdown-item" role="menuitem" data-action="menu-sync"><i data-lucide="refresh-cw"></i>' + t('sincronizar_familia') + '</button>' +
       '<div class="menu-dropdown-sep" role="separator"></div>' +
       '<button type="button" class="menu-dropdown-item" role="menuitem" data-action="menu-regenerar-semana"><i data-lucide="sparkles"></i>Regenerar menús</button>' +
-      '<button type="button" class="menu-dropdown-item" role="menuitem" data-action="menu-importar-cole"><i data-lucide="paperclip"></i>Importar menú del cole</button>';
+      '<button type="button" class="menu-dropdown-item" role="menuitem" data-action="menu-importar-cole"><i data-lucide="paperclip"></i>Importar menú del cole</button>' +
+      '<div class="menu-dropdown-sep" role="separator"></div>' +
+      '<button type="button" class="menu-dropdown-item" role="menuitem" data-action="menu-ir-idioma"><i data-lucide="languages"></i>' + t('idioma_titulo') + '</button>';
   }
 
   // Menú del cole — vista semanal de solo lectura (Roger 2026-07-22): el enlace "cole"
@@ -1329,7 +1412,7 @@
       // día de la semana desde la fecha en crudo (diaIndexDesdeFecha busca dentro de un
       // plan concreto, no sirve aquí: cole.dias puede tener fechas de cualquier semana).
       var idxSemana = (new Date(f + 'T00:00:00').getDay() + 6) % 7;
-      var nombreDia = NOMBRES_DIA[idxSemana] || '';
+      var nombreDia = NOMBRES_DIA()[idxSemana] || '';
       return '<div class="fila-cole">' +
         '<span class="fila-cole-dia">' + escapeHtml(nombreDia) + '</span>' +
         '<span class="fila-cole-info"><span class="fila-cole-nombre">' + escapeHtml(d.resumen || '—') + '</span></span>' +
@@ -1370,7 +1453,7 @@
   // landing (dispositivo nuevo que solo quiere unirse con un código).
   function renderSheetSync(opts) {
     opts = opts || {};
-    var head = sheetHead('Sincronizar familia');
+    var head = sheetHead(t('sincronizar_familia'));
 
     if (opts.cargando) {
       return head + '<div class="sheet-body"><p class="card-msg">Cargando…</p></div>';
@@ -1380,7 +1463,7 @@
       var aviso = opts.aviso ? '<p class="card-msg">' + escapeHtml(opts.aviso) + '</p>' : '';
       return head + '<div class="sheet-body">' +
         '<p class="card-msg">' + escapeHtml(opts.nombreFamilia || 'Tu familia') + ' está sincronizada. Comparte este código con quien quieras que vea y edite el menú desde su móvil:</p>' +
-        '<div class="sync-codigo-caja"><span class="campo-eyebrow">Código</span><p class="sync-codigo">' + escapeHtml(opts.code || '') + '</p></div>' +
+        '<div class="sync-codigo-caja"><span class="campo-eyebrow">' + t('codigo') + '</span><p class="sync-codigo">' + escapeHtml(opts.code || '') + '</p></div>' +
         '<p class="card-msg">Cualquier dispositivo con este código ve y edita todo el menú — no hay permisos distintos por persona.</p>' +
         aviso +
         '<button type="button" class="btn-secondary btn-icono-texto" id="sync-rotar-btn" data-action="sync-rotar"><i data-lucide="refresh-cw"></i>Generar un código nuevo</button>' +
@@ -1407,12 +1490,12 @@
     var errorHtml = opts.error ? '<p class="card-msg">' + escapeHtml(opts.error) + '</p>' : '';
 
     return head + '<div class="sheet-body">' +
-      '<p class="card-msg">Activa la sincronización para ver y editar el menú desde varios móviles a la vez.</p>' +
+      '<p class="card-msg">' + t('activa_la_sincronizacion_para_ver_y_editar') + '</p>' +
       errorHtml +
-      '<button type="button" class="btn-sync-activar" id="sync-activar-btn" data-action="sync-activar">Activar sincronización</button>' +
-      '<p class="sync-pregunta">¿Ya tienes un código de otra familia?</p>' +
-      '<label><span class="campo-eyebrow">Código</span><input type="text" id="sync-code-input" class="input-editorial" placeholder="8 caracteres" maxlength="8" autocapitalize="characters" autocomplete="off"></label>' +
-      '<button type="button" class="btn-secondary" id="sync-unirse-btn" data-action="sync-unirse">Unirme con el código</button>' +
+      '<button type="button" class="btn-sync-activar" id="sync-activar-btn" data-action="sync-activar">' + t('activar_sincronizacion') + '</button>' +
+      '<p class="sync-pregunta">' + t('ya_tienes_un_codigo_de_otra_familia') + '</p>' +
+      '<label><span class="campo-eyebrow">' + t('codigo') + '</span><input type="text" id="sync-code-input" class="input-editorial" placeholder="' + t('8_caracteres') + '" maxlength="8" autocapitalize="characters" autocomplete="off"></label>' +
+      '<button type="button" class="btn-secondary" id="sync-unirse-btn" data-action="sync-unirse">' + t('unirme_con_el_codigo') + '</button>' +
       '</div>';
   }
 
@@ -1439,7 +1522,7 @@
         '<div class="desc-titulo">' + escapeHtml(d.titulo) + '</div>' +
         '</div></button>';
     }).join('');
-    return '<div class="rc-cabecera"><div><h1 class="rc-titulo">Descubrir</h1><p class="cp-resumen">Ideas nuevas para tu familia</p></div></div>' +
+    return '<div class="rc-cabecera"><div><h1 class="rc-titulo">' + t('descubrir') + '</h1><p class="cp-resumen">' + t('ideas_nuevas_para_tu_familia') + '</p></div></div>' +
       '<div class="vista-body rc-body"><div class="desc-lista">' +
       (fichasHtml || '<p class="card-msg">Muy pronto: ideas nuevas para tu familia.</p>') +
       '</div></div>';
@@ -1488,9 +1571,9 @@
     }).join('');
     // celda de la cuadrícula, no barra a lo ancho — así no se descuadra con nº impar de miembros
     var anadirHtml = '<button type="button" class="pf-anadir-celda" data-action="familia-abrir-form-miembro">' +
-      '<span class="pf-anadir-circulo"><i data-lucide="plus"></i></span>Añadir miembro</button>';
+      '<span class="pf-anadir-circulo"><i data-lucide="plus"></i></span>' + t('anadir_miembro') + '</button>';
 
-    return '<div class="rc-cabecera"><div><h1 class="rc-titulo">Familia</h1><p class="cp-resumen">Personaliza el menú para cada uno</p></div></div>' +
+    return '<div class="rc-cabecera"><div><h1 class="rc-titulo">' + t('familia') + '</h1><p class="cp-resumen">' + t('personaliza_el_menu_para_cada_uno') + '</p></div></div>' +
       '<div class="vista-body rc-body">' +
       '<div class="rc-grid pf-grid">' + cardsHtml + anadirHtml + '</div>' +
       '</div>';
@@ -1513,6 +1596,8 @@
     renderVistaMiembro: renderVistaMiembro,
     renderPatronGrid: renderPatronGrid,
     renderMenuHamburguesa: renderMenuHamburguesa,
+    renderSheetIdioma: renderSheetIdioma,
+    renderBatch: renderBatch,
     renderSheetImportarCole: renderSheetImportarCole,
     renderSheetColeSemana: renderSheetColeSemana,
     renderSheetSync: renderSheetSync,

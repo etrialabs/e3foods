@@ -26,7 +26,7 @@
      proyecto — versión FIJADA (no @latest, que el prototipo de Design sí usa) para no
      romper en producción si la librería cambia. -->
 <script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.js"></script>
-<link rel="stylesheet" href="css/styles.css?v=102">
+<link rel="stylesheet" href="css/styles.css?v=103">
 </head>
 <body>
 
@@ -86,6 +86,7 @@
 <main id="vista-compra" class="vista" hidden aria-label="Compra"></main>
 <main id="vista-perfil" class="vista" hidden aria-label="Familia"></main>
 <main id="vista-receta" class="vista" hidden aria-label="Receta"></main>
+<main id="vista-batch" class="vista" hidden aria-label="Domingo de batch"></main>
 
 <!-- Bottom sheet genérico: familia / compra / cambiar plato / elegir otro / nevera / confirmar regenerar -->
 <div id="sheet-overlay" class="sheet-overlay" hidden>
@@ -108,11 +109,14 @@
   <button type="button" class="nav-btn" data-action="ir-vista" data-vista="perfil" aria-current="false"><span class="nav-ico"><i data-lucide="users"></i></span><span class="nav-label">Familia</span></button>
 </nav>
 
+<!-- i18n (handoff backlog-v3 #18, 2026-07-28): diccionario ES/CA/FR/EN + t() + idioma en
+     localStorage. Carga primero — ui.js y app.js dependen de E3I18n. -->
+<script src="js/i18n.js?v=103"></script>
 <!-- Banco de recetas (82 plantillas + postres). Si no carga (404/sintaxis), app.js muestra
      un error visible en vez de arrancar degradado — no hay banco de respaldo. -->
-<script src="data/recetas.js?v=102"></script>
-<script src="js/engine.js?v=102"></script>
-<script src="js/ui.js?v=102"></script>
+<script src="data/recetas.js?v=103"></script>
+<script src="js/engine.js?v=103"></script>
+<script src="js/ui.js?v=103"></script>
 <!-- Firebase compat (multiusuario, Roger 2026-07-14) — build "compat" a propósito:
      el resto del bundle son scripts planos sin módulos ES, esto evita reestructurar
      todo a type="module" solo por esto. -->
@@ -120,7 +124,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-check-compat.js"></script>
-<script src="js/sync.js?v=102"></script>
-<script src="js/app.js?v=102"></script>
+<script src="js/sync.js?v=103"></script>
+<script src="js/app.js?v=103"></script>
 </body>
 </html>

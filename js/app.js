@@ -9,6 +9,7 @@
 
   var E = window.E3Engine;
   var UI = window.E3UI;
+  var I18N = window.E3I18n;
   var STORAGE_KEY = 'e3foods_v2';
   var PATRON_DEFAULT = ['casa', 'casa', 'casa', 'casa', 'casa', 'casa', 'casa'];
 
@@ -332,6 +333,7 @@
     else if (vistaActual === 'compra') cont.innerHTML = UI.renderCompraVista(estado, estado.plan, BANCO, rangoCompra, categoriasAbiertasCompra);
     else if (vistaActual === 'descubrir') cont.innerHTML = UI.renderDescubrirVista(estado, BANCO);
     else if (vistaActual === 'perfil') cont.innerHTML = (vistaPerfil === 'ficha' && miembroAbierto) ? UI.renderVistaMiembro(estado, BANCO, miembroAbierto, obtenerMiembroDispositivo()) : UI.renderPerfilVista(estado);
+    else if (vistaActual === 'batch') cont.innerHTML = UI.renderBatch();
     else if (vistaActual === 'receta') cont.innerHTML = !recetaAbierta ? '' :
       (recetaAbierta.plantillaId ? UI.renderVistaRecetaPlantilla(estado, BANCO, recetaAbierta.plantillaId) : UI.renderVistaReceta(estado, BANCO, planActivo(), recetaAbierta.dia, recetaAbierta.tipo));
     aplicarDetallesAbiertos(cont);
@@ -446,6 +448,19 @@
     dropdown.hidden = false;
     overlay.hidden = false;
     refrescarIconos();
+  }
+
+  // Etiquetas del nav inferior (backlog-v3 #18): viven en index.html, no en ningun
+  // render() -- t() no las toca solo. "Compra" se queda en castellano: no hay
+  // traduccion fuente para la palabra sola (el diseno solo trae "La compra").
+  var NAV_KEYS = { semana: 'semana', recetas: 'recetas', descubrir: 'descubrir', perfil: 'familia' };
+  function actualizarNavLabels() {
+    document.querySelectorAll('.nav-btn').forEach(function (btn) {
+      var clave = NAV_KEYS[btn.dataset.vista];
+      if (!clave) return;
+      var label = btn.querySelector('.nav-label');
+      if (label) label.textContent = I18N.t(clave);
+    });
   }
 
   function cerrarMenuHamburguesa() {
@@ -1389,6 +1404,14 @@
     'ir-vista': function (btn) { irAVista(btn.dataset.vista); },
     'abrir-menu-hamburguesa': function (btn) { abrirMenuHamburguesa(btn); },
     'menu-ir-familia': function () { irAVista('perfil'); },
+    'menu-ir-batch': function () { irAVista('batch'); },
+    'batch-volver': function () { irAVista('semana'); },
+    // Sin mapeo de las 5 bases (texto libre) a ids reales de banco.ingredientes --
+    // no hay a qué articulo de la compra sumar. Placeholder honesto hasta que
+    // exista esa decisión (backlog-v3 #17, cierre de sesion 2026-07-28).
+    'batch-anadir-compra': function () {},
+    'menu-ir-idioma': function () { abrirSheet(UI.renderSheetIdioma()); },
+    'elegir-idioma': function (btn) { if (I18N.setLang(btn.dataset.lang)) { actualizarSheet(UI.renderSheetIdioma()); render(); actualizarNavLabels(); } },
     // confirmación (audit 2026-07-20): regenera las DOS semanas y pierde todos
     // los cambios manuales de plato, sin undo — un tap accidental en el dropdown
     // (el ítem va pegado a "Familia") no debe destruir el menú ya pactado.
@@ -1602,6 +1625,10 @@
     // región del wizard (select dispara 'change', no 'input')
     if (t.id === 'wz-region') { wizardRegion = t.value; return; }
 
+    // idioma de la app (ficha de miembro, backlog-v3 #19) — ajuste global, no dato
+    // de familia: no pasa por actualizarCampoMiembro ni necesita guardarEstado().
+    if (t.id === 'mf-idioma-app') { if (I18N.setLang(t.value)) { render(); actualizarNavLabels(); } return; }
+
     var campo = t.dataset && t.dataset.campo;
     if (!campo) return;
     if (campo === 'nombreFamilia') { estado.nombreFamilia = t.value.trim(); guardarEstado(); return; }
@@ -1688,6 +1715,7 @@
     iniciarEscuchaRemota(); // no-op si este dispositivo no tiene familyId cacheado
     asegurarPlanVigente();
     render();
+    actualizarNavLabels();
     document.body.classList.add('landing-open');
 
     // nav se encoge a solo-iconos al bajar y recupera al subir — puerto directo de

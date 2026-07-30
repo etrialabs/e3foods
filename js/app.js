@@ -50,45 +50,27 @@
     return { nombreFamilia: '', familiaRegion: null, familia: [], ausenciasPuntuales: {}, plan: null, planSiguiente: null, ocultas: [], favoritas: [], propias: [], compra: { marcados: [], marcadosSiguiente: [] }, valoraciones: {}, historialPrincipales: {}, historialPares: {}, cambios: {}, paresComplementariaCambiados: {}, cole: null, semillaRegeneracion: 0, esquemaVersion: ESQUEMA_ESTADO };
   }
 
-  // v1 → v2 (handoff "Alta de persona", 2026-07-30). Primera migración activa
-  // real del esquema. Dos cambios de forma en el miembro:
-  //   · `alergias` pasa de texto libre a array de ids del catálogo → el texto de
-  //     antes se conserva íntegro en `restricciones` ("Otras restricciones" de
-  //     la ficha). Nada escrito por la familia se pierde.
-  //   · aparece `estilo` (4 opciones del handoff), derivado del `dieta` que ya
-  //     tuviera. `dieta` NO se toca: sigue siendo lo que consume el motor v3.
-  function migrarPersonasV2(est) {
-    (est.familia || []).forEach(function (m) {
-      if (typeof m.alergias === 'string') {
-        var texto = m.alergias.trim();
-        if (texto && !(m.restricciones || '').trim()) m.restricciones = texto;
-      }
-      if (!Array.isArray(m.alergias)) m.alergias = [];
-      if (!m.estilo) m.estilo = UI.estiloDeMiembro(m);
-      if (!m.gustos) m.gustos = {};
-      if (!m.pComida) m.pComida = 'primero-segundo';
-      if (!m.pCena) m.pCena = 'ligera';
-    });
-    est.esquemaVersion = 2;
+  // SIN MIGRACIONES (Roger, 30-jul — sesión de higiene): un estado con esquema anterior
+  // al vigente no se migra — se detecta, se resetea limpio y se AVISA (re-onboarding
+  // asumido, decisión explícita). Un esquema MAYOR (otro dispositivo con app más nueva
+  // escribió primero) se deja tal cual: este cliente no machaca el progreso del nuevo.
+  // La versión se lee SIEMPRE del objeto crudo, nunca del fusionado con estadoVacio()
+  // (trampa ya pagada: el fusionado trae la versión actual y el legacy se colaría).
+  var avisoReinicio = false;
+  function hidratarEstado(crudo) {
+    if (!crudo || typeof crudo !== 'object' || Array.isArray(crudo)) { avisoReinicio = true; return estadoVacio(); }
+    if ((crudo.esquemaVersion || 1) < ESQUEMA_ESTADO) { avisoReinicio = true; return estadoVacio(); }
+    return Object.assign(estadoVacio(), crudo);
   }
 
   function cargarEstado() {
     try {
       var raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) return estadoVacio();
-      var parsed = JSON.parse(raw);
-      // La versión se lee de `parsed`, NUNCA del objeto ya fusionado: estadoVacio()
-      // trae esquemaVersion = la actual, así que un estado legacy SIN la clave
-      // heredaría la versión nueva y se saltaría su propia migración.
-      var versionGuardada = parsed.esquemaVersion || 1;
-      var estadoFinal = Object.assign(estadoVacio(), parsed);
-      // Si llega una versión MAYOR que la que conoce este cliente (cliente viejo abriendo un
-      // estado ya migrado por una versión nueva de la app en otro dispositivo sincronizado): NO
-      // tocar nada, dejar el valor tal cual venga — un cliente viejo no debe machacar el progreso
-      // de la migración de uno nuevo.
-      if (versionGuardada < 2) migrarPersonasV2(estadoFinal);
-      return estadoFinal;
+      return hidratarEstado(JSON.parse(raw));
     } catch (e) {
+      // JSON corrupto (o localStorage roto): reset limpio con aviso, nunca crashear
+      avisoReinicio = true;
       return estadoVacio();
     }
   }
@@ -362,6 +344,11 @@
     else if (vistaActual === 'batch') cont.innerHTML = UI.renderBatch();
     else if (vistaActual === 'receta') cont.innerHTML = !recetaAbierta ? '' :
       (recetaAbierta.plantillaId ? UI.renderVistaRecetaPlantilla(estado, BANCO, recetaAbierta.plantillaId) : UI.renderVistaReceta(estado, BANCO, planActivo(), recetaAbierta.dia, recetaAbierta.tipo));
+    // aviso de reinicio de esquema (descartable): el estado guardado era de una version
+    // anterior o estaba corrupto y se ha empezado de cero — sin migrar, decision de Roger
+    // 30-jul. Se antepone a CUALQUIER vista (tambien al onboarding, que es donde aterriza
+    // una familia reseteada).
+    if (avisoReinicio) cont.insertAdjacentHTML('afterbegin', UI.avisoReinicioHtml());
     aplicarDetallesAbiertos(cont);
     if (focoBuscador) {
       var buscador = document.getElementById('recetas-buscador');
@@ -590,12 +577,10 @@
       remotoListo = true; // también durante la demo — el gate no debe quedarse cerrado (audit 2026-07-20)
       if (modoDemo) { if (remoto) snapshotDuranteDemo = remoto; return; } // no clobbear el ejemplo; se aplica al salir
       if (remoto) {
-        estado = Object.assign(estadoVacio(), remoto);
-        // el snapshot puede venir de un dispositivo con la app vieja: mismo
-        // enganche de migración que cargarEstado (y misma trampa: la versión se
-        // lee del remoto crudo, no del fusionado) — si no, la ficha leería
-        // `alergias` como texto donde ahora espera un array
-        if ((remoto.esquemaVersion || 1) < 2) migrarPersonasV2(estado);
+        // el snapshot puede venir de un dispositivo con la app vieja: mismo trato que
+        // cargarEstado (esquema viejo → reset con aviso; NO se re-empuja el vacío —
+        // el re-onboarding escribirá el estado nuevo cuando la familia se recree)
+        estado = hidratarEstado(remoto);
         try { localStorage.setItem(STORAGE_KEY, JSON.stringify(estado)); } catch (e) { /* sin caché local */ } // sin re-disparar guardarRemotoDebounced
       }
       if (primera && onPrimerSnapshot) { primera = false; onPrimerSnapshot(); }
@@ -826,9 +811,7 @@
     // si llegó un snapshot remoto mientras se miraba el ejemplo, aplicarlo ahora
     // (mismo tratamiento que en iniciarEscuchaRemota — el remoto es la verdad)
     if (snapshotDuranteDemo) {
-      var versionSnapshot = snapshotDuranteDemo.esquemaVersion || 1;
-      estado = Object.assign(estadoVacio(), snapshotDuranteDemo);
-      if (versionSnapshot < 2) migrarPersonasV2(estado);
+      estado = hidratarEstado(snapshotDuranteDemo); // mismo trato que iniciarEscuchaRemota
       snapshotDuranteDemo = null;
       try { localStorage.setItem(STORAGE_KEY, JSON.stringify(estado)); } catch (e) { /* sin caché local */ }
     }
@@ -903,6 +886,9 @@
     else if (onbPaso === ONB_PASO_FICHA) pantalla.innerHTML = UI.renderOnbFicha(personaDraft, onbMiembros);
     else if (onbPaso === ONB_PASO_FIN) pantalla.innerHTML = UI.renderOnbFin(onbNombreFamilia, onbMiembros);
     else pantalla.innerHTML = UI.renderOnbPersona(onbPaso - 1, personaDraft, onbMiembros.length + 1);
+    // una familia reseteada por esquema viejo aterriza AQUI (sin familia -> onboarding):
+    // el aviso de reinicio se muestra en el paso 1, no solo en las vistas de la app
+    if (avisoReinicio && onbPaso === ONB_PASO_NOMBRE) pantalla.insertAdjacentHTML('afterbegin', UI.avisoReinicioHtml());
     refrescarIconos();
     // cambiar de paso reinicia el scroll (handoff §Interactions) — el contenedor
     // que scrollea es el interior, no la ventana
@@ -1580,6 +1566,11 @@
     'ir-vista': function (btn) { irAVista(btn.dataset.vista); },
     'abrir-menu-hamburguesa': function (btn) { abrirMenuHamburguesa(btn); },
     'menu-ir-familia': function () { irAVista('perfil'); },
+    'cerrar-aviso-reinicio': function () {
+      avisoReinicio = false;
+      var wizard = document.getElementById('wizard-screen');
+      if (wizard && !wizard.hidden) mostrarOnboarding(); else render();
+    },
     'menu-ir-batch': function () { irAVista('batch'); },
     'batch-volver': function () { irAVista('semana'); },
     // Sin mapeo de las 5 bases (texto libre) a ids reales de banco.ingredientes --

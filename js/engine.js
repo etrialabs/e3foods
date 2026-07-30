@@ -680,15 +680,22 @@
   // arroz, así que con factor al tope se servían ~2,7 rebanadas y subiendo. Decisión de Roger: "extra
   // de dos rebanadas de pan como máximo; más pan ya es un exceso o una elaboración con pan". Se
   // calcula aparte del bloque escalable y se suma tal cual.
-  function calcularKcalYFactor(componentes, presentes, bandaPersonaFn, banco, bancoV3, kcalAlinio) {
+  // mapaAdapt (fix mesa mixta, sesión higiene 30-jul): {miembroId: {de, a}} — el comensal
+  // adaptado come SU proteína (Enzo come huevo, no el atún del eje), así que su kcal se
+  // computa con ella. Sin esto la banda se validaba con el eje base para toda la mesa y
+  // resolverMenu servía otra cosa: banda validada ≠ banda servida (cazado con pisto-manchego,
+  // 2.668 servidas vs mínimo 2.671 — candidato "válido" fuera de banda). Misma semántica de
+  // swap que resolverMenu (idEfectivo, comp.id === seleccionEje).
+  function calcularKcalYFactor(componentes, presentes, bandaPersonaFn, banco, bancoV3, kcalAlinio, mapaAdapt) {
     var factorRacion = {};
     var kcalTotal = 0;
     presentes.forEach(function (persona) {
       var esNino = edadEnAnios(persona.anioNacimiento) < EDAD_MENOR;
+      var adapt = mapaAdapt && mapaAdapt[persona.id];
       var kcalBase = kcalAlinio || 0;
       var kcalFija = 0; // lo que NO escala (pan de remate)
       componentes.forEach(function (comp) {
-        var ing = banco.ingredientes[comp.id];
+        var ing = banco.ingredientes[(adapt && comp.id === adapt.de) ? adapt.a : comp.id];
         if (!ing) return;
         var gramos = esNino ? ing.racion_nino_g : ing.racion_adulto_g;
         var kcal100 = kcalIngredienteConTecnica(ing, comp.grupo, comp.tecnicaCoccion, comp.acabado, bancoV3);
@@ -706,10 +713,16 @@
     return { kcalTotal: Math.round(kcalTotal), factorRacion: factorRacion };
   }
 
-  function cerrarBandaKcal(principal, seleccionEje, complementarias, presentes, banda, bandaPersonaFn, banco, bancoV3, vetosUnion) {
+  function cerrarBandaKcal(principal, seleccionEje, complementarias, presentes, banda, bandaPersonaFn, banco, bancoV3, vetosUnion, mes) {
     var componentes = componentesDeCandidato(principal, seleccionEje, complementarias);
     var kcalAlinio = kcalAlinioPorRacion(principal, complementarias, bancoV3);
-    var r = calcularKcalYFactor(componentes, presentes, bandaPersonaFn, banco, bancoV3, kcalAlinio);
+    // las MISMAS adaptaciones que resolverMenu aplicará al servir: la banda se valida
+    // contra lo que cada comensal come de verdad (fix mesa mixta, sesión higiene 30-jul)
+    var mapaAdapt = {};
+    calcularAdaptaciones(principal, seleccionEje, presentes, banco, vetosUnion, mes).forEach(function (a) {
+      mapaAdapt[a.miembroId] = { de: seleccionEje, a: a.valor };
+    });
+    var r = calcularKcalYFactor(componentes, presentes, bandaPersonaFn, banco, bancoV3, kcalAlinio, mapaAdapt);
     if (r.kcalTotal >= banda.min && r.kcalTotal <= banda.max) {
       return { viable: true, kcalTotal: r.kcalTotal, factorRacion: r.factorRacion, componenteExtra: null };
     }
@@ -732,7 +745,7 @@
     if (vetosUnion && estaEn(vetosUnion, ID_PAN_EXTRA)) return { viable: false, motivo: 'corto (' + r.kcalTotal + '<' + banda.min + ') y el pan extra está vetado en esta mesa' };
 
     var componentesConExtra = componentes.concat([{ id: ID_PAN_EXTRA, grupo: 'hidrato', tecnicaCoccion: null, acabado: null, noEscalar: true }]);
-    var r2 = calcularKcalYFactor(componentesConExtra, presentes, bandaPersonaFn, banco, bancoV3, kcalAlinio);
+    var r2 = calcularKcalYFactor(componentesConExtra, presentes, bandaPersonaFn, banco, bancoV3, kcalAlinio, mapaAdapt);
     if (r2.kcalTotal >= banda.min && r2.kcalTotal <= banda.max) {
       return { viable: true, kcalTotal: r2.kcalTotal, factorRacion: r2.factorRacion, componenteExtra: ID_PAN_EXTRA };
     }
@@ -797,7 +810,7 @@
             if (faltantesNevera.length > 1) { traceDescarta(trace, principal.id, 'nevera: faltan ' + faltantesNevera.length + ' ingredientes'); return; }
           }
 
-          var cierre = cerrarBandaKcal(principal, opcionEje, combo, ctx.presentes, banda, bandaPersonaFn, ctx.banco, ctx.bancoV3, ctx.vetosUnion);
+          var cierre = cerrarBandaKcal(principal, opcionEje, combo, ctx.presentes, banda, bandaPersonaFn, ctx.banco, ctx.bancoV3, ctx.vetosUnion, ctx.mes);
           if (!cierre.viable) { traceDescarta(trace, principal.id, 'banda kcal: ' + cierre.motivo); return; }
 
           traceSobrevive(trace);
@@ -1566,7 +1579,8 @@
     }
     var banda = bandaAgregadaMesa(presentesNuevos, tipoComida, esFinde, fechaReferencia, margenKcal);
     var bandaPersonaFn = function (p) { return objetivoBandaPersona(p, tipoComida, esFinde, fechaReferencia, margenKcal); };
-    var cierre = cerrarBandaKcal(principal, menuActual.seleccionEje, complementarias, presentesNuevos, banda, bandaPersonaFn, banco, bancoV3, vetosDe(presentesNuevos, fechaReferencia));
+    var mesReescalado = mesDeFecha(fechaReferencia);
+    var cierre = cerrarBandaKcal(principal, menuActual.seleccionEje, complementarias, presentesNuevos, banda, bandaPersonaFn, banco, bancoV3, vetosDe(presentesNuevos, fechaReferencia), mesReescalado);
     var kcalTotal, factorRacion, componenteExtra;
     if (cierre.viable) {
       kcalTotal = cierre.kcalTotal; factorRacion = cierre.factorRacion; componenteExtra = cierre.componenteExtra;
@@ -1577,11 +1591,15 @@
       // no la banda (la banda ya hizo su trabajo al generar el menú originalmente)
       var componentesSinExtra = componentesDeCandidato(principal, menuActual.seleccionEje, complementarias);
       var kcalAlinio = kcalAlinioPorRacion(principal, complementarias, bancoV3);
-      var r = calcularKcalYFactor(componentesSinExtra, presentesNuevos, bandaPersonaFn, banco, bancoV3, kcalAlinio);
+      var mapaAdaptReescalado = {};
+      calcularAdaptaciones(principal, menuActual.seleccionEje, presentesNuevos, banco, vetosDe(presentesNuevos, fechaReferencia), mesReescalado).forEach(function (a) {
+        mapaAdaptReescalado[a.miembroId] = { de: menuActual.seleccionEje, a: a.valor };
+      });
+      var r = calcularKcalYFactor(componentesSinExtra, presentesNuevos, bandaPersonaFn, banco, bancoV3, kcalAlinio, mapaAdaptReescalado);
       kcalTotal = r.kcalTotal; factorRacion = r.factorRacion; componenteExtra = menuActual.componenteExtra;
     }
     var candidato = { principal: principal, seleccionEje: menuActual.seleccionEje, complementarias: complementarias, kcalTotal: kcalTotal, factorRacion: factorRacion, componenteExtra: componenteExtra };
-    var ctx = { bancoV3: bancoV3, banco: banco, presentes: presentesNuevos, vetosViabilidad: vetosDe(presentesNuevos, fechaReferencia), vetosUnion: vetosDe(presentesNuevos, fechaReferencia), bandaSlot: banda };
+    var ctx = { bancoV3: bancoV3, banco: banco, presentes: presentesNuevos, mes: mesReescalado, vetosViabilidad: vetosDe(presentesNuevos, fechaReferencia), vetosUnion: vetosDe(presentesNuevos, fechaReferencia), bandaSlot: banda };
     return resolverMenu(candidato, ctx);
   }
 
@@ -1994,7 +2012,7 @@
       combos.forEach(function (combo) {
         var estructura = verificarEstructura(principalActual, combo.map(function (c) { return { elaboracion: c.elaboracion }; }));
         if (!estructura.valido) return;
-        var cierre = cerrarBandaKcal(principalActual, slotActual.menu.seleccionEje, combo, presentes, banda, bandaPersonaFn, banco, bancoV3, ctxBase.vetosUnion);
+        var cierre = cerrarBandaKcal(principalActual, slotActual.menu.seleccionEje, combo, presentes, banda, bandaPersonaFn, banco, bancoV3, ctxBase.vetosUnion, ctxBase.mes);
         if (!cierre.viable) return;
         var idCombo = combo.map(function (c) { return c.seleccionEje; }).sort().join(',');
         candidatosSolo.push({ principal: principalActual, seleccionEje: slotActual.menu.seleccionEje, complementarias: combo, kcalTotal: cierre.kcalTotal, factorRacion: cierre.factorRacion, componenteExtra: cierre.componenteExtra, faltantesNevera: [], idCombo: idCombo });

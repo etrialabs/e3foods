@@ -2464,6 +2464,28 @@
       "fuente_nutri_ext": "USDA FoodData Central: Cheese, fresh, queso fresco (fdcId 172223, SR Legacy)",
       "confianza_nutri_ext": "alta"
     },
+    "parmesano": {
+      "nombre": "Queso parmesano (virutas)",
+      "categoria": "lacteo",
+      "kcal_100g": 392,
+      "racion_adulto_g": 25,
+      "racion_nino_g": 15,
+      "coste_banda": 3,
+      "proteina_g": 35.8,
+      "grasa_g": 25,
+      "hidratos_g": 3.22,
+      "fibra_g": 0,
+      "base_nutricional": "cocido",
+      "nota_base": "Producto que se compra listo (queso), no se cocina en casa — misma convención que queso-rallado/feta. Alta 30-jul-2026 (sesión higiene, rehacer el alta de la ensalada de calabacín con OK de Roger): el plato usaba `queso-rallado`, que es base:true y no puede ser fijo de una elaboración.",
+      "origen": "queso",
+      "fuente_macros": "Ingrediente nuevo (30-jul-2026) — macros directos de la fuente externa, verificada por API en la sesión",
+      "confianza_macros": "alta",
+      "grasa_saturada_g": 14.8,
+      "grasa_monoinsaturada_g": 7.52,
+      "grasa_poliinsaturada_g": 0.569,
+      "fuente_nutri_ext": "USDA FoodData Central: Cheese, parmesan, hard (fdcId 170848, SR Legacy)",
+      "confianza_nutri_ext": "alta"
+    },
     "queso-feta": {
       "nombre": "Queso feta",
       "categoria": "lacteo",
@@ -3535,7 +3557,7 @@
       "tematica": "A la plancha o al horno",
       "ocasion": null,
       "ninos": true,
-      "foto": "assets/banco-fotos/salmon-plancha-verduras.jpg",
+      "foto": "assets/banco-fotos/plancha-guarnicion.jpg",
       "pasos": [
         "Salpimentar {proteina} y dejar atemperar 10 minutos.",
         "Cocer {hidrato} según su tiempo y reservar.",
@@ -3584,7 +3606,7 @@
       "tematica": "A la plancha o al horno",
       "ocasion": null,
       "ninos": true,
-      "foto": "assets/banco-fotos/arroz-cubana.jpg",
+      "foto": "assets/banco-fotos/crema-zanahoria.jpg",
       "pasos": [
         "Precalentar el horno a 200°C.",
         "Cortar {hidrato} y {verdura} en trozos similares y repartir en la bandeja con aceite y sal.",
@@ -3632,7 +3654,7 @@
       "tematica": "Potajes y guisos",
       "ocasion": null,
       "ninos": true,
-      "foto": "assets/banco-fotos/arroz-cubana.jpg",
+      "foto": "assets/banco-fotos/crema-zanahoria.jpg",
       "pasos": [
         "Sofreír ajo y cebolla en la olla con un poco de aceite de oliva.",
         "Añadir {verdura} en trozos pequeños y rehogar 5 minutos.",
@@ -3684,7 +3706,7 @@
       "tematica": "Potajes y guisos",
       "ocasion": null,
       "ninos": true,
-      "foto": "assets/banco-fotos/pasta-carbonara.jpg",
+      "foto": "assets/banco-fotos/ensalada-lentejas.jpg",
       "pasos": [
         "Sofreír ajo, cebolla y un poco de pimentón dulce en la olla.",
         "Añadir {verdura} troceada y rehogar unos minutos.",
@@ -3734,7 +3756,7 @@
       "tematica": "Potajes y guisos",
       "ocasion": null,
       "ninos": true,
-      "foto": "assets/banco-fotos/arroz-cubana.jpg",
+      "foto": "assets/banco-fotos/crema-zanahoria.jpg",
       "pasos": [
         "Poner en la olla {proteina}, hueso de rodilla o similar (opcional) y cubrir con agua fría.",
         "Llevar a hervor, espumar y añadir {verdura} en trozos grandes.",
@@ -3785,7 +3807,7 @@
       "tematica": "Potajes y guisos",
       "ocasion": null,
       "ninos": true,
-      "foto": "assets/banco-fotos/pasta-carbonara.jpg",
+      "foto": "assets/banco-fotos/ensalada-lentejas.jpg",
       "pasos": [
         "Sofreír ajo y cebolla en una cazuela con aceite de oliva.",
         "Añadir {verdura} troceada y rehogar 5 minutos.",
@@ -3835,7 +3857,7 @@
       "tematica": "Arroces y fideuà",
       "ocasion": null,
       "ninos": true,
-      "foto": "assets/banco-fotos/arroz-cubana.jpg",
+      "foto": "assets/banco-fotos/crema-zanahoria.jpg",
       "pasos": [
         "Sofreír {proteina} en la paellera con aceite de oliva hasta dorar.",
         "Añadir {verdura} y un sofrito de tomate y ajo, rehogar bien.",
@@ -3886,7 +3908,7 @@
       "tematica": "Arroces y fideuà",
       "ocasion": null,
       "ninos": true,
-      "foto": "assets/banco-fotos/pasta-carbonara.jpg",
+      "foto": "assets/banco-fotos/ensalada-lentejas.jpg",
       "pasos": [
         "Dorar {proteina} en una cazuela apta para horno con aceite de oliva.",
         "Añadir {verdura} y un sofrito de tomate y ajo, rehogar.",
@@ -3937,7 +3959,7 @@
       "tematica": "Arroces y fideuà",
       "ocasion": null,
       "ninos": true,
-      "foto": "assets/banco-fotos/arroz-cubana.jpg",
+      "foto": "assets/banco-fotos/crema-zanahoria.jpg",
       "pasos": [
         "Sofreír {proteina} y {verdura} en una olla con aceite de oliva.",
         "Añadir un sofrito de tomate y ajo y rehogar 2 minutos.",
@@ -4093,7 +4115,7 @@
       "tematica": "Pasta",
       "ocasion": null,
       "ninos": true,
-      "foto": "assets/banco-fotos/pasta-carbonara.jpg",
+      "foto": "assets/banco-fotos/ensalada-lentejas.jpg",
       "pasos": [
         "Picar la zanahoria, el calabacín y la cebolla muy finos y sofreír con ajo.",
         "Añadir la carne picada mixta de ternera y cerdo y dorar bien deshaciendo los grumos.",
@@ -4139,7 +4161,7 @@
       "tematica": "Pasta",
       "ocasion": null,
       "ninos": true,
-      "foto": "assets/banco-fotos/pasta-carbonara.jpg",
+      "foto": "assets/banco-fotos/ensalada-lentejas.jpg",
       "pasos": [
         "Cocer {hidrato} al dente y reservar con un poco de su agua.",
         "Saltear {verdura} en una sartén amplia con aceite de oliva.",
@@ -4243,7 +4265,7 @@
       "tematica": "Pasta",
       "ocasion": null,
       "ninos": true,
-      "foto": "assets/banco-fotos/salmon-plancha-verduras.jpg",
+      "foto": "assets/banco-fotos/plancha-guarnicion.jpg",
       "pasos": [
         "Sofreír {verdura} picada con ajo y cebolla.",
         "Añadir {proteina} y dorar bien; incorporar tomate triturado y cocer 15 minutos.",
@@ -4335,7 +4357,7 @@
       "tematica": "Pescado y marisco",
       "ocasion": null,
       "ninos": true,
-      "foto": "assets/banco-fotos/salmon-plancha-verduras.jpg",
+      "foto": "assets/banco-fotos/plancha-guarnicion.jpg",
       "pasos": [
         "Precalentar el horno a 200°C.",
         "Cortar {hidrato} en láminas finas y colocar de base en la bandeja con aceite.",
@@ -4378,7 +4400,7 @@
       "tematica": "Huevos y tortillas",
       "ocasion": null,
       "ninos": true,
-      "foto": "assets/banco-fotos/pasta-carbonara.jpg",
+      "foto": "assets/banco-fotos/ensalada-lentejas.jpg",
       "pasos": [
         "Precalentar el horno a 200°C.",
         "Cortar {hidrato} y {verdura} en rodajas y colocar en la bandeja con aceite y sal.",
@@ -4431,7 +4453,7 @@
       "tematica": "Huevos y tortillas",
       "ocasion": null,
       "ninos": true,
-      "foto": "assets/banco-fotos/salmon-plancha-verduras.jpg",
+      "foto": "assets/banco-fotos/plancha-guarnicion.jpg",
       "pasos": [
         "Pelar y cortar {hidrato} en láminas finas.",
         "Confitar {hidrato} en abundante aceite a fuego suave hasta que estén tiernas.",
@@ -4476,7 +4498,7 @@
       "tematica": "Huevos y tortillas",
       "ocasion": null,
       "ninos": true,
-      "foto": "assets/banco-fotos/arroz-cubana.jpg",
+      "foto": "assets/banco-fotos/crema-zanahoria.jpg",
       "pasos": [
         "Saltear {verdura} en una sartén con un poco de aceite hasta que esté tierna.",
         "Batir {proteina} con una pizca de sal.",
@@ -4567,7 +4589,7 @@
       "tematica": "Cremas y sopas",
       "ocasion": null,
       "ninos": true,
-      "foto": "assets/banco-fotos/salmon-plancha-verduras.jpg",
+      "foto": "assets/banco-fotos/plancha-guarnicion.jpg",
       "pasos": [
         "Sofreír cebolla y puerro en una olla con aceite de oliva.",
         "Añadir {verdura} y {hidrato} troceados y rehogar 5 minutos.",
@@ -4616,7 +4638,7 @@
       "tematica": "Cremas y sopas",
       "ocasion": null,
       "ninos": true,
-      "foto": "assets/banco-fotos/arroz-cubana.jpg",
+      "foto": "assets/banco-fotos/crema-zanahoria.jpg",
       "pasos": [
         "Sofreír cebolla en una olla con aceite de oliva.",
         "Añadir {verdura} y {hidrato} troceados y rehogar 5 minutos.",
@@ -4665,7 +4687,7 @@
       "tematica": "Cremas y sopas",
       "ocasion": null,
       "ninos": true,
-      "foto": "assets/banco-fotos/arroz-cubana.jpg",
+      "foto": "assets/banco-fotos/crema-zanahoria.jpg",
       "pasos": [
         "Sofreír cebolla en una olla con aceite de oliva.",
         "Añadir {verdura} y {hidrato} troceados y rehogar 5 minutos.",
@@ -4775,25 +4797,7 @@
         "Mezclar todo en una fuente grande y aliñar con aceite, vinagre y sal.",
         "Servir templado o frío."
       ],
-      "pasosPorOpcion": {
-        "atun-conserva": [
-          "Escurrir el atún en conserva y desmigarlo con un tenedor."
-        ],
-        "huevo": [
-          "Cocer los huevos en un cazo con agua fría; cuando rompa a hervir, contar 10 minutos.",
-          "Enfriarlos bajo el grifo, pelarlos y trocearlos o desmenuzarlos con un tenedor."
-        ],
-        "pollo": [
-          "Salpimentar la pechuga de pollo y hacerla a la plancha 4-5 minutos por cada lado, hasta que esté dorada por fuera y ya no quede rosada por dentro.",
-          "Dejar templar y cortar en dados o tiras."
-        ],
-        "queso-feta": [
-          "Escurrir el queso feta y desmenuzarlo con un tenedor o cortarlo en dados."
-        ],
-        "garbanzos": [
-          "Escurrir y aclarar los garbanzos cocidos bajo el grifo."
-        ]
-      },
+      "pasosPorOpcion": null,
       "grupos": [
         "proteina"
       ],
@@ -4877,7 +4881,7 @@
       "tematica": "Ensaladas completas",
       "ocasion": null,
       "ninos": true,
-      "foto": "assets/banco-fotos/pasta-carbonara.jpg",
+      "foto": "assets/banco-fotos/ensalada-lentejas.jpg",
       "pasos": [
         "Escurrir y enjuagar los garbanzos cocidos.",
         "Cortar {verdura} en dados pequeños.",
@@ -4928,7 +4932,7 @@
       "tematica": "Ensaladas completas",
       "ocasion": null,
       "ninos": true,
-      "foto": "assets/banco-fotos/pasta-carbonara.jpg",
+      "foto": "assets/banco-fotos/ensalada-lentejas.jpg",
       "pasos": [
         "Escurrir las lentejas cocidas.",
         "Cortar {verdura} en dados pequeños.",
@@ -4979,7 +4983,7 @@
       "tematica": "Ensaladas completas",
       "ocasion": null,
       "ninos": true,
-      "foto": "assets/banco-fotos/arroz-cubana.jpg",
+      "foto": "assets/banco-fotos/crema-zanahoria.jpg",
       "pasos": [
         "Cortar {hidrato} en dados y tostar en la sartén o el horno para hacer picatostes.",
         "Cocinar {proteina} a la plancha y cortar en tiras o dados.",
@@ -4998,53 +5002,6 @@
           "huevo"
         ],
         "fijos": null
-      }
-    },
-    {
-      "id": "ensalada-calabacin-nueces-parmesano",
-      "nombre": "Ensalada de calabacín, nueces y parmesano",
-      "roles": [
-        "principal"
-      ],
-      "origen": "nuevo",
-      "tecnicaCoccion": "crudo",
-      "acabado": null,
-      "apta": [
-        "comida",
-        "cena"
-      ],
-      "tiempo_min": 10,
-      "esfuerzo": "rapido",
-      "temporada": "verano",
-      "region": null,
-      "tematica": "Ensaladas completas",
-      "ocasion": null,
-      "ninos": true,
-      "foto": "assets/banco-fotos/ensalada-pasta.jpg",
-      "pasos": [
-        "Cortar el calabacín en láminas muy finas, con mandolina o pelador.",
-        "Tostar las nueces ligeramente en una sartén sin aceite, 2-3 minutos, y trocearlas.",
-        "Disponer las láminas de calabacín en un plato y repartir las nueces troceadas por encima.",
-        "Aliñar con aceite de oliva, un chorrito de limón, sal y pimienta.",
-        "Terminar con virutas de queso parmesano por encima."
-      ],
-      "pasosPorOpcion": null,
-      "grupos": [
-        "proteina",
-        "verdura"
-      ],
-      "ingredientes": {
-        "eje": null,
-        "opciones": null,
-        "fijos": {
-          "proteina": [
-            "nuez",
-            "queso-rallado"
-          ],
-          "verdura": [
-            "calabacin"
-          ]
-        }
       }
     },
     {
@@ -5067,7 +5024,7 @@
       "tematica": "Ensaladas completas",
       "ocasion": null,
       "ninos": true,
-      "foto": "assets/banco-fotos/salmon-plancha-verduras.jpg",
+      "foto": "assets/banco-fotos/plancha-guarnicion.jpg",
       "pasos": [
         "Lavar la quinoa bajo el grifo con un colador fino unos segundos.",
         "Hervir el doble de agua que de quinoa, con una pizca de sal, y cocer 12-15 minutos hasta que absorba el agua; dejar reposar 5 minutos y soltar los granos con un tenedor.",
@@ -5084,7 +5041,7 @@
           "Escurrir el atún en conserva y desmigarlo con un tenedor."
         ],
         "pollo": [
-          "Salpimentar la pechuga de pollo y hacerla a la plancha 4-5 minutos por cada lado, hasta que esté dorada por fuera y ya no quede rosada por dentro.",
+          "Salpimentar la pechuga de pollo y hacerla a la plancha 4-5 minutos por cada lado.",
           "Dejar templar y cortar en dados o tiras."
         ],
         "garbanzos": [
@@ -5129,7 +5086,7 @@
       "tematica": "Pescado y marisco",
       "ocasion": null,
       "ninos": true,
-      "foto": "assets/banco-fotos/arroz-cubana.jpg",
+      "foto": "assets/banco-fotos/crema-zanahoria.jpg",
       "pasos": [
         "Sofreír ajo picado en una cazuela con aceite de oliva.",
         "Añadir un poco de harina, rehogar y mojar con caldo y perejil picado.",
@@ -5176,7 +5133,7 @@
       "tematica": "Pescado y marisco",
       "ocasion": null,
       "ninos": true,
-      "foto": "assets/banco-fotos/salmon-plancha-verduras.jpg",
+      "foto": "assets/banco-fotos/plancha-guarnicion.jpg",
       "pasos": [
         "Cocer o saltear {hidrato}.",
         "Saltear {verdura} en una sartén con un poco de aceite.",
@@ -5261,14 +5218,13 @@
       "tematica": "Pescado y marisco",
       "ocasion": null,
       "ninos": true,
-      "foto": "assets/banco-fotos/pasta-carbonara.jpg",
+      "foto": "assets/banco-fotos/ensalada-lentejas.jpg",
       "pasos": [
-        "Sofreír ajo, cebolla y {verdura} 10-12 minutos a fuego suave, hasta que esté tierno.",
-        "Añadir {hidrato} cascada en trozos irregulares (no cortada a cuchillo, así suelta almidón) y rehogar 2-3 minutos.",
+        "Sofreír ajo, cebolla y {verdura} en una olla con aceite de oliva.",
+        "Añadir {hidrato} cascada en trozos irregulares (para que suelte almidón) y rehogar.",
         "Cubrir con caldo o fumet y cocer 20 minutos hasta que la patata esté tierna.",
         "Añadir {proteina} en dados y cocinar 4-5 minutos, apagando el fuego para que se haga con el calor residual.",
-        "Dejar reposar unos minutos antes de servir.",
-        "Tip: la patata cascada (no cortada) es lo que espesa el caldo sin necesitar nada más."
+        "Dejar reposar unos minutos antes de servir."
       ],
       "pasosPorOpcion": null,
       "grupos": [
@@ -5312,7 +5268,7 @@
       "tematica": "Pescado y marisco",
       "ocasion": null,
       "ninos": false,
-      "foto": "assets/banco-fotos/salmon-plancha-verduras.jpg",
+      "foto": "assets/banco-fotos/plancha-guarnicion.jpg",
       "pasos": [
         "Limpiar {proteina} si no vienen ya limpios.",
         "Cocer o asar {hidrato}.",
@@ -5353,7 +5309,7 @@
       "tematica": "Pescado y marisco",
       "ocasion": null,
       "ninos": true,
-      "foto": "assets/banco-fotos/pasta-carbonara.jpg",
+      "foto": "assets/banco-fotos/ensalada-lentejas.jpg",
       "pasos": [
         "Cocer o saltear {hidrato}.",
         "Cocer al vapor o saltear {verdura}.",
@@ -5393,7 +5349,7 @@
       "tematica": "Pescado y marisco",
       "ocasion": null,
       "ninos": true,
-      "foto": "assets/banco-fotos/arroz-cubana.jpg",
+      "foto": "assets/banco-fotos/crema-zanahoria.jpg",
       "pasos": [
         "Preparar {hidrato} como acompañamiento.",
         "Calentar aceite de oliva con ajo laminado en una cazuela de barro o sartén.",
@@ -5434,7 +5390,7 @@
       "tematica": "Pescado y marisco",
       "ocasion": null,
       "ninos": false,
-      "foto": "assets/banco-fotos/salmon-plancha-verduras.jpg",
+      "foto": "assets/banco-fotos/plancha-guarnicion.jpg",
       "pasos": [
         "Limpiar bien los mejillones, retirando barbas e impurezas.",
         "Sofreír ajo y cebolla, añadir {verdura} triturado y cocer 10 minutos.",
@@ -5480,7 +5436,7 @@
       "tematica": "Comida rápida e informal",
       "ocasion": null,
       "ninos": true,
-      "foto": "assets/banco-fotos/arroz-cubana.jpg",
+      "foto": "assets/banco-fotos/crema-zanahoria.jpg",
       "pasos": [
         "Preparar el relleno de {proteina} con tomate frito y un sofrito de cebolla.",
         "Extender los discos de {hidrato} sobre una superficie limpia.",
@@ -5582,7 +5538,7 @@
       "tematica": "Comida rápida e informal",
       "ocasion": null,
       "ninos": true,
-      "foto": "assets/banco-fotos/salmon-plancha-verduras.jpg",
+      "foto": "assets/banco-fotos/plancha-guarnicion.jpg",
       "pasos": [
         "Cortar {verdura} en bastones para mojar.",
         "Calentar ligeramente {hidrato} si se desea.",
@@ -5721,7 +5677,7 @@
       "tematica": "Comida rápida e informal",
       "ocasion": null,
       "ninos": true,
-      "foto": "assets/banco-fotos/pasta-carbonara.jpg",
+      "foto": "assets/banco-fotos/ensalada-lentejas.jpg",
       "pasos": [
         "Mezclar {proteina} con sal, pimienta y un poco de ajo picado, formar hamburguesas.",
         "Tostar ligeramente {hidrato} por dentro en la sartén o plancha.",
@@ -5768,7 +5724,7 @@
       "tematica": "Comida rápida e informal",
       "ocasion": null,
       "ninos": true,
-      "foto": "assets/banco-fotos/arroz-cubana.jpg",
+      "foto": "assets/banco-fotos/crema-zanahoria.jpg",
       "pasos": [
         "Precalentar el horno a la temperatura máxima con la bandeja dentro.",
         "Estirar la masa de pizza sobre papel de horno.",
@@ -5918,7 +5874,7 @@
       "tematica": "Potajes y guisos",
       "ocasion": null,
       "ninos": true,
-      "foto": "assets/banco-fotos/salmon-plancha-verduras.jpg",
+      "foto": "assets/banco-fotos/plancha-guarnicion.jpg",
       "pasos": [
         "Sofreír ajo en una sartén con aceite de oliva hasta dorar.",
         "Añadir {verdura} y rehogar hasta que reduzca.",
@@ -5968,7 +5924,7 @@
       "tematica": "Carnes de cuchara y horno",
       "ocasion": null,
       "ninos": true,
-      "foto": "assets/banco-fotos/pasta-carbonara.jpg",
+      "foto": "assets/banco-fotos/ensalada-lentejas.jpg",
       "pasos": [
         "Mezclar {proteina} con pan remojado en leche, ajo y perejil picado; formar bolas.",
         "Enharinar ligeramente y dorar las albóndigas en una sartén con aceite.",
@@ -6014,7 +5970,7 @@
       "tematica": "Potajes y guisos",
       "ocasion": null,
       "ninos": true,
-      "foto": "assets/banco-fotos/salmon-plancha-verduras.jpg",
+      "foto": "assets/banco-fotos/plancha-guarnicion.jpg",
       "pasos": [
         "Dorar {proteina} en una olla con aceite de oliva.",
         "Añadir {verdura} y rehogar unos minutos.",
@@ -6066,7 +6022,7 @@
       "tematica": "Verduras y platos de verdura",
       "ocasion": null,
       "ninos": false,
-      "foto": "assets/banco-fotos/pasta-carbonara.jpg",
+      "foto": "assets/banco-fotos/ensalada-lentejas.jpg",
       "pasos": [
         "Cocer {verdura} y {hidrato} en agua con sal hasta que estén tiernos.",
         "Escurrir bien y colocar en una fuente apta para horno.",
@@ -6116,7 +6072,7 @@
       "tematica": "Cremas y sopas",
       "ocasion": null,
       "ninos": true,
-      "foto": "assets/banco-fotos/arroz-cubana.jpg",
+      "foto": "assets/banco-fotos/crema-zanahoria.jpg",
       "pasos": [
         "Remojar el pan en agua unos minutos.",
         "Triturar el tomate maduro con el pan, un diente de ajo, aceite de oliva y un chorrito de vinagre (si tienes medio pimiento o pepino, añádelos).",
@@ -6165,7 +6121,7 @@
       "tematica": "Cremas y sopas",
       "ocasion": null,
       "ninos": true,
-      "foto": "assets/banco-fotos/arroz-cubana.jpg",
+      "foto": "assets/banco-fotos/crema-zanahoria.jpg",
       "pasos": [
         "Remojar pan abundante en agua.",
         "Triturar el tomate con el pan, un diente de ajo pequeño y aceite de oliva hasta que quede una crema espesa y lisa.",
@@ -6266,7 +6222,7 @@
       "tematica": "Comida rápida e informal",
       "ocasion": null,
       "ninos": true,
-      "foto": "assets/banco-fotos/salmon-plancha-verduras.jpg",
+      "foto": "assets/banco-fotos/plancha-guarnicion.jpg",
       "pasos": [
         "Hacer una bechamel espesa: mantequilla, harina y leche, removiendo 8-10 minutos.",
         "Picar muy fino {proteina} e integrarlo en la bechamel; salpimentar.",
@@ -6312,7 +6268,7 @@
       "tematica": "Arroces y fideuà",
       "ocasion": null,
       "ninos": true,
-      "foto": "assets/banco-fotos/arroz-cubana.jpg",
+      "foto": "assets/banco-fotos/crema-zanahoria.jpg",
       "pasos": [
         "Sofreír {proteina} en la paellera o sartén amplia y reservar.",
         "En el mismo aceite, hacer un sofrito con ajo y {verdura}.",
@@ -6407,7 +6363,7 @@
       "tematica": "Potajes y guisos",
       "ocasion": null,
       "ninos": true,
-      "foto": "assets/banco-fotos/pasta-carbonara.jpg",
+      "foto": "assets/banco-fotos/ensalada-lentejas.jpg",
       "pasos": [
         "Sofreír cebolla, ajo y {verdura} picadas en la cazuela.",
         "Añadir el chorizo en rodajas y dar unas vueltas.",
@@ -6456,7 +6412,7 @@
       "tematica": "Potajes y guisos",
       "ocasion": null,
       "ninos": true,
-      "foto": "assets/banco-fotos/pasta-carbonara.jpg",
+      "foto": "assets/banco-fotos/ensalada-lentejas.jpg",
       "pasos": [
         "Si las fabes son secas, remojo de la víspera (con bote, saltar este paso).",
         "Poner las fabes cubiertas de agua fría con el compango entero.",
@@ -6502,7 +6458,7 @@
       "tematica": "Carnes de cuchara y horno",
       "ocasion": null,
       "ninos": true,
-      "foto": "assets/banco-fotos/salmon-plancha-verduras.jpg",
+      "foto": "assets/banco-fotos/plancha-guarnicion.jpg",
       "pasos": [
         "Salpimentar dos filetes finos de ternera por cachopo.",
         "Montar jamón y queso entre los dos filetes y sellar bien los bordes.",
@@ -6541,21 +6497,20 @@
         "comida",
         "cena"
       ],
-      "tiempo_min": 70,
+      "tiempo_min": 45,
       "esfuerzo": "medio",
       "temporada": null,
       "region": "galicia",
       "tematica": "Comida rápida e informal",
       "ocasion": null,
       "ninos": true,
-      "foto": "assets/banco-fotos/pasta-carbonara.jpg",
+      "foto": "assets/banco-fotos/ensalada-lentejas.jpg",
       "pasos": [
-        "Sofreír cebolla abundante y {verdura} 25 minutos a fuego suave, hasta muy tierno.",
-        "Escurrir bien el atún y mezclar con el sofrito templado.",
+        "Hacer un sofrito lento de cebolla abundante y {verdura}.",
+        "Mezclar el sofrito con el atún desmigado.",
         "Extender una lámina de masa, repartir el relleno y cubrir con la otra lámina, sellando los bordes.",
         "Pintar con huevo batido y pinchar el centro.",
-        "Hornear 30-35 minutos a 180°C hasta dorar.",
-        "Tip: masa comprada ahorra ~50 minutos frente a la casera con reposo — para entre semana, compensa."
+        "Hornear 30-35 minutos a 180°C hasta dorar."
       ],
       "pasosPorOpcion": null,
       "grupos": [
@@ -6574,7 +6529,7 @@
             "atun-conserva"
           ],
           "hidrato": [
-            "masa-empanada"
+            "masa-empanadilla"
           ]
         }
       }
@@ -6599,7 +6554,7 @@
       "tematica": "Cremas y sopas",
       "ocasion": null,
       "ninos": true,
-      "foto": "assets/banco-fotos/arroz-cubana.jpg",
+      "foto": "assets/banco-fotos/crema-zanahoria.jpg",
       "pasos": [
         "Rehogar el puerro en rodajas con un poco de aceite.",
         "Añadir la patata en trozos cascados (no cortados del todo, para que suelte fécula).",
@@ -6736,7 +6691,7 @@
       "tematica": "Ensaladas completas",
       "ocasion": null,
       "ninos": true,
-      "foto": "assets/banco-fotos/pasta-carbonara.jpg",
+      "foto": "assets/banco-fotos/ensalada-lentejas.jpg",
       "pasos": [
         "Escurrir y trocear el tomate (pelado en conserva, la versión clásica) en un bol.",
         "Añadir {proteina} y cebolla tierna picada.",
@@ -6880,7 +6835,7 @@
       "tematica": "Verduras y platos de verdura",
       "ocasion": null,
       "ninos": true,
-      "foto": "assets/banco-fotos/salmon-plancha-verduras.jpg",
+      "foto": "assets/banco-fotos/plancha-guarnicion.jpg",
       "pasos": [
         "Cocer papas pequeñas con piel en agua muy salada hasta que estén tiernas.",
         "Escurrir y secar al fuego un par de minutos hasta que la piel se arrugue.",
@@ -6929,7 +6884,7 @@
       "tematica": "Carnes de cuchara y horno",
       "ocasion": null,
       "ninos": true,
-      "foto": "assets/banco-fotos/pasta-carbonara.jpg",
+      "foto": "assets/banco-fotos/ensalada-lentejas.jpg",
       "pasos": [
         "Dorar {proteina} en tiras o desmenuzada.",
         "Sofreír cebolla, ajo y {verdura}.",
@@ -6979,7 +6934,7 @@
       "tematica": "Pescado y marisco",
       "ocasion": null,
       "ninos": true,
-      "foto": "assets/banco-fotos/arroz-cubana.jpg",
+      "foto": "assets/banco-fotos/crema-zanahoria.jpg",
       "pasos": [
         "Cocer la patata y, los últimos 5 minutos, el bacalao desalado.",
         "Machacar la patata con ajo y el bacalao desmigado.",
@@ -7023,7 +6978,7 @@
       "tematica": "Cremas y sopas",
       "ocasion": null,
       "ninos": true,
-      "foto": "assets/banco-fotos/arroz-cubana.jpg",
+      "foto": "assets/banco-fotos/crema-zanahoria.jpg",
       "pasos": [
         "Dorar láminas de ajo en aceite de oliva en una cazuela.",
         "Añadir pimentón, remover y echar el pan en láminas finas.",
@@ -7117,7 +7072,7 @@
       "tematica": "Pescado y marisco",
       "ocasion": null,
       "ninos": true,
-      "foto": "assets/banco-fotos/salmon-plancha-verduras.jpg",
+      "foto": "assets/banco-fotos/plancha-guarnicion.jpg",
       "pasos": [
         "Pochar cebolla abundante en juliana a fuego suave 15 minutos.",
         "Añadir el pimiento en tiras y hacer 5 minutos más.",
@@ -7161,7 +7116,7 @@
       "tematica": "Ensaladas completas",
       "ocasion": null,
       "ninos": true,
-      "foto": "assets/banco-fotos/pasta-carbonara.jpg",
+      "foto": "assets/banco-fotos/ensalada-lentejas.jpg",
       "pasos": [
         "Cocer el pollo (o aprovechar restos de asado) y desmenuzarlo.",
         "Cocer la patata en dados hasta que esté tierna.",
@@ -7211,7 +7166,7 @@
       "tematica": "Arroces y fideuà",
       "ocasion": null,
       "ninos": true,
-      "foto": "assets/banco-fotos/arroz-cubana.jpg",
+      "foto": "assets/banco-fotos/crema-zanahoria.jpg",
       "pasos": [
         "Sofreír cebolla, ajo y una cucharadita de pimentón.",
         "Añadir {verdura} troceada y rehogar unos minutos.",
@@ -7260,7 +7215,7 @@
       "tematica": "Pescado y marisco",
       "ocasion": null,
       "ninos": true,
-      "foto": "assets/banco-fotos/salmon-plancha-verduras.jpg",
+      "foto": "assets/banco-fotos/plancha-guarnicion.jpg",
       "pasos": [
         "Cortar el bacalao desalado en tiras y secarlas bien.",
         "Rebozar en harina y huevo batido (o gabardina con un poco de levadura).",
@@ -7301,7 +7256,7 @@
       "tematica": "Pescado y marisco",
       "ocasion": null,
       "ninos": true,
-      "foto": "assets/banco-fotos/salmon-plancha-verduras.jpg",
+      "foto": "assets/banco-fotos/plancha-guarnicion.jpg",
       "pasos": [
         "Dorar la patata en rodajas finas y el puerro en una cazuela amplia.",
         "Colocar {proteina} encima y salpimentar.",
@@ -7347,7 +7302,7 @@
       "tematica": "Pescado y marisco",
       "ocasion": null,
       "ninos": true,
-      "foto": "assets/banco-fotos/salmon-plancha-verduras.jpg",
+      "foto": "assets/banco-fotos/plancha-guarnicion.jpg",
       "pasos": [
         "Limpiar las truchas abiertas y salpimentar.",
         "Rellenar cada una con un par de lonchas de jamón serrano.",
@@ -7385,7 +7340,7 @@
       "tematica": "Huevos y tortillas",
       "ocasion": null,
       "ninos": true,
-      "foto": "assets/banco-fotos/salmon-plancha-verduras.jpg",
+      "foto": "assets/banco-fotos/plancha-guarnicion.jpg",
       "pasos": [
         "Cortar la patata en bastones o rodajas finas y salar.",
         "Freír la patata en aceite abundante a fuego medio hasta que esté tierna; subir el fuego al final para dorarla y escurrir sobre papel.",
@@ -7478,7 +7433,7 @@
       "tematica": "Comida rápida e informal",
       "ocasion": null,
       "ninos": true,
-      "foto": "assets/banco-fotos/pasta-carbonara.jpg",
+      "foto": "assets/banco-fotos/ensalada-lentejas.jpg",
       "pasos": [
         "Cortar el pan en rebanadas, mejor un poco tostadas.",
         "Frotar con tomate maduro, un hilo de aceite y una pizca de sal.",
@@ -8482,7 +8437,7 @@
       "tematica": "Pescado y marisco",
       "ocasion": null,
       "ninos": true,
-      "foto": "assets/banco-fotos/sepia-plancha.jpg",
+      "foto": null,
       "pasos": [
         "Limpiar y cortar la sepia en trozos o tiras.",
         "Salpimentar y marcar a la plancha con un chorrito de aceite muy caliente, 3-4 minutos.",
@@ -9210,6 +9165,52 @@
           "verdura": [
             "guisantes",
             "pimiento"
+          ]
+        }
+      }
+    },
+    {
+      "id": "ensalada-calabacin-nueces-parmesano",
+      "nombre": "Ensalada de calabacín, nueces y parmesano",
+      "roles": [
+        "principal"
+      ],
+      "origen": "nuevo",
+      "tecnicaCoccion": "crudo",
+      "acabado": null,
+      "apta": [
+        "comida",
+        "cena"
+      ],
+      "tiempo_min": 10,
+      "esfuerzo": "rapido",
+      "temporada": "verano",
+      "region": null,
+      "tematica": "Ensaladas completas",
+      "ocasion": null,
+      "ninos": true,
+      "foto": "assets/banco-fotos/ensalada-pasta.jpg",
+      "pasos": [
+        "Cortar el calabacín en láminas muy finas, con mandolina o pelador.",
+        "Tostar las nueces ligeramente en una sartén sin aceite, 2-3 minutos, y trocearlas.",
+        "Disponer las láminas de calabacín en un plato y repartir las nueces troceadas por encima.",
+        "Aliñar con aceite de oliva, un chorrito de limón, sal y pimienta.",
+        "Terminar con virutas de queso parmesano por encima."
+      ],
+      "grupos": [
+        "proteina",
+        "verdura"
+      ],
+      "ingredientes": {
+        "eje": null,
+        "opciones": null,
+        "fijos": {
+          "proteina": [
+            "nuez",
+            "parmesano"
+          ],
+          "verdura": [
+            "calabacin"
           ]
         }
       }
@@ -10328,6 +10329,10 @@
     {
       "principalId": "fideos-cazuela",
       "complementariaFamilia": "coleslaw"
+    },
+    {
+      "principalId": "ensalada-calabacin-nueces-parmesano",
+      "complementariaFamilia": "hidrato-cocido"
     }
   ],
   "postres": {

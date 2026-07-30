@@ -179,6 +179,21 @@ body.landing-open { overflow: hidden; }
   font-size: var(--fs-aux); text-decoration: underline; cursor: pointer; padding: var(--space-1);
 }
 
+/* Aviso de reinicio de esquema (sesion higiene 30-jul): el estado guardado era de una
+   version anterior o estaba corrupto y se empezo de cero. Card discreta y descartable —
+   ink sobre panel (AAA), dorado solo en el borde (nunca como texto sobre claro, UI_MOBILE §3). */
+.aviso-reinicio {
+  margin: var(--space-3); padding: var(--space-3);
+  background: var(--panel); border: 1px solid var(--gold); border-radius: 12px;
+  display: flex; flex-direction: column; gap: var(--space-2);
+}
+.aviso-reinicio-texto { margin: 0; color: var(--ink); font-size: var(--fs-aux); line-height: 1.45; }
+.aviso-reinicio-cerrar {
+  align-self: flex-end; background: var(--ink); color: var(--panel);
+  border: none; border-radius: 999px; cursor: pointer; font-weight: 700;
+  font-size: var(--fs-aux); padding: var(--space-2) var(--space-4); min-height: 44px;
+}
+
 /* ============================================================
    Onboarding — alta de persona (handoff Claude Design, 2026-07-30)
    ============================================================ */

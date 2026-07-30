@@ -44,10 +44,32 @@
   // ---------------------------------------------------------------
   // Versión de esquema del estado persistido (UPGRADES §6 "localStorage sin versión") — sube
   // cuando el shape de `estado` cambie de una forma que necesite migración activa al cargar.
-  var ESQUEMA_ESTADO = 1;
+  var ESQUEMA_ESTADO = 2;
 
   function estadoVacio() {
     return { nombreFamilia: '', familiaRegion: null, familia: [], ausenciasPuntuales: {}, plan: null, planSiguiente: null, ocultas: [], favoritas: [], propias: [], compra: { marcados: [], marcadosSiguiente: [] }, valoraciones: {}, historialPrincipales: {}, historialPares: {}, cambios: {}, paresComplementariaCambiados: {}, cole: null, semillaRegeneracion: 0, esquemaVersion: ESQUEMA_ESTADO };
+  }
+
+  // v1 → v2 (handoff "Alta de persona", 2026-07-30). Primera migración activa
+  // real del esquema. Dos cambios de forma en el miembro:
+  //   · `alergias` pasa de texto libre a array de ids del catálogo → el texto de
+  //     antes se conserva íntegro en `restricciones` ("Otras restricciones" de
+  //     la ficha). Nada escrito por la familia se pierde.
+  //   · aparece `estilo` (4 opciones del handoff), derivado del `dieta` que ya
+  //     tuviera. `dieta` NO se toca: sigue siendo lo que consume el motor v3.
+  function migrarPersonasV2(est) {
+    (est.familia || []).forEach(function (m) {
+      if (typeof m.alergias === 'string') {
+        var texto = m.alergias.trim();
+        if (texto && !(m.restricciones || '').trim()) m.restricciones = texto;
+      }
+      if (!Array.isArray(m.alergias)) m.alergias = [];
+      if (!m.estilo) m.estilo = UI.estiloDeMiembro(m);
+      if (!m.gustos) m.gustos = {};
+      if (!m.pComida) m.pComida = 'primero-segundo';
+      if (!m.pCena) m.pCena = 'ligera';
+    });
+    est.esquemaVersion = 2;
   }
 
   function cargarEstado() {
@@ -55,17 +77,16 @@
       var raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) return estadoVacio();
       var parsed = JSON.parse(raw);
+      // La versión se lee de `parsed`, NUNCA del objeto ya fusionado: estadoVacio()
+      // trae esquemaVersion = la actual, así que un estado legacy SIN la clave
+      // heredaría la versión nueva y se saltaría su propia migración.
+      var versionGuardada = parsed.esquemaVersion || 1;
       var estadoFinal = Object.assign(estadoVacio(), parsed);
-      // Versión de esquema (deuda UPGRADES §6): un estado guardado SIN esquemaVersion (legacy,
-      // pre-obra) se queda con el default de estadoVacio (=1) gracias al propio Object.assign de
-      // arriba (parsed no trae la clave -> no la pisa) — el resumen canónico del motor ya es
-      // derive-on-read (resumenDeMenu), así que hoy no hace falta ninguna migración activa. Punto
-      // de enganche para cuando sí haga falta una migración real:
-      // futuras migraciones: if (parsed.esquemaVersion < ESQUEMA_ESTADO) { ...migrar aquí...; estadoFinal.esquemaVersion = ESQUEMA_ESTADO; }
       // Si llega una versión MAYOR que la que conoce este cliente (cliente viejo abriendo un
       // estado ya migrado por una versión nueva de la app en otro dispositivo sincronizado): NO
       // tocar nada, dejar el valor tal cual venga — un cliente viejo no debe machacar el progreso
       // de la migración de uno nuevo.
+      if (versionGuardada < 2) migrarPersonasV2(estadoFinal);
       return estadoFinal;
     } catch (e) {
       return estadoVacio();
@@ -332,7 +353,12 @@
     else if (vistaActual === 'recetas') cont.innerHTML = UI.renderRecetasVista(estado, BANCO, filtroRecetas, busquedaRecetas, recetasView);
     else if (vistaActual === 'compra') cont.innerHTML = UI.renderCompraVista(estado, estado.plan, BANCO, rangoCompra, categoriasAbiertasCompra);
     else if (vistaActual === 'descubrir') cont.innerHTML = UI.renderDescubrirVista(estado, BANCO);
-    else if (vistaActual === 'perfil') cont.innerHTML = (vistaPerfil === 'ficha' && miembroAbierto) ? UI.renderVistaMiembro(estado, BANCO, miembroAbierto, obtenerMiembroDispositivo()) : UI.renderPerfilVista(estado);
+    else if (vistaActual === 'perfil') cont.innerHTML = (vistaPerfil === 'ficha' && personaDraft)
+      ? UI.renderVistaMiembro(estado, BANCO, personaDraft, {
+          seccion: fichaSeccion, esNueva: fichaEsNueva, guardado: fichaGuardado,
+          miembroDispositivoId: obtenerMiembroDispositivo(), color: colorDeMiembro(personaDraft.id)
+        })
+      : UI.renderPerfilVista(estado);
     else if (vistaActual === 'batch') cont.innerHTML = UI.renderBatch();
     else if (vistaActual === 'receta') cont.innerHTML = !recetaAbierta ? '' :
       (recetaAbierta.plantillaId ? UI.renderVistaRecetaPlantilla(estado, BANCO, recetaAbierta.plantillaId) : UI.renderVistaReceta(estado, BANCO, planActivo(), recetaAbierta.dia, recetaAbierta.tipo));
@@ -565,6 +591,11 @@
       if (modoDemo) { if (remoto) snapshotDuranteDemo = remoto; return; } // no clobbear el ejemplo; se aplica al salir
       if (remoto) {
         estado = Object.assign(estadoVacio(), remoto);
+        // el snapshot puede venir de un dispositivo con la app vieja: mismo
+        // enganche de migración que cargarEstado (y misma trampa: la versión se
+        // lee del remoto crudo, no del fusionado) — si no, la ficha leería
+        // `alergias` como texto donde ahora espera un array
+        if ((remoto.esquemaVersion || 1) < 2) migrarPersonasV2(estado);
         try { localStorage.setItem(STORAGE_KEY, JSON.stringify(estado)); } catch (e) { /* sin caché local */ } // sin re-disparar guardarRemotoDebounced
       }
       if (primera && onPrimerSnapshot) { primera = false; onPrimerSnapshot(); }
@@ -738,11 +769,7 @@
   // ---------------------------------------------------------------
   function aterrizarSegunFamilia() {
     if (!estado.familia.length) {
-      document.getElementById('wizard-screen').hidden = false;
-      document.body.classList.add('wizard-open');
-      wizardNombreFamilia = '';
-      wizardMiembros = [];
-      mostrarWizardBienvenida();
+      arrancarOnboarding();
     } else {
       asegurarPlanVigente();
       render();
@@ -799,7 +826,9 @@
     // si llegó un snapshot remoto mientras se miraba el ejemplo, aplicarlo ahora
     // (mismo tratamiento que en iniciarEscuchaRemota — el remoto es la verdad)
     if (snapshotDuranteDemo) {
+      var versionSnapshot = snapshotDuranteDemo.esquemaVersion || 1;
       estado = Object.assign(estadoVacio(), snapshotDuranteDemo);
+      if (versionSnapshot < 2) migrarPersonasV2(estado);
       snapshotDuranteDemo = null;
       try { localStorage.setItem(STORAGE_KEY, JSON.stringify(estado)); } catch (e) { /* sin caché local */ }
     }
@@ -808,157 +837,339 @@
   }
 
   // ---------------------------------------------------------------
-  // Wizard — alta conversacional en 3 pasos: bienvenida (nombre de familia)
-  // -> hub (quién vive en casa) -> form (ficha de una persona). Una pregunta
-  // por pantalla — ver DOC_FUNCIONAL_SAAS.md §4.1 y el encargo de Roger
-  // 2026-07-13 ("así quiero una app": conversacional, no formulario).
+  // Persona — asistente de alta (onboarding) y ficha en Familia
   // ---------------------------------------------------------------
-  var wizardMiembros = [];
-  var wizardNombreFamilia = '';
-  var wizardRegion = ''; // región opcional del paso 1 (tramo 1, 2026-07-17)
+  // Handoff "Alta de persona" (Claude Design, 2026-07-30). Las dos superficies
+  // editan LA MISMA persona en curso — `personaDraft` — con las mismas acciones
+  // (`persona-set`, `persona-alergia`, `persona-gusto`, `persona-servicio`).
+  // Lo único que cambia es quién repinta y cuándo se persiste:
+  //   · onboarding → la persona no existe hasta "Añadir otra" / "Ya estamos
+  //     todos"; se acumulan en onbMiembros y se escriben de golpe al terminar.
+  //   · ficha → borrador sobre un miembro real; se confirma con "Guardar
+  //     cambios" (que NO saca de la ficha) o "Guardar y volver a la familia".
+  var ONB_PASO_NOMBRE = 1, ONB_PASO_FICHA = 7, ONB_PASO_FIN = 8; // 2-6 = pasos 1-5 de la persona
+  var onbPaso = ONB_PASO_NOMBRE;
+  var onbNombreFamilia = '';
+  var onbRegion = '';
+  var onbMiembros = [];
 
-  // contexto compartido del formulario de miembro (wizard hub vs sheet Familia)
-  var formContexto = 'wizard'; // 'wizard' | 'familia'
-  var formEditId = null;
-  var formFotoActual = null;
+  var personaDraft = null;
+  var personaSuperficie = 'onboarding'; // 'onboarding' | 'ficha' — a quién repinta
+  var fichaSeccion = null;              // bloque abierto del acordeón (1-5) o null
+  var fichaEsNueva = false;
+  var fichaGuardado = false;            // confirmación inline "Cambios guardados"
+  var fichaGuardadoTimer = null;
 
-  function ocultarPasosWizard() {
-    document.getElementById('wizard-bienvenida').hidden = true;
-    document.getElementById('wizard-hub').hidden = true;
-    document.getElementById('wizard-form').hidden = true;
+  // Mismo color de avatar que le toca en la rejilla de Familia (por posición) —
+  // así la ficha no cambia de color respecto a la tarjeta desde la que se abre.
+  function colorDeMiembro(id) {
+    var i = estado.familia.findIndex(function (m) { return m.id === id; });
+    return UI.colorMiembro(i === -1 ? estado.familia.length : i);
   }
 
-  function mostrarWizardBienvenida() {
-    ocultarPasosWizard();
-    var el = document.getElementById('wizard-bienvenida');
-    el.hidden = false;
-    el.innerHTML = UI.renderWizardBienvenida(wizardNombreFamilia, wizardRegion);
+  function personaVacia() {
+    return {
+      id: null, nombre: '', foto: null, sexo: 'mujer', anioNacimiento: null, altura: null, peso: null,
+      actividad: 'media', objetivo: 'mantenimiento',
+      estilo: '', alergias: [], restricciones: '', gustos: {}, leGusta: '', noLeGusta: '',
+      pComida: 'primero-segundo', pCena: 'ligera',
+      dieta: 'omnivora', vetos: [], patron: patronPorDefecto()
+    };
   }
 
-  function wizardSiguienteBienvenida() {
-    var el = document.getElementById('wz-nombre-familia');
-    wizardNombreFamilia = el ? el.value.trim() : '';
-    mostrarWizardHub();
+  // Un miembro guardado antes del handoff no trae los campos nuevos: se
+  // completan al abrirlo (mismo criterio que la migración de esquema, pero para
+  // los que llegan por sync desde un cliente viejo).
+  function normalizarPersona(m) {
+    var base = personaVacia();
+    var d = Object.assign(base, m || {});
+    d.estilo = UI.estiloDeMiembro(d);
+    d.alergias = Array.isArray(d.alergias) ? d.alergias.slice() : [];
+    d.gustos = Object.assign({}, d.gustos || {});
+    d.vetos = Array.isArray(d.vetos) ? d.vetos.slice() : [];
+    d.patron = { comida: UI.patronSeguro(d).comida.slice(), cena: UI.patronSeguro(d).cena.slice() };
+    return d;
   }
 
-  function mostrarWizardHub() {
-    ocultarPasosWizard();
-    var el = document.getElementById('wizard-hub');
-    el.hidden = false;
-    el.innerHTML = UI.renderWizardHub(wizardNombreFamilia, wizardMiembros);
+  // ---------------------------------------------------------------
+  // Onboarding — render de la pantalla activa
+  // ---------------------------------------------------------------
+  function mostrarOnboarding() {
+    var pantalla = document.getElementById('wizard-screen');
+    pantalla.hidden = false;
+    document.body.classList.add('wizard-open');
+    pantalla.classList.toggle('wizard-screen-paso', onbPaso >= 2 && onbPaso <= 6);
+    if (onbPaso === ONB_PASO_NOMBRE) pantalla.innerHTML = UI.renderOnbNombreFamilia(onbNombreFamilia, onbRegion);
+    else if (onbPaso === ONB_PASO_FICHA) pantalla.innerHTML = UI.renderOnbFicha(personaDraft, onbMiembros);
+    else if (onbPaso === ONB_PASO_FIN) pantalla.innerHTML = UI.renderOnbFin(onbNombreFamilia, onbMiembros);
+    else pantalla.innerHTML = UI.renderOnbPersona(onbPaso - 1, personaDraft, onbMiembros.length + 1);
+    refrescarIconos();
+    // cambiar de paso reinicia el scroll (handoff §Interactions) — el contenedor
+    // que scrollea es el interior, no la ventana
+    var scroller = pantalla.querySelector('.onb-scroll');
+    if (scroller) scroller.scrollTop = 0;
   }
 
-  function mostrarWizardForm(miembroId) {
-    formContexto = 'wizard';
-    formEditId = miembroId || null;
-    var existente = miembroId ? wizardMiembros.find(function (m) { return m.id === miembroId; }) : null;
-    formFotoActual = existente ? (existente.foto || null) : null;
-    ocultarPasosWizard();
-    var formEl = document.getElementById('wizard-form');
-    formEl.hidden = false;
-    var tituloExtra = existente ? '<h1 class="wizard-pregunta">Editar a ' + UI.escapeHtml(existente.nombre) + '</h1>' : '';
-    formEl.innerHTML = tituloExtra + UI.renderFormMiembroCompleto(existente, !existente);
+  function arrancarOnboarding() {
+    onbPaso = ONB_PASO_NOMBRE;
+    onbNombreFamilia = estado.nombreFamilia || '';
+    onbRegion = estado.familiaRegion || '';
+    onbMiembros = [];
+    personaDraft = personaVacia();
+    personaSuperficie = 'onboarding';
+    mostrarOnboarding();
   }
 
-  function wizardQuitarMiembro(id) {
-    wizardMiembros = wizardMiembros.filter(function (m) { return m.id !== id; });
-    mostrarWizardHub();
+  function onbFamiliaSiguiente() {
+    var el = document.getElementById('onb-nombre-familia');
+    onbNombreFamilia = el ? el.value.trim() : '';
+    if (!onbNombreFamilia) return; // CTA en gris, sin mensaje de error (handoff)
+    onbPaso = 2;
+    mostrarOnboarding();
   }
 
-  function wizardGenerar() {
-    if (!wizardMiembros.length) return;
-    estado.nombreFamilia = wizardNombreFamilia.trim();
-    estado.familiaRegion = wizardRegion || null;
-    estado.familia = wizardMiembros.slice();
+  function onbPersonaSiguiente() {
+    var paso = onbPaso - 1;
+    if (!UI.pasoPersonaValido(paso, personaDraft)) return;
+    onbPaso = onbPaso === 6 ? ONB_PASO_FICHA : onbPaso + 1;
+    mostrarOnboarding();
+  }
+
+  function onbPersonaAtras() {
+    onbPaso = Math.max(ONB_PASO_NOMBRE, onbPaso - 1);
+    mostrarOnboarding();
+  }
+
+  // "Editar" desde la ficha resumen: salta al paso conservando lo introducido
+  function onbFichaEditar(paso) {
+    onbPaso = paso + 1;
+    mostrarOnboarding();
+  }
+
+  // Convierte el borrador en miembro de la familia en curso. Devuelve false si
+  // no hay nombre — el asistente no deja llegar aquí sin él, pero "Ya estamos
+  // todos" sí puede pulsarse con el borrador a medias.
+  function onbCerrarPersona() {
+    var nombre = (personaDraft.nombre || '').trim();
+    if (!nombre) return false;
+    var miembro = Object.assign({}, personaDraft, {
+      id: generarId('m'),
+      nombre: nombre,
+      dieta: UI.estiloADieta(personaDraft.estilo)
+    });
+    onbMiembros.push(miembro);
+    return true;
+  }
+
+  function onbAnadirOtra() {
+    if (!onbCerrarPersona()) return;
+    personaDraft = personaVacia();
+    onbPaso = 2;
+    mostrarOnboarding();
+  }
+
+  function onbQuitarMiembro(id) {
+    onbMiembros = onbMiembros.filter(function (m) { return m.id !== id; });
+    mostrarOnboarding();
+  }
+
+  function onbTerminar() {
+    onbCerrarPersona(); // el borrador en pantalla cuenta como una persona más
+    if (!onbMiembros.length) return;
+    estado.nombreFamilia = onbNombreFamilia.trim();
+    estado.familiaRegion = onbRegion || null;
+    estado.familia = onbMiembros.slice();
     estado.plan = E.generarSemana(estado, BANCO, BANCO, 0, null, null, E.fechaLocalISO(new Date()));
     generarPlanSiguiente();
     guardarEstado();
+    personaDraft = null;
+    onbPaso = ONB_PASO_FIN;
+    mostrarOnboarding();
+  }
+
+  function onbVerSemana() {
     document.getElementById('wizard-screen').hidden = true;
     document.body.classList.remove('wizard-open');
-    wizardMiembros = [];
+    onbMiembros = [];
     irAVista('semana');
   }
 
   // ---------------------------------------------------------------
-  // Formulario de miembro compartido — leer/guardar/cancelar (wizard y sheet Familia)
+  // Persona — acciones compartidas por las dos superficies
   // ---------------------------------------------------------------
-  function leerFormMiembroCompleto() {
-    var val = function (id) { var el = document.getElementById(id); return el ? el.value : ''; };
-    var nombre = val('mf-nombre').trim();
-    var sexo = val('mf-sexo') || 'mujer';
-    var anioActual = new Date().getFullYear();
-    var anio = parseInt(val('mf-anio'), 10);
-    if (!nombre || !anio || isNaN(anio) || anio < 1920 || anio > anioActual) return null;
-    var datos = {
-      nombre: nombre, sexo: sexo, anioNacimiento: anio,
-      actividad: val('mf-actividad') || ((anioActual - anio) >= 12 ? 'baja' : 'media'), dieta: val('mf-dieta') || 'omnivora',
-      foto: formFotoActual || null
-    };
-    // coma decimal (teclado iOS) → punto; '' o NaN quedan fuera (audit 2026-07-20)
-    var altura = Number(String(val('mf-altura')).replace(',', '.')); if (altura) datos.altura = altura;
-    var peso = Number(String(val('mf-peso')).replace(',', '.')); if (peso) datos.peso = peso;
-    return datos;
+  function repintarPersona() {
+    if (personaSuperficie === 'ficha') render();
+    else mostrarOnboarding();
   }
 
-  function guardarFormMiembro() {
-    var datos = leerFormMiembroCompleto();
-    if (!datos) { alert('Nombre, sexo y año de nacimiento son obligatorios.'); return; }
-    if (formContexto === 'wizard') {
-      if (formEditId) {
-        var m = wizardMiembros.find(function (x) { return x.id === formEditId; });
-        if (m) Object.assign(m, datos);
-      } else {
-        wizardMiembros.push(Object.assign({ id: generarId('m'), vetos: [], patron: patronPorDefecto() }, datos));
-      }
-      mostrarWizardHub();
-    } else {
-      if (formEditId) {
-        var m2 = estado.familia.find(function (x) { return x.id === formEditId; });
-        if (m2) Object.assign(m2, datos);
-      } else {
-        estado.familia.push(Object.assign({ id: generarId('m'), vetos: [], patron: patronPorDefecto() }, datos));
-      }
-      guardarEstado();
-      cerrarSheet();
+  // Escribir en un input NO repinta (perdería el foco a media palabra). Solo se
+  // refresca lo que depende del nombre en vivo: la inicial del avatar y el
+  // estado del CTA (handoff: el paso 1 solo es válido con nombre).
+  function refrescarPersonaLigero() {
+    var inicial = (personaDraft && (personaDraft.nombre || '').trim().charAt(0).toUpperCase()) || '?';
+    document.querySelectorAll('.onb-cab-avatar, .onb-foto-inicial, .per-foto-inicial').forEach(function (el) {
+      if (!el.style.backgroundImage) el.textContent = inicial;
+    });
+    var titulo = document.querySelector('.per-identidad-nombre');
+    if (titulo) titulo.textContent = (personaDraft.nombre || '').trim() || I18N.t('nuevo_miembro');
+    var cta = document.querySelector('.onb-cta-midnight');
+    if (cta) {
+      var valido = UI.pasoPersonaValido(onbPaso - 1, personaDraft);
+      cta.classList.toggle('onb-cta-off', !valido);
+      if (valido) cta.removeAttribute('aria-disabled'); else cta.setAttribute('aria-disabled', 'true');
     }
   }
 
-  function cancelarFormMiembro() {
-    if (formContexto === 'wizard') mostrarWizardHub();
-    else cerrarSheet();
+  function personaSet(campo, valor) {
+    if (!personaDraft) return;
+    personaDraft[campo] = valor;
+    // el estilo de vida es el único campo del handoff que alimenta al motor hoy
+    if (campo === 'estilo') personaDraft.dieta = UI.estiloADieta(valor);
+    repintarPersona();
   }
 
-  function abrirFormMiembroEnSheet(miembroId) {
-    formContexto = 'familia';
-    formEditId = miembroId || null;
-    var existente = miembroId ? estado.familia.find(function (m) { return m.id === miembroId; }) : null;
-    formFotoActual = existente ? (existente.foto || null) : null;
-    abrirSheet(UI.sheetHead(existente ? 'Editar miembro' : I18N.t('nuevo_miembro')) +
-      '<div class="sheet-body">' + UI.renderFormMiembroCompleto(existente, !existente) + '</div>');
+  // Números: coma decimal del teclado iOS → punto; vacío borra el dato (mismo
+  // criterio que actualizarCampoMiembro, que ya pagó ese bug).
+  var CAMPOS_NUMERICOS = { altura: 1, peso: 1, anioNacimiento: 1 };
+  function personaSetTexto(campo, valor) {
+    if (!personaDraft) return;
+    if (CAMPOS_NUMERICOS[campo]) {
+      var n = Number(String(valor).replace(',', '.'));
+      if (!valor || isNaN(n)) personaDraft[campo] = null;
+      else if (campo === 'anioNacimiento' && (n < 1920 || n > new Date().getFullYear())) return;
+      else personaDraft[campo] = n;
+    } else personaDraft[campo] = valor;
   }
 
-  // #mf-foto-preview es un <button class="foto-tap"> con spans internos (iniciales +
-  // icono cámara en vacío, o "Cambiar" superpuesto sobre la foto) — el contenido
-  // interno lo construye UI.fotoTapInner (el mismo helper de los renders), aquí
-  // solo se gestiona el background y el botón "Quitar foto", que es un hermano
-  // fuera del círculo (mostrar/ocultar todo el nodo, no solo un flag).
-  function actualizarPreviewFotoForm() {
-    var el = document.getElementById('mf-foto-preview');
-    if (!el) return;
-    var btnQuitar = document.getElementById('mf-foto-quitar');
-    var nombreEl = document.getElementById('mf-nombre');
-    el.style.backgroundImage = formFotoActual ? "url('" + formFotoActual + "')" : 'none';
-    el.innerHTML = UI.fotoTapInner({ foto: formFotoActual, nombre: nombreEl ? nombreEl.value : '' });
-    el.setAttribute('aria-label', formFotoActual ? 'Cambiar foto' : 'Añadir foto');
-    if (btnQuitar) btnQuitar.hidden = !formFotoActual;
+  function personaToggleAlergia(id) {
+    var a = personaDraft.alergias || (personaDraft.alergias = []);
+    var i = a.indexOf(id);
+    if (i === -1) a.push(id); else a.splice(i, 1);
+    repintarPersona();
   }
 
-  function quitarFotoMiembro(id) {
+  // 3 estados por toque: neutro → 1 me encanta → 2 mejor no → neutro
+  function personaCicloGusto(id) {
+    var g = personaDraft.gustos || (personaDraft.gustos = {});
+    var siguiente = ((g[id] || 0) + 1) % 3;
+    if (siguiente === 0) delete g[id]; else g[id] = siguiente;
+    repintarPersona();
+  }
+
+  function personaToggleServicio(tipo, dia) {
+    var patron = UI.patronSeguro(personaDraft);
+    personaDraft.patron = { comida: patron.comida.slice(), cena: patron.cena.slice() };
+    personaDraft.patron[tipo][dia] = personaDraft.patron[tipo][dia] === 'casa' ? 'fuera' : 'casa';
+    repintarPersona();
+  }
+
+  var TODOS_CASA = ['casa', 'casa', 'casa', 'casa', 'casa', 'casa', 'casa'];
+  function personaServiciosPreset(preset) {
+    var patron = UI.patronSeguro(personaDraft);
+    var quitar = function (fila, desde, hasta) {
+      return fila.map(function (v, i) { return (i >= desde && i <= hasta) ? 'fuera' : v; });
+    };
+    if (preset === 'comidas-lv') personaDraft.patron = { comida: quitar(patron.comida, 0, 4), cena: patron.cena.slice() };
+    else if (preset === 'finde') personaDraft.patron = { comida: quitar(patron.comida, 5, 6), cena: quitar(patron.cena, 5, 6) };
+    else personaDraft.patron = { comida: TODOS_CASA.slice(), cena: TODOS_CASA.slice() };
+    repintarPersona();
+  }
+
+  // ---------------------------------------------------------------
+  // Ficha de persona en Familia — borrador + guardado explícito
+  // ---------------------------------------------------------------
+  function abrirMiembroFicha(id) {
     var m = estado.familia.find(function (x) { return x.id === id; });
     if (!m) return;
-    delete m.foto;
-    guardarEstado();
+    personaDraft = normalizarPersona(m);
+    personaSuperficie = 'ficha';
+    fichaEsNueva = false;
+    fichaSeccion = null;
+    fichaGuardado = false;
+    miembroAbierto = id;
+    vistaPerfil = 'ficha';
     render();
+    window.scrollTo(0, 0); // ver irAVista
+  }
+
+  // Miembro nuevo desde Familia: se abre la ficha con Básicos ya desplegado
+  // (handoff §Interactions) — nadie tiene que adivinar por dónde empezar.
+  function nuevoMiembroFicha() {
+    personaDraft = personaVacia();
+    personaSuperficie = 'ficha';
+    fichaEsNueva = true;
+    fichaSeccion = 1;
+    fichaGuardado = false;
+    miembroAbierto = null;
+    vistaPerfil = 'ficha';
+    render();
+    window.scrollTo(0, 0);
+  }
+
+  function cerrarMiembroFicha() {
+    vistaPerfil = 'lista';
+    miembroAbierto = null;
+    personaDraft = null;
+    personaSuperficie = 'onboarding';
+    fichaGuardado = false;
+    render();
+    window.scrollTo(0, 0); // ver irAVista
+  }
+
+  function fichaToggleSeccion(n) {
+    fichaSeccion = fichaSeccion === n ? null : n; // solo un bloque abierto a la vez
+    render();
+  }
+
+  // Escribe el borrador sobre la familia real. Devuelve false si falta el
+  // nombre — sin nombre no hay miembro que guardar.
+  function fichaPersistir() {
+    if (!personaDraft) return false;
+    var nombre = (personaDraft.nombre || '').trim();
+    if (!nombre) { alert('Ponle un nombre a esta persona antes de guardar.'); return false; }
+    personaDraft.nombre = nombre;
+    // el bloque Estilo de vida no es obligatorio en la ficha (sí en el asistente):
+    // si no se ha tocado, se consolida el que ya implicaba su `dieta` — nunca ''
+    personaDraft.estilo = UI.estiloDeMiembro(personaDraft);
+    personaDraft.dieta = UI.estiloADieta(personaDraft.estilo);
+    if (fichaEsNueva || !personaDraft.id) {
+      personaDraft.id = personaDraft.id || generarId('m');
+      estado.familia.push(Object.assign({}, personaDraft));
+      miembroAbierto = personaDraft.id;
+      fichaEsNueva = false;
+    } else {
+      var i = estado.familia.findIndex(function (x) { return x.id === personaDraft.id; });
+      if (i === -1) estado.familia.push(Object.assign({}, personaDraft));
+      else estado.familia[i] = Object.assign({}, estado.familia[i], personaDraft);
+    }
+    guardarEstado();
+    return true;
+  }
+
+  // "Guardar cambios" persiste y SE QUEDA en la ficha (ajuste pedido por Roger,
+  // recogido en el README del handoff): cierra el bloque abierto y muestra la
+  // confirmación inline ~1,8 s para poder seguir editando otros bloques.
+  function fichaGuardar() {
+    if (!fichaPersistir()) return;
+    fichaSeccion = null;
+    fichaGuardado = true;
+    render();
+    clearTimeout(fichaGuardadoTimer);
+    fichaGuardadoTimer = setTimeout(function () {
+      fichaGuardado = false;
+      if (vistaPerfil === 'ficha') render();
+    }, 1800);
+  }
+
+  function fichaGuardarYVolver() {
+    if (!fichaPersistir()) return;
+    cerrarMiembroFicha();
+  }
+
+  function quitarFotoPersona() {
+    if (!personaDraft) return;
+    personaDraft.foto = null;
+    repintarPersona();
   }
 
   // ---------------------------------------------------------------
@@ -1097,20 +1308,6 @@
   function cerrarRecetaDetalle() {
     vistaActual = vistaAnterior;
     recetaAbierta = null;
-    render();
-    window.scrollTo(0, 0); // ver irAVista
-  }
-
-  function abrirMiembroFicha(id) {
-    miembroAbierto = id;
-    vistaPerfil = 'ficha';
-    render();
-    window.scrollTo(0, 0); // ver irAVista
-  }
-
-  function cerrarMiembroFicha() {
-    vistaPerfil = 'lista';
-    miembroAbierto = null;
     render();
     window.scrollTo(0, 0); // ver irAVista
   }
@@ -1317,29 +1514,9 @@
     guardarEstado();
     vistaPerfil = 'lista';
     miembroAbierto = null;
+    personaDraft = null; // si no, el borrador del miembro borrado seguiría vivo
+    personaSuperficie = 'onboarding';
     render();
-  }
-
-  function togglePatron(id, tipo, diaIdx, btn) {
-    var m = estado.familia.find(function (x) { return x.id === id; });
-    if (!m) return;
-    var ciclo = ['casa', 'fuera', 'cole'];
-    var actual = m.patron[tipo][diaIdx];
-    m.patron[tipo][diaIdx] = ciclo[(ciclo.indexOf(actual) + 1) % ciclo.length];
-    guardarEstado();
-    // re-pintar SOLO el grid tocado — reconstruir el sheet entero por cada tap
-    // (con vetos de 57 ingredientes × miembro) hacía lag en taps consecutivos
-    var grid = btn && btn.closest('.patron-grid');
-    if (grid) grid.outerHTML = UI.renderPatronGrid(m, tipo);
-    else render();
-  }
-
-  function toggleVeto(miembroId, ingredienteId) {
-    var m = estado.familia.find(function (x) { return x.id === miembroId; });
-    if (!m) return;
-    var idx = m.vetos.indexOf(ingredienteId);
-    if (idx === -1) m.vetos.push(ingredienteId); else m.vetos.splice(idx, 1);
-    guardarEstado();
   }
 
   // el sheet de categoría de Descubrir vive fuera de render() — si el corazón/
@@ -1455,53 +1632,32 @@
     'sync-borrar': function () { pedirConfirmacionBorrado(); },
     'sync-borrar-confirmar': function () { confirmarBorrado(); },
 
-    'wizard-siguiente-bienvenida': function () { wizardSiguienteBienvenida(); },
-    'wizard-volver-bienvenida': function () { mostrarWizardBienvenida(); },
-    'wizard-abrir-form': function () { mostrarWizardForm(null); },
-    'wizard-editar-miembro': function (btn) { mostrarWizardForm(btn.dataset.id); },
-    'wizard-quitar-miembro': function (btn) { wizardQuitarMiembro(btn.dataset.id); },
-    'wizard-generar': function () { wizardGenerar(); },
+    // Onboarding (handoff "Alta de persona"): nombre de familia -> asistente de
+    // 5 pasos por persona -> ficha resumen -> fin.
+    'onb-familia-siguiente': function () { onbFamiliaSiguiente(); },
+    'onb-persona-siguiente': function () { onbPersonaSiguiente(); },
+    'onb-persona-atras': function () { onbPersonaAtras(); },
+    'onb-ficha-editar': function (btn) { onbFichaEditar(Number(btn.dataset.paso)); },
+    'onb-anadir-otra': function () { onbAnadirOtra(); },
+    'onb-quitar-miembro': function (btn) { onbQuitarMiembro(btn.dataset.id); },
+    'onb-terminar': function () { onbTerminar(); },
+    'onb-ver-semana': function () { onbVerSemana(); },
 
-    'mf-guardar': function () { guardarFormMiembro(); },
-    'mf-cancelar': function () { cancelarFormMiembro(); },
-    'mf-subir-foto': function () { var el = document.getElementById('mf-foto-input'); if (el) el.click(); },
-    'mf-quitar-foto': function () { formFotoActual = null; actualizarPreviewFotoForm(); },
-    // chip de sexo/actividad/dieta en el form modal (alta/edición): sin re-render —
-    // solo escribe el input hidden y refresca las clases activas del propio grupo
-    // (mismo data-campo-id), así el usuario no pierde el resto del form a medio rellenar.
-    'mf-set-campo': function (btn) {
-      var campoId = btn.dataset.campoId;
-      var hidden = document.getElementById(campoId);
-      if (hidden) hidden.value = btn.dataset.valor;
-      var grupo = btn.parentElement;
-      if (grupo) {
-        grupo.querySelectorAll('[data-campo-id="' + campoId + '"]').forEach(function (b) {
-          var activo = b === btn;
-          b.classList.toggle('chip-toggle-activo', activo);
-          b.setAttribute('aria-pressed', activo);
-        });
-      }
-    },
+    // Controles de persona — los mismos en el asistente y en la ficha de Familia
+    'persona-set': function (btn) { personaSet(btn.dataset.campo, btn.dataset.valor); },
+    'persona-alergia': function (btn) { personaToggleAlergia(btn.dataset.valor); },
+    'persona-sin-alergias': function () { personaDraft.alergias = []; repintarPersona(); },
+    'persona-gusto': function (btn) { personaCicloGusto(btn.dataset.valor); },
+    'persona-servicio': function (btn) { personaToggleServicio(btn.dataset.tipo, Number(btn.dataset.dia)); },
+    'persona-servicios-preset': function (btn) { personaServiciosPreset(btn.dataset.preset); },
+    'persona-foto': function () { var el = document.getElementById('onb-foto-input'); if (el) el.click(); },
+    'persona-foto-quitar': function () { quitarFotoPersona(); },
 
-    'familia-abrir-form-miembro': function () { abrirFormMiembroEnSheet(null); },
-    'miembro-subir-foto': function (btn) {
-      var input = btn.parentElement.querySelector('[data-foto-input="' + btn.dataset.id + '"]');
-      if (input) input.click();
-    },
-    'miembro-quitar-foto': function (btn) { quitarFotoMiembro(btn.dataset.id); },
-    // chip de sexo/actividad/dieta en la ficha de miembro: guarda y refresca
-    // solo las clases activas del grupo, sin repintar toda la pantalla.
-    'miembro-set-campo': function (btn) {
-      actualizarCampoMiembro(btn.dataset.id, btn.dataset.campo, btn.dataset.valor);
-      var grupo = btn.parentElement;
-      if (grupo) {
-        grupo.querySelectorAll('.chip-toggle').forEach(function (b) {
-          var activo = b === btn;
-          b.classList.toggle('chip-toggle-activo', activo);
-          b.setAttribute('aria-pressed', activo);
-        });
-      }
-    },
+    // Ficha de persona en Familia
+    'familia-abrir-form-miembro': function () { nuevoMiembroFicha(); },
+    'ficha-toggle-sec': function (btn) { fichaToggleSeccion(Number(btn.dataset.sec)); },
+    'ficha-guardar': function () { fichaGuardar(); },
+    'ficha-guardar-volver': function () { fichaGuardarYVolver(); },
     'ir-compra-hoy': function () { rangoCompra = 'hoy'; irAVista('compra'); },
 
     'toggle-presente': function (btn) { togglePresente(Number(btn.dataset.dia), btn.dataset.tipo, btn.dataset.miembro); },
@@ -1551,8 +1707,6 @@
 
     'borrar-miembro': function (btn) { borrarMiembro(btn.dataset.id); },
     'marcar-yo-dispositivo': function (btn) { marcarYoDispositivo(btn.dataset.id); },
-    'toggle-patron': function (btn) { togglePatron(btn.dataset.id, btn.dataset.tipo, Number(btn.dataset.dia), btn); },
-    'toggle-veto': function (btn) { toggleVeto(btn.dataset.id, btn.dataset.ingrediente); },
     'toggle-oculta-receta': function (btn) { toggleOcultaReceta(btn.dataset.plantilla); },
     'toggle-favorita-receta': function (btn) { toggleFavoritaReceta(btn.dataset.plantilla); },
     'anadir-receta-propia': function () { anadirRecetaPropia(); }
@@ -1595,25 +1749,14 @@
     var t = e.target;
     if (!t) return;
 
-    // foto de un miembro YA existente (sheet Familia, input por-miembro con data-foto-input)
-    if (t.dataset && t.dataset.fotoInput) {
-      var miembroId = t.dataset.fotoInput;
+    // foto de la persona en curso (asistente o ficha) — el mismo input en los dos
+    if (t.id === 'onb-foto-input') {
       var file = t.files[0]; t.value = '';
       if (!file) return;
       resizeImageToDataURL(file).then(function (dataUrl) {
-        var m = estado.familia.find(function (x) { return x.id === miembroId; });
-        if (m) { m.foto = dataUrl; guardarEstado(); render(); }
-      }).catch(function (err) { alert('No se pudo procesar la imagen: ' + err.message); });
-      return;
-    }
-
-    // foto en el formulario compartido de alta/edición (wizard o sheet Familia)
-    if (t.id === 'mf-foto-input') {
-      var file2 = t.files[0]; t.value = '';
-      if (!file2) return;
-      resizeImageToDataURL(file2).then(function (dataUrl) {
-        formFotoActual = dataUrl;
-        actualizarPreviewFotoForm();
+        if (!personaDraft) return;
+        personaDraft.foto = dataUrl;
+        repintarPersona();
       }).catch(function (err) { alert('No se pudo procesar la imagen: ' + err.message); });
       return;
     }
@@ -1621,8 +1764,18 @@
     // checkbox de un ingrediente en el sheet "con lo que hay en la nevera"
     if (t.type === 'checkbox' && t.closest('#lista-nevera-checks')) { actualizarNeveraSeleccion(); return; }
 
-    // región del wizard (select dispara 'change', no 'input')
-    if (t.id === 'wz-region') { wizardRegion = t.value; return; }
+    // veto de ingrediente dentro del bloque Alergias: escribe en el BORRADOR
+    // (como el resto de la ficha) — se confirma al guardar, no en caliente.
+    if (t.dataset && t.dataset.action === 'toggle-veto' && personaDraft) {
+      var vetos = personaDraft.vetos || (personaDraft.vetos = []);
+      var iv = vetos.indexOf(t.dataset.ingrediente);
+      if (t.checked && iv === -1) vetos.push(t.dataset.ingrediente);
+      else if (!t.checked && iv !== -1) vetos.splice(iv, 1);
+      return;
+    }
+
+    // región de la familia en el onboarding (select dispara 'change', no 'input')
+    if (t.id === 'onb-region') { onbRegion = t.value; return; }
 
     // idioma de la app (ficha de miembro, backlog-v3 #19) — ajuste global, no dato
     // de familia: no pasa por actualizarCampoMiembro ni necesita guardarEstado().
@@ -1639,9 +1792,21 @@
   document.addEventListener('input', function (e) {
     var t = e.target;
     if (!t) return;
-    if (t.id === 'wz-nombre-familia') wizardNombreFamilia = t.value;
-    else if (t.id === 'mf-nombre' && !formFotoActual) actualizarPreviewFotoForm();
-    else if (t.id === 'recetas-buscador') {
+    if (t.id === 'onb-nombre-familia') {
+      onbNombreFamilia = t.value;
+      // el CTA se enciende con el primer carácter, sin repintar el campo
+      var ctaFam = document.getElementById('onb-cta-familia');
+      if (ctaFam) {
+        var hayNombre = !!t.value.trim();
+        ctaFam.classList.toggle('onb-cta-off', !hayNombre);
+        if (hayNombre) ctaFam.removeAttribute('aria-disabled'); else ctaFam.setAttribute('aria-disabled', 'true');
+      }
+    } else if (t.dataset && t.dataset.personaCampo) {
+      // campos de texto/número de la persona en curso: se escriben en el
+      // borrador sin repintar (perdería el foco), solo se refresca lo derivado
+      personaSetTexto(t.dataset.personaCampo, t.value);
+      if (t.dataset.personaCampo === 'nombre') refrescarPersonaLigero();
+    } else if (t.id === 'recetas-buscador') {
       // render() restaura por sí mismo el foco/cursor del buscador. Debounce
       // corto (audit 2026-07-20): reconstruir el grid entero (82 tarjetas + sus
       // iconos lucide) por CADA pulsación rozaba el jank en móvil y empeora al

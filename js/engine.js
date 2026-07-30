@@ -8,9 +8,8 @@
    Date.now()/new Date() interno (fechaReferencia siempre inyectada), sin
    Math.random(). Convención de índice de día: 0=lunes…6=domingo.
 
-   Sustituye al motor v2 (plantillas monoliticas de 3 ejes) — ver
-   02_APP/_REVISION_MOTOR_borrador.md para el diseño completo y
-   00_Decisiones_Log/ para la crónica de la obra.
+   Sustituye al motor v2 (plantillas monoliticas de 3 ejes) — diseño completo y cronica de la obra en
+   00_Decisiones_Log/2026-07-21_e3foods-motor-v3-construccion.md.
    ============================================================ */
 (function (global) {
   'use strict';

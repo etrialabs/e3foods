@@ -7,7 +7,7 @@
    tests/fixtures/clasificacion_elaboraciones_v3.js y correr
    `node _build_recetas.js` desde 02_APP/). categorias_cuota = las de v2
    sin cambios + fritos (nueva, dura, 1-2/sem).
-   Ver 02_APP/_REVISION_MOTOR_borrador.md para el diseno completo.
+   Diseno completo y cronica de la obra: 00_Decisiones_Log/2026-07-21_e3foods-motor-v3-construccion.md.
    ============================================================ */
 (function (global) {
   'use strict';
@@ -48,7 +48,7 @@
       "hidratos_g": 0,
       "fibra_g": 0,
       "base_nutricional": "cocido",
-      "nota_base": "Mismo patron que pollo (misma pieza, pechuga de ave) pero con evidencia mas debil: Excel crudo Pechuga de pavo = 149/29/1.5; ratio frente a referencia externa de pavo crudo (~110/24/<2, busqueda web sin BEDCA directo ni verificacion en fuente primaria) = 1.355/1.208/~2.3 -- mismo sentido en las 3 macros pero no tan limpio como pollo. AVISO: a diferencia de pollo, el kcal_100g del banco (110) NO coincide con la columna crudo del Excel (149) usada aqui para las macros -- son numeros de fuentes distintas que se asume describen el mismo estado (pavo cocinado). Decision heredada de la sesion de analisis previa (_MACROS_ingesta_analisis.md §3a), con respaldo mas debil que pollo -- recomendable que Roger la revise.",
+      "nota_base": "Mismo patron que pollo (misma pieza, pechuga de ave) pero con evidencia mas debil: Excel crudo Pechuga de pavo = 149/29/1.5; ratio frente a referencia externa de pavo crudo (~110/24/<2, busqueda web sin BEDCA directo ni verificacion en fuente primaria) = 1.355/1.208/~2.3 -- mismo sentido en las 3 macros pero no tan limpio como pollo. AVISO: a diferencia de pollo, el kcal_100g del banco (110) NO coincide con la columna crudo del Excel (149) usada aqui para las macros -- son numeros de fuentes distintas que se asume describen el mismo estado (pavo cocinado). Decision heredada de la sesion de analisis previa (01_Research/2026-07-25_MACROS_ingesta_analisis.md §3a), con respaldo mas debil que pollo -- recomendable que Roger la revise.",
       "origen": "pavo",
       "fuente_macros": "Excel maestro Roger 2026-07 · Pechuga de pavo/crudo",
       "confianza_macros": "media",
@@ -2621,6 +2621,27 @@
       "fuente_nutri_ext": "USDA FoodData Central: Cheese, mozzarella, low moisture, part-skim, shredded (fdcId 170900, SR Legacy)",
       "confianza_nutri_ext": "alta"
     },
+    "nuez": {
+      "nombre": "Nueces",
+      "categoria": "otro",
+      "kcal_100g": 689,
+      "racion_adulto_g": 20,
+      "racion_nino_g": 12,
+      "coste_banda": 3,
+      "proteina_g": 15.23,
+      "grasa_g": 65.21,
+      "hidratos_g": 7.01,
+      "fibra_g": 6.7,
+      "base_nutricional": "crudo",
+      "origen": "nuez",
+      "fuente_macros": "Ingrediente nuevo (28-jul-2026, para 'Ensalada de calabacín, nueces y parmesano') -- no viene del Excel maestro de Roger, macros tomados directos de la fuente externa verificada",
+      "confianza_macros": "alta",
+      "grasa_saturada_g": 6.126,
+      "grasa_monoinsaturada_g": 8.933,
+      "grasa_poliinsaturada_g": 47.174,
+      "fuente_nutri_ext": "USDA FoodData Central: Nuts, walnuts, english (fdcId 170187, SR Legacy) -- mismo registro ya usado en bd_v5/datos/nutricion.js para este alimento",
+      "confianza_nutri_ext": "alta"
+    },
     "leche-sin-lactosa": {
       "nombre": "Leche sin lactosa",
       "categoria": "lacteo",
@@ -4977,6 +4998,53 @@
           "huevo"
         ],
         "fijos": null
+      }
+    },
+    {
+      "id": "ensalada-calabacin-nueces-parmesano",
+      "nombre": "Ensalada de calabacín, nueces y parmesano",
+      "roles": [
+        "principal"
+      ],
+      "origen": "nuevo",
+      "tecnicaCoccion": "crudo",
+      "acabado": null,
+      "apta": [
+        "comida",
+        "cena"
+      ],
+      "tiempo_min": 10,
+      "esfuerzo": "rapido",
+      "temporada": "verano",
+      "region": null,
+      "tematica": "Ensaladas completas",
+      "ocasion": null,
+      "ninos": true,
+      "foto": "assets/banco-fotos/ensalada-pasta.jpg",
+      "pasos": [
+        "Cortar el calabacín en láminas muy finas, con mandolina o pelador.",
+        "Tostar las nueces ligeramente en una sartén sin aceite, 2-3 minutos, y trocearlas.",
+        "Disponer las láminas de calabacín en un plato y repartir las nueces troceadas por encima.",
+        "Aliñar con aceite de oliva, un chorrito de limón, sal y pimienta.",
+        "Terminar con virutas de queso parmesano por encima."
+      ],
+      "pasosPorOpcion": null,
+      "grupos": [
+        "proteina",
+        "verdura"
+      ],
+      "ingredientes": {
+        "eje": null,
+        "opciones": null,
+        "fijos": {
+          "proteina": [
+            "nuez",
+            "queso-rallado"
+          ],
+          "verdura": [
+            "calabacin"
+          ]
+        }
       }
     },
     {

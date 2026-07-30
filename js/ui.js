@@ -15,8 +15,6 @@
   // y estos nombres se leen en cada render, nunca se cachean al cargar el script.
   function NOMBRES_DIA() { return I18N.diasLargo(); }
   function NOMBRES_DIA_CORTO() { return I18N.diasCorto(); }
-  var ETIQUETAS_DIETA = { omnivora: 'De todo', vegetariana: 'Vegetariana', 'sin-pescado': 'Sin pescado', 'sin-cerdo': 'Sin cerdo', 'sin-lactosa': 'Sin lactosa' };
-  var ETIQUETAS_PATRON = { casa: 'Casa', fuera: 'Fuera', cole: 'Cole' };
 
   // categoría de ingrediente -> etiqueta, para chips de RECETAS y secciones de COMPRA.
   // Función, no objeto estático (backlog-v3 #18): el idioma cambia en caliente. 'fruta'
@@ -48,15 +46,242 @@
 
   var capitaliza = E.capitaliza;
 
-  // opciones de los chip-toggle de miembro — compartidas entre el formulario de
-  // alta/edición (chipToggle) y el editor inline del sheet Familia (chipToggleMiembro)
+  // opciones de las píldoras de miembro — compartidas por el asistente de alta y
+  // la ficha en acordeón (pildorasPersona las pinta en los dos sitios)
   var OPCIONES_SEXO = [{ valor: 'mujer', etiqueta: 'Mujer' }, { valor: 'hombre', etiqueta: 'Hombre' }];
   var OPCIONES_ACTIVIDAD = [{ valor: 'baja', etiqueta: 'Baja' }, { valor: 'media', etiqueta: 'Media' }, { valor: 'alta', etiqueta: 'Alta' }];
-  // Objetivo de peso (recuperado de v1, Roger 2026-07-21): 'perdida' aplica -500 kcal/día. Solo adultos.
-  var OPCIONES_OBJETIVO = [{ valor: 'mantenimiento', etiqueta: 'Mantener peso' }, { valor: 'perdida', etiqueta: 'Reducir' }];
-  var OPCIONES_DIETA = Object.keys(ETIQUETAS_DIETA).map(function (k) { return { valor: k, etiqueta: ETIQUETAS_DIETA[k] }; });
 
-  function etiquetaDieta(valor) { return ETIQUETAS_DIETA[valor] || 'De todo'; }
+  // ---------------------------------------------------------------
+  // Persona — catálogos del handoff "Alta de persona" (Claude Design, 2026-07-30)
+  // ---------------------------------------------------------------
+  // Estilo de vida + 6 alergias + gustos + patrón de comidas. Los catálogos son
+  // ÚNICOS a propósito: las dos superficies que los pintan (el asistente de 5
+  // pasos del onboarding y la ficha en acordeón de Familia) leen de aquí, así
+  // no pueden divergir en id, etiqueta ni orden.
+  // Esta taxonomía es la MISMA que va a construir `bd_v5/dietas.js` (4 estilos +
+  // 6 alergias, ver PROMPT_SESION_DIETAS_SELECTOR §2). Aquí solo se CAPTURA y se
+  // persiste: el motor v3 no consume todavía `alergias`/`gustos` — lo único
+  // cableado al motor es `dieta`, que se deriva de `estilo` (ver estiloADieta).
+  var ESTILOS_VIDA = [
+    { id: 'de-todo', etiqueta: 'De todo', desc: 'Sin restricciones: pescado, carne, verdura y legumbre.', icono: 'utensils-crossed' },
+    { id: 'vegetariano', etiqueta: 'Vegetariano', desc: 'Sin carne ni pescado; con lácteos y huevo.', icono: 'leaf' },
+    { id: 'vegano', etiqueta: 'Vegano', desc: 'Nada de origen animal.', icono: 'sprout' },
+    { id: 'sin-cerdo', etiqueta: 'Sin cerdo', desc: 'Ni cerdo ni sus derivados.', icono: 'ban' }
+  ];
+  var ETIQUETA_ESTILO = {};
+  ESTILOS_VIDA.forEach(function (e) { ETIQUETA_ESTILO[e.id] = e.etiqueta; });
+
+  // Los ids son los de `bd_v5/dietas.js` (ALERGIAS_PERFIL), no los del prototipo: ese
+  // fichero es la fuente única de las reglas de dieta y lo que consumirá el selector.
+  // Guardar aquí un vocabulario propio obligaría a remapear datos reales más adelante.
+  // Las etiquetas visibles sí son las del handoff.
+  var ALERGIAS_PERSONA = [
+    { id: 'sin-gluten', etiqueta: 'Sin gluten', desc: 'Celiaquía o sensibilidad al gluten.' },
+    { id: 'sin-lactosa', etiqueta: 'Sin lactosa / lácteos', desc: 'Leche, quesos, yogures y nata.' },
+    { id: 'sin-huevo', etiqueta: 'Huevo', desc: 'Huevo y preparados con huevo.' },
+    { id: 'sin-frutos-secos', etiqueta: 'Frutos secos y/o cacahuete', desc: 'Nueces, almendras, cacahuete…' },
+    { id: 'sin-pescado-marisco', etiqueta: 'Pescado y/o marisco', desc: 'Pescado, gambas, mejillones…' },
+    { id: 'sin-rosaceas', etiqueta: 'Frutas clave', desc: 'Melocotón y familia (nectarina, albaricoque).' }
+  ];
+  var ETIQUETA_ALERGIA = {};
+  ALERGIAS_PERSONA.forEach(function (a) { ETIQUETA_ALERGIA[a.id] = a.etiqueta; });
+
+  var GUSTOS_GRUPOS = [
+    { titulo: 'Proteínas', items: [['pollo', 'Pollo'], ['ternera', 'Ternera'], ['cerdo', 'Cerdo'], ['salmon', 'Salmón'], ['merluza', 'Merluza'], ['atun', 'Atún'], ['huevos', 'Huevos'], ['lentejas', 'Lentejas'], ['garbanzos', 'Garbanzos'], ['tofu', 'Tofu']] },
+    { titulo: 'Verduras y guarniciones', items: [['brocoli', 'Brócoli'], ['espinacas', 'Espinacas'], ['calabacin', 'Calabacín'], ['pimiento', 'Pimiento'], ['champinones', 'Champiñones'], ['ensalada', 'Ensalada'], ['patata', 'Patata'], ['arroz', 'Arroz'], ['pasta', 'Pasta']] },
+    { titulo: 'Platos de siempre', items: [['tortilla', 'Tortilla de patata'], ['lentejas-guiso', 'Lentejas guisadas'], ['paella', 'Arroz de domingo'], ['crema', 'Crema de verduras'], ['pescado-horno', 'Pescado al horno'], ['guiso', 'Guisos de cuchara']] }
+  ];
+  var ETIQUETA_GUSTO = {};
+  GUSTOS_GRUPOS.forEach(function (g) { g.items.forEach(function (par) { ETIQUETA_GUSTO[par[0]] = par[1]; }); });
+
+  var PATRONES_COMIDA = [
+    { id: 'plato-unico', etiqueta: 'Plato único', desc: 'Un plato completo y fruta.' },
+    { id: 'primero-segundo', etiqueta: 'Primero y segundo', desc: 'Verdura o cuchara + proteína.' },
+    { id: 'ligera', etiqueta: 'Ligera', desc: 'Algo rápido, poca cantidad.' }
+  ];
+  var PATRONES_CENA = [
+    { id: 'ligera', etiqueta: 'Ligera', desc: 'Crema, ensalada o verdura + algo de proteína.' },
+    { id: 'plato-unico', etiqueta: 'Plato único', desc: 'Un plato y ya está.' },
+    { id: 'completa', etiqueta: 'Completa', desc: 'Como una comida: primero y segundo.' }
+  ];
+  var ETIQUETA_PATRON_COMIDA = { 'plato-unico': 'Plato único', 'primero-segundo': 'Primero y segundo', ligera: 'Ligera', completa: 'Completa' };
+
+  var OPCIONES_OBJETIVO_PERSONA = [
+    { valor: 'mantenimiento', etiqueta: 'Mantener' },
+    { valor: 'perdida', etiqueta: 'Perder' },
+    { valor: 'ganancia', etiqueta: 'Ganar' }
+  ];
+  var AYUDA_ACTIVIDAD = {
+    baja: 'Trabajo sentado, poco ejercicio.',
+    media: 'Camina a diario o hace ejercicio 2-3 días.',
+    alta: 'Trabajo físico o deporte casi diario.'
+  };
+
+  // `dieta` es el campo que consume el motor v3 (omnivora | vegetariana |
+  // sin-pescado | sin-lactosa | sin-cerdo). `estilo` es el campo nuevo del
+  // handoff y el que consumirá dietas.js. Se deriva uno del otro para que el
+  // rediseño no convierta un mando que HOY funciona en decoración:
+  //   vegano -> 'vegetariana' porque el motor v3 no tiene dieta vegana (huevo y
+  //   lácteo siguen entrando). Los vetos por ingrediente son el mecanismo con el
+  //   que el propio proyecto expresa hoy "≈vegano" (tests/stress_percentil95.js:
+  //   dieta vegetariana + veto de huevo) y siguen editables en el bloque Alergias.
+  var ESTILO_A_DIETA = { 'de-todo': 'omnivora', vegetariano: 'vegetariana', vegano: 'vegetariana', 'sin-cerdo': 'sin-cerdo' };
+  function estiloADieta(estilo) { return ESTILO_A_DIETA[estilo] || 'omnivora'; }
+
+  // Miembro dado de alta antes del handoff: no tiene `estilo`, se infiere de su
+  // `dieta` de siempre (mismo criterio que el prototipo: normDraft).
+  function estiloDeMiembro(m) {
+    if (m && m.estilo) return m.estilo;
+    var d = ((m && m.dieta) || '').toLowerCase();
+    if (d.indexOf('vegan') !== -1) return 'vegano';
+    if (d.indexOf('veget') !== -1) return 'vegetariano';
+    if (d.indexOf('cerdo') !== -1) return 'sin-cerdo';
+    return 'de-todo';
+  }
+
+  // El grid 7×2 del handoff (comida/cena × L-D) NO es un campo nuevo: es una
+  // vista binaria del `patron` que el motor ya lee (casa | fuera | cole). Marcado
+  // = 'casa'; desmarcado = 'fuera'. Un 'cole' antiguo se ve desmarcado — para el
+  // motor 'cole' y 'fuera' son lo mismo (presentesEnComida solo mira !== 'casa').
+  function patronSeguro(m) {
+    var p = (m && m.patron) || {};
+    var fila = function (v) { return (v && v.length === 7) ? v : ['casa', 'casa', 'casa', 'casa', 'casa', 'casa', 'casa']; };
+    return { comida: fila(p.comida), cena: fila(p.cena) };
+  }
+  function serviciosEnCasa(m) {
+    var p = patronSeguro(m);
+    return p.comida.concat(p.cena).filter(function (v) { return v === 'casa'; }).length;
+  }
+
+  // ---------------------------------------------------------------
+  // Persona — controles compartidos por el asistente y la ficha
+  // ---------------------------------------------------------------
+  // Los dos sitios editan LA MISMA persona en curso (`personaDraft` en app.js),
+  // así que comparten acciones (`persona-set`, `persona-alergia`…). La ficha usa
+  // la variante densa del handoff (celdas 38px, chips 13px, campos sobre
+  // #F7F3EC): misma marca, un punto menos de escala. La pinta la clase del
+  // contenedor (.per-densa), no un juego de funciones duplicado.
+  var DIAS_INICIAL = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
+
+  function pildorasPersona(campo, opciones, valorActual) {
+    return '<div class="per-pildoras">' + opciones.map(function (o) {
+      var activo = o.valor === valorActual;
+      return '<button type="button" class="per-pildora' + (activo ? ' per-pildora-on' : '') + '" ' +
+        'data-action="persona-set" data-campo="' + campo + '" data-valor="' + o.valor + '" aria-pressed="' + activo + '">' +
+        escapeHtml(o.etiqueta) + '</button>';
+    }).join('') + '</div>';
+  }
+
+  // Tarjeta de selección única con check circular — estilo de vida y patrones de
+  // comida/cena comparten anatomía; solo el estilo de vida lleva icono.
+  function tarjetasPersona(campo, opciones, valorActual) {
+    return '<div class="per-tarjetas">' + opciones.map(function (o) {
+      var activo = o.id === valorActual;
+      return '<button type="button" class="per-tarjeta' + (activo ? ' per-tarjeta-on' : '') + '" ' +
+        'data-action="persona-set" data-campo="' + campo + '" data-valor="' + o.id + '" aria-pressed="' + activo + '">' +
+        (o.icono ? '<span class="per-tarjeta-ico"><i data-lucide="' + o.icono + '"></i></span>' : '') +
+        '<span class="per-tarjeta-txt"><span class="per-tarjeta-nombre">' + escapeHtml(o.etiqueta) + '</span>' +
+        '<span class="per-tarjeta-desc">' + escapeHtml(o.desc) + '</span></span>' +
+        '<span class="per-check" aria-hidden="true"><i data-lucide="check"></i></span>' +
+        '</button>';
+    }).join('') + '</div>';
+  }
+
+  function listaAlergias(seleccionadas, conDescripcion) {
+    var sel = seleccionadas || [];
+    return '<div class="per-alergias">' + ALERGIAS_PERSONA.map(function (a) {
+      var activo = sel.indexOf(a.id) !== -1;
+      return '<button type="button" class="per-alergia' + (activo ? ' per-alergia-on' : '') + '" ' +
+        'data-action="persona-alergia" data-valor="' + a.id + '" aria-pressed="' + activo + '">' +
+        '<span class="per-caja" aria-hidden="true"><i data-lucide="check"></i></span>' +
+        '<span class="per-alergia-txt"><span class="per-alergia-nombre">' + escapeHtml(a.etiqueta) + '</span>' +
+        (conDescripcion ? '<span class="per-alergia-desc">' + escapeHtml(a.desc) + '</span>' : '') + '</span>' +
+        '</button>';
+    }).join('') + '</div>';
+  }
+
+  // Chip de 3 estados por toque: neutro → ♥ me encanta → ✕ mejor no → neutro.
+  // El símbolo va DENTRO del texto del chip (no un icono aparte) como en el
+  // handoff, y el estado también viaja en aria-pressed/aria-label para que no
+  // dependa solo del color (no hay hover en móvil, UI_MOBILE §6).
+  function chipsGustos(gustos, items) {
+    var g = gustos || {};
+    return '<div class="per-chips">' + items.map(function (par) {
+      var v = g[par[0]] || 0;
+      var clase = v === 1 ? ' per-chip-si' : v === 2 ? ' per-chip-no' : '';
+      var marca = v === 1 ? '♥ ' : v === 2 ? '✕ ' : '';
+      var estado = v === 1 ? 'le encanta' : v === 2 ? 'mejor no' : 'sin marcar';
+      return '<button type="button" class="per-chip' + clase + '" data-action="persona-gusto" data-valor="' + par[0] + '" ' +
+        'aria-label="' + escapeHtml(par[1] + ': ' + estado + '. Toca para cambiar.') + '">' +
+        marca + escapeHtml(par[1]) + '</button>';
+    }).join('') + '</div>';
+  }
+
+  function gridServicios(miembro) {
+    var patron = patronSeguro(miembro);
+    var fila = function (tipo) {
+      return '<div class="per-grid">' + patron[tipo].map(function (v, i) {
+        var enCasa = v === 'casa';
+        var etiqueta = NOMBRES_DIA()[i] + ' · ' + (tipo === 'comida' ? 'comida' : 'cena') + ': ' + (enCasa ? 'en casa' : 'fuera') + '. Toca para cambiar.';
+        return '<button type="button" class="per-celda' + (enCasa ? ' per-celda-on' : '') + '" ' +
+          'data-action="persona-servicio" data-tipo="' + tipo + '" data-dia="' + i + '" ' +
+          'aria-pressed="' + enCasa + '" aria-label="' + escapeHtml(etiqueta) + '">' +
+          '<i data-lucide="' + (enCasa ? 'check' : 'x') + '"></i></button>';
+      }).join('') + '</div>';
+    };
+    return '<div class="per-grid per-grid-dias" aria-hidden="true">' +
+      DIAS_INICIAL.map(function (d) { return '<span class="per-dia">' + d + '</span>'; }).join('') + '</div>' +
+      '<div class="per-grid-tit"><i data-lucide="sun"></i>Comida</div>' + fila('comida') +
+      '<div class="per-grid-tit per-grid-tit-cena"><i data-lucide="moon"></i>Cena</div>' + fila('cena');
+  }
+
+  function resumenServicios(miembro) {
+    var patron = patronSeguro(miembro);
+    // El prototipo devolvía 'todos' cuando no falta ningún día, y la frase salía
+    // invertida ("Fuera: comidas todos" con 14 de 14 en casa). Aquí, ninguna.
+    var fuera = function (tipo) {
+      var f = patron[tipo].map(function (v, i) { return v === 'casa' ? null : DIAS_INICIAL[i]; }).filter(Boolean);
+      return f.length ? f.join(' ') : 'ninguna';
+    };
+    return 'Planificamos ' + serviciosEnCasa(miembro) + ' de 14 servicios. Fuera: comidas ' + fuera('comida') + ' · cenas ' + fuera('cena') + '.';
+  }
+
+  // Textos de resumen de los 5 bloques — los usan la ficha del onboarding (paso
+  // 7) y las cabeceras del acordeón de Familia. Mismos textos en los dos sitios.
+  function resumenPersona(m) {
+    var gustos = m.gustos || {};
+    var si = Object.keys(gustos).filter(function (k) { return gustos[k] === 1; });
+    var no = Object.keys(gustos).filter(function (k) { return gustos[k] === 2; });
+    var alergias = m.alergias || [];
+    var restric = (m.restricciones || '').trim();
+    var objetivo = (OPCIONES_OBJETIVO_PERSONA.find(function (o) { return o.valor === (m.objetivo || 'mantenimiento'); }) || OPCIONES_OBJETIVO_PERSONA[0]).etiqueta;
+    return {
+      basicos: [
+        (m.nombre || '').trim() || 'Sin nombre',
+        (m.sexo === 'hombre' ? 'Hombre' : 'Mujer'),
+        m.anioNacimiento || 'Año sin indicar',
+        m.altura ? m.altura + ' cm' : null,
+        m.peso ? m.peso + ' kg' : null,
+        'Actividad ' + (m.actividad || 'media'),
+        objetivo + ' peso'
+      ].filter(Boolean).join(' · '),
+      estilo: ETIQUETA_ESTILO[estiloDeMiembro(m)] || 'Sin elegir',
+      alergias: alergias.length
+        ? alergias.map(function (a) { return ETIQUETA_ALERGIA[a]; }).join(' · ')
+        : (restric && restric.toLowerCase() !== 'ninguna' ? restric : 'Ninguna marcada'),
+      gustos: (si.length ? '♥ ' + si.map(function (k) { return ETIQUETA_GUSTO[k]; }).join(', ') : 'Sin favoritos') +
+        (no.length ? '   ·   ✕ ' + no.map(function (k) { return ETIQUETA_GUSTO[k]; }).join(', ') : ''),
+      comidas: 'Comida ' + (ETIQUETA_PATRON_COMIDA[m.pComida] || 'Primero y segundo') +
+        ' · Cena ' + (ETIQUETA_PATRON_COMIDA[m.pCena] || 'Ligera') +
+        ' · ' + serviciosEnCasa(m) + ' de 14 servicios en casa'
+    };
+  }
+
+  // Avisos reutilizados (mismo copy en asistente y ficha)
+  function avisoInfo(texto) {
+    return '<div class="per-aviso"><span class="per-aviso-ico"><i data-lucide="info"></i></span><span>' + escapeHtml(texto) + '</span></div>';
+  }
+  var TEXTO_AVISO_MEDIDAS = 'Estos datos son opcionales, pero nos ayudan a ajustar sus cantidades adecuadas.';
 
   // ids de ingrediente del banco ordenados por nombre — listas de nevera, vetos y
   // selects de receta propia
@@ -141,17 +366,6 @@
   function avatarEstiloColor(miembro, color) {
     var foto = fotoSegura(miembro.foto);
     return 'style="background-color:' + color + (foto ? ";background-image:url('" + foto + "')" : '') + '"';
-  }
-
-  var ICONO_CAMARA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8.5A1.5 1.5 0 0 1 5.5 7h1.6l.9-1.5A1.5 1.5 0 0 1 9.29 4.75h5.42A1.5 1.5 0 0 1 16 5.5L16.9 7h1.6A1.5 1.5 0 0 1 20 8.5v9A1.5 1.5 0 0 1 18.5 19h-13A1.5 1.5 0 0 1 4 17.5z"/><circle cx="12" cy="12.5" r="3.4"/></svg>';
-
-  // contenido interno del botón de foto (.foto-tap): overlay "Cambiar" si hay foto,
-  // o inicial + icono de cámara si no — compartido por el formulario de miembro,
-  // la card del sheet Familia y el preview en vivo de app.js (actualizarPreviewFotoForm)
-  function fotoTapInner(miembro) {
-    if (miembro && miembro.foto) return '<span class="foto-tap-editar">Cambiar</span>';
-    return '<span class="foto-tap-inicial">' + escapeHtml(iniciales(miembro ? miembro.nombre : '')) + '</span>' +
-      '<span class="foto-tap-icono" aria-hidden="true">' + ICONO_CAMARA + '</span>';
   }
 
   function fechaCorta(fechaISO) {
@@ -1128,65 +1342,13 @@
   // ---------------------------------------------------------------
   // Formulario de miembro — compartido entre wizard (alta) y sheet Familia (+miembro)
   // ---------------------------------------------------------------
-  // chip-toggle genérico: fila de opciones excluyentes que sincronizan un input
-  // hidden (mismo id que antes leía un <select>, para no tocar el guardado en app.js)
-  function chipToggle(idHidden, opciones, valorActual, valorDefecto) {
-    var actual = valorActual || valorDefecto;
-    var input = '<input type="hidden" id="' + idHidden + '" value="' + actual + '">';
-    var chips = opciones.map(function (o) {
-      var activo = o.valor === actual;
-      return '<button type="button" class="chip-toggle' + (activo ? ' chip-toggle-activo' : '') + '" ' +
-        'data-action="mf-set-campo" data-campo-id="' + idHidden + '" data-valor="' + o.valor + '" ' +
-        'aria-pressed="' + activo + '">' + escapeHtml(o.etiqueta) + '</button>';
-    }).join('');
-    return input + '<div class="fila-chips">' + chips + '</div>';
-  }
-
-  function renderFormMiembroCompleto(miembro, esAltaNueva) {
-    miembro = miembro || {};
-    var anioActual = new Date().getFullYear();
-    var tieneFoto = !!miembro.foto;
-    return '<div class="form-miembro-completo">' +
-      (esAltaNueva ? '<p class="wizard-mini-titular">Solo te pido tres cosas.</p>' : '') +
-      '<button type="button" class="foto-tap" id="mf-foto-preview" data-action="mf-subir-foto" ' +
-        'aria-label="' + (tieneFoto ? 'Cambiar foto' : 'Añadir foto') + '"' + (tieneFoto ? avatarEstilo(miembro) : '') + '>' +
-        fotoTapInner(miembro) +
-      '</button>' +
-      '<button type="button" class="btn-texto foto-quitar-link" id="mf-foto-quitar" data-action="mf-quitar-foto"' + (tieneFoto ? '' : ' hidden') + '>Quitar foto</button>' +
-      '<input type="file" id="mf-foto-input" accept="image/*" hidden>' +
-      '<label class="campo-nombre-miembro"><span class="campo-eyebrow">¿Cómo se llama?</span>' +
-        '<input type="text" id="mf-nombre" class="input-editorial" maxlength="30" placeholder="Nombre" value="' + escapeHtml(miembro.nombre || '') + '" autocomplete="off"></label>' +
-      '<div class="fila-sexo-anio">' +
-        '<div class="campo-corto"><span class="campo-eyebrow">Sexo</span>' + chipToggle('mf-sexo', OPCIONES_SEXO, miembro.sexo, 'mujer') + '</div>' +
-        '<div class="campo-corto"><span class="campo-eyebrow">' + t('ano_de_nacimiento') + '</span>' +
-          '<input type="number" inputmode="numeric" id="mf-anio" class="input-editorial input-corto" placeholder="p.ej. 1985" min="1920" max="' + anioActual + '" value="' + (miembro.anioNacimiento || '') + '"></div>' +
-      '</div>' +
-      '<p class="wizard-incentivo">Si me cuentas un poco más, te ayudaré mejor.</p>' +
-      '<details class="mas-detalles">' +
-        '<summary><span class="mas-detalles-texto">Añadir más detalles</span><span class="mas-detalles-icono" aria-hidden="true"></span></summary>' +
-        '<div class="mas-detalles-cuerpo">' +
-        '<div class="fila-sexo-anio">' +
-          '<div class="campo-corto"><span class="campo-eyebrow">Altura (cm)</span><input type="number" id="mf-altura" class="input-editorial input-corto" min="30" max="230" value="' + (miembro.altura || '') + '"></div>' +
-          '<div class="campo-corto"><span class="campo-eyebrow">Peso (kg)</span><input type="number" id="mf-peso" class="input-editorial input-corto" min="1" max="200" value="' + (miembro.peso || '') + '"></div>' +
-        '</div>' +
-        '<span class="campo-eyebrow">Actividad</span>' + chipToggle('mf-actividad', OPCIONES_ACTIVIDAD, miembro.actividad, '') +
-        '<span class="campo-eyebrow">' + t('tipo_de_dieta') + '</span>' + chipToggle('mf-dieta', OPCIONES_DIETA, miembro.dieta, 'omnivora') +
-        '</div>' +
-      '</details>' +
-      '<div class="fila-botones">' +
-        '<button type="button" class="btn-secondary" data-action="mf-cancelar">Cancelar</button>' +
-        '<button type="button" class="btn-primary" data-action="mf-guardar">Guardar</button>' +
-      '</div>' +
-      '</div>';
-  }
-
-  // ---------------------------------------------------------------
-  // Wizard — alta conversacional en 3 pasos (una pregunta por pantalla)
+  // Onboarding — portada (landing) → nombre de familia → asistente de 5 pasos
+  // por persona → ficha completa → fin (handoff "Alta de persona", 2026-07-30).
+  // Sustituye al wizard conversacional de 3 pasos: la unidad ya no es "la
+  // familia entera de golpe" sino UNA persona a la vez, y la ficha resumen es
+  // el punto donde se decide si viene otra o ya estamos todos.
   // ---------------------------------------------------------------
 
-  // PASO 1 — saludo + "¿cómo os llamáis?" (nombre de familia). Sin campos de
-  // miembro todavía: una sola pregunta, una sola respuesta, como pediría
-  // alguien al conoceros de verdad.
   // Vocabulario de regiones (tramo 1, 2026-07-17) — research §2.1. Es un dato
   // de la familia (dónde vive), no un mando del motor: el sesgo regional del
   // scoring es interno. cantabria está en el selector aunque el banco todavía
@@ -1216,67 +1378,222 @@
       }).join('');
   }
 
-  function renderWizardBienvenida(nombreFamilia, familiaRegion) {
-    return '<p class="wizard-saludo">¡Bienvenidos!</p>' +
-      '<h1 class="wizard-pregunta">Quiero conoceros.<br>¿Cómo os llamáis?</h1>' +
-      '<label class="campo-nombre-familia"><span class="campo-eyebrow">Nombre de familia</span>' +
-        '<input type="text" id="wz-nombre-familia" class="input-editorial" maxlength="40" placeholder="p.ej. Los Fernández" value="' + escapeHtml(nombreFamilia || '') + '" autofocus></label>' +
-      '<label class="campo-nombre-familia"><span class="campo-eyebrow">¿De dónde sois? (opcional)</span>' +
-        '<select id="wz-region" class="input-editorial">' + opcionesRegion(familiaRegion) + '</select></label>' +
-      '<button type="button" class="btn-primary wizard-cta" data-action="wizard-siguiente-bienvenida">Siguiente</button>' +
-      '<button type="button" class="btn-texto" data-action="landing-unirse">¿Ya tienes un código de familia?</button>' +
-      '<button type="button" class="btn-texto" data-action="ver-demo">O mira un ejemplo primero</button>';
+  // PASO 1 — nombre de familia. Una sola pregunta, una sola respuesta.
+  function renderOnbNombreFamilia(nombreFamilia, familiaRegion) {
+    var listo = !!(nombreFamilia || '').trim();
+    return '<div class="onb-scroll"><div class="onb-nombre">' +
+      '<p class="onb-saludo">¡Bienvenidos!</p>' +
+      '<h1 class="onb-titular">Quiero conoceros.<br>¿Cómo os llamáis?</h1>' +
+      '<label class="onb-campo-linea"><span class="onb-eyebrow">Nombre de familia</span>' +
+        '<input type="text" id="onb-nombre-familia" class="onb-input-serif" maxlength="40" placeholder="p.ej. Los Fernández" value="' + escapeHtml(nombreFamilia || '') + '" autocomplete="off"></label>' +
+      '<label class="onb-campo-linea"><span class="onb-eyebrow">¿De dónde sois? (opcional)</span>' +
+        '<span class="onb-select-wrap"><select id="onb-region" class="onb-input-select">' + opcionesRegion(familiaRegion) + '</select>' +
+        '<i data-lucide="chevron-down" aria-hidden="true"></i></span></label>' +
+      '<button type="button" class="onb-cta onb-cta-oro' + (listo ? '' : ' onb-cta-off') + '" id="onb-cta-familia" data-action="onb-familia-siguiente"' + (listo ? '' : ' aria-disabled="true"') + '>Siguiente</button>' +
+      '<button type="button" class="onb-enlace" data-action="landing-unirse">¿Ya tienes un código de familia?</button>' +
+      '<button type="button" class="onb-enlace" data-action="ver-demo">O mira un ejemplo primero</button>' +
+      '</div></div>';
   }
 
-  // PASO 2 — "¿quién vive en casa de los X?" (usa el nombre ya dado, paso 1,
-  // para que se note que la app escuchó). Lista vacía: el "+" es el único
-  // foco posible de la pantalla, centrado, no una esquina discreta.
-  function renderWizardHub(nombreFamilia, miembros) {
-    var nombreLimpio = (nombreFamilia || '').trim();
-    var titulo = nombreLimpio ? ('¿Quién vive en casa de los <em>' + escapeHtml(nombreLimpio) + '</em>?') : '¿Quién vive en tu casa?';
+  // PASOS 2-6 — asistente de UNA persona. Estructura fija cabecera / contenido
+  // scrollable / pie, con la línea de avance continua arriba (no son pasos
+  // clicables: solo se avanza con "Siguiente" y se vuelve con la flecha).
+  var PASOS_PERSONA = ['Básicos', 'Estilo de vida', 'Alergias e intolerancias', 'Gustos', 'Comidas de la semana'];
 
-    if (!miembros.length) {
-      return '<button type="button" class="wizard-volver" data-action="wizard-volver-bienvenida">‹ Cambiar nombre de familia</button>' +
-        '<h1 class="wizard-pregunta">' + titulo + '</h1>' +
-        '<div class="wizard-vacio-centro">' +
-          '<button type="button" class="btn-anadir-miembro btn-anadir-miembro-grande" data-action="wizard-abrir-form" aria-label="Añadir el primer miembro">+</button>' +
-          '<p class="wizard-vacio">Añade al primero para empezar.</p>' +
+  function pasoPersonaValido(paso, draft) {
+    if (paso === 1) return !!(draft.nombre || '').trim();
+    if (paso === 2) return !!draft.estilo;
+    return true;
+  }
+
+  function cabeceraPersona(paso, draft, numeroPersona) {
+    var avance = ((paso - 1) / 5 * 100) + '%';
+    var foto = fotoSegura(draft.foto);
+    return '<div class="onb-cab">' +
+      '<div class="onb-avance"><span class="onb-avance-fill" style="width:' + avance + '"></span></div>' +
+      '<div class="onb-cab-fila">' +
+        '<button type="button" class="onb-atras" data-action="onb-persona-atras" aria-label="Volver al paso anterior"><i data-lucide="arrow-left"></i></button>' +
+        '<div class="onb-cab-txt">' +
+          '<span class="onb-cab-kicker">Persona ' + numeroPersona + ' · paso ' + paso + ' de 5</span>' +
+          '<span class="onb-cab-paso">' + escapeHtml(PASOS_PERSONA[paso - 1]) + '</span>' +
+        '</div>' +
+        '<span class="onb-cab-avatar"' + (foto ? ' style="background-image:url(\'' + foto + '\')"' : '') + '>' +
+          (foto ? '' : escapeHtml(iniciales(draft.nombre))) + '</span>' +
+      '</div></div>';
+  }
+
+  function cuerpoPasoPersona(paso, draft) {
+    if (paso === 1) {
+      var foto1 = fotoSegura(draft.foto);
+      return '<h2 class="onb-h2">¿Quién es?</h2>' +
+        '<p class="onb-sub">Con esto ajustamos las raciones y la energía de sus menús.</p>' +
+        '<div class="onb-foto-bloque">' +
+          '<button type="button" class="onb-foto" data-action="persona-foto" aria-label="' + (foto1 ? 'Cambiar foto' : 'Añadir foto') + '"' +
+            (foto1 ? ' style="background-image:url(\'' + foto1 + '\')"' : '') + '>' +
+            (foto1 ? '' : '<span class="onb-foto-inicial">' + escapeHtml(iniciales(draft.nombre)) + '</span>') +
+            '<span class="onb-foto-badge" aria-hidden="true"><i data-lucide="camera"></i></span>' +
+          '</button>' +
+          '<input type="file" id="onb-foto-input" accept="image/*" hidden>' +
+          (foto1
+            ? '<button type="button" class="onb-foto-txt onb-foto-quitar" data-action="persona-foto-quitar">Quitar foto</button>'
+            : '<span class="onb-foto-txt">Añadir foto (opcional)</span>') +
+        '</div>' +
+        '<label class="onb-campo"><span class="onb-eyebrow">Nombre</span>' +
+          '<input type="text" class="onb-input" data-persona-campo="nombre" maxlength="30" placeholder="Escribe su nombre" value="' + escapeHtml(draft.nombre || '') + '" autocomplete="off"></label>' +
+        '<label class="onb-campo"><span class="onb-eyebrow">' + t('ano_de_nacimiento') + '</span>' +
+          '<input type="number" inputmode="numeric" class="onb-input" data-persona-campo="anioNacimiento" min="1920" max="' + new Date().getFullYear() + '" placeholder="p. ej. 1985" value="' + (draft.anioNacimiento || '') + '"></label>' +
+        avisoInfo(TEXTO_AVISO_MEDIDAS) +
+        '<div class="onb-campo"><span class="onb-eyebrow">Sexo</span>' + pildorasPersona('sexo', OPCIONES_SEXO, draft.sexo || 'mujer') + '</div>' +
+        '<div class="onb-fila-2">' +
+          '<label class="onb-campo"><span class="onb-eyebrow">Altura (cm)</span>' +
+            '<input type="number" inputmode="numeric" class="onb-input" data-persona-campo="altura" min="30" max="230" placeholder="—" value="' + (draft.altura || '') + '"></label>' +
+          '<label class="onb-campo"><span class="onb-eyebrow">Peso (kg)</span>' +
+            '<input type="number" inputmode="numeric" class="onb-input" data-persona-campo="peso" min="1" max="200" placeholder="—" value="' + (draft.peso || '') + '"></label>' +
+        '</div>' +
+        '<div class="onb-campo"><span class="onb-eyebrow">Nivel de actividad</span>' +
+          pildorasPersona('actividad', OPCIONES_ACTIVIDAD, draft.actividad || 'media') +
+          '<p class="onb-ayuda">' + escapeHtml(AYUDA_ACTIVIDAD[draft.actividad || 'media']) + '</p></div>' +
+        '<div class="onb-campo"><span class="onb-eyebrow">Objetivo de peso</span>' +
+          pildorasPersona('objetivo', OPCIONES_OBJETIVO_PERSONA, draft.objetivo || 'mantenimiento') + '</div>';
+    }
+    if (paso === 2) {
+      return '<h2 class="onb-h2">¿Cómo come?</h2>' +
+        '<p class="onb-sub">Elige una. Es la base sobre la que construimos todos sus platos.</p>' +
+        tarjetasPersona('estilo', ESTILOS_VIDA, draft.estilo) +
+        (draft.estilo === 'sin-cerdo'
+          ? avisoInfo('Excluimos cerdo y derivados (jamón, embutidos, manteca). No podemos garantizar certificación halal.')
+          : '');
+    }
+    if (paso === 3) {
+      return '<span class="onb-chip-seguridad"><i data-lucide="shield-check"></i>Seguridad</span>' +
+        '<h2 class="onb-h2">¿Hay algo que no puede comer?</h2>' +
+        // El handoff prometía aquí "no aparecerá nunca en sus menús". El motor v3
+        // todavía no consume `alergias` (lo hará dietas.js): la exclusión dura de
+        // hoy son los vetos por ingrediente de la ficha. Copy ajustado para no
+        // prometer una garantía que el motor aún no da — restaurar la frase del
+        // handoff el día que dietas.js entre en el motor.
+        '<p class="onb-sub">Lo apuntamos en su ficha y lo tenemos en cuenta al montar sus menús. Marca todo lo que aplique.</p>' +
+        listaAlergias(draft.alergias, true) +
+        '<div class="onb-aviso-rojo">' +
+          '<span class="onb-aviso-rojo-ico"><i data-lucide="alert-triangle"></i></span>' +
+          '<div><p class="onb-aviso-rojo-tit">Revisad siempre las etiquetas</p>' +
+          '<p class="onb-aviso-rojo-txt">Esto excluye ingredientes de sus menús, pero la app no controla vuestra compra ni las trazas de los productos.</p></div>' +
+        '</div>' +
+        '<button type="button" class="onb-btn-linea" data-action="persona-sin-alergias">No tiene ninguna alergia</button>';
+    }
+    if (paso === 4) {
+      return '<h2 class="onb-h2">¿Qué le encanta y qué no?</h2>' +
+        '<p class="onb-sub">Toca una vez para <b class="onb-oro">me encanta</b>, dos para <b>mejor no</b>. Esto se puede cambiar cuando quieras.</p>' +
+        '<div class="onb-aviso-oro"><span class="onb-aviso-oro-ico"><i data-lucide="sparkles"></i></span>' +
+          '<span>Esto no es una alergia: los usaremos menos, pero pueden aparecer alguna vez.</span></div>' +
+        GUSTOS_GRUPOS.map(function (g) {
+          return '<p class="onb-eyebrow onb-eyebrow-grupo">' + escapeHtml(g.titulo) + '</p>' + chipsGustos(draft.gustos, g.items);
+        }).join('') +
+        '<div class="onb-leyenda">' +
+          '<span><span class="onb-leyenda-caja onb-leyenda-si"></span>Me encanta</span>' +
+          '<span><span class="onb-leyenda-caja onb-leyenda-no"></span>Mejor no</span>' +
         '</div>';
     }
-
-    var listaHtml = '<ul class="wizard-lista-miembros">' + miembros.map(function (m) {
-      return '<li class="wizard-miembro-card">' +
-        '<span class="avatar avatar-presente"' + avatarEstilo(m) + '>' + avatarInner(m) + '</span>' +
-        '<span class="wizard-miembro-info"><strong>' + escapeHtml(m.nombre) + '</strong><span>' + (m.anioNacimiento || '?') + '</span></span>' +
-        '<span class="wizard-miembro-acciones">' +
-          '<button type="button" class="btn-texto" data-action="wizard-editar-miembro" data-id="' + m.id + '">Editar</button>' +
-          '<button type="button" class="btn-texto btn-borrar" data-action="wizard-quitar-miembro" data-id="' + m.id + '">Quitar</button>' +
-        '</span>' +
-        '</li>';
-    }).join('') + '</ul>';
-
-    return '<button type="button" class="wizard-volver" data-action="wizard-volver-bienvenida">‹ Cambiar nombre de familia</button>' +
-      '<h1 class="wizard-pregunta">' + titulo + '</h1>' +
-      listaHtml +
-      '<button type="button" class="btn-anadir-miembro" data-action="wizard-abrir-form" aria-label="Añadir otro miembro">+</button>' +
-      '<button type="button" class="btn-primary wizard-cta" id="wizard-generar" data-action="wizard-generar">Crear nuestro menú</button>';
+    return '<h2 class="onb-h2">¿Cómo son sus comidas?</h2>' +
+      '<p class="onb-sub">Así montamos el plato a su medida y planificamos solo los servicios que hace en casa.</p>' +
+      '<p class="onb-eyebrow onb-eyebrow-grupo"><i data-lucide="sun" class="onb-eyebrow-ico onb-ico-oro"></i>Su comida típica</p>' +
+      tarjetasPersona('pComida', PATRONES_COMIDA, draft.pComida || 'primero-segundo') +
+      '<p class="onb-eyebrow onb-eyebrow-grupo"><i data-lucide="moon" class="onb-eyebrow-ico"></i>Su cena típica</p>' +
+      tarjetasPersona('pCena', PATRONES_CENA, draft.pCena || 'ligera') +
+      '<div class="onb-tarjeta-servicios">' +
+        '<p class="onb-servicios-tit">¿Qué días come en casa?</p>' +
+        '<p class="onb-servicios-sub">Vienen todos marcados. Desmarca los servicios que normalmente no hace en casa.</p>' +
+        gridServicios(draft) +
+        '<div class="onb-atajos">' +
+          '<button type="button" class="onb-atajo" data-action="persona-servicios-preset" data-preset="comidas-lv">Come fuera L-V</button>' +
+          '<button type="button" class="onb-atajo" data-action="persona-servicios-preset" data-preset="finde">Fines de semana fuera</button>' +
+          '<button type="button" class="onb-atajo" data-action="persona-servicios-preset" data-preset="todo">Marcar todo</button>' +
+        '</div>' +
+        '<p class="onb-servicios-resumen">' + escapeHtml(resumenServicios(draft)) + '</p>' +
+      '</div>';
   }
 
-  // ---------------------------------------------------------------
-  // Sheet "Tu familia" (vía avatar en cabecera de HOY/SEMANA)
-  // ---------------------------------------------------------------
-  var ABREV_PATRON = { casa: 'Cas', fuera: 'Fue', cole: 'Col' };
-  var PATRON_TODO_CASA = ['casa', 'casa', 'casa', 'casa', 'casa', 'casa', 'casa'];
-
-  function renderPatronGrid(miembro, tipo) {
-    var valores = (miembro.patron && miembro.patron[tipo]) || PATRON_TODO_CASA;
-    return '<div class="patron-grid">' + valores.map(function (v, i) {
-      var etiqueta = NOMBRES_DIA()[i] + ': ' + ETIQUETAS_PATRON[v] + '. Toca para cambiar.';
-      return '<button type="button" class="patron-celda patron-' + v + '" data-action="toggle-patron" data-id="' + miembro.id + '" data-tipo="' + tipo + '" data-dia="' + i + '" aria-label="' + escapeHtml(etiqueta) + '">' +
-        '<span class="patron-dia">' + NOMBRES_DIA_CORTO()[i] + '</span><span class="patron-valor">' + ABREV_PATRON[v] + '</span></button>';
-    }).join('') + '</div>';
+  function renderOnbPersona(paso, draft, numeroPersona) {
+    var valido = pasoPersonaValido(paso, draft);
+    return cabeceraPersona(paso, draft, numeroPersona) +
+      '<div class="onb-scroll onb-scroll-paso" id="onb-scroll-paso"><div class="onb-cuerpo per">' + cuerpoPasoPersona(paso, draft) + '</div></div>' +
+      '<div class="onb-pie">' +
+        '<button type="button" class="onb-cta onb-cta-midnight' + (valido ? '' : ' onb-cta-off') + '" data-action="onb-persona-siguiente"' +
+          (valido ? '' : ' aria-disabled="true"') + '>Siguiente<i data-lucide="arrow-right"></i></button>' +
+        (paso === 4 ? '<button type="button" class="onb-enlace onb-enlace-pie" data-action="onb-persona-siguiente">Ahora no, seguir</button>' : '') +
+      '</div>';
   }
 
+  // PASO 7 — ficha completa de la persona recién descrita: los 5 bloques
+  // resumidos, con "Editar" que salta al paso correspondiente conservando lo
+  // introducido, y la decisión de si viene otra persona o ya estamos todos.
+  var BLOQUES_FICHA = [
+    { clave: 'basicos', titulo: 'Básicos', icono: 'user', tono: 'mid', paso: 1 },
+    { clave: 'estilo', titulo: 'Estilo de vida', icono: 'salad', tono: 'oro', paso: 2 },
+    { clave: 'alergias', titulo: 'Alergias e intolerancias', icono: 'shield-check', tono: 'rojo', paso: 3 },
+    { clave: 'gustos', titulo: 'Gustos', icono: 'heart', tono: 'oro', paso: 4 },
+    { clave: 'comidas', titulo: 'Comidas de la semana', icono: 'calendar-check', tono: 'mid', paso: 5 }
+  ];
+
+  function renderOnbFicha(draft, miembros) {
+    var resumen = resumenPersona(draft);
+    var foto = fotoSegura(draft.foto);
+    var tarjetas = BLOQUES_FICHA.map(function (b) {
+      return '<div class="onb-resumen' + (b.tono === 'rojo' ? ' onb-resumen-alerta' : '') + '">' +
+        '<div class="onb-resumen-cab">' +
+          '<span class="per-sec-ico per-sec-ico-' + b.tono + '"><i data-lucide="' + b.icono + '"></i></span>' +
+          '<span class="onb-resumen-tit">' + escapeHtml(b.titulo) + '</span>' +
+          '<button type="button" class="onb-editar" data-action="onb-ficha-editar" data-paso="' + b.paso + '">' +
+            '<i data-lucide="pencil"></i>Editar</button>' +
+        '</div>' +
+        '<p class="onb-resumen-txt">' + escapeHtml(resumen[b.clave]) + '</p>' +
+        '</div>';
+    }).join('');
+
+    var chipsMiembros = miembros.length
+      ? '<div class="onb-yaestan"><p class="onb-eyebrow">Ya en la familia</p><div class="onb-yaestan-chips">' +
+          miembros.map(function (m, i) {
+            return '<span class="onb-miembro-chip">' +
+              '<span class="onb-miembro-av" style="background-color:' + colorMiembro(i) + '">' + escapeHtml(iniciales(m.nombre)) + '</span>' +
+              '<span>' + escapeHtml(m.nombre) + '</span>' +
+              '<button type="button" class="onb-miembro-quitar" data-action="onb-quitar-miembro" data-id="' + m.id + '" aria-label="Quitar a ' + escapeHtml(m.nombre) + '"><i data-lucide="x"></i></button>' +
+              '</span>';
+          }).join('') + '</div></div>'
+      : '';
+
+    return '<div class="onb-scroll"><div class="onb-ficha">' +
+      '<div class="onb-ficha-cab">' +
+        '<span class="onb-ficha-av"' + (foto ? ' style="background-image:url(\'' + foto + '\')"' : '') + '>' + (foto ? '' : escapeHtml(iniciales(draft.nombre))) + '</span>' +
+        '<div><p class="onb-ficha-kicker">Ficha completa</p>' +
+        '<h1 class="onb-ficha-nombre">' + escapeHtml((draft.nombre || '').trim() || 'Esta persona') + '</h1></div>' +
+      '</div>' +
+      '<div class="onb-resumenes">' + tarjetas + '</div>' +
+      chipsMiembros +
+      '<p class="onb-legal">Planificamos menús, no pautas médicas. Ante una condición médica grave, consultad con vuestro médico.</p>' +
+      '<button type="button" class="onb-btn-otra" data-action="onb-anadir-otra"><i data-lucide="user-plus"></i>Añadir otra persona</button>' +
+      '<button type="button" class="onb-cta onb-cta-oro" data-action="onb-terminar">Ya estamos todos<i data-lucide="arrow-right"></i></button>' +
+      '</div></div>';
+  }
+
+  // PASO 8 — cierre. Peak-end rule (UI_MOBILE §1): es el momento que la familia
+  // recuerda, junto con la portada.
+  function renderOnbFin(nombreFamilia, miembros) {
+    var primero = (miembros[0] && miembros[0].nombre) || '';
+    var raciones = miembros.length + (miembros.length === 1 ? ' persona' : ' personas');
+    return '<div class="onb-fin">' +
+      '<span class="onb-fin-check"><i data-lucide="check"></i></span>' +
+      '<h1 class="onb-fin-tit">¡Listo' + (primero ? ', ' + escapeHtml(primero) : '') + '!</h1>' +
+      '<p class="onb-fin-sub">' + escapeHtml((nombreFamilia || '').trim() || 'Tu familia') + ' ya tiene su primera semana lista para ' + raciones + '.</p>' +
+      '<button type="button" class="onb-cta onb-cta-oro" data-action="onb-ver-semana">Ver mi semana<i data-lucide="arrow-right"></i></button>' +
+      '</div>';
+  }
+
+  // Vetos por ingrediente — el ÚNICO mecanismo de exclusión dura que el motor v3
+  // consume hoy (engine.vetosDe). El handoff no lo dibuja porque su prototipo no
+  // tenía banco detrás; se conserva dentro del bloque Alergias de la ficha, que
+  // es su sitio semántico, para que el rediseño no deje a una familia con
+  // alergia real sin la herramienta que sí funciona. Cuando dietas.js entre en
+  // el motor, este grid es lo primero que puede desaparecer.
   function renderVetos(miembro, banco) {
     var vetos = miembro.vetos || [];
     // el estado visual del chip marcado lo lleva .veto-chip:has(input:checked) en CSS
@@ -1285,17 +1602,6 @@
       return '<label class="veto-chip">' +
         '<input type="checkbox" data-action="toggle-veto" data-id="' + miembro.id + '" data-ingrediente="' + id + '" ' + (marcado ? 'checked' : '') + '> ' + escapeHtml(banco.ingredientes[id].nombre) +
         '</label>';
-    }).join('') + '</div>';
-  }
-
-  // chip-toggle ligado a data-campo/data-id (edición in-place de un miembro ya
-  // existente) — mismo look que chipToggle(), distinta fontanería de guardado.
-  function chipToggleMiembro(campo, opciones, valorActual, id) {
-    return '<div class="fila-chips">' + opciones.map(function (o) {
-      var activo = o.valor === valorActual;
-      return '<button type="button" class="chip-toggle' + (activo ? ' chip-toggle-activo' : '') + '" ' +
-        'data-action="miembro-set-campo" data-campo="' + campo + '" data-id="' + id + '" data-valor="' + o.valor + '" ' +
-        'aria-pressed="' + activo + '">' + escapeHtml(o.etiqueta) + '</button>';
     }).join('') + '</div>';
   }
 
@@ -1333,57 +1639,115 @@
       '</div>';
   }
 
-  // Ficha de miembro — pantalla completa (Roger 2026-07-19, handoff Claude
-  // Design). Sustituye al <details> dentro del sheet Familia: mismos campos
-  // reales (nombre/foto/sexo/año/altura/peso/actividad/dieta/patrón/vetos,
-  // guardado en vivo por campo vía data-campo/data-id — actualizarCampoMiembro
-  // es genérica) + 3 campos de texto libre nuevos del handoff (alergias,
-  // leGusta, noLeGusta) que se guardan igual pero NO alimentan el motor
-  // todavía (decisión de Roger, Q1 de la sesión del redisño).
-  function renderVistaMiembro(estado, banco, miembroId, miembroDispositivoId) {
-    var miembro = (estado.familia || []).find(function (m) { return m.id === miembroId; });
-    if (!miembro) {
-      return '<button type="button" class="rv-flotante rv-volver" data-action="miembro-volver" aria-label="Volver"><i data-lucide="arrow-left"></i></button>' +
+  // ---------------------------------------------------------------
+  // Ficha de persona dentro de la app (pestaña Familia) — handoff "Alta de
+  // persona" 2026-07-30: LOS MISMOS 5 bloques del asistente, resumidos y
+  // desplegables, para editar cualquier dato sin salir de la ficha. Solo uno
+  // abierto a la vez. Sustituye a la ficha plana de campos sueltos del handoff
+  // anterior (19-jul): mismos datos, misma fontanería de guardado, otra forma.
+  //
+  // A diferencia del asistente, aquí se edita un BORRADOR (personaDraft en
+  // app.js) y se confirma con "Guardar cambios" — el prototipo lo pidió así
+  // (ajuste de Roger recogido en el README del handoff): guardar NO saca de la
+  // ficha, cierra el bloque abierto y deja seguir editando otros.
+  // ---------------------------------------------------------------
+  function bloqueFicha(b, abierto, resumen, cuerpo) {
+    var chevron = abierto ? 'chevron-up' : 'chevron-down';
+    return '<div class="per-sec' + (b.tono === 'rojo' ? ' per-sec-alerta' : '') + '">' +
+      '<button type="button" class="per-sec-cab" data-action="ficha-toggle-sec" data-sec="' + b.paso + '" aria-expanded="' + abierto + '">' +
+        '<span class="per-sec-ico per-sec-ico-' + b.tono + '"><i data-lucide="' + b.icono + '"></i></span>' +
+        '<span class="per-sec-txt"><span class="per-sec-tit">' + escapeHtml(b.titulo) + '</span>' +
+        '<span class="per-sec-res">' + escapeHtml(resumen) + '</span></span>' +
+        '<i data-lucide="' + chevron + '" class="per-sec-chev"></i>' +
+      '</button>' +
+      (abierto ? '<div class="per-sec-cuerpo">' + cuerpo + '</div>' : '') +
+      '</div>';
+  }
+
+  function renderVistaMiembro(estado, banco, draft, opciones) {
+    opciones = opciones || {};
+    if (!draft) {
+      return '<div class="mf-cabecera"><button type="button" class="rv-flotante rv-volver" data-action="miembro-volver" aria-label="Volver"><i data-lucide="arrow-left"></i></button></div>' +
         '<div class="rv-body rv-body-vacia"><p class="card-msg">No encontramos a este miembro.</p></div>';
     }
-    var esDispositivo = miembro.id === miembroDispositivoId;
-    var tieneFoto = !!miembro.foto;
+    var sec = opciones.seccion || null;
+    var esNueva = !!opciones.esNueva;
+    var resumen = resumenPersona(draft);
+    var foto = fotoSegura(draft.foto);
+    var esDispositivo = !esNueva && draft.id && draft.id === opciones.miembroDispositivoId;
+    var anioActual = new Date().getFullYear();
+
+    var cuerpos = {
+      1: '<label class="per-campo"><span class="onb-eyebrow">' + t('nombre') + '</span>' +
+           '<input type="text" class="per-input" data-persona-campo="nombre" maxlength="30" placeholder="Nombre" value="' + escapeHtml(draft.nombre || '') + '" autocomplete="off"></label>' +
+         '<label class="per-campo"><span class="onb-eyebrow">' + t('ano_de_nacimiento') + '</span>' +
+           '<input type="number" inputmode="numeric" class="per-input" data-persona-campo="anioNacimiento" min="1920" max="' + anioActual + '" placeholder="p. ej. 1985" value="' + (draft.anioNacimiento || '') + '"></label>' +
+         avisoInfo(TEXTO_AVISO_MEDIDAS) +
+         '<div class="per-campo"><span class="onb-eyebrow">Sexo</span>' + pildorasPersona('sexo', OPCIONES_SEXO, draft.sexo || 'mujer') + '</div>' +
+         '<div class="onb-fila-2">' +
+           '<label class="per-campo"><span class="onb-eyebrow">Altura (cm)</span>' +
+             '<input type="number" inputmode="numeric" class="per-input" data-persona-campo="altura" min="30" max="230" placeholder="—" value="' + (draft.altura || '') + '"></label>' +
+           '<label class="per-campo"><span class="onb-eyebrow">Peso (kg)</span>' +
+             '<input type="number" inputmode="numeric" class="per-input" data-persona-campo="peso" min="1" max="200" placeholder="—" value="' + (draft.peso || '') + '"></label>' +
+         '</div>' +
+         '<div class="per-campo"><span class="onb-eyebrow">Nivel de actividad</span>' +
+           pildorasPersona('actividad', OPCIONES_ACTIVIDAD, draft.actividad || 'media') + '</div>' +
+         '<div class="per-campo"><span class="onb-eyebrow">Objetivo de peso</span>' +
+           pildorasPersona('objetivo', OPCIONES_OBJETIVO_PERSONA, draft.objetivo || 'mantenimiento') + '</div>',
+      2: tarjetasPersona('estilo', ESTILOS_VIDA, estiloDeMiembro(draft)),
+      3: listaAlergias(draft.alergias, false) +
+         '<label class="per-campo"><span class="onb-eyebrow">Otras restricciones</span>' +
+           '<input type="text" class="per-input" data-persona-campo="restricciones" maxlength="80" placeholder="' + t('ninguna') + '" value="' + escapeHtml(draft.restricciones || '') + '"></label>' +
+         '<p class="onb-eyebrow onb-eyebrow-grupo">Ingredientes que nunca entran</p>' +
+         '<p class="per-nota">Lo único que el motor excluye hoy plato a plato. Lo de arriba queda en su ficha.</p>' +
+         (draft.id ? renderVetos(draft, banco) : '<p class="per-nota">Se podrán marcar en cuanto guardes la ficha.</p>'),
+      4: '<p class="per-nota">Toca una vez para <b class="onb-oro">me encanta</b>, dos para <b>mejor no</b>.</p>' +
+         GUSTOS_GRUPOS.map(function (g) {
+           return '<p class="onb-eyebrow onb-eyebrow-grupo">' + escapeHtml(g.titulo) + '</p>' + chipsGustos(draft.gustos, g.items);
+         }).join('') +
+         '<label class="per-campo"><span class="onb-eyebrow">' + t('le_gusta') + '</span>' +
+           '<input type="text" class="per-input" data-persona-campo="leGusta" maxlength="120" placeholder="' + t('platos_favoritos') + '" value="' + escapeHtml(draft.leGusta || '') + '"></label>' +
+         '<label class="per-campo"><span class="onb-eyebrow">' + t('no_le_gusta') + '</span>' +
+           '<input type="text" class="per-input" data-persona-campo="noLeGusta" maxlength="120" placeholder="' + t('ingredientes_a_evitar') + '" value="' + escapeHtml(draft.noLeGusta || '') + '"></label>',
+      5: '<p class="onb-eyebrow onb-eyebrow-grupo">Su comida típica</p>' +
+         tarjetasPersona('pComida', PATRONES_COMIDA, draft.pComida || 'primero-segundo') +
+         '<p class="onb-eyebrow onb-eyebrow-grupo">Su cena típica</p>' +
+         tarjetasPersona('pCena', PATRONES_CENA, draft.pCena || 'ligera') +
+         '<p class="onb-eyebrow onb-eyebrow-grupo">¿Qué días come en casa?</p>' +
+         gridServicios(draft) +
+         '<p class="onb-servicios-resumen">Planificamos ' + serviciosEnCasa(draft) + ' de 14 servicios en casa.</p>'
+    };
+
+    var bloques = BLOQUES_FICHA.map(function (b) {
+      return bloqueFicha(b, sec === b.paso, resumen[b.clave], cuerpos[b.paso]);
+    }).join('');
+
     return '<div class="mf-cabecera">' +
       '<button type="button" class="rv-flotante rv-volver" data-action="miembro-volver" aria-label="Volver"><i data-lucide="arrow-left"></i></button>' +
+      '<span class="per-cab-kicker">' + (esNueva ? t('nuevo_miembro') : 'Editar ficha') + '</span>' +
       '</div>' +
-      '<div class="vista-body rc-body mf-body">' +
-      '<div class="mf-foto-fila">' +
-      '<button type="button" class="foto-tap" data-action="miembro-subir-foto" data-id="' + miembro.id + '" ' +
-        'aria-label="' + (tieneFoto ? 'Cambiar foto' : 'Añadir foto') + '"' + (tieneFoto ? avatarEstilo(miembro) : '') + '>' +
-        fotoTapInner(miembro) +
-      '</button>' +
-      (tieneFoto ? '<button type="button" class="btn-texto foto-quitar-link" data-action="miembro-quitar-foto" data-id="' + miembro.id + '">Quitar foto</button>' : '') +
-      '<input type="file" accept="image/*" hidden data-foto-input="' + miembro.id + '">' +
-      '<h1 class="mf-nombre-titulo">' + escapeHtml(miembro.nombre) + '</h1>' +
+      '<div class="vista-body rc-body mf-body per per-densa">' +
+      '<div class="per-identidad">' +
+        '<button type="button" class="per-foto" data-action="persona-foto" aria-label="' + (foto ? 'Cambiar foto' : 'Añadir foto') + '"' +
+          (foto ? ' style="background-image:url(\'' + foto + '\')"' : ' style="background-color:' + (opciones.color || 'var(--gold)') + '"') + '>' +
+          (foto ? '' : '<span class="per-foto-inicial">' + escapeHtml(iniciales(draft.nombre)) + '</span>') +
+          '<span class="per-foto-badge" aria-hidden="true"><i data-lucide="camera"></i></span>' +
+        '</button>' +
+        '<input type="file" id="onb-foto-input" accept="image/*" hidden>' +
+        '<h1 class="per-identidad-nombre">' + escapeHtml((draft.nombre || '').trim() || t('nuevo_miembro')) + '</h1>' +
       '</div>' +
-      '<div class="mf-campo"><span class="campo-eyebrow">' + t('nombre') + '</span><input type="text" class="input-editorial" data-campo="nombre" data-id="' + miembro.id + '" value="' + escapeHtml(miembro.nombre) + '" maxlength="30"></div>' +
-      '<div class="mf-fila-2">' +
-      '<div class="mf-campo"><span class="campo-eyebrow">Sexo</span>' + chipToggleMiembro('sexo', OPCIONES_SEXO, miembro.sexo || 'mujer', miembro.id) + '</div>' +
-      '<div class="mf-campo"><span class="campo-eyebrow">' + t('ano_de_nacimiento') + '</span><input type="number" inputmode="numeric" class="input-editorial" data-campo="anioNacimiento" data-id="' + miembro.id + '" value="' + (miembro.anioNacimiento || '') + '" min="1920" max="' + new Date().getFullYear() + '"></div>' +
-      '</div>' +
-      '<div class="mf-fila-2">' +
-      '<div class="mf-campo"><span class="campo-eyebrow">Altura (cm, opcional)</span><input type="number" class="input-editorial" data-campo="altura" data-id="' + miembro.id + '" value="' + (miembro.altura || '') + '" min="30" max="230"></div>' +
-      '<div class="mf-campo"><span class="campo-eyebrow">Peso (kg, opcional)</span><input type="number" class="input-editorial" data-campo="peso" data-id="' + miembro.id + '" value="' + (miembro.peso || '') + '" min="1" max="200"></div>' +
-      '</div>' +
-      '<div class="mf-campo"><span class="campo-eyebrow">Actividad</span>' + chipToggleMiembro('actividad', OPCIONES_ACTIVIDAD, miembro.actividad || (E.edadEnAnios(miembro.anioNacimiento) >= 12 ? 'baja' : 'media'), miembro.id) + '</div>' +
-      (E.edadEnAnios(miembro.anioNacimiento) >= 12
-        ? '<div class="mf-campo"><span class="campo-eyebrow">Objetivo de peso</span>' + chipToggleMiembro('objetivo', OPCIONES_OBJETIVO, miembro.objetivo || 'mantenimiento', miembro.id) + '</div>'
-        : '') +
-      '<div class="mf-campo"><span class="campo-eyebrow">' + t('tipo_de_dieta') + '</span>' + chipToggleMiembro('dieta', OPCIONES_DIETA, miembro.dieta || 'omnivora', miembro.id) + '</div>' +
-      '<div class="mf-campo"><span class="campo-eyebrow">' + t('alergias_restricciones') + '</span><input type="text" class="input-editorial" data-campo="alergias" data-id="' + miembro.id + '" value="' + escapeHtml(miembro.alergias || '') + '" placeholder="' + t('ninguna') + '"></div>' +
-      '<div class="mf-campo"><span class="campo-eyebrow">' + t('le_gusta') + '</span><input type="text" class="input-editorial" data-campo="leGusta" data-id="' + miembro.id + '" value="' + escapeHtml(miembro.leGusta || '') + '" placeholder="' + t('platos_favoritos') + '"></div>' +
-      '<div class="mf-campo"><span class="campo-eyebrow">' + t('no_le_gusta') + '</span><input type="text" class="input-editorial" data-campo="noLeGusta" data-id="' + miembro.id + '" value="' + escapeHtml(miembro.noLeGusta || '') + '" placeholder="' + t('ingredientes_a_evitar') + '"></div>' +
-      '<div class="mf-campo"><span class="campo-eyebrow">' + t('idioma_campo') + '</span><select class="input-editorial" id="mf-idioma-app">' + opcionesIdioma() + '</select></div>' +
-      '<p class="rv-seccion-titulo">Patrón — comida</p>' + renderPatronGrid(miembro, 'comida') +
-      '<p class="rv-seccion-titulo">Patrón — cena</p>' + renderPatronGrid(miembro, 'cena') +
-      '<p class="rv-seccion-titulo">Vetos (no le gusta / alergia)</p>' + renderVetos(miembro, banco) +
-      '<button type="button" class="chip-toggle mf-dispositivo' + (esDispositivo ? ' chip-toggle-activo' : '') + '" data-action="marcar-yo-dispositivo" data-id="' + miembro.id + '" aria-pressed="' + esDispositivo + '">' + (esDispositivo ? '✓ Eres tú en este móvil' : 'Marcar como tú en este móvil') + '</button>' +
-      '<button type="button" class="btn-texto btn-borrar mf-eliminar" data-action="borrar-miembro" data-id="' + miembro.id + '">Eliminar de la familia</button>' +
+      '<div class="per-secs">' + bloques + '</div>' +
+      '<div class="per-campo per-campo-suelto"><span class="onb-eyebrow">' + t('idioma_campo') + '</span>' +
+        '<span class="onb-select-wrap"><select class="per-input" id="mf-idioma-app">' + opcionesIdioma() + '</select>' +
+        '<i data-lucide="chevron-down" aria-hidden="true"></i></span></div>' +
+      '<button type="button" class="per-guardar" data-action="ficha-guardar"><i data-lucide="check"></i>' +
+        (esNueva ? 'Crear miembro' : 'Guardar cambios') + '</button>' +
+      (opciones.guardado ? '<p class="per-guardado"><i data-lucide="check-circle-2"></i>Cambios guardados · puedes seguir editando otros bloques</p>' : '') +
+      '<button type="button" class="per-guardar-volver" data-action="ficha-guardar-volver"><i data-lucide="arrow-left"></i>Guardar y volver a la familia</button>' +
+      (esNueva ? '' :
+        '<button type="button" class="chip-toggle mf-dispositivo' + (esDispositivo ? ' chip-toggle-activo' : '') + '" data-action="marcar-yo-dispositivo" data-id="' + draft.id + '" aria-pressed="' + esDispositivo + '">' +
+          (esDispositivo ? '✓ Eres tú en este móvil' : 'Marcar como tú en este móvil') + '</button>' +
+        '<button type="button" class="per-eliminar" data-action="borrar-miembro" data-id="' + draft.id + '"><i data-lucide="trash-2"></i>' + t('eliminar_miembro') + '</button>') +
       '</div>';
   }
 
@@ -1561,16 +1925,22 @@
   function renderPerfilVista(estado) {
     var familia = estado.familia || [];
     var cardsHtml = familia.map(function (m, idx) {
-      var restriccion = (m.alergias || '').trim();
+      // Badge de alerta: primero las alergias marcadas del handoff (dato
+      // estructurado), y si no hay, el texto libre de "Otras restricciones".
+      var alergias = m.alergias || [];
+      var restriccion = (m.restricciones || '').trim();
+      var alerta = alergias.length
+        ? (alergias.length === 1 ? ETIQUETA_ALERGIA[alergias[0]] : alergias.length + ' alergias')
+        : (restriccion && restriccion.toLowerCase() !== 'ninguna' ? restriccion : '');
       return '<div class="rc-tarjeta pf-tarjeta">' +
         '<button type="button" class="rc-tarjeta-abrir" data-action="abrir-miembro-ficha" data-id="' + m.id + '">' +
         '<span class="rc-tarjeta-foto pf-tarjeta-foto" ' + avatarEstiloColor(m, colorMiembro(idx)) + '>' +
         (avatarInner(m) ? '<span class="pf-tarjeta-inicial">' + avatarInner(m) + '</span>' : '') +
-        (restriccion ? '<span class="rc-tarjeta-tag pf-tarjeta-tag-alergia">' + escapeHtml(restriccion) + '</span>' : '') +
+        (alerta ? '<span class="rc-tarjeta-tag pf-tarjeta-tag-alergia">' + escapeHtml(alerta) + '</span>' : '') +
         '</span>' +
         '<span class="rc-tarjeta-info"><span class="rc-tarjeta-nombre">' + escapeHtml(m.nombre) + '</span></span>' +
         '</button>' +
-        '<div class="rc-tarjeta-pie pf-tarjeta-pie"><span class="rc-tarjeta-meta"><i data-lucide="leaf"></i>' + escapeHtml(etiquetaDieta(m.dieta)) + '</span></div>' +
+        '<div class="rc-tarjeta-pie pf-tarjeta-pie"><span class="rc-tarjeta-meta"><i data-lucide="leaf"></i>' + escapeHtml(ETIQUETA_ESTILO[estiloDeMiembro(m)]) + '</span></div>' +
         '</div>';
     }).join('');
     // celda de la cuadrícula, no barra a lo ancho — así no se descuadra con nº impar de miembros
@@ -1598,18 +1968,22 @@
     renderOpcionesNevera: renderOpcionesNevera,
     renderConfirmarRegenerar: renderConfirmarRegenerar,
     renderVistaMiembro: renderVistaMiembro,
-    renderPatronGrid: renderPatronGrid,
     renderMenuHamburguesa: renderMenuHamburguesa,
     renderSheetIdioma: renderSheetIdioma,
     renderBatch: renderBatch,
     renderSheetImportarCole: renderSheetImportarCole,
     renderSheetColeSemana: renderSheetColeSemana,
     renderSheetSync: renderSheetSync,
-    renderFormMiembroCompleto: renderFormMiembroCompleto,
-    renderWizardBienvenida: renderWizardBienvenida,
-    renderWizardHub: renderWizardHub,
+    renderOnbNombreFamilia: renderOnbNombreFamilia,
+    renderOnbPersona: renderOnbPersona,
+    renderOnbFicha: renderOnbFicha,
+    renderOnbFin: renderOnbFin,
+    pasoPersonaValido: pasoPersonaValido,
+    colorMiembro: colorMiembro,
+    estiloADieta: estiloADieta,
+    estiloDeMiembro: estiloDeMiembro,
+    patronSeguro: patronSeguro,
     sheetHead: sheetHead,
-    fotoTapInner: fotoTapInner,
     escapeHtml: escapeHtml,
     normalizarTexto: normalizarTexto
   };

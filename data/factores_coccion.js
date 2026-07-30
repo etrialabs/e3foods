@@ -34,7 +34,7 @@
      para ningún valor numérico (su "Multiplicador_kcal/grasa" es precisamente el dato excluido
      de arriba).
    - Cruce ingrediente banco ↔ alimento Excel: reutilizado tal cual de
-     02_APP/_MACROS_mapeo_banco_excel.json (id_banco ↔ alimento_excel), sin rehacer el cruce.
+     01_Research/2026-07-25_MACROS_mapeo_banco_excel.json (id_banco ↔ alimento_excel), sin rehacer el cruce.
      De los 148 ingredientes del banco, 8 no tienen match en el Excel (confianza "sin_match":
      panceta, compango, ternera-rellena, edamame, tofu, hummus, espinacas-queso, bechamel) →
      no aparecen en este fichero. Los otros 140 sí, con el match ya curado (incluye casos de

@@ -42,6 +42,17 @@
   --cena-b: #2E3136;
   --cena-ink: #F7F3EC;
   --danger: #C0392B;
+  /* Midnight y rojo-seguridad: dos colores que trae el handoff "Alta de persona"
+     (2026-07-30) y que la paleta v3 no tenía. Midnight es el primario del
+     asistente (línea de avance, CTA "Siguiente", flecha atrás, iconos de bloque);
+     rojo-seguridad es EXCLUSIVO del bloque de alergias — no es el --danger de
+     borrar, es el rojo de "esto es una cuestión de seguridad". Viven solo en las
+     superficies de persona (.onb-* / .per-*); ninguna vista anterior los usa.
+     El dorado del handoff (#C6A968) NO se adopta: manda el corporativo Étria
+     --gold #C9A96E, mismo criterio que el 2026-07-20 (UI_MOBILE §3). */
+  --midnight: #1E2C4A;
+  --midnight-ink: #F3EEE4;
+  --rojo-seguridad: #9E3A2A;
   --font-display: 'Playfair Display', Georgia, serif;
   --font-logo: 'Cormorant Garamond', Georgia, serif;
   --font-ui: 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -116,8 +127,8 @@ body {
    móvil real. Afecta a todos los botones, no solo a "Quiero otra cosa". */
 button { touch-action: manipulation; -webkit-tap-highlight-color: transparent; font-family: inherit; appearance: none; -webkit-appearance: none; }
 /* 16px mínimo en campos enfocables (iOS hace zoom al enfocar con menos — mismo
-   criterio ya aplicado en .cole-textarea); idem .input-corto, .form-miembro,
-   .rc-buscador input y .mf-campo .input-editorial más abajo (audit 2026-07-20). */
+   criterio ya aplicado en .cole-textarea, .rc-buscador input, .onb-input y
+   .per-input más abajo (audit 2026-07-20). */
 input, select { font-family: inherit; font-size: 16px; }
 
 :focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
@@ -169,56 +180,19 @@ body.landing-open { overflow: hidden; }
 }
 
 /* ============================================================
-   Wizard — alta conversacional en 3 pasos (una pregunta por pantalla)
+   Onboarding — alta de persona (handoff Claude Design, 2026-07-30)
    ============================================================ */
+/* Pantalla completa por encima de todo: el onboarding no comparte espacio con
+   la app (no hay nav, no hay vistas debajo). */
 .wizard-screen {
   position: fixed; inset: 0; z-index: 250;
   background: var(--bg);
-  overflow-y: auto;
-  padding: calc(var(--space-4) + var(--safe-t)) var(--space-3) calc(var(--space-6) + var(--safe-b));
+  overflow: hidden;
 }
 body.wizard-open { overflow: hidden; }
 
-.wizard-bienvenida, .wizard-hub, .wizard-form-pantalla {
-  display: flex; flex-direction: column; gap: var(--space-4); max-width: 480px; margin: 0 auto;
-  min-height: calc(100dvh - var(--space-4) - var(--safe-t) - var(--space-6) - var(--safe-b));
-}
-
-/* PASO 1 — saludo cálido antes de la primera pregunta */
-.wizard-saludo { font-size: var(--fs-titulo); color: var(--soft); margin-bottom: -8px; }
-
-/* PASO 3 — mini-titular conversacional que antecede a los 3 campos obligatorios
-   ("Solo te pido tres cosas.") — sustituye al típico h1 "Nuevo miembro". */
-.wizard-mini-titular { font-family: var(--font-display); font-style: italic; font-size: 22px; color: var(--ink); }
-/* frase de incentivo antes del reveal de opcionales: explica el porqué en vez
-   de un "(opcional)" seco. */
-.wizard-incentivo { font-size: var(--fs-cuerpo); color: var(--soft); font-style: italic; margin: 0; }
-
-/* enlace "‹ volver" del paso 2 al paso 1 — discreto, arriba a la izquierda */
-.wizard-volver {
-  align-self: flex-start; background: none; border: none; cursor: pointer;
-  color: var(--soft); font-size: var(--fs-aux); font-weight: 700; padding: var(--space-1) 0; margin-bottom: -8px;
-}
-
-/* Lista vacía en el paso 2: el "+" es el único foco posible de la pantalla —
-   centrado, grande, con aire alrededor en vez de una esquina discreta. */
-.wizard-vacio-centro {
-  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: var(--space-3); padding: var(--space-6) 0;
-}
-/* especificidad 0,2,0 a propósito: .btn-anadir-miembro (definida más abajo, con
-   align-self:flex-start para el caso "+" junto a la lista) tiene la misma
-   especificidad que un simple ".btn-anadir-miembro-grande" y gana por orden de
-   cascada — igual bug que ya se dio en .landing-cta. Selector compuesto para
-   no depender del orden de las reglas. */
-.btn-anadir-miembro.btn-anadir-miembro-grande {
-  width: 96px; height: 96px; font-size: 42px; align-self: center;
-  box-shadow: 0 8px 24px rgba(201, 169, 110, .4);
-}
-
-/* Campo eyebrow reutilizado en TODO campo de formulario editorial (nombre de
-   familia, nombre de miembro, sexo/año, altura/peso...) — uppercase pequeño y
-   discreto, el input hace el trabajo visual, no la label. */
+/* Campo eyebrow reutilizado en TODO campo de formulario editorial — uppercase
+   pequeño y discreto, el input hace el trabajo visual, no la label. */
 .campo-eyebrow { display: block; font-size: 11px; font-weight: 700; color: var(--soft); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 6px; }
 
 /* Input "editorial": sin caja, solo línea inferior — se siente como rellenar un
@@ -230,106 +204,332 @@ body.wizard-open { overflow: hidden; }
 }
 .input-editorial::placeholder { color: var(--muted); font-weight: 400; }
 .input-editorial:focus { outline: none; border-bottom-color: var(--gold); border-bottom-width: 2px; }
-.input-corto { font-size: 16px; font-weight: 500; }
-
-.campo-nombre-familia, .campo-nombre-miembro { display: block; margin-bottom: var(--space-1); }
-.campo-nombre-familia .input-editorial { font-family: var(--font-display); font-size: 28px; font-weight: 400; }
-
-.wizard-pregunta { font-family: var(--font-display); font-size: var(--fs-hero); font-weight: 400; line-height: 1.1; color: var(--ink); margin-bottom: var(--space-1); }
-.wizard-pregunta em { font-style: italic; color: var(--gold); }
-
-/* fila de 2 campos cortos lado a lado (sexo+año, altura+peso) */
-.fila-sexo-anio { display: flex; gap: var(--space-3); }
-.campo-corto { flex: 1; min-width: 0; }
 
 /* chips de elección excluyente — mismo lenguaje que .chip-filtro/.segmento (coherencia
    visual con Recetas/Compra), nombre propio para no acoplar la semántica del CSS. */
-.fila-chips { display: flex; flex-wrap: wrap; gap: var(--space-1); }
 .chip-toggle {
   min-height: 40px; font-size: var(--fs-aux); font-weight: 700; border-radius: 999px; padding: 8px 16px;
   cursor: pointer; background: var(--panel); color: var(--soft); border: 1px solid var(--line-solid);
 }
 
-.wizard-lista-miembros { list-style: none; display: flex; flex-direction: column; gap: var(--space-2); }
-.wizard-miembro-card {
-  background: var(--panel); border: 1px solid var(--line-solid); border-radius: 14px;
-  padding: var(--space-2) var(--space-3); min-height: 56px;
-  display: flex; align-items: center; gap: var(--space-2);
-}
-.wizard-miembro-info { flex: 1; display: flex; flex-direction: column; gap: 1px; min-width: 0; }
-.wizard-miembro-info strong { font-size: var(--fs-cuerpo); font-weight: 700; }
-.wizard-miembro-info span { font-size: var(--fs-aux); color: var(--soft); }
-.wizard-miembro-acciones { display: flex; gap: var(--space-1); flex-shrink: 0; }
+/* --- Onboarding: pantalla de un paso ------------------------------------- */
+/* Los pasos de persona son cabecera fija + cuerpo scrollable + pie fijo (handoff:
+   la línea de avance y el CTA no se van con el scroll). El resto de pantallas
+   scrollean enteras. */
+.wizard-screen-paso { display: flex; flex-direction: column; }
+.onb-scroll { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+.wizard-screen:not(.wizard-screen-paso) .onb-scroll { height: 100%; }
+.onb-scroll::-webkit-scrollbar { width: 0; height: 0; }
+.onb-scroll { scrollbar-width: none; }
 
-.btn-anadir-miembro {
-  width: 56px; height: 56px; border-radius: 50%; flex-shrink: 0;
-  background: var(--gold); color: var(--accent-ink); border: none;
-  font-size: 28px; font-weight: 700; line-height: 1; cursor: pointer;
-  display: flex; align-items: center; justify-content: center; align-self: flex-start;
-  box-shadow: 0 4px 14px rgba(201, 169, 110, .35);
-}
-.btn-anadir-miembro:active { background: var(--gold-soft); }
+.onb-nombre, .onb-ficha { max-width: 480px; margin: 0 auto; }
+.onb-nombre { padding: calc(var(--space-5) + var(--safe-t)) 26px calc(var(--space-4) + var(--safe-b)); }
+.onb-ficha { padding: calc(var(--space-4) + var(--safe-t)) 22px calc(var(--space-4) + var(--safe-b)); }
+.onb-cuerpo { max-width: 480px; margin: 0 auto; padding: 18px 22px 26px; animation: e3fade var(--dur-base) ease both; }
+@keyframes e3fade { from { opacity: 0; } to { opacity: 1; } }
 
-.wizard-vacio { color: var(--soft); font-size: var(--fs-cuerpo); text-align: center; padding: var(--space-3) 0; }
+/* --- Paso 1 · nombre de familia ------------------------------------------ */
+.onb-saludo { font-size: 13px; font-weight: 800; color: var(--muted); }
+.onb-titular { font-family: var(--font-display); font-size: 31px; font-weight: 800; line-height: 1.1; letter-spacing: -.5px; color: var(--ink); margin-top: 12px; }
+.onb-campo-linea { display: block; margin-top: 26px; }
+.onb-eyebrow { display: block; font-size: 11px; font-weight: 800; letter-spacing: 1.1px; text-transform: uppercase; color: var(--muted); }
+.onb-input-serif, .onb-input-select {
+  width: 100%; border: none; border-bottom: 1.5px solid rgba(26, 23, 18, .18);
+  background: none; color: var(--ink); font-family: inherit; padding: 9px 0; margin-top: 6px;
+}
+.onb-input-serif { font-family: var(--font-display); font-size: 22px; font-weight: 600; }
+.onb-input-serif:focus, .onb-input-select:focus { outline: none; border-bottom-color: var(--gold); border-bottom-width: 2px; }
+.onb-input-select { font-size: 16px; font-weight: 600; appearance: none; -webkit-appearance: none; }
+.onb-select-wrap { position: relative; display: block; }
+.onb-select-wrap > .lucide, .onb-select-wrap > svg { position: absolute; right: 2px; bottom: 14px; width: 18px; height: 18px; color: var(--muted); pointer-events: none; }
+.onb-enlace {
+  display: block; width: 100%; margin-top: 22px; background: none; border: none; cursor: pointer;
+  font-family: inherit; font-size: var(--fs-cuerpo); font-weight: 600; color: var(--midnight);
+  text-decoration: underline; padding: var(--space-2);
+}
+
+/* --- CTA (pill) ----------------------------------------------------------- */
+.onb-cta {
+  width: 100%; border: none; cursor: pointer; border-radius: 100px; padding: 17px;
+  display: flex; align-items: center; justify-content: center; gap: 9px;
+  font-family: inherit; font-size: 16px; font-weight: 800; margin-top: 30px;
+}
+.onb-cta .lucide, .onb-cta svg { width: 18px; height: 18px; }
+.onb-cta-oro { background: var(--gold); color: var(--midnight); box-shadow: 0 14px 30px -14px rgba(150, 120, 60, .7); }
+.onb-cta-midnight { background: var(--midnight); color: var(--midnight-ink); box-shadow: 0 14px 30px -14px rgba(30, 44, 74, .6); margin-top: 0; }
+/* Deshabilitado sin `disabled`: el botón sigue siendo tocable a propósito (no
+   hay mensaje de error en el handoff, el gris ES el mensaje) — aria-disabled lo
+   anuncia y el handler corta. */
+.onb-cta-off { background: rgba(26, 23, 18, .1); color: rgba(26, 23, 18, .4); box-shadow: none; }
+
+/* --- Pasos de persona: cabecera y pie ------------------------------------ */
+.onb-cab { flex: none; padding: calc(var(--space-4) + var(--safe-t)) 22px 12px; background: var(--bg); box-shadow: 0 12px 22px -20px rgba(30, 26, 20, .8); z-index: 2; }
+/* Línea de avance continua, NO pasos clicables: comunica "queda poco", no
+   "puedes saltar" (handoff §Interactions — la barra nunca es interactiva). */
+.onb-avance { height: 3px; border-radius: 2px; background: rgba(26, 23, 18, .1); overflow: hidden; }
+.onb-avance-fill { display: block; height: 100%; border-radius: 2px; background: var(--midnight); transition: width 500ms cubic-bezier(.3, .8, .3, 1); }
+.onb-cab-fila { display: flex; align-items: center; gap: 11px; margin-top: 13px; }
+.onb-atras {
+  position: relative; flex: none; width: 34px; height: 34px; border-radius: 50%; border: none; cursor: pointer;
+  background: rgba(30, 44, 74, .07); color: var(--midnight);
+  display: flex; align-items: center; justify-content: center;
+}
+/* el círculo dibuja 34px pero el objetivo tocable llega a 44px (UI_MOBILE §2) */
+.onb-atras::after { content: ''; position: absolute; inset: -5px; border-radius: 50%; }
+.onb-atras .lucide, .onb-atras svg { width: 17px; height: 17px; }
+.onb-cab-txt { flex: 1; min-width: 0; }
+.onb-cab-kicker { display: block; font-size: 10.5px; font-weight: 800; letter-spacing: 1.6px; text-transform: uppercase; color: var(--muted); }
+.onb-cab-paso { display: block; font-size: 15px; font-weight: 800; color: var(--midnight); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.onb-cab-avatar {
+  flex: none; width: 34px; height: 34px; border-radius: 50%;
+  background: rgba(201, 169, 110, .25) center/cover no-repeat; color: #8A6E32;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display); font-size: 16px; font-weight: 700;
+}
+.onb-pie { flex: none; padding: 12px 22px calc(var(--space-4) + var(--safe-b)); background: linear-gradient(to top, var(--bg) 62%, transparent); z-index: 2; }
+.onb-enlace-pie { margin-top: var(--space-2); text-decoration: none; color: var(--soft); font-size: 13.5px; font-weight: 700; }
+
+/* --- Pasos de persona: contenido ----------------------------------------- */
+.onb-h2 { font-family: var(--font-display); font-size: 26px; font-weight: 800; line-height: 1.12; letter-spacing: -.4px; color: var(--ink); }
+.onb-sub { font-size: 14px; font-weight: 500; color: var(--soft); line-height: 1.45; margin-top: 7px; }
+.onb-oro { color: #B8944F; }
+.onb-ayuda { font-size: 12.5px; font-weight: 500; color: var(--soft); line-height: 1.4; margin-top: var(--space-2); }
+.onb-eyebrow-grupo { margin-top: 20px; display: flex; align-items: center; gap: var(--space-2); }
+.onb-eyebrow-ico { width: 14px; height: 14px; color: var(--midnight); }
+.onb-ico-oro { color: var(--gold); }
+.onb-fila-2 { display: flex; gap: 12px; }
+.onb-fila-2 > * { flex: 1; min-width: 0; }
+
+/* campo con caja blanca (asistente) — la ficha usa .per-input sobre crema */
+.onb-campo { display: block; margin-top: 16px; }
+.onb-input {
+  width: 100%; border: none; background: var(--panel); border-radius: 14px;
+  font-family: inherit; font-size: 16px; font-weight: 600; color: var(--ink);
+  padding: 14px 15px; margin-top: 7px; box-shadow: 0 8px 22px -20px rgba(30, 44, 74, .8);
+}
+.onb-input:focus { outline: 2px solid var(--gold); outline-offset: 1px; }
+
+/* selector de foto: el círculo ES el botón, badge de cámara midnight encima */
+.onb-foto-bloque { display: flex; flex-direction: column; align-items: center; margin-top: 20px; }
+.onb-foto {
+  position: relative; width: 88px; height: 88px; border-radius: 50%; border: none; cursor: pointer;
+  background: var(--panel) center/cover no-repeat; display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 14px 30px -20px rgba(30, 44, 74, .9);
+}
+.onb-foto-inicial { font-family: var(--font-display); font-size: 34px; font-weight: 700; color: #B8944F; }
+.onb-foto-badge {
+  position: absolute; bottom: -2px; right: -2px; width: 30px; height: 30px; border-radius: 50%;
+  background: var(--midnight); border: 3px solid var(--bg); color: var(--midnight-ink);
+  display: flex; align-items: center; justify-content: center;
+}
+.onb-foto-badge .lucide, .onb-foto-badge svg { width: 14px; height: 14px; }
+.onb-foto-txt { font-size: 12.5px; font-weight: 700; color: #B8944F; margin-top: 9px; }
+.onb-foto-quitar { background: none; border: none; cursor: pointer; font-family: inherit; text-decoration: underline; padding: var(--space-1) var(--space-2); }
+
+/* avisos */
+.per-aviso { display: flex; gap: 10px; align-items: flex-start; margin-top: 16px; background: rgba(30, 44, 74, .05); border-radius: 14px; padding: 12px 14px; font-size: 12.5px; font-weight: 600; color: rgba(26, 23, 18, .68); line-height: 1.45; }
+.per-aviso-ico { flex: none; color: var(--midnight); display: flex; }
+.per-aviso-ico .lucide, .per-aviso-ico svg { width: 15px; height: 15px; }
+.onb-aviso-oro { display: flex; align-items: center; gap: 10px; margin-top: 14px; background: rgba(201, 169, 110, .14); border-radius: 14px; padding: 11px 14px; font-size: 12.5px; font-weight: 600; color: rgba(26, 23, 18, .7); line-height: 1.45; }
+.onb-aviso-oro-ico { flex: none; color: #B8944F; display: flex; }
+.onb-aviso-oro-ico .lucide, .onb-aviso-oro-ico svg { width: 16px; height: 16px; }
+.onb-aviso-rojo { margin-top: 16px; background: var(--panel); border: 1.5px solid rgba(158, 58, 42, .28); border-radius: 18px; padding: 15px 16px; display: flex; gap: 12px; }
+.onb-aviso-rojo-ico { flex: none; width: 28px; height: 28px; border-radius: 9px; background: var(--rojo-seguridad); color: #fff; display: flex; align-items: center; justify-content: center; }
+.onb-aviso-rojo-ico .lucide, .onb-aviso-rojo-ico svg { width: 15px; height: 15px; }
+.onb-aviso-rojo-tit { font-size: 13.5px; font-weight: 800; color: var(--rojo-seguridad); }
+.onb-aviso-rojo-txt { font-size: 13px; font-weight: 500; color: rgba(26, 23, 18, .68); line-height: 1.5; margin-top: 4px; }
+.onb-chip-seguridad { display: inline-flex; align-items: center; gap: 7px; background: rgba(158, 58, 42, .1); border-radius: 999px; padding: 5px 12px; margin-bottom: 10px; color: var(--rojo-seguridad); font-size: 11px; font-weight: 800; letter-spacing: .6px; text-transform: uppercase; }
+.onb-chip-seguridad .lucide, .onb-chip-seguridad svg { width: 14px; height: 14px; }
+.onb-btn-linea { width: 100%; margin-top: 14px; border: 1.5px solid rgba(26, 23, 18, .14); background: none; cursor: pointer; border-radius: 14px; padding: 13px; font-family: inherit; font-size: 14px; font-weight: 800; color: var(--midnight); }
+
+/* leyenda de los chips de gustos — el color no puede ser el único indicador */
+.onb-leyenda { display: flex; gap: 14px; margin-top: 20px; font-size: 12px; font-weight: 700; color: var(--soft); }
+.onb-leyenda > span { display: flex; align-items: center; gap: 6px; }
+.onb-leyenda-caja { width: 14px; height: 14px; border-radius: 5px; }
+.onb-leyenda-si { background: var(--gold); }
+.onb-leyenda-no { background: rgba(30, 44, 74, .18); }
+
+/* tarjeta del grid 7×2 */
+.onb-tarjeta-servicios { margin-top: 24px; background: var(--panel); border-radius: 20px; padding: 16px 15px 15px; box-shadow: 0 14px 34px -26px rgba(30, 44, 74, .9); }
+.onb-servicios-tit { font-size: 14.5px; font-weight: 800; color: var(--ink); }
+.onb-servicios-sub { font-size: 12.5px; font-weight: 500; color: var(--soft); line-height: 1.45; margin-top: 4px; }
+.onb-atajos { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 14px; }
+.onb-atajo { border: 1px solid rgba(26, 23, 18, .14); background: none; cursor: pointer; border-radius: 999px; padding: 8px 13px; font-family: inherit; font-size: 12.5px; font-weight: 700; color: var(--midnight); min-height: 36px; }
+.onb-servicios-resumen { font-size: 12.5px; font-weight: 700; color: var(--midnight); margin-top: 13px; padding-top: 12px; border-top: 1px solid rgba(26, 23, 18, .09); }
+
+/* --- Paso 7 · ficha resumen ---------------------------------------------- */
+.onb-ficha-cab { display: flex; align-items: center; gap: 13px; }
+.onb-ficha-av { flex: none; width: 56px; height: 56px; border-radius: 50%; background: var(--gold) center/cover no-repeat; color: var(--midnight); display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-size: 24px; font-weight: 800; }
+.onb-ficha-kicker { font-size: 11px; font-weight: 800; letter-spacing: 1.6px; text-transform: uppercase; color: #B8944F; }
+.onb-ficha-nombre { font-family: var(--font-display); font-size: 27px; font-weight: 800; color: var(--ink); line-height: 1.05; margin-top: 2px; }
+.onb-resumenes { display: flex; flex-direction: column; gap: 10px; margin-top: 22px; }
+.onb-resumen { background: var(--panel); border-radius: 18px; padding: 14px 15px; box-shadow: 0 14px 34px -28px rgba(30, 44, 74, 1); }
+.onb-resumen-alerta { box-shadow: none; border: 1.5px solid rgba(158, 58, 42, .3); }
+.onb-resumen-cab { display: flex; align-items: center; gap: var(--space-2); }
+.onb-resumen-tit { flex: 1; font-size: 11px; font-weight: 800; letter-spacing: 1.1px; text-transform: uppercase; color: var(--muted); }
+.onb-editar { border: none; background: none; cursor: pointer; padding: var(--space-1) 2px; font-family: inherit; font-size: 12.5px; font-weight: 800; color: var(--midnight); display: flex; align-items: center; gap: var(--space-1); min-height: 32px; }
+.onb-editar .lucide, .onb-editar svg { width: 13px; height: 13px; }
+.onb-resumen-txt { font-size: 14.5px; font-weight: 700; color: var(--ink); line-height: 1.5; margin-top: 7px; }
+.onb-yaestan { margin-top: 18px; }
+.onb-yaestan-chips { display: flex; gap: var(--space-2); flex-wrap: wrap; margin-top: 9px; }
+.onb-miembro-chip { display: flex; align-items: center; gap: var(--space-2); background: var(--panel); border-radius: 999px; padding: 5px 11px 5px 5px; box-shadow: 0 3px 12px -8px rgba(0, 0, 0, .4); font-size: 13.5px; font-weight: 700; color: var(--ink); }
+.onb-miembro-av { width: 30px; height: 30px; border-radius: 50%; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 800; }
+.onb-miembro-quitar { border: none; background: none; cursor: pointer; padding: 0 2px; color: var(--muted); display: flex; }
+.onb-miembro-quitar .lucide, .onb-miembro-quitar svg { width: 15px; height: 15px; }
+.onb-legal { margin-top: 18px; background: rgba(30, 44, 74, .05); border-radius: 14px; padding: 13px 15px; font-size: 12.5px; font-weight: 600; color: var(--soft); line-height: 1.45; }
+.onb-btn-otra { width: 100%; margin-top: 18px; border: 1.5px dashed rgba(201, 169, 110, .8); background: none; cursor: pointer; border-radius: 16px; padding: 15px; display: flex; align-items: center; justify-content: center; gap: var(--space-2); font-family: inherit; font-size: 14.5px; font-weight: 800; color: #B8944F; }
+.onb-btn-otra .lucide, .onb-btn-otra svg { width: 17px; height: 17px; }
+.onb-ficha .onb-cta { margin-top: 10px; }
+
+/* --- Paso 8 · fin --------------------------------------------------------- */
+.onb-fin { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 0 32px; animation: e3fade var(--dur-slow) ease both; }
+.onb-fin-check { width: 88px; height: 88px; border-radius: 50%; background: var(--gold); color: var(--midnight); display: flex; align-items: center; justify-content: center; box-shadow: 0 16px 34px -12px rgba(150, 120, 60, .7); }
+.onb-fin-check .lucide, .onb-fin-check svg { width: 42px; height: 42px; stroke-width: 2.5; }
+.onb-fin-tit { font-family: var(--font-display); font-size: 30px; font-weight: 800; line-height: 1.08; letter-spacing: -.5px; color: var(--ink); margin-top: 26px; }
+.onb-fin-sub { font-size: 15.5px; font-weight: 500; color: var(--soft); line-height: 1.5; margin-top: 12px; }
 
 /* ============================================================
-   Formulario de miembro (compartido: alta en wizard y en sheet Familia)
+   Persona — controles compartidos (asistente + ficha en acordeón)
    ============================================================ */
-/* Foto: el círculo ES el botón — tap directo, sin botón "Subir foto" al lado.
-   Vacío: iniciales grandes + badge-cámara dorado en la esquina. Con foto: la
-   imagen cubre el círculo y un overlay inferior con "Cambiar" queda siempre
-   visible (en móvil no hay hover que lo revele). */
-.foto-tap {
-  position: relative; width: 96px; height: 96px; border-radius: 50%; flex-shrink: 0;
-  background: var(--elev3) center/cover no-repeat; border: none; cursor: pointer;
-  display: flex; align-items: center; justify-content: center; overflow: hidden;
-  margin: 0 auto var(--space-1);
+/* .per pinta la variante "asistente" (blanco sobre crema, 46px de celda);
+   .per-densa la de la ficha (campos sobre #F7F3EC, celda 38px, chip 13px) —
+   misma marca, un punto menos de escala, como pide el handoff. */
+.per-pildoras { display: flex; gap: var(--space-2); margin-top: var(--space-2); }
+.per-pildora {
+  flex: 1; border: 1px solid rgba(26, 23, 18, .13); cursor: pointer; border-radius: 12px;
+  padding: 12px 8px; min-height: 44px; font-family: inherit; font-size: 14px; font-weight: 700;
+  background: var(--panel); color: var(--ink);
 }
-.foto-tap-inicial { font-family: var(--font-display); font-size: 34px; font-weight: 400; color: var(--soft); }
-.foto-tap-icono {
-  position: absolute; right: 2px; bottom: 2px; width: 30px; height: 30px; border-radius: 50%;
-  background: var(--gold); color: var(--accent-ink); display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 2px 6px rgba(8, 18, 34, .25);
-}
-.foto-tap-icono svg { width: 16px; height: 16px; }
-.foto-tap-editar {
-  position: absolute; left: 0; right: 0; bottom: 0; padding: 5px 0 6px; text-align: center;
-  font-size: 11px; font-weight: 700; color: #fff; background: linear-gradient(transparent, rgba(8, 18, 34, .72));
-}
-/* especificidad 0,2,0 a propósito, mismo motivo que .btn-anadir-miembro-grande
-   arriba: no depender de que esta regla siga viniendo después de .foto-tap. */
-.foto-tap.foto-tap-pequena { width: 64px; height: 64px; margin: 0 0 var(--space-1); }
-.foto-tap-pequena .foto-tap-inicial { font-size: 24px; }
-.foto-tap-pequena .foto-tap-icono { width: 24px; height: 24px; }
-.foto-tap-pequena .foto-tap-icono svg { width: 13px; height: 13px; }
-.foto-quitar-link { display: block; margin: 0 auto var(--space-2); text-decoration: none; }
-.form-miembro-completo { display: flex; flex-direction: column; gap: var(--space-3); }
-.form-miembro-completo .foto-tap, .form-miembro-completo .foto-quitar-link { display: flex; }
-.form-miembro-completo .foto-quitar-link { display: block; width: fit-content; margin-left: auto; margin-right: auto; }
+.per-pildora-on { border: none; background: var(--gold); color: var(--midnight); font-weight: 800; box-shadow: 0 8px 18px -12px rgba(150, 120, 60, .9); }
+.per-densa .per-pildora { padding: 11px 8px; font-size: 13.5px; background: var(--elev2); }
+.per-densa .per-pildora-on { background: var(--gold); }
 
-/* Foto a la derecha del nombre (Roger 2026-07-15) — antes la foto quedaba
-   centrada y a pantalla completa por encima del campo Nombre; ahora comparten
-   fila, la foto en una columna fija al lado. */
-.fila-foto-nombre { display: flex; align-items: flex-start; gap: var(--space-2); }
-.fila-foto-nombre .campo-nombre-miembro { flex: 1 1 auto; margin-bottom: 0; min-width: 0; }
-.columna-foto .foto-quitar-link { font-size: 12px; text-align: center; }
+.per-tarjetas { display: flex; flex-direction: column; gap: 10px; margin-top: 18px; }
+.per-tarjeta {
+  width: 100%; border: 2px solid rgba(26, 23, 18, .09); background: var(--panel); cursor: pointer;
+  border-radius: 18px; padding: 15px; display: flex; align-items: center; gap: 12px;
+  font-family: inherit; text-align: left;
+}
+.per-tarjeta-on { border-color: var(--gold); box-shadow: 0 14px 30px -22px rgba(150, 120, 60, 1); }
+.per-tarjeta-ico { flex: none; width: 38px; height: 38px; border-radius: 12px; display: flex; align-items: center; justify-content: center; background: rgba(30, 44, 74, .06); color: var(--midnight); }
+.per-tarjeta-on .per-tarjeta-ico { background: rgba(201, 169, 110, .22); color: #B8944F; }
+.per-tarjeta-ico .lucide, .per-tarjeta-ico svg { width: 18px; height: 18px; }
+.per-tarjeta-txt { flex: 1; min-width: 0; }
+.per-tarjeta-nombre { display: block; font-size: 15.5px; font-weight: 800; color: var(--ink); }
+.per-tarjeta-desc { display: block; font-size: 12.5px; font-weight: 500; color: var(--soft); line-height: 1.4; margin-top: 2px; }
+.per-check { flex: none; width: 24px; height: 24px; border-radius: 50%; border: 1.5px solid rgba(26, 23, 18, .16); color: transparent; display: flex; align-items: center; justify-content: center; }
+.per-check .lucide, .per-check svg { width: 14px; height: 14px; }
+.per-tarjeta-on .per-check { border: none; background: var(--gold); color: var(--midnight); }
+.per-densa .per-tarjetas { gap: var(--space-1); margin-top: 7px; }
+.per-densa .per-tarjeta { border-radius: 14px; padding: 12px 13px; gap: 11px; background: var(--elev2); }
+.per-densa .per-tarjeta-on { background: var(--panel); box-shadow: none; }
+.per-densa .per-tarjeta-ico { width: 34px; height: 34px; border-radius: 11px; }
+.per-densa .per-tarjeta-nombre { font-size: 14.5px; }
+.per-densa .per-tarjeta-desc { font-size: 12px; }
+.per-densa .per-check { width: 22px; height: 22px; }
 
-/* "Más detalles": enlace de texto con +/− animado, no acordeón con borde dashed */
-.mas-detalles { border: none; padding: 0; }
-.mas-detalles summary {
-  min-height: 44px; display: flex; align-items: center; gap: 6px; list-style: none; cursor: pointer;
-  font-weight: 700; font-size: var(--fs-aux); color: var(--soft); text-transform: uppercase; letter-spacing: .04em;
+.per-alergias { display: flex; flex-direction: column; gap: 9px; margin-top: 18px; }
+.per-alergia {
+  width: 100%; border: 2px solid rgba(26, 23, 18, .08); background: var(--panel); cursor: pointer;
+  border-radius: 16px; padding: 14px 15px; display: flex; align-items: flex-start; gap: 12px;
+  font-family: inherit; text-align: left;
 }
-.mas-detalles summary::-webkit-details-marker { display: none; }
-.mas-detalles-icono { width: 16px; height: 16px; position: relative; flex-shrink: 0; }
-.mas-detalles-icono::before, .mas-detalles-icono::after {
-  content: ''; position: absolute; left: 50%; top: 50%; background: var(--soft);
-  transform: translate(-50%, -50%); transition: transform var(--dur-fast) var(--ease-out);
+.per-alergia-on { border-color: var(--rojo-seguridad); box-shadow: 0 14px 30px -24px rgba(158, 58, 42, 1); }
+.per-caja { flex: none; width: 24px; height: 24px; border-radius: 8px; border: 1.5px solid rgba(26, 23, 18, .2); color: transparent; display: flex; align-items: center; justify-content: center; margin-top: 1px; }
+.per-caja .lucide, .per-caja svg { width: 14px; height: 14px; }
+.per-alergia-on .per-caja { border: none; background: var(--rojo-seguridad); color: #fff; }
+.per-alergia-txt { flex: 1; min-width: 0; }
+.per-alergia-nombre { display: block; font-size: 15px; font-weight: 800; color: var(--ink); }
+.per-alergia-desc { display: block; font-size: 12.5px; font-weight: 500; color: var(--soft); line-height: 1.4; margin-top: 2px; }
+.per-densa .per-alergias { gap: var(--space-1); margin-top: 0; }
+.per-densa .per-alergia { border-radius: 12px; padding: 11px 12px; align-items: center; gap: 11px; background: var(--elev2); }
+.per-densa .per-alergia-on { background: var(--panel); box-shadow: none; }
+.per-densa .per-caja { width: 22px; height: 22px; border-radius: 7px; margin-top: 0; }
+.per-densa .per-alergia-nombre { font-size: 14.5px; }
+
+/* Chip de gustos de 3 estados. El tachado + el símbolo ♥/✕ acompañan al color:
+   sin ellos "mejor no" y "sin marcar" solo se distinguirían por tono. */
+.per-chips { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: 9px; }
+.per-chip {
+  border: none; cursor: pointer; border-radius: 999px; padding: 9px 14px; min-height: 38px;
+  font-family: inherit; font-size: 13.5px; font-weight: 700;
+  background: var(--panel); color: var(--ink); box-shadow: inset 0 0 0 1px rgba(26, 23, 18, .1);
 }
-.mas-detalles-icono::before { width: 12px; height: 1.5px; }
-.mas-detalles-icono::after { width: 1.5px; height: 12px; }
-.mas-detalles[open] .mas-detalles-icono::after { transform: translate(-50%, -50%) rotate(90deg); opacity: 0; }
-.mas-detalles-cuerpo { display: flex; flex-direction: column; gap: var(--space-3); padding-top: var(--space-3); }
+.per-chip-si { background: var(--gold); color: var(--midnight); font-weight: 800; box-shadow: 0 8px 16px -12px rgba(150, 120, 60, 1); }
+.per-chip-no { background: rgba(30, 44, 74, .16); color: var(--soft); text-decoration: line-through; box-shadow: none; }
+.per-densa .per-chips { gap: 7px; margin-top: 7px; }
+.per-densa .per-chip { padding: 8px 13px; font-size: 13px; background: var(--elev2); }
+.per-densa .per-chip-si { background: var(--gold); }
+.per-densa .per-chip-no { background: rgba(30, 44, 74, .16); }
+
+/* Grid 7×2 de servicios (comida/cena × L-D). 46px de alto en el asistente y
+   38px en la ficha: por debajo del ideal de 44px en la ficha, mismo criterio ya
+   aceptado en .vetos-grid — control de setup, no acción primaria diaria. */
+.per-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-top: 6px; }
+.per-grid-dias { margin-top: 14px; }
+.per-dia { text-align: center; font-size: 10.5px; font-weight: 800; color: var(--muted); }
+.per-grid-tit { display: flex; align-items: center; gap: 6px; margin-top: 9px; font-size: 11.5px; font-weight: 800; color: var(--ink); }
+.per-grid-tit .lucide, .per-grid-tit svg { width: 14px; height: 14px; color: var(--gold); }
+.per-grid-tit-cena { margin-top: 12px; }
+.per-grid-tit-cena .lucide, .per-grid-tit-cena svg { color: var(--midnight); }
+.per-celda {
+  border: 1.5px dashed rgba(26, 23, 18, .2); cursor: pointer; height: 46px; border-radius: 13px;
+  background: rgba(26, 23, 18, .03); color: rgba(26, 23, 18, .3);
+  display: flex; align-items: center; justify-content: center;
+}
+.per-celda .lucide, .per-celda svg { width: 15px; height: 15px; }
+.per-celda-on { border: none; background: var(--gold); color: var(--midnight); }
+.per-densa .per-grid { gap: 5px; }
+.per-densa .per-celda { height: 38px; border-radius: 11px; }
+
+/* --- Ficha: identidad, acordeón y guardado -------------------------------- */
+.per-cab-kicker { position: absolute; left: 50%; top: 12px; transform: translateX(-50%); font-size: 12px; font-weight: 800; letter-spacing: .8px; text-transform: uppercase; color: var(--soft); }
+.per-identidad { display: flex; flex-direction: column; align-items: center; margin: var(--space-1) 0 22px; }
+.per-foto { position: relative; width: 72px; height: 72px; border-radius: 24px; border: none; cursor: pointer; background-size: cover; background-position: center; display: flex; align-items: center; justify-content: center; }
+.per-foto-inicial { color: #fff; font-size: 28px; font-weight: 800; }
+.per-foto-badge { position: absolute; bottom: -5px; right: -5px; width: 28px; height: 28px; border-radius: 50%; background: var(--gold); border: 3px solid var(--bg); color: var(--accent-ink); display: flex; align-items: center; justify-content: center; }
+.per-foto-badge .lucide, .per-foto-badge svg { width: 14px; height: 14px; }
+.per-identidad-nombre { font-family: var(--font-display); font-size: 23px; font-weight: 800; color: var(--ink); margin-top: 14px; }
+
+.per-secs { display: flex; flex-direction: column; gap: 12px; }
+.per-sec { background: var(--panel); border-radius: 20px; box-shadow: 0 8px 20px -16px rgba(60, 45, 20, .5); }
+.per-sec-alerta { box-shadow: none; border: 1.5px solid rgba(158, 58, 42, .28); }
+.per-sec-cab { width: 100%; border: none; background: none; cursor: pointer; font-family: inherit; display: flex; align-items: center; gap: 11px; padding: 14px 15px; text-align: left; }
+.per-sec-ico { flex: none; width: 30px; height: 30px; border-radius: 10px; display: flex; align-items: center; justify-content: center; }
+.per-sec-ico .lucide, .per-sec-ico svg { width: 15px; height: 15px; }
+.per-sec-ico-mid { background: rgba(30, 44, 74, .07); color: var(--midnight); }
+.per-sec-ico-oro { background: rgba(201, 169, 110, .2); color: #B8944F; }
+.per-sec-ico-rojo { background: rgba(158, 58, 42, .1); color: var(--rojo-seguridad); }
+.per-sec-txt { flex: 1; min-width: 0; }
+.per-sec-tit { display: block; font-size: 11px; font-weight: 800; letter-spacing: 1.1px; text-transform: uppercase; color: var(--muted); }
+.per-sec-res { display: block; font-size: 14px; font-weight: 700; color: var(--ink); line-height: 1.4; margin-top: 3px; }
+.per-sec-chev { flex: none; width: 18px; height: 18px; color: var(--muted); }
+.per-sec-cuerpo { padding: 4px 15px 16px; animation: e3fade 200ms ease both; }
+
+.per-campo { display: block; }
+.per-campo + .per-campo, .per-campo-suelto { margin-top: 14px; }
+.per-campo .onb-eyebrow, .per-sec-cuerpo .onb-eyebrow { margin-top: 14px; }
+.per-input {
+  width: 100%; border: none; background: var(--elev2); border-radius: 12px;
+  font-family: inherit; font-size: 16px; font-weight: 600; color: var(--ink);
+  padding: 12px 13px; margin-top: 7px;
+}
+.per-input:focus { outline: 2px solid var(--gold); outline-offset: 1px; }
+/* el chevron lo dibuja .onb-select-wrap — sin esto el select pinta además el suyo nativo */
+select.per-input { appearance: none; -webkit-appearance: none; padding-right: 38px; }
+.per-campo-suelto .onb-select-wrap > .lucide, .per-campo-suelto .onb-select-wrap > svg { right: 13px; bottom: 13px; }
+.per-campo-suelto { background: var(--panel); border-radius: 20px; padding: 12px 15px 14px; box-shadow: 0 8px 20px -16px rgba(60, 45, 20, .5); }
+.per-campo-suelto .onb-eyebrow { margin-top: 0; }
+.per-nota { font-size: 12.5px; font-weight: 500; color: var(--soft); line-height: 1.45; margin-top: 7px; }
+
+.per-guardar { width: 100%; margin-top: 22px; border: none; cursor: pointer; border-radius: 16px; padding: 16px; background: linear-gradient(180deg, var(--gold-grad-a) 0%, var(--gold-grad-b) 100%); box-shadow: 0 10px 24px -10px rgba(150, 120, 60, .8); display: flex; align-items: center; justify-content: center; gap: 9px; font-family: inherit; font-weight: 800; font-size: 15px; color: var(--accent-ink); }
+.per-guardar .lucide, .per-guardar svg { width: 18px; height: 18px; }
+.per-guardado { display: flex; align-items: center; justify-content: center; gap: 7px; margin-top: 10px; font-size: 13px; font-weight: 700; color: var(--midnight); animation: e3fade 200ms ease both; }
+.per-guardado .lucide, .per-guardado svg { width: 16px; height: 16px; }
+.per-guardar-volver { width: 100%; margin-top: 10px; border: 1.5px solid rgba(26, 23, 18, .14); cursor: pointer; background: none; border-radius: 16px; padding: 14px; font-family: inherit; display: flex; align-items: center; justify-content: center; gap: var(--space-2); color: var(--midnight); font-weight: 800; font-size: 14.5px; }
+.per-guardar-volver .lucide, .per-guardar-volver svg { width: 16px; height: 16px; }
+.per-eliminar { width: 100%; margin-top: 10px; border: none; cursor: pointer; background: none; padding: 12px; color: var(--danger); font-family: inherit; font-weight: 700; font-size: 14px; display: flex; align-items: center; justify-content: center; gap: 7px; }
+.per-eliminar .lucide, .per-eliminar svg { width: 16px; height: 16px; }
 
 .vista-body { max-width: 640px; margin: 0 auto; padding: var(--space-3) var(--space-3) var(--space-5); }
 
@@ -605,8 +805,7 @@ body.sheet-open { overflow: hidden; }
 }
 /* --fs-titulo (20px) está documentado como "h2 de sheet" en la escala tipográfica
    de :root; peso 800 en vez del 400 anterior (handoff, tarea #18: los títulos de
-   sheet usan el mismo Playfair bold que el resto del rediseño, no el regular
-   reservado a .wizard-pregunta). */
+   sheet usan el mismo Playfair bold que el resto del rediseño). */
 .sheet-head h2 { font-family: var(--font-display); font-size: var(--fs-titulo); font-weight: 800; }
 .btn-cerrar {
   width: 44px; height: 44px; border-radius: 50%; border: none; background: var(--elev2);
@@ -798,19 +997,7 @@ body.sheet-open { overflow: hidden; }
 /* separacion >=8px entre objetivos tocables contiguos (evita mis-tap por jitter del
    dedo) — con 7 columnas la celda queda ~40-42px de ancho en un iPhone SE-class,
    por debajo del ideal 44px; se acepta como control secundario/infrecuente (setup
-   de familia), no una acción primaria diaria. Alto siempre >=44px (ver .patron-celda). */
-.patron-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: var(--space-2); margin-bottom: var(--space-2); }
-.patron-celda {
-  min-height: 44px; border-radius: 8px; border: 1.5px solid var(--line-solid); background: var(--elev2);
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
-  cursor: pointer; color: var(--ink); font-size: var(--fs-aux);
-}
-.patron-dia { font-size: 10px; font-weight: 600; color: var(--soft); }
-.patron-valor { font-size: var(--fs-aux); font-weight: 700; }
-.patron-celda.patron-casa { background: var(--gold-soft); border-color: var(--gold); }
-.patron-celda.patron-fuera { background: var(--elev3); }
-.patron-celda.patron-cole { background: var(--panel); border-style: dashed; }
-
+   de familia), no una acción primaria diaria. Alto siempre >=44px. */
 .vetos-grid { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 .veto-chip {
   display: inline-flex; align-items: center; gap: var(--space-1); min-height: 44px;
@@ -826,9 +1013,6 @@ body.sheet-open { overflow: hidden; }
 /* "nuevo para probar": fondo ink + texto gold-soft (par seguro; dorado nunca
    como texto sobre claro — UI_MOBILE §3). A la derecha del head de la card. */
 .badge-nuevo { margin-left: auto; padding: 2px 8px; border-radius: 999px; background: var(--ink); color: var(--gold-soft); font-size: var(--fs-aux); font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase; flex-shrink: 0; }
-
-/* el select de región hereda .campo-nombre-familia (28px display) — devolverlo a UI */
-.campo-nombre-familia select.input-editorial { font-family: var(--font-ui); font-size: 16px; font-weight: 500; }
 
 /* Menú del cole (F1): línea informativa sobre las cards del día — mismo rol y
    par de color que .postre-linea (--soft sobre --bg, 6.95:1 AA) */
@@ -1182,8 +1366,8 @@ button.cp-grupo-titulo { width: 100%; border: none; background: none; font: inhe
    Familia — lista de miembros + ficha a pantalla completa (Roger
    2026-07-19, handoff Claude Design). La ficha reutiliza .rv-flotante/
    .rv-volver/.rv-seccion-titulo/.rv-body-vacia (mismo lenguaje que la
-   vista de receta) y .foto-tap/.campo-eyebrow/.chip-toggle/.patron-grid/
-   .vetos-grid ya existentes (campos reales sin tocar su fontanería).
+   vista de receta) y los controles de persona (.per-*) que comparte con el
+   asistente de alta del onboarding.
    --------------------------------------------------------------- */
 /* Familia en cuadrícula (Roger 2026-07-25): misma card que Recetas (.rc-grid/.rc-tarjeta).
    No añadir texto a la card (la edad se probó y se descartó, ver crónica) sin volver a medir
@@ -1198,14 +1382,7 @@ button.cp-grupo-titulo { width: 100%; border: none; background: none; font: inhe
 
 .mf-cabecera { position: relative; height: 60px; }
 .mf-body { padding-top: var(--space-2); }
-.mf-foto-fila { display: flex; flex-direction: column; align-items: center; margin-bottom: var(--space-4); }
-.mf-nombre-titulo { font-family: var(--font-display); font-size: 22px; font-weight: 800; color: var(--ink); margin-top: 10px; }
-.mf-campo { background: var(--panel); border-radius: 16px; padding: 12px 14px; margin-bottom: 10px; box-shadow: 0 4px 14px -10px rgba(26,23,18,.3); }
-.mf-campo .input-editorial { border: none; padding: 0; min-height: 0; font-size: 16px; font-weight: 600; }
-.mf-fila-2 { display: flex; gap: 10px; }
-.mf-fila-2 .mf-campo { flex: 1; min-width: 0; }
-.mf-dispositivo { width: 100%; margin-top: 8px; justify-content: center; display: flex; }
-.mf-eliminar { width: 100%; margin-top: 4px; justify-content: center; display: flex; }
+.mf-dispositivo { width: 100%; margin-top: var(--space-2); justify-content: center; display: flex; }
 
 /* ============================================================
    Domingo de batch (handoff backlog-v3 #17, 2026-07-28)

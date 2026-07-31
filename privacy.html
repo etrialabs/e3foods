@@ -4,10 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>e3Foods · Política de privacidad</title>
-<!-- Obra auth+push (AUTH_PUSH_SPEC §1.5, 2026-07-31). TEXTO: borrador operativo desplegado
-     por orden de ejecución de Roger; su validación final es el paquete §12.8 — cambiarlo es
-     editar este fichero y redesplegar. Página estática autocontenida: sin fuentes externas,
-     sin scripts de terceros. El idioma sale de e3foods_lang (el de la app). -->
+<!-- TEXTO VALIDADO por Roger (§12.8, 31-jul — "adelante con el texto, tienes mi ok", vía
+     sesión 29ª): ES = versión maestra; CA/FR/EN derivadas del mismo contenido aprobado.
+     Dos órdenes vigentes: responsable SIN persona física nombrada hasta el kickoff
+     (BLOQUEANTE antes de la primera familia F&F externa) · email the.etria@gmail.com
+     confirmado. Sin promesas "nunca publicidad" (matiz §12.5: decisión actual, no dogma).
+     Página estática autocontenida: sin fuentes externas ni scripts de terceros. -->
 <style>
   :root { --bg:#F5F0E8; --ink:#1A1712; --gold:#C9A96E; }
   body { background:var(--bg); color:var(--ink); font-family:-apple-system,'Manrope',sans-serif;
@@ -16,6 +18,7 @@
   h1 { font-size:26px; margin:8px 0 2px; } h2 { font-size:17px; margin:22px 0 6px; }
   p, li { font-size:15px; } .fecha { color:#7a715f; font-size:13px; }
   a { color:#8a6d3b; } .volver { display:inline-block; margin-bottom:14px; color:#8a6d3b; }
+  ul { padding-left:20px; }
   [hidden] { display:none; }
 </style>
 </head>
@@ -25,98 +28,118 @@
 
 <section data-lang="es">
 <h1>Política de privacidad</h1>
-<p class="fecha">Versión 1 · 31 de julio de 2026</p>
+<p class="fecha">Versión 1.0 · 31 de julio de 2026</p>
 <h2>Quién es el responsable</h2>
-<p>e3Foods (Étria). Contacto para cualquier tema de datos: <a href="mailto:the.etria@gmail.com">the.etria@gmail.com</a>.</p>
+<p>e3Foods es un servicio de planificación de menús familiares. Contacto: <a href="mailto:the.etria@gmail.com">the.etria@gmail.com</a>. Escríbenos ahí para cualquier duda sobre tus datos.</p>
 <h2>Qué datos tratamos y para qué</h2>
+<p>Solo los necesarios para planificar los menús de tu familia:</p>
 <ul>
-<li><strong>Tu cuenta</strong>: email y credencial de acceso (o tu cuenta de Google). Sirve para identificarte y recuperar el acceso.</li>
-<li><strong>Tu familia</strong>: nombres o apodos, año de nacimiento, sexo, y opcionalmente peso, altura, actividad y foto de cada miembro. Sirven para calcular raciones y calorías del menú.</li>
-<li><strong>Salud (categoría especial, art. 9 RGPD)</strong>: alergias, intolerancias y restricciones alimentarias, también de menores a cargo del adulto que las introduce. Se tratan <em>solo</em> para excluir esos alimentos de los menús, y solo con tu consentimiento explícito, que pedimos al crear la familia. Puedes retirarlo borrando los datos o la familia.</li>
-<li><strong>Uso del planificador</strong>: menús servidos, favoritos, valoraciones y lista de la compra — para que la app funcione y varíe los menús.</li>
+<li><strong>Tu cuenta</strong>: email, idioma y proveedor de acceso (Google o contraseña — la contraseña nunca la vemos: la custodia cifrada Google Firebase).</li>
+<li><strong>Tu familia</strong>: nombre de la familia, código de unión y las fichas de sus miembros que tú creas: nombre, sexo, año de nacimiento y, si los indicas, foto, peso, altura, nivel de actividad, estilo de alimentación, alergias e intolerancias, gustos y patrón de comidas.</li>
+<li><strong>Tu uso</strong>: menús generados, valoraciones, lista de la compra, recetas favoritas u ocultas.</li>
+<li><strong>Avisos (opcional)</strong>: si activas las notificaciones, un identificador técnico de tu dispositivo. Máximo 2 avisos al día sobre tu lista de la compra.</li>
 </ul>
+<h2>Datos de salud y menores</h2>
+<p>Las alergias, intolerancias y dietas son datos de salud (art. 9 RGPD): los tratamos únicamente con tu consentimiento explícito, que te pedimos al crear la familia, y solo para componer menús seguros para quien los tiene. Los menores no tienen cuenta: sus datos los introduce y controla el adulto responsable que los da de alta.</p>
 <h2>Base jurídica</h2>
-<p>Ejecución del servicio que nos pides (art. 6.1.b) y, para los datos de salud, tu consentimiento explícito (art. 9.2.a). Sin ese consentimiento la app no puede planificar con alergias.</p>
-<h2>Dónde se guardan</h2>
-<p>En Firebase / Google Cloud (región europe-west1), con los compromisos de tratamiento de datos de Google Cloud. No vendemos datos ni los usamos para publicidad. No hay rastreadores de terceros; la app guarda una copia local en tu dispositivo para funcionar sin conexión.</p>
+<p>La prestación del servicio que nos pides (art. 6.1.b) para cuenta, familia y uso; tu consentimiento explícito (art. 9.2.a) para los datos de salud; y tu consentimiento (art. 6.1.a) para los avisos. Puedes retirar cualquier consentimiento cuando quieras desde la app.</p>
+<h2>Quién más interviene</h2>
+<p>Los datos se almacenan en Google Cloud / Firebase (Google Ireland Ltd.), en servidores de la Unión Europea (Bélgica), con Google actuando como encargado del tratamiento. La aplicación web se sirve desde GitHub Pages (GitHub Inc.), que como cualquier servidor web ve tu dirección IP al cargar la página. Usamos reCAPTCHA (Google) solo como protección anti-abuso. No vendemos ni cedemos datos a nadie, no usamos publicidad ni analítica de terceros.</p>
 <h2>Cuánto tiempo</h2>
-<p>Mientras tu familia use la app. Si borras la familia o tu cuenta, los datos se eliminan de nuestros servidores en el momento.</p>
+<p>Mientras tu cuenta y tu familia existan. Al usar «Borrar familia» o «Borrar cuenta» el borrado es inmediato e irreversible, subcolecciones incluidas.</p>
 <h2>Tus derechos</h2>
-<p>Acceso, rectificación, supresión y portabilidad desde la propia app: <em>Sincronizar familia → Descargar una copia</em> (export completo) y <em>Borrar familia</em> / <em>Cuenta → Borrar mi cuenta</em> (supresión). También escribiéndonos, y reclamando ante la AEPD (aepd.es) si crees que algo no está bien.</p>
-<h2>Menores</h2>
-<p>Los menores no tienen cuenta: sus datos los introduce y controla el adulto responsable de la familia.</p>
+<p>Desde la propia app puedes exportar todos los datos de tu familia (acceso y portabilidad), editarlos (rectificación) y borrarlos (supresión). Para oposición, limitación o cualquier otra petición, escríbenos al email de arriba. Si crees que no lo hacemos bien, puedes reclamar ante la Agencia Española de Protección de Datos (<a href="https://www.aepd.es" rel="noopener" target="_blank">aepd.es</a>).</p>
+<h2>Sin perfilado comercial</h2>
+<p>e3Foods genera menús con tus datos porque ese es el servicio; no hay decisiones automatizadas con efectos legales ni perfiles publicitarios.</p>
+<h2>Cambios</h2>
+<p>Si esta política cambia, te lo diremos en la app antes de que el cambio te aplique.</p>
 </section>
 
 <section data-lang="ca" hidden>
 <h1>Política de privacitat</h1>
-<p class="fecha">Versió 1 · 31 de juliol de 2026</p>
+<p class="fecha">Versió 1.0 · 31 de juliol de 2026</p>
 <h2>Qui és el responsable</h2>
-<p>e3Foods (Étria). Contacte per a qualsevol tema de dades: <a href="mailto:the.etria@gmail.com">the.etria@gmail.com</a>.</p>
+<p>e3Foods és un servei de planificació de menús familiars. Contacte: <a href="mailto:the.etria@gmail.com">the.etria@gmail.com</a>. Escriu-nos allà per a qualsevol dubte sobre les teves dades.</p>
 <h2>Quines dades tractem i per a què</h2>
+<p>Només les necessàries per planificar els menús de la teva família:</p>
 <ul>
-<li><strong>El teu compte</strong>: email i credencial d'accés (o el teu compte de Google). Serveix per identificar-te i recuperar l'accés.</li>
-<li><strong>La teva família</strong>: noms o sobrenoms, any de naixement, sexe i, opcionalment, pes, alçada, activitat i foto de cada membre. Serveixen per calcular racions i calories del menú.</li>
-<li><strong>Salut (categoria especial, art. 9 RGPD)</strong>: al·lèrgies, intoleràncies i restriccions alimentàries, també de menors a càrrec de l'adult que les introdueix. Es tracten <em>només</em> per excloure aquests aliments dels menús, i només amb el teu consentiment explícit, que demanem en crear la família. Pots retirar-lo esborrant les dades o la família.</li>
-<li><strong>Ús del planificador</strong>: menús servits, preferits, valoracions i llista de la compra — perquè l'app funcioni i variï els menús.</li>
+<li><strong>El teu compte</strong>: email, idioma i proveïdor d'accés (Google o contrasenya — la contrasenya no la veiem mai: la custodia xifrada Google Firebase).</li>
+<li><strong>La teva família</strong>: nom de la família, codi d'unió i les fitxes dels seus membres que tu crees: nom, sexe, any de naixement i, si els indiques, foto, pes, alçada, nivell d'activitat, estil d'alimentació, al·lèrgies i intoleràncies, gustos i patró d'àpats.</li>
+<li><strong>El teu ús</strong>: menús generats, valoracions, llista de la compra, receptes preferides o ocultes.</li>
+<li><strong>Avisos (opcional)</strong>: si actives les notificacions, un identificador tècnic del teu dispositiu. Màxim 2 avisos al dia sobre la teva llista de la compra.</li>
 </ul>
+<h2>Dades de salut i menors</h2>
+<p>Les al·lèrgies, intoleràncies i dietes són dades de salut (art. 9 RGPD): les tractem únicament amb el teu consentiment explícit, que et demanem en crear la família, i només per compondre menús segurs per a qui les té. Els menors no tenen compte: les seves dades les introdueix i controla l'adult responsable que els dona d'alta.</p>
 <h2>Base jurídica</h2>
-<p>Execució del servei que ens demanes (art. 6.1.b) i, per a les dades de salut, el teu consentiment explícit (art. 9.2.a).</p>
-<h2>On es guarden</h2>
-<p>A Firebase / Google Cloud (regió europe-west1), amb els compromisos de tractament de dades de Google Cloud. No venem dades ni les fem servir per a publicitat. Sense rastrejadors de tercers; l'app desa una còpia local al teu dispositiu per funcionar sense connexió.</p>
+<p>La prestació del servei que ens demanes (art. 6.1.b) per a compte, família i ús; el teu consentiment explícit (art. 9.2.a) per a les dades de salut; i el teu consentiment (art. 6.1.a) per als avisos. Pots retirar qualsevol consentiment quan vulguis des de l'app.</p>
+<h2>Qui més hi intervé</h2>
+<p>Les dades s'emmagatzemen a Google Cloud / Firebase (Google Ireland Ltd.), en servidors de la Unió Europea (Bèlgica), amb Google actuant com a encarregat del tractament. L'aplicació web se serveix des de GitHub Pages (GitHub Inc.), que com qualsevol servidor web veu la teva adreça IP en carregar la pàgina. Fem servir reCAPTCHA (Google) només com a protecció anti-abús. No venem ni cedim dades a ningú, no fem servir publicitat ni analítica de tercers.</p>
 <h2>Quant de temps</h2>
-<p>Mentre la teva família faci servir l'app. Si esborres la família o el teu compte, les dades s'eliminen dels nostres servidors al moment.</p>
+<p>Mentre el teu compte i la teva família existeixin. En fer servir «Esborrar família» o «Esborrar compte» l'esborrat és immediat i irreversible, subcol·leccions incloses.</p>
 <h2>Els teus drets</h2>
-<p>Accés, rectificació, supressió i portabilitat des de la mateixa app: <em>Sincronitzar la família → Descarrega una còpia</em> i <em>Esborrar família</em> / <em>Compte → Esborra el meu compte</em>. També escrivint-nos, i reclamant davant l'AEPD (aepd.es).</p>
-<h2>Menors</h2>
-<p>Els menors no tenen compte: les seves dades les introdueix i controla l'adult responsable de la família.</p>
+<p>Des de la mateixa app pots exportar totes les dades de la teva família (accés i portabilitat), editar-les (rectificació) i esborrar-les (supressió). Per a oposició, limitació o qualsevol altra petició, escriu-nos a l'email de dalt. Si creus que no ho fem bé, pots reclamar davant l'Agència Espanyola de Protecció de Dades (<a href="https://www.aepd.es" rel="noopener" target="_blank">aepd.es</a>).</p>
+<h2>Sense perfilat comercial</h2>
+<p>e3Foods genera menús amb les teves dades perquè aquest és el servei; no hi ha decisions automatitzades amb efectes legals ni perfils publicitaris.</p>
+<h2>Canvis</h2>
+<p>Si aquesta política canvia, t'ho direm a l'app abans que el canvi t'apliqui.</p>
 </section>
 
 <section data-lang="fr" hidden>
 <h1>Politique de confidentialité</h1>
-<p class="fecha">Version 1 · 31 juillet 2026</p>
+<p class="fecha">Version 1.0 · 31 juillet 2026</p>
 <h2>Responsable du traitement</h2>
-<p>e3Foods (Étria). Contact données : <a href="mailto:the.etria@gmail.com">the.etria@gmail.com</a>.</p>
+<p>e3Foods est un service de planification de menus familiaux. Contact : <a href="mailto:the.etria@gmail.com">the.etria@gmail.com</a>. Écrivez-nous pour toute question sur vos données.</p>
 <h2>Quelles données et pourquoi</h2>
+<p>Uniquement celles nécessaires pour planifier les menus de votre famille :</p>
 <ul>
-<li><strong>Votre compte</strong> : email et identifiant d'accès (ou votre compte Google), pour vous identifier et récupérer l'accès.</li>
-<li><strong>Votre famille</strong> : prénoms ou surnoms, année de naissance, sexe et, en option, poids, taille, activité et photo de chaque membre — pour calculer portions et calories.</li>
-<li><strong>Santé (catégorie particulière, art. 9 RGPD)</strong> : allergies, intolérances et restrictions alimentaires, y compris de mineurs à charge de l'adulte qui les saisit. Traitées <em>uniquement</em> pour exclure ces aliments des menus, avec votre consentement explicite demandé à la création de la famille. Retirable en supprimant les données ou la famille.</li>
-<li><strong>Usage du planificateur</strong> : menus servis, favoris, évaluations et liste de courses.</li>
+<li><strong>Votre compte</strong> : email, langue et fournisseur d'accès (Google ou mot de passe — nous ne voyons jamais le mot de passe : il est conservé chiffré par Google Firebase).</li>
+<li><strong>Votre famille</strong> : nom de la famille, code d'union et les fiches de ses membres que vous créez : nom, sexe, année de naissance et, si vous les indiquez, photo, poids, taille, niveau d'activité, style d'alimentation, allergies et intolérances, goûts et rythme des repas.</li>
+<li><strong>Votre usage</strong> : menus générés, évaluations, liste de courses, recettes favorites ou masquées.</li>
+<li><strong>Rappels (optionnel)</strong> : si vous activez les notifications, un identifiant technique de votre appareil. Maximum 2 rappels par jour sur votre liste de courses.</li>
 </ul>
+<h2>Données de santé et mineurs</h2>
+<p>Les allergies, intolérances et régimes sont des données de santé (art. 9 RGPD) : nous les traitons uniquement avec votre consentement explicite, demandé à la création de la famille, et seulement pour composer des menus sûrs pour la personne concernée. Les mineurs n'ont pas de compte : leurs données sont saisies et contrôlées par l'adulte responsable qui les enregistre.</p>
 <h2>Base juridique</h2>
-<p>Exécution du service (art. 6.1.b) et, pour les données de santé, votre consentement explicite (art. 9.2.a).</p>
-<h2>Où sont-elles stockées</h2>
-<p>Sur Firebase / Google Cloud (région europe-west1), avec les engagements de traitement des données de Google Cloud. Pas de vente de données, pas de publicité, pas de traceurs tiers ; une copie locale reste sur votre appareil pour le hors-ligne.</p>
-<h2>Durée</h2>
-<p>Tant que votre famille utilise l'app. Si vous supprimez la famille ou votre compte, les données sont effacées immédiatement de nos serveurs.</p>
+<p>L'exécution du service que vous nous demandez (art. 6.1.b) pour le compte, la famille et l'usage ; votre consentement explicite (art. 9.2.a) pour les données de santé ; et votre consentement (art. 6.1.a) pour les rappels. Vous pouvez retirer tout consentement à tout moment depuis l'app.</p>
+<h2>Qui d'autre intervient</h2>
+<p>Les données sont stockées sur Google Cloud / Firebase (Google Ireland Ltd.), sur des serveurs de l'Union européenne (Belgique), Google agissant comme sous-traitant. L'application web est servie par GitHub Pages (GitHub Inc.), qui comme tout serveur web voit votre adresse IP au chargement de la page. Nous utilisons reCAPTCHA (Google) uniquement comme protection anti-abus. Nous ne vendons ni ne cédons de données à personne, pas de publicité ni d'analytique tierce.</p>
+<h2>Combien de temps</h2>
+<p>Tant que votre compte et votre famille existent. Avec « Supprimer la famille » ou « Supprimer mon compte », l'effacement est immédiat et irréversible, sous-collections comprises.</p>
 <h2>Vos droits</h2>
-<p>Accès, rectification, suppression et portabilité depuis l'app : <em>Synchroniser la famille → Télécharger une copie</em> et <em>Supprimer la famille</em> / <em>Compte → Supprimer mon compte</em>. Vous pouvez aussi nous écrire, et saisir l'autorité de contrôle (AEPD, aepd.es).</p>
-<h2>Mineurs</h2>
-<p>Les mineurs n'ont pas de compte : leurs données sont saisies et contrôlées par l'adulte responsable de la famille.</p>
+<p>Depuis l'app, vous pouvez exporter toutes les données de votre famille (accès et portabilité), les modifier (rectification) et les supprimer (effacement). Pour l'opposition, la limitation ou toute autre demande, écrivez-nous à l'email ci-dessus. Vous pouvez aussi saisir l'autorité espagnole de protection des données (<a href="https://www.aepd.es" rel="noopener" target="_blank">aepd.es</a>).</p>
+<h2>Sans profilage commercial</h2>
+<p>e3Foods génère des menus avec vos données parce que c'est le service ; pas de décisions automatisées à effets juridiques ni de profils publicitaires.</p>
+<h2>Modifications</h2>
+<p>Si cette politique change, nous vous l'indiquerons dans l'app avant que le changement s'applique.</p>
 </section>
 
 <section data-lang="en" hidden>
 <h1>Privacy policy</h1>
-<p class="fecha">Version 1 · 31 July 2026</p>
+<p class="fecha">Version 1.0 · 31 July 2026</p>
 <h2>Who is responsible</h2>
-<p>e3Foods (Étria). Data contact: <a href="mailto:the.etria@gmail.com">the.etria@gmail.com</a>.</p>
+<p>e3Foods is a family meal-planning service. Contact: <a href="mailto:the.etria@gmail.com">the.etria@gmail.com</a>. Write to us with any question about your data.</p>
 <h2>What data we process and why</h2>
+<p>Only what is needed to plan your family's menus:</p>
 <ul>
-<li><strong>Your account</strong>: email and sign-in credential (or your Google account), to identify you and recover access.</li>
-<li><strong>Your family</strong>: names or nicknames, birth year, sex and, optionally, weight, height, activity and photo of each member — to compute portions and calories.</li>
-<li><strong>Health (special category, art. 9 GDPR)</strong>: allergies, intolerances and dietary restrictions, including those of minors entered by the responsible adult. Processed <em>only</em> to exclude those foods from menus, with your explicit consent requested when creating the family. Withdraw it by deleting the data or the family.</li>
-<li><strong>Planner usage</strong>: served menus, favourites, ratings and shopping list.</li>
+<li><strong>Your account</strong>: email, language and sign-in provider (Google or password — we never see the password: Google Firebase stores it encrypted).</li>
+<li><strong>Your family</strong>: family name, join code and the member profiles you create: name, sex, birth year and, if you provide them, photo, weight, height, activity level, eating style, allergies and intolerances, likes and meal pattern.</li>
+<li><strong>Your usage</strong>: generated menus, ratings, shopping list, favourite or hidden recipes.</li>
+<li><strong>Reminders (optional)</strong>: if you enable notifications, a technical identifier of your device. At most 2 reminders per day about your shopping list.</li>
 </ul>
+<h2>Health data and minors</h2>
+<p>Allergies, intolerances and diets are health data (art. 9 GDPR): we process them only with your explicit consent, requested when you create the family, and only to compose menus that are safe for the person concerned. Minors don't have accounts: their data is entered and controlled by the responsible adult who registers them.</p>
 <h2>Legal basis</h2>
-<p>Performance of the service (art. 6.1.b) and, for health data, your explicit consent (art. 9.2.a).</p>
-<h2>Where it lives</h2>
-<p>Firebase / Google Cloud (europe-west1 region), under Google Cloud's data processing terms. We don't sell data, run ads or use third-party trackers; a local copy stays on your device for offline use.</p>
+<p>Performance of the service you request (art. 6.1.b) for account, family and usage; your explicit consent (art. 9.2.a) for health data; and your consent (art. 6.1.a) for reminders. You can withdraw any consent at any time from the app.</p>
+<h2>Who else is involved</h2>
+<p>Data is stored on Google Cloud / Firebase (Google Ireland Ltd.), on European Union servers (Belgium), with Google acting as data processor. The web app is served from GitHub Pages (GitHub Inc.), which like any web server sees your IP address when loading the page. We use reCAPTCHA (Google) only as anti-abuse protection. We don't sell or share data with anyone, and use no advertising or third-party analytics.</p>
 <h2>For how long</h2>
-<p>While your family uses the app. Deleting the family or your account removes the data from our servers immediately.</p>
+<p>While your account and your family exist. Using "Delete family" or "Delete my account" erases the data immediately and irreversibly, subcollections included.</p>
 <h2>Your rights</h2>
-<p>Access, rectification, erasure and portability from the app itself: <em>Sync family → Download a copy</em> and <em>Delete family</em> / <em>Account → Delete my account</em>. You can also write to us, or complain to the AEPD (aepd.es).</p>
-<h2>Minors</h2>
-<p>Minors don't have accounts: their data is entered and controlled by the responsible adult in the family.</p>
+<p>From the app itself you can export all your family's data (access and portability), edit it (rectification) and delete it (erasure). For objection, restriction or any other request, write to the email above. You may also complain to the Spanish data protection authority (<a href="https://www.aepd.es" rel="noopener" target="_blank">aepd.es</a>).</p>
+<h2>No commercial profiling</h2>
+<p>e3Foods generates menus from your data because that is the service; there are no automated decisions with legal effects and no advertising profiles.</p>
+<h2>Changes</h2>
+<p>If this policy changes, we will tell you in the app before the change applies to you.</p>
 </section>
 
 </main>

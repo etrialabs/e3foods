@@ -13,6 +13,118 @@
   var STORAGE_KEY = 'e3foods_v2';
   var PATRON_DEFAULT = ['casa', 'casa', 'casa', 'casa', 'casa', 'casa', 'casa'];
 
+  // ---------------------------------------------------------------
+  // MOTOR v5 tras FLAG DE DESARROLLO (sesion motor v5, 2026-07-30 · obra de encendido, 31-jul).
+  // V5_PRODUCCION es EL interruptor del dia D: con false (hoy), todo lo v5 vive tras el flag
+  // ?motor=v5 y AISLADO (estado en clave propia, sin sync — produccion jamas ve un plan v5).
+  // El dia del switch se pone a true: v5 pasa a ser el motor por defecto sobre el estado REAL
+  // (e3foods_v2) con sync activa, el flag deja de tener efecto y v3 queda inerte en el repo
+  // (red de seguridad ≥1-2 semanas; su limpieza es una sesion posterior).
+  //   - flag: ?motor=v5 enciende (recordado en este navegador), ?motor=v3 apaga;
+  //   - V5_DEV = v5 encendido SIN ser produccion -> sandbox aislado de siempre;
+  //   - data/banco_v5.js + js/motor_v5.js (GENERADOS por _build_banco_v5.js) se cargan
+  //     dinamicamente — sin motor v5 no se descargan, el deploy no paga su peso.
+  var V5_PRODUCCION = true; // DIA D EJECUTADO 2026-07-31 (orden directa de Roger en sesion: "quiero arrancar v5 ya")
+  var MOTOR_V5 = V5_PRODUCCION || (function () {
+    try {
+      var q = new URLSearchParams(location.search).get('motor');
+      if (q === 'v5') { localStorage.setItem('e3foods_dev_motor', 'v5'); return true; }
+      if (q === 'v3') { localStorage.removeItem('e3foods_dev_motor'); return false; }
+      return localStorage.getItem('e3foods_dev_motor') === 'v5';
+    } catch (e) { return false; }
+  })();
+  var V5_DEV = MOTOR_V5 && !V5_PRODUCCION;
+  if (V5_DEV) STORAGE_KEY = 'e3foods_v5_dev';
+
+  function cargarScriptsV5(alTerminar) {
+    // mismo contador ?v=N que el resto del bundle (SPEC §Calidad: transferSize:0 en silencio) —
+    // se lee del propio tag de app.js para no duplicar el numero en dos sitios
+    var propio = document.querySelector('script[src*="app.js"]');
+    var v = propio && /\?v=(\d+)/.exec(propio.src) ? '?v=' + /\?v=(\d+)/.exec(propio.src)[1] : '';
+    var rutas = ['data/banco_v5.js' + v, 'js/motor_v5.js' + v];
+    (function siguiente() {
+      if (!rutas.length) { alTerminar(); return; }
+      var s = document.createElement('script');
+      s.src = rutas.shift();
+      s.onload = siguiente;
+      s.onerror = function () {
+        document.body.innerHTML = '<div style="padding:32px 24px;font-family:sans-serif;max-width:480px;margin:0 auto">' +
+          '<h1 style="font-size:20px;margin-bottom:12px">Motor v5 no disponible</h1>' +
+          '<p>Falta data/banco_v5.js o js/motor_v5.js — regenerar con node _build_banco_v5.js, o quitar el flag con ?motor=v3.</p></div>';
+      };
+      document.head.appendChild(s);
+    })();
+  }
+
+  // Historial v5 (obra de encendido F1.1, 31-jul): KEYED POR SEMANA SERVIDA —
+  // { semanaISO: [{e, g}] } — en una clave local que hace de cache local-first y, SOLO en
+  // produccion v5 con sync activa, espejado en families/{id}/meta/historial via write-behind
+  // (patron plan/{semanaISO}; fusion entre dispositivos = union por clave de semana, en
+  // sync.js/motor_v5). JAMAS dentro del blob meta/estado (LWW). Bajo el flag de dev se queda
+  // SOLO local, como siempre — cero trafico Firestore.
+  // Las claves antiguas e3foods_v5_dev_hist/_hist_g (arrays planos, sesion motor v5) quedan
+  // retiradas: eran sandbox sin frontera de semana, no hay conversion — se borran al arrancar.
+  var HIST_V5_KEY = V5_DEV ? 'e3foods_v5_dev_histsem' : 'e3foods_v5_histsem';
+  var histV5Semanas = (function () {
+    try { localStorage.removeItem('e3foods_v5_dev_hist'); localStorage.removeItem('e3foods_v5_dev_hist_g'); } catch (e) { /* sin residuo que limpiar */ }
+    try {
+      var raw = JSON.parse(localStorage.getItem(HIST_V5_KEY) || '{}');
+      return (raw && typeof raw === 'object' && !Array.isArray(raw)) ? raw : {};
+    } catch (e) { return {}; }
+  })();
+  var histV5Plano = null; // cache de la vista aplanada; se invalida al archivar/fusionar
+  function vistaHistorialV5() {
+    if (!histV5Plano) histV5Plano = window.E3MotorV5.aplanarHistorial(histV5Semanas);
+    return histV5Plano;
+  }
+  function historialV5() { return vistaHistorialV5().historial; }
+  function historialGuarnicionesV5() { return vistaHistorialV5().guarniciones; }
+  function guardarHistorialV5Local() {
+    try { localStorage.setItem(HIST_V5_KEY, JSON.stringify(histV5Semanas)); } catch (e) { /* sin cache local */ }
+  }
+  // Gate PROPIO del historial (no remotoListo, que es del blob de estado y puede llegar
+  // despues): hasta ver el primer snapshot de meta/historial no se empuja nada — al llegar,
+  // la fusion por clave + set(merge) hacen el push seguro por construccion (no hay forma de
+  // machacar semanas ajenas). Sin snapshot en toda la sesion (offline), la cache local
+  // conserva las semanas y la proxima sesion con red las re-empuja via soloLocales.
+  var historialRemotoListo = false;
+  function empujarHistorialV5() {
+    if (V5_DEV || modoDemo) return; // sandbox aislado / la demo jamas persiste
+    if (window.E3Sync && window.E3Sync.getFamilyId() && historialRemotoListo && window.E3Sync.guardarHistorialV5Debounced) {
+      window.E3Sync.guardarHistorialV5Debounced(function () { return histV5Semanas; });
+    }
+  }
+  function archivarHistorialV5(plan) {
+    if (!plan || !plan.servicios || !plan.semanaISO || modoDemo) return;
+    var entrada = window.E3MotorV5.serializarHistorialSemana(plan);
+    if (!entrada) return;
+    histV5Semanas[plan.semanaISO] = entrada;
+    histV5Semanas = window.E3MotorV5.podarHistorial(histV5Semanas);
+    histV5Plano = null;
+    guardarHistorialV5Local();
+    empujarHistorialV5();
+  }
+  function generarSemanaV5(lunesISO, historialExtra, guarnicionesExtra) {
+    return window.E3MotorV5.generarSemana(estado, lunesISO, historialV5().concat(historialExtra || []),
+      { historialGuarniciones: historialGuarnicionesV5().concat(guarnicionesExtra || []) });
+  }
+  // historial que ve un plan: el archivado + lo servido en la semana vigente si el plan es el
+  // siguiente (misma idea que historialTemp de generarPlanSiguiente en v3)
+  function historialParaPlan(plan) {
+    var h = historialV5();
+    if (estado.planSiguiente && plan === estado.planSiguiente && estado.plan && estado.plan.servicios) {
+      h = h.concat(estado.plan.servicios.map(function (s) { return s.elaboracion; }));
+    }
+    return h;
+  }
+  function historialGuarnicionesParaPlan(plan) {
+    var g = historialGuarnicionesV5();
+    if (estado.planSiguiente && plan === estado.planSiguiente && estado.plan && estado.plan.servicios) {
+      g = g.concat(estado.plan.servicios.map(function (s) { return s.guarniciones || []; }));
+    }
+    return g;
+  }
+
   // El banco real (data/recetas.js) se carga siempre antes que este script. Si
   // falta (404, error de sintaxis tras una edición), fallar VISIBLE en vez de
   // arrancar degradado en silencio — antes había un mini-banco de desarrollo
@@ -81,6 +193,7 @@
     // cuota llena, setItem lanza — la excepción abortaba el handler a medias
     // (sheet sin cerrar, sin render). El resto de accesos ya iban guardados.
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(estado)); } catch (e) { /* sin caché local — el push remoto de abajo sigue */ }
+    if (V5_DEV) return; // flag de desarrollo (no produccion): Firestore JAMAS ve un estado/plan v5
     // No empujar a remoto hasta haber visto el primer snapshot (remotoListo):
     // un push anterior al snapshot inicial machacaría en Firestore lo que otro
     // dispositivo escribió mientras este estaba cerrado. El getter se evalúa al
@@ -92,11 +205,18 @@
       // congela cada semana como su propio doc plan/{semanaISO} — sustrato del histórico de 12
       // meses (F2/F5, swipe entre semanas) que hoy no existe y no se puede rellenar hacia atrás.
       // Aditivo, el getter serializa el estado vigente al disparar el debounce (igual que arriba);
-      // sync.js corta las escrituras que no cambian el plan.
+      // sync.js corta las escrituras que no cambian el plan. Un plan v5 se serializa con su
+      // propio espejo (motor_v5.serializarPlanHistorico — decision+hechos v5), nunca con el v3.
       if (window.E3Sync.guardarPlanHistoricoDebounced) {
         window.E3Sync.guardarPlanHistoricoDebounced(function () {
-          return [E.serializarPlanHistorico(estado.plan), E.serializarPlanHistorico(estado.planSiguiente)];
+          var ser = MOTOR_V5 ? window.E3MotorV5.serializarPlanHistorico : E.serializarPlanHistorico;
+          return [ser(estado.plan), ser(estado.planSiguiente)];
         });
+      }
+      // meta/notificaciones (obra auth+push §6.2): resumen mínimo de la compra para el
+      // barrido del servidor — piggyback del mismo debounce, escribe solo si cambia.
+      if (window.E3Sync.guardarNotificacionesDebounced) {
+        window.E3Sync.guardarNotificacionesDebounced(resumenCompraParaNotif);
       }
     }
   }
@@ -163,6 +283,7 @@
   var miembroAbierto = null; // id del miembro cuya ficha está abierta, o null
   var pendienteCambiar = null; // {dia, tipoComida} mientras el sheet de "cambiar" está abierto
   var pendienteRegenerar = null; // {dia, tipoComida} tras un cambio, a la espera de sí/no
+  var pendienteRegenerarPlanV5 = null; // plan v5 con los slots siguientes RE-DERIVADOS, a la espera del sí (dictado 31-jul)
   var neveraOpcionesActuales = []; // hasta 3 menús resueltos del último "buscar plato" de nevera, para poder elegir uno sin recalcular
   var descubrirAbierto = null; // {fecha, idx} mientras el sheet de categoría de Descubrir está abierto (audit 2026-07-20)
   // Onboarding con familia demo (P1, 2026-07-16): mientras modoDemo es true, `estado`
@@ -226,6 +347,13 @@
   function generarPlanSiguiente() {
     if (!estado.plan || !estado.plan.semanaISO) { estado.planSiguiente = null; return; }
     var lunesSiguiente = E.fechaISO(estado.plan.semanaISO, 7);
+    if (MOTOR_V5) {
+      // el historial temporal incluye lo servido en la semana vigente (mismo criterio que v3)
+      estado.planSiguiente = generarSemanaV5(lunesSiguiente,
+        (estado.plan.servicios || []).map(function (s) { return s.elaboracion; }),
+        (estado.plan.servicios || []).map(function (s) { return s.guarniciones || []; }));
+      return;
+    }
     var historialTemp = E.historialConPlan(estado, estado.plan, lunesSiguiente);
     // Memoria de PARES (obra paso 2, bug B): mismo patrón temporal que historialTemp de arriba —
     // incluye los pares de la semana vigente para que puntuarRecenciaPar tampoco repita en exceso
@@ -260,10 +388,13 @@
       // plantillas en el historial — alimenta la rotación entre semanas y la
       // novedad del scoring (engine.puntuarRecencia/puntuarNovedad).
       if (estado.plan && estado.plan.semanaISO) {
-        estado.historialPrincipales = E.historialConPlan(estado, estado.plan, lunesActual);
-        // Memoria de PARES (obra paso 2, bug B): mismo punto de archivado que historialPrincipales
-        // — al pasar de semana, el par plato+proteína de cada slot saliente queda registrado.
-        estado.historialPares = E.historialParesConPlan(estado, estado.plan, lunesActual, BANCO, BANCO);
+        if (MOTOR_V5) archivarHistorialV5(estado.plan);
+        else {
+          estado.historialPrincipales = E.historialConPlan(estado, estado.plan, lunesActual);
+          // Memoria de PARES (obra paso 2, bug B): mismo punto de archivado que historialPrincipales
+          // — al pasar de semana, el par plato+proteína de cada slot saliente queda registrado.
+          estado.historialPares = E.historialParesConPlan(estado, estado.plan, lunesActual, BANCO, BANCO);
+        }
       }
       // poda de datos fechados ya consumidos (audit 2026-07-20): fechas anteriores
       // al lunes vigente no alimentan nada (presencia y cole solo miran el plan en
@@ -286,7 +417,8 @@
         estado.plan = estado.planSiguiente;
         estado.compra.marcados = estado.compra.marcadosSiguiente || [];
       } else {
-        estado.plan = E.generarSemana(estado, BANCO, BANCO, 0, null, null, E.fechaLocalISO(new Date()));
+        estado.plan = MOTOR_V5 ? generarSemanaV5(lunesActual)
+          : E.generarSemana(estado, BANCO, BANCO, 0, null, null, E.fechaLocalISO(new Date()));
         estado.compra.marcados = [];
       }
       estado.compra.marcadosSiguiente = [];
@@ -432,6 +564,7 @@
     document.getElementById('sheet-contenido').innerHTML = '';
     pendienteCambiar = null;
     pendienteRegenerar = null;
+    pendienteRegenerarPlanV5 = null;
     descubrirAbierto = null;
     render(); // por si se marcó compra o se cambió algo mientras el sheet estaba abierto
     // devolver el foco a quien abrió el sheet — best effort: si el render lo
@@ -454,7 +587,7 @@
     var dropdown = document.getElementById('menu-dropdown');
     var overlay = document.getElementById('menu-dropdown-overlay');
     if (!dropdown || !overlay || !btn) return;
-    dropdown.innerHTML = UI.renderMenuHamburguesa();
+    dropdown.innerHTML = UI.renderMenuHamburguesa(!V5_DEV && window.E3Sync && !!window.E3Sync.usuarioActual());
     var r = btn.getBoundingClientRect();
     dropdown.style.top = Math.round(r.bottom + 6) + 'px';
     dropdown.style.left = Math.round(r.left) + 'px';
@@ -562,11 +695,35 @@
     render();
   }
 
+  // Escucha del historial v5 (obra de encendido F1.1) — solo en produccion v5 (nunca bajo el
+  // flag de dev). Al llegar un snapshot: cancelar push pendiente (el remoto es la verdad),
+  // sembrar el dedupe de sync con lo ya escrito, fusionar por clave de semana y re-empujar
+  // las semanas que este dispositivo tenga y el doc remoto no (p.ej. archivadas offline).
+  // Carrera benigna asumida y razonada: si ESTE arranque rueda de semana antes de que llegue
+  // el snapshot, el plan generado viaja igualmente por meta/estado (LWW de siempre) — el
+  // historial solo alimenta generaciones FUTURAS, y para entonces el doc ya esta cargado.
+  var desuscribirHistorialV5 = null;
+  function iniciarEscuchaHistorialV5(familyId) {
+    if (desuscribirHistorialV5 || !window.E3Sync.suscribirHistorialV5) return;
+    desuscribirHistorialV5 = window.E3Sync.suscribirHistorialV5(familyId, function (remotas) {
+      window.E3Sync.cancelarHistorialV5Pendiente();
+      window.E3Sync.marcarHistorialV5Escrito(remotas);
+      historialRemotoListo = true;
+      var fus = window.E3MotorV5.fusionarHistorial(histV5Semanas, remotas);
+      histV5Semanas = fus.semanas;
+      histV5Plano = null;
+      guardarHistorialV5Local();
+      if (fus.soloLocales.length) empujarHistorialV5();
+    });
+  }
+
   function iniciarEscuchaRemota(onPrimerSnapshot) {
+    if (V5_DEV) return; // flag de desarrollo (no produccion): sin sync — ni lectura ni escritura remota
     if (!window.E3Sync) return;
     if (desuscribirRemoto) { if (onPrimerSnapshot) onPrimerSnapshot(); return; }
     var familyId = window.E3Sync.getFamilyId();
     if (!familyId) return;
+    if (MOTOR_V5) iniciarEscuchaHistorialV5(familyId);
     var primera = true;
     desuscribirRemoto = window.E3Sync.suscribirEstado(familyId, function (remoto) {
       // un push local pendiente serializaría un estado anterior a este snapshot
@@ -700,7 +857,9 @@
       // el listener remoto apunta a un doc que ya no existe: cortarlo antes de
       // que dispare un onChange(null) y app.js crea que el remoto está vacío
       if (desuscribirRemoto) { desuscribirRemoto(); desuscribirRemoto = null; }
+      if (desuscribirHistorialV5) { desuscribirHistorialV5(); desuscribirHistorialV5 = null; }
       remotoListo = false;
+      historialRemotoListo = false;
       actualizarSheet(UI.sheetHead('Familia borrada') +
         '<div class="sheet-body"><p class="card-msg">La familia y sus datos ya no están en la nube. ' +
         'Este móvil conserva su copia local: puedes seguir usándolo sin sincronizar, o activar la ' +
@@ -743,7 +902,11 @@
     // semana" — nunca en generarPlanSiguiente ni en el primer render, que deben seguir siendo
     // deterministas frente al mismo estado.
     estado.semillaRegeneracion = (estado.semillaRegeneracion || 0) + 1;
-    estado.plan = E.generarSemana(estado, BANCO, BANCO, 0, null, null, E.fechaLocalISO(new Date()));
+    // MOTOR_V5: el selector v5 no tiene semilla de regeneracion (criterio 30-jul, determinista
+    // puro) — "Regenerar" con el flag devuelve la misma semana ante el mismo estado. Limitacion
+    // declarada del flag de desarrollo, no un bug.
+    estado.plan = MOTOR_V5 ? generarSemanaV5(E.lunesDeEstaSemana(E.fechaLocalISO(new Date())))
+      : E.generarSemana(estado, BANCO, BANCO, 0, null, null, E.fechaLocalISO(new Date()));
     generarPlanSiguiente(); // datos de familia/cole cambiaron — la siguiente no puede quedarse obsoleta
     guardarEstado();
     cerrarSheet(); // ya re-renderiza
@@ -764,7 +927,102 @@
   function cerrarLanding() {
     document.getElementById('landing-screen').hidden = true;
     document.body.classList.remove('landing-open');
-    aterrizarSegunFamilia();
+    aterrizarConSesion();
+  }
+
+  // ---------------------------------------------------------------
+  // GATE DE CUENTA (obra auth+push, AUTH_PUSH_SPEC — ejecutada 31-jul por orden de Roger).
+  // Cuenta obligatoria para USAR la app (dictado §12.2); miembro = ficha sin cuenta. El
+  // "mira un ejemplo" sigue sin cuenta. Fuera del gate: el sandbox de dev (V5_DEV) y un
+  // arranque sin Firebase (file:// sin red) — ahí la app se comporta como siempre.
+  // ---------------------------------------------------------------
+  var accesoCodigoPendiente = null; // código recién acuñado, para la pantalla de código
+
+  function pantallaAcceso() { return document.getElementById('acceso-screen'); }
+
+  function mostrarAcceso(pantalla, opts) {
+    opts = opts || {};
+    var el = pantallaAcceso();
+    if (!el) { aterrizarSegunFamilia(); return; }
+    document.getElementById('wizard-screen').hidden = true;
+    document.body.classList.add('wizard-open');
+    el.hidden = false;
+    if (pantalla === 'crear' || pantalla === 'entrar') el.innerHTML = UI.renderAcceso(pantalla, opts.error, opts.aviso);
+    else if (pantalla === 'verificar') {
+      var u = window.E3Sync.usuarioActual();
+      el.innerHTML = UI.renderRevisaCorreo(u ? u.email : '', opts.aviso);
+    } else if (pantalla === 'olvide') el.innerHTML = UI.renderOlvidePassword(opts.enviado);
+    else if (pantalla === 'familia') el.innerHTML = UI.renderPasoFamilia(opts.error);
+    else if (pantalla === 'codigo') el.innerHTML = UI.renderCodigoFamilia(accesoCodigoPendiente);
+    refrescarIconos();
+  }
+
+  function ocultarAcceso() {
+    var el = pantallaAcceso();
+    if (el) { el.hidden = true; el.innerHTML = ''; }
+    document.body.classList.remove('wizard-open');
+  }
+
+  function aterrizarConSesion() {
+    if (V5_DEV || !window.E3Sync || !window.E3Sync.esperarSesion) { aterrizarSegunFamilia(); return; }
+    window.E3Sync.esperarSesion().then(function (user) {
+      // sesion ANONIMA heredada (todos los dispositivos de la era pre-cuentas la tienen
+      // persistida): se cierra y se trata como sin sesion — sin esto caerian en la
+      // pantalla de verificacion sin email (el proveedor por defecto es password)
+      if (user && user.isAnonymous) {
+        return window.E3Sync.cerrarSesion().catch(function () { return null; })
+          .then(function () { mostrarAcceso('entrar'); });
+      }
+      if (!user) { mostrarAcceso('entrar'); return; }
+      continuarTrasLogin(user);
+    });
+  }
+
+  function proveedorDe(user) {
+    return (user && user.providerData && user.providerData[0] && user.providerData[0].providerId) || 'password';
+  }
+
+  function continuarTrasLogin(user) {
+    // verificación obligatoria (dictado §12.3) — solo el proveedor password; Google llega
+    // verificado. El proxy la exige de verdad (§5.1); esta pantalla es la UX.
+    if (proveedorDe(user) === 'password' && !user.emailVerified) { mostrarAcceso('verificar'); return; }
+    if (window.E3Sync.getFamilyId()) { entrarEnApp(); return; }
+    window.E3Sync.buscarFamiliaPorUid().then(function (fid) {
+      if (fid) entrarEnApp(); else mostrarAcceso('familia');
+    }).catch(function () { mostrarAcceso('familia'); });
+  }
+
+  function entrarEnApp() {
+    ocultarAcceso();
+    var fid = window.E3Sync.getFamilyId();
+    if (!fid) { aterrizarSegunFamilia(); return; }
+    var aterrizado = false;
+    var unaVez = function () { if (!aterrizado) { aterrizado = true; aterrizarSegunFamilia(); } };
+    iniciarEscuchaRemota(unaVez);
+    // offline o snapshot lento: arrancar con el estado local cacheado (local-first);
+    // cuando llegue el snapshot, el listener re-renderiza como siempre
+    setTimeout(function () { if (!remotoListo) unaVez(); }, 2500);
+    // push (§6.1): con permiso ya concedido, refrescar token al abrir (throttle 1/día)
+    if (window.E3Push) window.E3Push.refrescarSiProcede(fid);
+  }
+
+  // Logout: limpia el estado local cacheado (dispositivo compartible, §2) y vuelve al acceso.
+  function cerrarSesionYLimpiar() {
+    window.E3Sync.cerrarSesion().catch(function () { return null; }).then(function () {
+      if (desuscribirRemoto) { desuscribirRemoto(); desuscribirRemoto = null; }
+      if (desuscribirHistorialV5) { desuscribirHistorialV5(); desuscribirHistorialV5 = null; }
+      remotoListo = false;
+      historialRemotoListo = false;
+      estado = estadoVacio();
+      histV5Semanas = {};
+      histV5Plano = null;
+      try {
+        localStorage.removeItem(STORAGE_KEY);
+        localStorage.removeItem(HIST_V5_KEY);
+      } catch (e) { /* sin storage */ }
+      cerrarSheet();
+      mostrarAcceso('entrar');
+    });
   }
 
   // ---------------------------------------------------------------
@@ -790,7 +1048,9 @@
   function mostrarDemo() {
     estadoAntesDemo = estado;
     var estadoDemo = Object.assign(estadoVacio(), { nombreFamilia: 'Familia Ejemplo', familia: crearFamiliaDemo() });
-    estadoDemo.plan = E.generarSemana(estadoDemo, BANCO, BANCO, 0, null, null, E.fechaLocalISO(new Date()));
+    estadoDemo.plan = MOTOR_V5
+      ? window.E3MotorV5.generarSemana(estadoDemo, E.lunesDeEstaSemana(E.fechaLocalISO(new Date())), [])
+      : E.generarSemana(estadoDemo, BANCO, BANCO, 0, null, null, E.fechaLocalISO(new Date()));
     estado = estadoDemo;
     generarPlanSiguiente(); // horizonte 2 semanas también en la demo — es interactiva de verdad
     modoDemo = true;
@@ -965,7 +1225,8 @@
     estado.nombreFamilia = onbNombreFamilia.trim();
     estado.familiaRegion = onbRegion || null;
     estado.familia = onbMiembros.slice();
-    estado.plan = E.generarSemana(estado, BANCO, BANCO, 0, null, null, E.fechaLocalISO(new Date()));
+    estado.plan = MOTOR_V5 ? generarSemanaV5(E.lunesDeEstaSemana(E.fechaLocalISO(new Date())))
+      : E.generarSemana(estado, BANCO, BANCO, 0, null, null, E.fechaLocalISO(new Date()));
     generarPlanSiguiente();
     guardarEstado();
     personaDraft = null;
@@ -1132,11 +1393,44 @@
     return true;
   }
 
+  // Resumen mínimo evaluable de la compra para meta/notificaciones (§6.2): pendientes =
+  // ítems con cantidad real sin marcar (la despensa "¿lo tengo en casa?" no cuenta).
+  function resumenCompraParaNotif() {
+    if (!estado.plan || !estado.plan.semanaISO) return null;
+    var lista;
+    try {
+      lista = MOTOR_V5 && window.E3MotorV5
+        ? window.E3MotorV5.listaCompra(estado.plan, null)
+        : E.listaCompra(estado, estado.plan, '7d', BANCO, null);
+    } catch (e) { return null; }
+    var marcados = (estado.compra && estado.compra.marcados) || [];
+    var pendientes = 0;
+    (lista || []).forEach(function (it) {
+      if (it.gramos == null && it.unidades == null) return;
+      if (marcados.indexOf(it.id) === -1) pendientes++;
+    });
+    return { completa: pendientes === 0, pendientes: pendientes, semanaISO: estado.plan.semanaISO };
+  }
+
+  // Regeneración AUTOMÁTICA por cambio de estado (dictado Roger 31-jul, obra de encendido):
+  // altas/ediciones de miembros y elecciones (vetos, alergias, estilo, gustos, ocultas)
+  // recalculan la semana en curso y la siguiente SIN preguntar — los platos cambiados a
+  // mano se pierden, decisión explícita. Las señales blandas (favoritas, caritas) NO
+  // regeneran: alimentan el scoring de la próxima generación.
+  function regenerarPorCambioDeEstado() {
+    if (!estado.familia.length || modoDemo || !estado.plan) { guardarEstado(); return; }
+    estado.plan = MOTOR_V5 ? generarSemanaV5(E.lunesDeEstaSemana(E.fechaLocalISO(new Date())))
+      : E.generarSemana(estado, BANCO, BANCO, 0, null, null, E.fechaLocalISO(new Date()));
+    generarPlanSiguiente();
+    guardarEstado();
+  }
+
   // "Guardar cambios" persiste y SE QUEDA en la ficha (ajuste pedido por Roger,
   // recogido en el README del handoff): cierra el bloque abierto y muestra la
   // confirmación inline ~1,8 s para poder seguir editando otros bloques.
   function fichaGuardar() {
     if (!fichaPersistir()) return;
+    regenerarPorCambioDeEstado();
     fichaSeccion = null;
     fichaGuardado = true;
     render();
@@ -1149,6 +1443,7 @@
 
   function fichaGuardarYVolver() {
     if (!fichaPersistir()) return;
+    regenerarPorCambioDeEstado();
     cerrarMiembroFicha();
   }
 
@@ -1226,13 +1521,19 @@
     // otro) para quienes están de verdad presentes ahora.
     var slot = plan.dias[dia][tipoComida];
     if (slot && slot.menu) {
-      var presentesNuevos = E.presentesEnComida(estado, fecha, dia, tipoComida);
-      var menuReescalado = E.reescalarMenuParaPresentes(estado, BANCO, BANCO, slot.menu, presentesNuevos, tipoComida, dia, E.fechaLocalISO(new Date()), null);
-      // el menú reescalado trae su propio `resumen` canónico (resolverMenu) — ya no hay que
-      // re-colgarle a mano la decoración del menú viejo
-      plan.dias[dia][tipoComida] = menuReescalado
-        ? { menu: menuReescalado }
-        : null; // nadie presente -> hueco vacío, igual que generarSemana
+      if (MOTOR_V5) {
+        // v5: mismo plato y par, banda re-cerrada para la mesa real (motor.reescalarServicio)
+        var r5 = window.E3MotorV5.reescalarServicio(estado, plan, dia, tipoComida);
+        plan.dias[dia][tipoComida] = r5 && r5.menu ? { menu: r5.menu } : null;
+      } else {
+        var presentesNuevos = E.presentesEnComida(estado, fecha, dia, tipoComida);
+        var menuReescalado = E.reescalarMenuParaPresentes(estado, BANCO, BANCO, slot.menu, presentesNuevos, tipoComida, dia, E.fechaLocalISO(new Date()), null);
+        // el menú reescalado trae su propio `resumen` canónico (resolverMenu) — ya no hay que
+        // re-colgarle a mano la decoración del menú viejo
+        plan.dias[dia][tipoComida] = menuReescalado
+          ? { menu: menuReescalado }
+          : null; // nadie presente -> hueco vacío, igual que generarSemana
+      }
     }
     guardarEstado();
     render();
@@ -1331,8 +1632,21 @@
     var diaObj = plan.dias[dia];
     var nuevoDia = { fecha: diaObj.fecha, comida: diaObj.comida, cena: diaObj.cena };
     nuevoDia[tipoComida] = { menu: menu };
-    var nuevoPlan = { semanaISO: plan.semanaISO, dias: plan.dias.slice() };
+    // Object.assign y no un literal: un plan v5 lleva ademas motor/avisos/servicios — perderlos
+    // aqui degradaba el resto de la UI a los caminos v3 sobre un plan v5 (cazado en la
+    // verificacion de navegador de la sesion motor v5).
+    var nuevoPlan = Object.assign({}, plan, { dias: plan.dias.slice() });
     nuevoPlan.dias[dia] = nuevoDia;
+    // v5: el registro de servicios (alimenta historial y cuotas) refleja el swap manual
+    if (nuevoPlan.servicios) {
+      nuevoPlan.servicios = nuevoPlan.servicios.map(function (s) {
+        if (s.dia === dia + 1 && s.turno === tipoComida) {
+          return { dia: s.dia, turno: s.turno, elaboracion: menu.principalId, par: menu.par || null,
+            guarniciones: (menu.complementarias || []).map(function (c) { return c.id; }) };
+        }
+        return s;
+      });
+    }
     setPlanActivo(nuevoPlan);
     guardarEstado();
   }
@@ -1340,6 +1654,13 @@
   function trasElegirMenuUnico(menu, dia, tipoComida) {
     if (!menu) { alert('No encontramos un plato que encaje con esas condiciones.'); cerrarSheet(); render(); return; }
     insertarMenuEnSlot(dia, tipoComida, menu);
+    if (MOTOR_V5) {
+      // v5: sin pregunta de regenerar — "otro menu" ya re-deriva los slots siguientes por si
+      // mismo, y regenerarDesde es API v3 que no aplica a un plan v5
+      cerrarSheet();
+      render();
+      return;
+    }
     pendienteRegenerar = { dia: dia, tipoComida: tipoComida };
     abrirSheet(UI.renderConfirmarRegenerar(menu.nombre));
     render();
@@ -1351,6 +1672,25 @@
     var plan = planActivo();
     var slotPrevio = plan && plan.dias[dia] && plan.dias[dia][tipoComida];
     var previoId = slotPrevio && slotPrevio.menu && slotPrevio.menu.principalId;
+    if (MOTOR_V5) {
+      // v5 + dictado Roger 31-jul: cambiar un plato PREGUNTA antes de tocar el resto.
+      // Se inserta solo el slot elegido; el plan con los siguientes RE-DERIVADOS (selector
+      // secuencial, equivalente v5 de regenerarDesde) queda en espera del "sí" — el "no"
+      // conserva el resto de la semana tal cual (incluidos cambios a mano previos).
+      var r5 = window.E3MotorV5.cambiarPlato(estado, plan, dia, tipoComida, 'otro-menu', historialParaPlan(plan), plan.semanaISO, historialGuarnicionesParaPlan(plan));
+      var menuNuevo = r5 && r5.plan && r5.plan.dias[dia][tipoComida] && r5.plan.dias[dia][tipoComida].menu;
+      if (!menuNuevo) { alert('No encontramos un plato que encaje con esas condiciones.'); cerrarSheet(); render(); return; }
+      if (previoId && menuNuevo.principalId && previoId !== menuNuevo.principalId) {
+        if (!estado.cambios) estado.cambios = {};
+        estado.cambios[previoId] = (estado.cambios[previoId] || 0) + 1;
+      }
+      insertarMenuEnSlot(dia, tipoComida, menuNuevo);
+      pendienteRegenerar = { dia: dia, tipoComida: tipoComida };
+      pendienteRegenerarPlanV5 = r5.plan;
+      abrirSheet(UI.renderConfirmarRegenerar(menuNuevo.nombre));
+      render();
+      return;
+    }
     var resultado = E.cambiarPlato(estado, plan, dia, tipoComida, { modo: 'otro-menu' }, BANCO, BANCO, E.fechaLocalISO(new Date()));
     var menu = resultado && resultado.menu;
     // Registro de cambios (F1, MOTOR_RECETAS §2): el plato REEMPLAZADO acumula
@@ -1369,7 +1709,9 @@
   // adelante, cuando haya datos reales; aquí solo se acumula el contador).
   function cambiarSoloComplementaria(dia, tipoComida) {
     var slotPrevio = planActivo().dias[dia][tipoComida];
-    var resultado = E.cambiarPlato(estado, planActivo(), dia, tipoComida, { modo: 'solo-complementaria' }, BANCO, BANCO, E.fechaLocalISO(new Date()));
+    var resultado = MOTOR_V5
+      ? window.E3MotorV5.cambiarPlato(estado, planActivo(), dia, tipoComida, 'solo-complementaria', historialParaPlan(planActivo()), planActivo().semanaISO, historialGuarnicionesParaPlan(planActivo()))
+      : E.cambiarPlato(estado, planActivo(), dia, tipoComida, { modo: 'solo-complementaria' }, BANCO, BANCO, E.fechaLocalISO(new Date()));
     var menu = resultado && resultado.menu;
     if (menu && slotPrevio && slotPrevio.menu) {
       if (!estado.paresComplementariaCambiados) estado.paresComplementariaCambiados = {};
@@ -1391,7 +1733,9 @@
     var checks = document.querySelectorAll('#lista-nevera-checks input:checked');
     var disponibles = Array.prototype.map.call(checks, function (c) { return c.value; });
     if (!disponibles.length) { alert('Marca al menos un ingrediente disponible.'); return; }
-    var resultado = E.cambiarPlato(estado, planActivo(), dia, tipoComida, { modo: 'nevera', disponibles: disponibles }, BANCO, BANCO, E.fechaLocalISO(new Date()));
+    var resultado = MOTOR_V5
+      ? window.E3MotorV5.opcionesNevera(estado, planActivo(), dia, tipoComida, disponibles, historialParaPlan(planActivo()))
+      : E.cambiarPlato(estado, planActivo(), dia, tipoComida, { modo: 'nevera', disponibles: disponibles }, BANCO, BANCO, E.fechaLocalISO(new Date()));
     neveraOpcionesActuales = (resultado && resultado.opciones) || [];
     pendienteCambiar = { dia: dia, tipoComida: tipoComida };
     abrirSheet(UI.renderOpcionesNevera(BANCO, neveraOpcionesActuales, dia, tipoComida));
@@ -1462,9 +1806,15 @@
 
   function regenerarSiguientes(si) {
     if (si && pendienteRegenerar) {
-      setPlanActivo(E.regenerarDesde(estado, planActivo(), pendienteRegenerar.dia + 1, BANCO, BANCO, E.fechaLocalISO(new Date())));
+      if (MOTOR_V5 && pendienteRegenerarPlanV5) {
+        // el plan re-derivado ya estaba calculado al elegir el plato (cambiarPlato v5)
+        setPlanActivo(pendienteRegenerarPlanV5);
+      } else if (!MOTOR_V5) {
+        setPlanActivo(E.regenerarDesde(estado, planActivo(), pendienteRegenerar.dia + 1, BANCO, BANCO, E.fechaLocalISO(new Date())));
+      }
       guardarEstado();
     }
+    pendienteRegenerarPlanV5 = null;
     cerrarSheet(); // ya re-renderiza
   }
 
@@ -1497,7 +1847,7 @@
   function borrarMiembro(id) {
     if (!confirm('¿Eliminar a este miembro de la familia?')) return;
     estado.familia = estado.familia.filter(function (m) { return m.id !== id; });
-    guardarEstado();
+    regenerarPorCambioDeEstado(); // la mesa cambió → semana recalculada sin preguntar (dictado 31-jul)
     vistaPerfil = 'lista';
     miembroAbierto = null;
     personaDraft = null; // si no, el borrador del miembro borrado seguiría vivo
@@ -1519,7 +1869,8 @@
   function toggleOcultaReceta(plantillaId) {
     var idx = estado.ocultas.indexOf(plantillaId);
     if (idx === -1) estado.ocultas.push(plantillaId); else estado.ocultas.splice(idx, 1);
-    guardarEstado();
+    // elección dura → la semana se recalcula sola (dictado 31-jul); favoritas no (señal blanda)
+    regenerarPorCambioDeEstado();
     render();
     refrescarSheetDescubrir();
   }
@@ -1561,8 +1912,162 @@
   // ---------------------------------------------------------------
   var ACCIONES = {
     'empezar': function () { cerrarLanding(); },
-    'ver-demo': function () { mostrarDemo(); },
+    'ver-demo': function () { ocultarAcceso(); mostrarDemo(); },
     'salir-demo': function () { salirDemo(); },
+
+    // --- CUENTAS (obra auth+push, 31-jul) ---------------------------------------------
+    'acceso-toggle': function (btn) { mostrarAcceso(btn.dataset.modo); },
+    'acceso-olvide': function () { mostrarAcceso('olvide'); },
+    'acceso-volver': function () { mostrarAcceso('entrar'); },
+    'acceso-logout': function () { cerrarSesionYLimpiar(); },
+    'acceso-google': function () {
+      // la política se exige al CREAR (modo crear); un login de cuenta existente no re-consiente
+      var esCrear = !!document.getElementById('ac-politica');
+      if (esCrear && !document.getElementById('ac-politica').checked) {
+        mostrarAcceso('crear', { error: I18N.t('ac_marca_politica') });
+        return;
+      }
+      window.E3Sync.loginGoogle().then(function (user) { continuarTrasLogin(user); })
+        .catch(function () { mostrarAcceso(esCrear ? 'crear' : 'entrar', { error: I18N.t('ac_error_red') }); });
+    },
+    'acceso-enviar': function (btn) {
+      var modo = btn.dataset.modo;
+      var email = (document.getElementById('ac-email') || {}).value || '';
+      var pass = (document.getElementById('ac-pass') || {}).value || '';
+      email = email.trim();
+      if (!email || !pass) return;
+      if (modo === 'crear') {
+        var politica = document.getElementById('ac-politica');
+        if (politica && !politica.checked) { mostrarAcceso('crear', { error: I18N.t('ac_marca_politica') }); return; }
+        if (pass.length < 8) { mostrarAcceso('crear', { error: I18N.t('pass_min') }); return; }
+        window.E3Sync.registrarEmail(email, pass)
+          .then(function () { mostrarAcceso('verificar'); })
+          .catch(function () { mostrarAcceso('crear', { error: I18N.t('ac_error_alta') }); });
+      } else {
+        window.E3Sync.loginEmail(email, pass)
+          .then(function (user) { continuarTrasLogin(user); })
+          .catch(function () { mostrarAcceso('entrar', { error: I18N.t('ac_error_generico') }); });
+      }
+    },
+    'recuperar-enviar': function () {
+      var email = ((document.getElementById('rec-email') || {}).value || '').trim();
+      if (!email) return;
+      // copy SIEMPRE genérico (anti-enumeración §7.1): mismo mensaje exista o no la cuenta
+      window.E3Sync.enviarResetPassword(email)
+        .catch(function () { return null; })
+        .then(function () { mostrarAcceso('olvide', { enviado: true }); });
+    },
+    'verificar-recargar': function () {
+      window.E3Sync.recargarUsuario().then(function (user) {
+        if (user && user.emailVerified) continuarTrasLogin(user);
+        else mostrarAcceso('verificar', { aviso: I18N.t('ver_pendiente') });
+      });
+    },
+    'verificar-reenviar': function () {
+      window.E3Sync.reenviarVerificacion()
+        .catch(function () { return null; })
+        .then(function () { mostrarAcceso('verificar', { aviso: I18N.t('ver_reenviado') }); });
+    },
+    'familia-crear': function () {
+      var nombre = ((document.getElementById('fam-nombre') || {}).value || '').trim();
+      var consent = document.getElementById('fam-consent');
+      if (!nombre) return;
+      if (!consent || !consent.checked) { mostrarAcceso('familia', { error: I18N.t('fam_consent_falta') }); return; }
+      estado = Object.assign(estadoVacio(), { nombreFamilia: nombre });
+      guardarEstado();
+      window.E3Sync.crearFamilia(nombre, { politica: true, salud: true })
+        .then(function (data) {
+          accesoCodigoPendiente = data.code;
+          return window.E3Sync.subirEstadoInicial(estado).catch(function () { return null; });
+        })
+        .then(function () { remotoListo = true; mostrarAcceso('codigo'); })
+        .catch(function (err) { mostrarAcceso('familia', { error: (err && err.message) || I18N.t('ac_error_red') }); });
+    },
+    'familia-unirse': function () {
+      var code = ((document.getElementById('fam-codigo') || {}).value || '').trim().toUpperCase();
+      if (!code) return;
+      window.E3Sync.unirseFamilia(code)
+        .then(function () { entrarEnApp(); })
+        .catch(function (err) { mostrarAcceso('familia', { error: (err && err.message) || I18N.t('ac_error_red') }); });
+    },
+    'familia-codigo-continuar': function () { accesoCodigoPendiente = null; entrarEnApp(); },
+    'campana': function () {
+      var P = window.E3Push;
+      if (!P) return;
+      var pantallaC = P.esIosSinInstalar() ? 'ios'
+        : P.permiso() === 'denied' ? 'denegado'
+        : P.permiso() === 'granted' ? 'activadas' : 'activar';
+      abrirSheet(UI.renderSheetCampana(pantallaC));
+    },
+    'campana-activar': function () {
+      var fid = window.E3Sync ? window.E3Sync.getFamilyId() : null;
+      if (!window.E3Push || !fid) return;
+      window.E3Push.activar(fid)
+        .then(function () { actualizarSheet(UI.renderSheetCampana('activadas')); })
+        .catch(function () { actualizarSheet(UI.renderSheetCampana(window.E3Push.permiso() === 'denied' ? 'denegado' : 'activar', { aviso: I18N.t('ac_error_red') })); });
+    },
+    'campana-familia-off': function () {
+      var fid = window.E3Sync ? window.E3Sync.getFamilyId() : null;
+      if (!window.E3Push || !fid) return;
+      window.E3Push.setActivas(fid, false).then(function () { actualizarSheet(UI.renderSheetCampana('activadas', { aviso: I18N.t('campana_familia_off') + ' ✓' })); });
+    },
+    'campana-familia-on': function () {
+      var fid = window.E3Sync ? window.E3Sync.getFamilyId() : null;
+      if (!window.E3Push || !fid) return;
+      window.E3Push.setActivas(fid, true).then(function () { actualizarSheet(UI.renderSheetCampana('activadas', { aviso: I18N.t('campana_familia_on') + ' ✓' })); });
+    },
+    'menu-cuenta': function () {
+      cerrarMenuHamburguesa();
+      var u = window.E3Sync.usuarioActual();
+      if (!u) return;
+      abrirSheet(UI.renderSheetCuenta({ email: u.email, proveedor: proveedorDe(u) }));
+    },
+    'cuenta-logout': function () { cerrarSesionYLimpiar(); },
+    'cuenta-cambiar-pass': function () {
+      var actual = (document.getElementById('cuenta-pass-actual') || {}).value || '';
+      var nueva = (document.getElementById('cuenta-pass-nueva') || {}).value || '';
+      var u = window.E3Sync.usuarioActual();
+      if (!u) return;
+      if (nueva.length < 8) { actualizarSheet(UI.renderSheetCuenta({ email: u.email, proveedor: proveedorDe(u) }, { error: I18N.t('pass_min') })); return; }
+      window.E3Sync.cambiarPassword(actual, nueva)
+        .then(function () { actualizarSheet(UI.renderSheetCuenta({ email: u.email, proveedor: proveedorDe(u) }, { aviso: 'OK' })); })
+        .catch(function () { actualizarSheet(UI.renderSheetCuenta({ email: u.email, proveedor: proveedorDe(u) }, { error: I18N.t('ac_error_generico') })); });
+    },
+    'cuenta-salir-familia': function () {
+      var u = window.E3Sync.usuarioActual();
+      window.E3Sync.salirDeFamilia().then(function () {
+        if (desuscribirRemoto) { desuscribirRemoto(); desuscribirRemoto = null; }
+        if (desuscribirHistorialV5) { desuscribirHistorialV5(); desuscribirHistorialV5 = null; }
+        remotoListo = false;
+        historialRemotoListo = false;
+        estado = estadoVacio();
+        try { localStorage.removeItem(STORAGE_KEY); localStorage.removeItem(HIST_V5_KEY); } catch (e) { /* sin storage */ }
+        cerrarSheet();
+        mostrarAcceso('familia');
+      }).catch(function (err) {
+        actualizarSheet(UI.renderSheetCuenta({ email: u && u.email, proveedor: proveedorDe(u) }, { error: (err && err.message) || I18N.t('ac_error_red') }));
+      });
+    },
+    'cuenta-borrar': function () {
+      var u = window.E3Sync.usuarioActual();
+      actualizarSheet(UI.renderSheetCuenta({ email: u && u.email, proveedor: proveedorDe(u) }, { confirmarBorrado: true }));
+    },
+    'cuenta-borrar-confirmar': function () {
+      var input = document.getElementById('cuenta-borrar-input');
+      var u = window.E3Sync.usuarioActual();
+      if (!input || input.value.trim().toUpperCase() !== 'BORRAR') {
+        actualizarSheet(UI.renderSheetCuenta({ email: u && u.email, proveedor: proveedorDe(u) }, { confirmarBorrado: true, error: 'Escribe BORRAR para confirmar.' }));
+        return;
+      }
+      window.E3Sync.borrarCuenta().then(function () {
+        estado = estadoVacio();
+        try { localStorage.removeItem(STORAGE_KEY); localStorage.removeItem(HIST_V5_KEY); } catch (e) { /* sin storage */ }
+        cerrarSheet();
+        mostrarAcceso('entrar');
+      }).catch(function (err) {
+        actualizarSheet(UI.renderSheetCuenta({ email: u && u.email, proveedor: proveedorDe(u) }, { confirmarBorrado: true, error: (err && err.message) || I18N.t('ac_error_red') }));
+      });
+    },
     'ir-vista': function (btn) { irAVista(btn.dataset.vista); },
     'abrir-menu-hamburguesa': function (btn) { abrirMenuHamburguesa(btn); },
     'menu-ir-familia': function () { irAVista('perfil'); },
@@ -1672,7 +2177,10 @@
       // entre el render y el toque (rotación diaria, audit 2026-07-20).
       var fecha = btn.dataset.fecha || E.fechaLocalISO(new Date());
       var idx = Number(btn.dataset.idx);
-      var categorias = E.categoriasDescubrir(BANCO, estado, fecha);
+      // v5: la misma rotacion determinista, derivada del banco v5 (obra de encendido, 31-jul)
+      var categorias = MOTOR_V5
+        ? window.E3MotorV5.categoriasDescubrir(fecha, estado.ocultas || [])
+        : E.categoriasDescubrir(BANCO, estado, fecha);
       var categoria = categorias[idx];
       if (!categoria) return;
       descubrirAbierto = { fecha: fecha, idx: idx };
@@ -1851,6 +2359,14 @@
   // Init
   // ---------------------------------------------------------------
   document.addEventListener('DOMContentLoaded', function () {
+    // MOTOR v5 (flag de desarrollo): cargar banco+motor v5 ANTES de arrancar — el resto del
+    // boot es identico. Sin flag, ni se descargan.
+    if (MOTOR_V5 && !window.E3MotorV5) { cargarScriptsV5(bootApp); return; }
+    bootApp();
+  });
+
+  function bootApp() {
+    if (MOTOR_V5) document.documentElement.setAttribute('data-motor-v5', '1');
     // cerrar el sheet al tocar el fondo (fuera del panel) — sin esto, solo la X cierra
     var sheetOverlayEl = document.getElementById('sheet-overlay');
     if (sheetOverlayEl) {
@@ -1867,7 +2383,16 @@
     var menuDropdownOverlayEl = document.getElementById('menu-dropdown-overlay');
     if (menuDropdownOverlayEl) menuDropdownOverlayEl.addEventListener('click', cerrarMenuHamburguesa);
     aplicarMomentoDelDia();
-    iniciarEscuchaRemota(); // no-op si este dispositivo no tiene familyId cacheado
+    // Gate de cuenta: la escucha remota solo arranca con SESIÓN válida (sin ella el
+    // listener moriría contra las reglas con permission-denied en consola). El warm-up
+    // corre con la landing en pantalla; el gate real vive en cerrarLanding.
+    if (V5_DEV || !window.E3Sync || !window.E3Sync.esperarSesion) {
+      iniciarEscuchaRemota(); // sandbox/flujo antiguo: no-op sin familyId cacheado
+    } else {
+      window.E3Sync.esperarSesion().then(function (user) {
+        if (user && window.E3Sync.getFamilyId()) iniciarEscuchaRemota();
+      });
+    }
     asegurarPlanVigente();
     render();
     actualizarNavLabels();
@@ -1896,5 +2421,5 @@
       }, { passive: true });
     })();
 
-  });
+  }
 })();

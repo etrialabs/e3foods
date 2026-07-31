@@ -1455,3 +1455,21 @@ button.cp-grupo-titulo { width: 100%; border: none; background: none; font: inhe
   .vista-body { padding-left: var(--space-5); padding-right: var(--space-5); }
   .sheet-panel { max-width: 480px; margin: 0 auto; border-radius: 20px 20px 0 0; }
 }
+
+/* MOTOR v5 tras FLAG DE DESARROLLO (sesion motor v5, 2026-07-30): marca discreta junto al
+   logo para que ninguna captura con el flag puesto se confunda con produccion. El atributo
+   solo lo pone app.js con ?motor=v5 — en produccion no existe. "v5" es marca interna de
+   version, no texto de producto (igual en los 4 idiomas). */
+html[data-motor-v5="1"] .app-bar-logo::after {
+  content: 'v5';
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  color: #fff;
+  background: var(--gold);
+  vertical-align: middle;
+}

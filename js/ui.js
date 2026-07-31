@@ -320,7 +320,9 @@
     return _cachePrevisualizacion[p.id];
   }
 
-  function nombreEjemplo(p, banco) { return previsualizar(p, banco).nombre; }
+  // Un item de catalogo v5 (motor_v5.catalogoRecetas / categoriasDescubrir) ya trae el
+  // nombre previsualizado con la opcion por defecto — no pasa por el previsualizador v3.
+  function nombreEjemplo(p, banco) { return p.v5 ? p.nombre : previsualizar(p, banco).nombre; }
 
   function variantesTexto(p, banco) {
     var variantes = previsualizar(p, banco).variantes;
@@ -482,10 +484,11 @@
     // v3: el slot ya trae el menú COMPLETO resuelto (nombre/kcal/complementarias)
     // desde que se generó — no hace falta volver a llamar al motor en cada render
     // (antes resolverPlato se invocaba aquí cada vez; ahora es un simple read).
-    var principal = slot ? E.elaboracionPorId(banco, estado, slot.menu.principalId) : null;
+    var principal = principalDeSlot(estado, banco, slot);
     // postreDelDia() es del DÍA, no de la comida — sin filtro por esCena
     // (handoff líneas 105/142: "De postre" aparece igual en las dos cards).
-    var postre = E.postreDelDia(banco, dia.fecha, diaIndex);
+    // v5: el postre es PARTE del menu (sus macros cuentan, esquema §8.3) y viene resuelto.
+    var postre = (slot && slot.menu && slot.menu.postre) ? slot.menu.postre : E.postreDelDia(banco, dia.fecha, diaIndex);
     var postreTexto = postre ? (postre.tipo === 'tradicional' ? postre.nombre + ' (receta de finde)' : postre.nombre) : '';
 
     if (!mesa.miembrosDelSlot.length) {
@@ -583,10 +586,95 @@
     }).join('');
   }
 
+  // ---------------------------------------------------------------
+  // MOTOR v5 tras FLAG DE DESARROLLO (sesion motor v5, 2026-07-30): un menu v5
+  // (menu.motorV5) trae nombre/foto/pasos/postre resueltos y sus ids son del banco v5 —
+  // estos helpers evitan que la UI dependa del banco v3 para pintarlo. Sin flag,
+  // window.E3MotorV5/E3_BANCO_V5 no existen y nada de esto se ejecuta.
+  // ---------------------------------------------------------------
+  function elabV5(id) {
+    var b5 = window.E3_BANCO_V5;
+    if (!b5) return null;
+    if (!elabV5._idx) { elabV5._idx = {}; b5.elaboraciones.forEach(function (e) { elabV5._idx[e.id] = e; }); }
+    return elabV5._idx[id] || null;
+  }
+
+  // El "principal" que la UI necesita para una card/receta: en v3, la elaboracion del banco;
+  // en v5, una vista equivalente desde el propio menu + el banco v5.
+  function principalDeSlot(estado, banco, slot) {
+    if (!slot || !slot.menu) return null;
+    if (slot.menu.motorV5) {
+      var e5 = elabV5(slot.menu.principalId) || {};
+      return {
+        id: slot.menu.principalId, nombre: slot.menu.nombre,
+        foto: slot.menu.foto || e5.foto || null,
+        tiempo_min: e5.tiempo_min || null, esfuerzo: e5.esfuerzo || null,
+        ninos: e5.ninos !== false, pasos: slot.menu.pasos || []
+      };
+    }
+    return E.elaboracionPorId(banco, estado, slot.menu.principalId);
+  }
+
+  // Cuotas de la semana: en v5 se recuentan de las categorias que cada menu trae del selector
+  // (rebozado se presenta con la clave i18n de fritos); minimos desactivados por la mesa
+  // cuentan como cumplidos — el aviso ya lo dio el motor.
+  function resumenCuotasActivo(plan, banco, estado) {
+    if (plan && plan.motor === 'v5') {
+      // CUOTAS POR ESTILO (Roger, 30-jul): con vegano/vegetariano en la mesa las cuotas estan
+      // A CERO hasta tener valor con fuente — sin cuota activa no hay equilibrio que afirmar
+      // ni incumplir, la linea no se pinta (mismo criterio que CUOTAS_POR_ESTILO en selector.js).
+      var estilos = (estado.familia || []).map(function (m) { return m.estilo; });
+      if (estilos.indexOf('vegano') !== -1 || estilos.indexOf('vegetariano') !== -1) return [];
+      var CUOTAS_V5 = { legumbre: { min: 3, max: 4 }, 'pescado-total': { min: 2, max: null }, 'pescado-azul': { min: 1, max: 2 }, 'carne-roja': { min: 0, max: 2 }, huevo: { min: 3, max: 4 }, fritos: { min: 0, max: 2 } };
+      var cont = {};
+      plan.dias.forEach(function (d) {
+        ['comida', 'cena'].forEach(function (t2) {
+          var s = d[t2];
+          if (!s || !s.menu) return;
+          (s.menu.categorias || []).forEach(function (c) {
+            c = c === 'rebozado' ? 'fritos' : c;
+            cont[c] = (cont[c] || 0) + 1;
+          });
+        });
+      });
+      var desact = {};
+      (plan.avisos || []).forEach(function (a) { if (a.tipo === 'minimo-desactivado') desact[a.categoria] = true; });
+      return Object.keys(CUOTAS_V5).map(function (cat) {
+        var c = CUOTAS_V5[cat], n = cont[cat] || 0;
+        return { categoria: cat, cuenta: n, min_sem: c.min, max_sem: c.max,
+          cumplido: (!c.min || desact[cat] || n >= c.min) && (c.max == null || n <= c.max) };
+      });
+    }
+    return E.resumenCuotasSemana(plan, banco, estado);
+  }
+
+  // Lista de la compra: en v5 sale del motor (gramos reales por comensal), traducida al shape
+  // de fila que esta vista ya pinta. La naturaleza v5 se mapea a la categoria v3 equivalente
+  // solo para reutilizar la agrupacion visual — no es un dato, es presentacion.
+  var CATEGORIA_DE_NATURALEZA_V5 = {
+    carne: 'carne-blanca', pescado: 'pescado-blanco', marisco: 'marisco',
+    huevo: 'huevo', lacteo: 'lacteo', vegetal: 'verdura', cereal: 'cereal', grasa: 'despensa'
+  };
+  function listaCompraActiva(estado, plan, rango, banco, soloCena) {
+    if (plan && plan.motor === 'v5' && window.E3MotorV5) {
+      var filtro = null;
+      if (rango === 'hoy') {
+        var idxHoy = E.diaIndexDesdeFecha(plan, hoyISO());
+        filtro = { dia: idxHoy === -1 ? 0 : idxHoy, soloCena: !!soloCena };
+      }
+      var marcados = (estado.compra && estado.compra.marcados) || [];
+      return window.E3MotorV5.listaCompra(plan, filtro).map(function (it) {
+        return { id: it.id, nombre: it.nombre, categoria: CATEGORIA_DE_NATURALEZA_V5[it.naturaleza] || 'otro',
+          gramos: it.gramos, unidades: it.unidades, marcado: marcados.indexOf(it.id) !== -1 };
+      });
+    }
+    return E.listaCompra(estado, plan, rango, banco, null, soloCena);
+  }
+
   function renderVistaReceta(estado, banco, plan, diaIndex, tipoComida) {
     var dia = plan && plan.dias[diaIndex];
     var slot = dia ? dia[tipoComida] : null;
-    var principal = slot ? E.elaboracionPorId(banco, estado, slot.menu.principalId) : null;
+    var principal = principalDeSlot(estado, banco, slot);
     if (!dia || !slot || !principal) {
       return '<button type="button" class="rv-flotante rv-volver" data-action="receta-volver" aria-label="Volver"><i data-lucide="arrow-left"></i></button>' +
         '<div class="rv-body rv-body-vacia"><p class="card-msg">No encontramos esta receta.</p></div>';
@@ -601,12 +689,13 @@
     var fotoHtml = principal.foto ? '<img src="' + escapeHtml(principal.foto) + '" alt="">' : '<div class="rv-foto-vacia"></div>';
 
     var ingredientesHtml = menu.ingredientes.slice().sort(function (a, b) {
-      var na = banco.ingredientes[a.id] ? banco.ingredientes[a.id].nombre : a.id;
-      var nb = banco.ingredientes[b.id] ? banco.ingredientes[b.id].nombre : b.id;
+      var na = a.nombre || (banco.ingredientes[a.id] ? banco.ingredientes[a.id].nombre : a.id);
+      var nb = b.nombre || (banco.ingredientes[b.id] ? banco.ingredientes[b.id].nombre : b.id);
       return na.localeCompare(nb);
     }).map(function (item) {
       var ing = banco.ingredientes[item.id];
-      return '<div class="rv-ingrediente"><span class="rv-ingrediente-bullet"></span><span class="rv-ingrediente-nombre">' + escapeHtml(ing ? ing.nombre : item.id) + '</span><span class="rv-ingrediente-g">' + E.redondearCantidad(item.gramos) + ' g</span></div>';
+      var nombre = item.nombre || (ing ? ing.nombre : item.id); // v5: el nombre viaja en el item
+      return '<div class="rv-ingrediente"><span class="rv-ingrediente-bullet"></span><span class="rv-ingrediente-nombre">' + escapeHtml(nombre) + '</span><span class="rv-ingrediente-g">' + E.redondearCantidad(item.gramos) + ' g</span></div>';
     }).join('');
 
     // v3: el menú es principal + complementarias, cada una con su propia
@@ -679,11 +768,37 @@
   // siguen con la cabecera-midnight sin cambios.
   // ---------------------------------------------------------------
   function renderAppBar() {
+    // Campana REAL (obra auth+push §6.6): con push soportado (VAPID presente + navegador
+    // capaz o iOS sin instalar, que tiene su pantallita) abre el sheet de avisos; si no,
+    // OCULTA — mejor que decorativa (cierra la afordance falsa señalada en higiene §5.5).
+    var conCampana = window.E3Push && (window.E3Push.soportado() || window.E3Push.esIosSinInstalar());
     return '<header class="app-bar">' +
       '<button type="button" class="app-bar-btn" data-action="abrir-menu-hamburguesa" aria-label="Menú"><i data-lucide="menu"></i></button>' +
       '<p class="app-bar-logo"><span class="app-bar-logo-e3">e3</span><span class="app-bar-logo-foods">foods</span></p>' +
-      '<button type="button" class="app-bar-btn app-bar-campana" aria-label="Notificaciones" disabled><i data-lucide="bell"></i><span class="app-bar-campana-dot" aria-hidden="true"></span></button>' +
+      (conCampana
+        ? '<button type="button" class="app-bar-btn app-bar-campana" data-action="campana" aria-label="Notificaciones"><i data-lucide="bell"></i><span class="app-bar-campana-dot" aria-hidden="true"></span></button>'
+        : '<span class="app-bar-btn" aria-hidden="true"></span>') +
       '</header>';
+  }
+
+  // Sheet de la campana (§6.6): estados activar / iOS-sin-instalar / denegado / activadas.
+  function renderSheetCampana(estadoCampana, opts) {
+    opts = opts || {};
+    var cuerpo;
+    if (estadoCampana === 'ios') cuerpo = '<p class="card-msg">' + t('campana_ios') + '</p>';
+    else if (estadoCampana === 'denegado') cuerpo = '<p class="card-msg">' + t('campana_denegado') + '</p>';
+    else if (estadoCampana === 'activadas') {
+      cuerpo = '<p class="card-msg">' + t('campana_activadas') + '</p>' +
+        '<button type="button" class="btn-secondary btn-icono-texto" data-action="campana-familia-off"><i data-lucide="bell-off"></i>' + t('campana_familia_off') + '</button>' +
+        '<button type="button" class="btn-secondary btn-icono-texto" data-action="campana-familia-on"><i data-lucide="bell-ring"></i>' + t('campana_familia_on') + '</button>';
+    } else {
+      cuerpo = '<p class="card-msg">' + t('campana_texto') + '</p>' +
+        '<button type="button" class="btn-cta-gradiente" data-action="campana-activar">' + t('campana_cta') + '</button>';
+    }
+    return sheetHead(t('campana_titulo')) + '<div class="sheet-body">' +
+      cuerpo +
+      (opts.aviso ? '<p class="card-msg">' + escapeHtml(opts.aviso) + '</p>' : '') +
+      '</div>';
   }
 
   // Saludo + card IA: siempre sobre HOY, independiente del día que esté
@@ -697,7 +812,8 @@
   // del council del 18/19-jul: "respuesta del día primero, informe como
   // línea al final", no un bloque de chips en el cuerpo principal.
   function renderAvisoEquilibrio(plan, banco, estado) {
-    var resumen = E.resumenCuotasSemana(plan, banco, estado);
+    var resumen = resumenCuotasActivo(plan, banco, estado);
+    if (!resumen.length) return ''; // v5 con cuotas por estilo a cero: nada que afirmar
     var fallo = resumen.filter(function (r) { return !r.cumplido && CLAVE_CUOTA[r.categoria]; })[0];
     var texto = !fallo
       ? t('equilibrio_ok')
@@ -790,7 +906,7 @@
         .replace('{cole}', '<button type="button" class="ingrediente-link" data-action="ir-cole">' + t('cole') + '</button>');
     }
     // Despensa (staples/recordatorio) fuera del contador de HOY — mismo criterio que renderCompraVista.
-    var itemsHoyReal = E.listaCompra(estado, estado.plan, 'hoy', banco, null, new Date().getHours() >= 16).filter(function (i) { return i.categoria !== 'despensa'; });
+    var itemsHoyReal = listaCompraActiva(estado, estado.plan, 'hoy', banco, new Date().getHours() >= 16).filter(function (i) { return i.categoria !== 'despensa'; });
     var faltanHoyReal = itemsHoyReal.filter(function (i) { return !i.marcado; });
     var pantryTexto;
     if (!itemsHoyReal.length) pantryTexto = '';
@@ -826,8 +942,8 @@
     for (var p = inicioProximos; p < Math.min(inicioProximos + 7, plan14.length); p++) {
       var pd = plan14[p];
       var pLocal = p % 7;
-      var pComidaPl = pd.comida ? E.elaboracionPorId(banco, estado, pd.comida.menu.principalId) : null;
-      var pCenaPl = pd.cena ? E.elaboracionPorId(banco, estado, pd.cena.menu.principalId) : null;
+      var pComidaPl = principalDeSlot(estado, banco, pd.comida);
+      var pCenaPl = principalDeSlot(estado, banco, pd.cena);
       var pComidaNombre = pd.comida ? pd.comida.menu.nombre : 'Sin plan';
       var pCenaNombre = pd.cena ? pd.cena.menu.nombre : 'Sin plan';
       var pColeDia = estado.cole && estado.cole.dias && estado.cole.dias[pd.fecha];
@@ -860,7 +976,7 @@
   // pintado sin acción — esta es esa acción.
   // ---------------------------------------------------------------
   function renderEquilibrioSemana(plan, banco, estado) {
-    var resumen = E.resumenCuotasSemana(plan, banco, estado);
+    var resumen = resumenCuotasActivo(plan, banco, estado);
     if (!resumen.length) return '';
     var cumplidas = resumen.filter(function (r) { return r.cumplido; }).length;
     var filas = resumen.map(function (r) {
@@ -1001,25 +1117,44 @@
       '</div>';
   }
 
+  // Mesas sintéticas de 1 comensal para los chips honestos de Recetas bajo v5: la MISMA
+  // pregunta que responde el motor (sirveAMesa sobre el desglose completo, componentes
+  // incluidos) — en v5 "sin gluten" filtra DE VERDAD (el celiaco y el pan rallado del
+  // empanado, fix de la sesion del selector), no como el chip honesto-vacio de v3.
+  var MESA_CHIP_VEGETARIANA = [{ nombre: 'chip', perfil: { estilo: 'vegetariano', alergias: [] } }];
+  var MESA_CHIP_SIN_GLUTEN = [{ nombre: 'chip', perfil: { estilo: 'de-todo', alergias: ['sin-gluten'] } }];
+
   function renderRecetasVista(estado, banco, filtro, busqueda, vista) {
     filtro = filtro || 'todas';
     busqueda = busqueda || '';
     vista = vista === 'list' ? 'list' : 'grid';
+    var esV5 = !!window.E3MotorV5;
     // solo principales/mixtas son "recetas" navegables — las complementarias
     // (guarnición de arroz, ensalada de tomate...) son piezas internas del
     // ensamblador, no algo que la familia elija/oculte/marque favorito.
-    var todas = E.todasLasElaboraciones(banco, estado).filter(function (p) { return p.roles.indexOf('principal') !== -1; });
+    // v5 (obra de encendido, 31-jul): el grid navega el banco v5 (previsualización con la
+    // opción por defecto); favoritas/ocultas operan sobre ids v5 en el MISMO estado.
+    var todas = esV5
+      ? window.E3MotorV5.catalogoRecetas()
+      : E.todasLasElaboraciones(banco, estado).filter(function (p) { return p.roles.indexOf('principal') !== -1; });
     var ocultas = estado.ocultas || [];
     var favoritas = estado.favoritas || [];
 
-    var categoriasPresentes = {};
-    todas.forEach(function (p) { Object.keys(categoriasDePlantilla(p, banco)).forEach(function (c) { categoriasPresentes[c] = 1; }); });
-    var categorias = ORDEN_CATEGORIA.filter(function (c) { return categoriasPresentes[c]; });
-    // vegetariana ya filtra de verdad (2026-07-22, UPGRADES §2/§6 punto 8: reutiliza
-    // categoriaExcluidaPorDieta/opcionAptaParaDieta, cero dato nuevo). sin-gluten sigue sin dato
-    // en el banco (Roger 2026-07-14) — al elegirla ninguna plantilla coincide y se ve el mensaje
-    // de "sin resultados" habitual: honesto, no simulado.
-    var chips = ['todas', 'rapidas', 'favoritas'].concat(categorias, ['vegetariana', 'sin-gluten']);
+    var chips;
+    if (esV5) {
+      // sin chips de categoría de ingrediente v3 (ese vocabulario muere con el banco v3);
+      // vegetariana/sin-gluten responden con sirveAMesa — dato real, no simulado.
+      chips = ['todas', 'rapidas', 'favoritas', 'vegetariana', 'sin-gluten'];
+    } else {
+      var categoriasPresentes = {};
+      todas.forEach(function (p) { Object.keys(categoriasDePlantilla(p, banco)).forEach(function (c) { categoriasPresentes[c] = 1; }); });
+      var categorias = ORDEN_CATEGORIA.filter(function (c) { return categoriasPresentes[c]; });
+      // vegetariana ya filtra de verdad (2026-07-22, UPGRADES §2/§6 punto 8: reutiliza
+      // categoriaExcluidaPorDieta/opcionAptaParaDieta, cero dato nuevo). sin-gluten sigue sin dato
+      // en el banco v3 (Roger 2026-07-14) — al elegirla ninguna plantilla coincide y se ve el
+      // mensaje de "sin resultados" habitual: honesto, no simulado.
+      chips = ['todas', 'rapidas', 'favoritas'].concat(categorias, ['vegetariana', 'sin-gluten']);
+    }
 
     var chipsHtml = chips.map(function (c) {
       var activo = c === filtro;
@@ -1030,8 +1165,11 @@
     var listaFiltrada = todas;
     if (filtro === 'rapidas') listaFiltrada = todas.filter(function (p) { return p.esfuerzo === 'rapido'; });
     else if (filtro === 'favoritas') listaFiltrada = todas.filter(function (p) { return favoritas.indexOf(p.id) !== -1; });
-    else if (filtro === 'vegetariana') listaFiltrada = todas.filter(function (p) { return esVegetarianaApta(p, banco); });
-    else if (filtro !== 'todas') listaFiltrada = todas.filter(function (p) { return categoriasDePlantilla(p, banco)[filtro]; });
+    else if (filtro === 'vegetariana') listaFiltrada = esV5
+      ? todas.filter(function (p) { return window.E3SelectorV5.sirveAMesa(p.id, MESA_CHIP_VEGETARIANA); })
+      : todas.filter(function (p) { return esVegetarianaApta(p, banco); });
+    else if (filtro === 'sin-gluten' && esV5) listaFiltrada = todas.filter(function (p) { return window.E3SelectorV5.sirveAMesa(p.id, MESA_CHIP_SIN_GLUTEN); });
+    else if (filtro !== 'todas') listaFiltrada = esV5 ? [] : todas.filter(function (p) { return categoriasDePlantilla(p, banco)[filtro]; });
     if (busqueda.trim()) {
       var q = normalizarTexto(busqueda);
       listaFiltrada = listaFiltrada.filter(function (p) { return normalizarTexto(nombreEjemplo(p, banco)).indexOf(q) !== -1; });
@@ -1054,7 +1192,52 @@
       '<input type="search" id="recetas-buscador" placeholder="' + t('buscar_plato_o_ingrediente') + '" value="' + escapeHtml(busqueda) + '"></label>' +
       '<div class="rc-chips scroll">' + chipsHtml + '</div>' +
       listaHtml +
-      renderFormRecetaPropia(banco) +
+      // PROVISIONAL bajo v5 (mini-decisión de la obra de encendido, pendiente de Roger):
+      // el formulario de receta propia crea elaboraciones con ids/esquema v3 que el motor v5
+      // ni sirve ni lista — ocultarlo evita un mando que miente. Si Roger decide mantener
+      // propias v3 en paralelo, esto es la única línea a revertir.
+      (esV5 ? '' : renderFormRecetaPropia(banco)) +
+      '</div>';
+  }
+
+  // Ficha de una elaboración v5 previsualizada (obra de encendido, 31-jul) — la misma
+  // estructura visual que la ficha v3 de abajo, alimentada por previsualizarElaboracion del
+  // motor v5: nombre con la opción por defecto, variantes reales del eje, guarnición de
+  // ejemplo de `combinaciones` y pasos del banco (sin placeholders, verificado en build).
+  function fichaRecetaPreview(estado, previa) {
+    var nombreSplit = splitNombrePlato(previa.nombre);
+    var esCena = !!(previa.apta && previa.apta.length && previa.apta.indexOf('comida') === -1);
+    var tag = ETIQUETA_ESFUERZO[previa.esfuerzo] || '—';
+    var favorita = (estado.favoritas || []).indexOf(previa.id) !== -1;
+    var oculta = (estado.ocultas || []).indexOf(previa.id) !== -1;
+    var fotoHtml = previa.foto ? '<img src="' + escapeHtml(previa.foto) + '" alt="">' : '<div class="rv-foto-vacia"></div>';
+    var acompText = previa.acompanamientoEjemplo.length
+      ? 'Se completa con ' + previa.acompanamientoEjemplo.join(' y ') + '.'
+      : '';
+    var variantesText = previa.variantes.length
+      ? 'también con ' + previa.variantes.map(function (n) { return nombreCortoIngrediente(n).toLowerCase(); }).join(', ')
+      : '';
+    var pasosHtml = previa.pasos.length
+      ? '<div class="rv-pasos">' + pasosCards(previa.pasos) + '</div>'
+      : '<p class="card-msg">Sin pasos detallados para esta receta.</p>';
+    return '<div class="rv-hero">' + fotoHtml + '<div class="rv-hero-gradiente"></div>' +
+      '<button type="button" class="rv-flotante rv-volver" data-action="receta-volver" aria-label="Volver"><i data-lucide="arrow-left"></i></button>' +
+      '<div class="rv-acciones">' +
+      '<button type="button" class="rv-flotante' + (oculta ? ' rv-flotante-activo' : '') + '" data-action="toggle-oculta-receta" data-plantilla="' + previa.id + '" aria-label="' + (oculta ? 'Mostrar receta' : 'Ocultar receta') + '" aria-pressed="' + oculta + '"><i data-lucide="eye-off"></i></button>' +
+      '<button type="button" class="rv-flotante' + (favorita ? ' rv-flotante-activo' : '') + '" data-action="toggle-favorita-receta" data-plantilla="' + previa.id + '" aria-label="' + (favorita ? 'Quitar de favoritas' : 'Marcar como favorita') + '" aria-pressed="' + favorita + '"><i data-lucide="heart"' + (favorita ? ' style="fill:currentColor"' : '') + '></i></button>' +
+      '</div></div>' +
+      '<div class="rv-body">' +
+      '<span class="rv-pill rv-pill-' + (esCena ? 'cena' : 'comida') + '">' + (esCena ? ICONO_LUNA : ICONO_SOL) + t(esCena ? 'badge_cena' : 'badge_comida') + '</span>' +
+      '<h1 class="rv-titulo">' + escapeHtml(nombreSplit.titulo) + '</h1>' +
+      (nombreSplit.subtitulo ? '<p class="rv-subtitulo">' + escapeHtml(nombreSplit.subtitulo) + '</p>' : '') +
+      '<div class="rv-stats">' +
+      '<div class="rv-stat"><i data-lucide="clock"></i><span class="rv-stat-valor">' + (previa.tiempo_min || '?') + ' min</span></div>' +
+      '<div class="rv-stat"><i data-lucide="leaf"></i><span class="rv-stat-valor">' + tag + '</span></div>' +
+      '</div>' +
+      (acompText ? '<p class="rv-variantes"><i data-lucide="info"></i>' + escapeHtml(acompText) + '</p>' : '') +
+      (variantesText ? '<p class="rv-variantes"><i data-lucide="shuffle"></i>' + escapeHtml(capitaliza(variantesText)) + '</p>' : '') +
+      '<p class="rv-seccion-titulo">' + t('preparacion') + '</p>' +
+      pasosHtml +
       '</div>';
   }
 
@@ -1065,6 +1248,12 @@
   // Ingredientes/pasos con la combinación de ejemplo (nombreEjemplo), igual
   // que ya hacía la lista del banco.
   function renderVistaRecetaPlantilla(estado, banco, plantillaId) {
+    // v5 (obra de encendido, 31-jul): la ficha sale de la previsualización del motor v5
+    // (opción por defecto, guarnición de ejemplo de `combinaciones`) — sin plan real detrás.
+    if (window.E3MotorV5) {
+      var previa5 = window.E3MotorV5.previsualizarElaboracion(plantillaId);
+      if (previa5) return fichaRecetaPreview(estado, previa5);
+    }
     var plantilla = E.elaboracionPorId(banco, estado, plantillaId);
     if (!plantilla) {
       return '<button type="button" class="rv-flotante rv-volver" data-action="receta-volver" aria-label="Volver"><i data-lucide="arrow-left"></i></button>' +
@@ -1199,7 +1388,7 @@
     // Pasadas las 16h, "Compra hoy" ya no necesita ingredientes de comida (Roger 2026-07-22) —
     // mismo umbral que comidaProximaPorHora (app.js) y saludoHora (arriba), real reloj del navegador.
     var soloCena = rango === 'hoy' && new Date().getHours() >= 16;
-    var todosLosItems = E.listaCompra(estado, plan, rango === 'hoy' ? 'hoy' : 'semana', banco, null, soloCena);
+    var todosLosItems = listaCompraActiva(estado, plan, rango === 'hoy' ? 'hoy' : 'semana', banco, soloCena);
     // Despensa real (Roger 2026-07-23): categoria==='despensa' son los staples + ingrediente
     // base (aceite, sal, mayonesa, cebolla, leche...) — gramos siempre null, "¿lo tengo en
     // casa?", NO cantidad real a comprar. Fuera del contador de pendientes y de los grupos de
@@ -1292,9 +1481,13 @@
   }
 
   function renderNevera(estado, banco, dia, tipoComida) {
-    var filas = idsIngredientesOrdenados(banco).map(function (id) {
-      var ing = banco.ingredientes[id];
-      return '<li data-buscar="' + escapeHtml(normalizarTexto(ing.nombre)) + '"><label class="fila-nevera"><input type="checkbox" value="' + id + '" data-nombre="' + escapeHtml(ing.nombre) + '"> ' + escapeHtml(ing.nombre) + '</label></li>';
+    // v5 (flag dev): el checklist son los alimentos que de verdad deciden si un plato v5 se
+    // monta; sin flag, los ingredientes del banco v3 como siempre.
+    var listaIngredientes = window.E3MotorV5
+      ? window.E3MotorV5.alimentosNevera()
+      : idsIngredientesOrdenados(banco).map(function (id) { return { id: id, nombre: banco.ingredientes[id].nombre }; });
+    var filas = listaIngredientes.map(function (ing) {
+      return '<li data-buscar="' + escapeHtml(normalizarTexto(ing.nombre)) + '"><label class="fila-nevera"><input type="checkbox" value="' + ing.id + '" data-nombre="' + escapeHtml(ing.nombre) + '"> ' + escapeHtml(ing.nombre) + '</label></li>';
     }).join('');
     var micHtml = TIENE_VOZ
       ? '<button type="button" class="btn-filtro-icono btn-mic" data-action="nevera-voz" aria-label="Buscar por voz"><i data-lucide="mic"></i></button>'
@@ -1326,7 +1519,8 @@
     }
     var filas = opciones.map(function (m, i) {
       var subtitulo = (m.complementariasResueltas || []).map(function (c) { return c.nombre; }).join(' · ');
-      var nombreFalta = m.faltaIngrediente && banco.ingredientes[m.faltaIngrediente] ? banco.ingredientes[m.faltaIngrediente].nombre : m.faltaIngrediente;
+      var nombreFalta = m.faltaIngredienteNombre ||
+        (m.faltaIngrediente && banco.ingredientes[m.faltaIngrediente] ? banco.ingredientes[m.faltaIngrediente].nombre : m.faltaIngrediente);
       var avisoHtml = m.faltaIngrediente
         ? '<p class="fila-opcion-nevera-aviso"><i data-lucide="alert-circle"></i>Te falta ' + escapeHtml(nombreFalta) + ' — <button type="button" class="ingrediente-link" data-action="nevera-anadir-compra" data-id="' + m.faltaIngrediente + '">¿lo añado a la compra?</button></p>'
         : '';
@@ -1605,14 +1799,34 @@
   // es su sitio semántico, para que el rediseño no deje a una familia con
   // alergia real sin la herramienta que sí funciona. Cuando dietas.js entre en
   // el motor, este grid es lo primero que puede desaparecer.
+  // Rejilla sobre banco v5 (obra de encendido, 31-jul): con el motor v5 cargado la ficha
+  // lista E3_BANCO_V5.alimentos agrupados por `naturaleza` — los vetos que escribe son ids
+  // v5 y el motor ya los aplica como veto duro (dietas.vetado, fix P0-1). El handler
+  // (toggle-veto) es el mismo: solo cambia el catálogo listado. Sin flag, la rejilla v3.
+  var ORDEN_NATURALEZA_V5 = ['vegetal', 'carne', 'pescado', 'marisco', 'huevo', 'lacteo', 'cereal', 'grasa', 'condimento'];
+  function chipVeto(miembroId, id, nombre, marcado) {
+    // el estado visual del chip marcado lo lleva .veto-chip:has(input:checked) en CSS
+    return '<label class="veto-chip">' +
+      '<input type="checkbox" data-action="toggle-veto" data-id="' + miembroId + '" data-ingrediente="' + id + '" ' + (marcado ? 'checked' : '') + '> ' + escapeHtml(nombre) +
+      '</label>';
+  }
+
   function renderVetos(miembro, banco) {
     var vetos = miembro.vetos || [];
-    // el estado visual del chip marcado lo lleva .veto-chip:has(input:checked) en CSS
+    if (window.E3_BANCO_V5) {
+      var porNat = {};
+      window.E3_BANCO_V5.alimentos.forEach(function (a) {
+        (porNat[a.naturaleza] = porNat[a.naturaleza] || []).push(a);
+      });
+      return ORDEN_NATURALEZA_V5.filter(function (n) { return porNat[n]; }).map(function (n) {
+        var chips = porNat[n].slice().sort(function (a, b) { return a.nombre.localeCompare(b.nombre); })
+          .map(function (a) { return chipVeto(miembro.id, a.id, a.nombre, vetos.indexOf(a.id) !== -1); }).join('');
+        return '<p class="onb-eyebrow onb-eyebrow-grupo">' + escapeHtml(t('nat_' + n)) + '</p>' +
+          '<div class="vetos-grid">' + chips + '</div>';
+      }).join('');
+    }
     return '<div class="vetos-grid">' + idsIngredientesOrdenados(banco).map(function (id) {
-      var marcado = vetos.indexOf(id) !== -1;
-      return '<label class="veto-chip">' +
-        '<input type="checkbox" data-action="toggle-veto" data-id="' + miembro.id + '" data-ingrediente="' + id + '" ' + (marcado ? 'checked' : '') + '> ' + escapeHtml(banco.ingredientes[id].nombre) +
-        '</label>';
+      return chipVeto(miembro.id, id, banco.ingredientes[id].nombre, vetos.indexOf(id) !== -1);
     }).join('') + '</div>';
   }
 
@@ -1766,15 +1980,145 @@
   // (arriba izquierda, donde se toca) — no el sheet grande de abajo. Reservado
   // para listas cortas de acciones; el sheet de abajo sigue siendo para
   // pantallas con contenido real (Familia, nevera, receta...).
-  function renderMenuHamburguesa() {
+  function renderMenuHamburguesa(conCuenta) {
+    // «Regenerar menús» muere bajo v5 (dictado Roger 31-jul, obra de encendido): su única
+    // función real —aplicar cambios de estado— es ahora automática (miembros/elecciones
+    // regeneran solos), y el re-roll por re-roll era un spin de lotería que el selector
+    // determinista no admite. En v3 (red de seguridad inerte) se conserva.
     return '<button type="button" class="menu-dropdown-item" role="menuitem" data-action="menu-ir-familia"><i data-lucide="users"></i>' + t('familia') + '</button>' +
       '<button type="button" class="menu-dropdown-item" role="menuitem" data-action="menu-ir-batch"><i data-lucide="chef-hat"></i>' + t('domingo_de_batch') + '</button>' +
       '<button type="button" class="menu-dropdown-item" role="menuitem" data-action="menu-sync"><i data-lucide="refresh-cw"></i>' + t('sincronizar_familia') + '</button>' +
+      (conCuenta ? '<button type="button" class="menu-dropdown-item" role="menuitem" data-action="menu-cuenta"><i data-lucide="user-round"></i>' + t('cta_cuenta') + '</button>' : '') +
       '<div class="menu-dropdown-sep" role="separator"></div>' +
-      '<button type="button" class="menu-dropdown-item" role="menuitem" data-action="menu-regenerar-semana"><i data-lucide="sparkles"></i>Regenerar menús</button>' +
+      (window.E3MotorV5 ? '' : '<button type="button" class="menu-dropdown-item" role="menuitem" data-action="menu-regenerar-semana"><i data-lucide="sparkles"></i>Regenerar menús</button>') +
       '<button type="button" class="menu-dropdown-item" role="menuitem" data-action="menu-importar-cole"><i data-lucide="paperclip"></i>Importar menú del cole</button>' +
       '<div class="menu-dropdown-sep" role="separator"></div>' +
       '<button type="button" class="menu-dropdown-item" role="menuitem" data-action="menu-ir-idioma"><i data-lucide="languages"></i>' + t('idioma_titulo') + '</button>';
+  }
+
+  // ---------------------------------------------------------------
+  // CUENTAS (obra auth+push, AUTH_PUSH_SPEC §1-§3 — ejecutada 31-jul). Una sola pantalla
+  // de acceso, no un árbol (máx. 1 decisión por pantalla): Google + email/contraseña con
+  // toggle Entrar/Crear. Los errores SIEMPRE genéricos (anti-enumeración §7.1). El "mira
+  // un ejemplo" sigue sin cuenta (dictado §12.2).
+  // ---------------------------------------------------------------
+  function renderAcceso(modo, error, aviso) {
+    var esCrear = modo === 'crear';
+    return '<div class="onb-scroll"><div class="onb-cuerpo" style="max-width:420px;margin:0 auto;padding-top:48px">' +
+      '<p class="onb-eyebrow">e3foods</p>' +
+      '<h1 class="onb-h2" style="margin-bottom:6px">' + t(esCrear ? 'ac_crear_cuenta' : 'ac_entrar') + '</h1>' +
+      '<p class="onb-sub">' + t('claim_menus') + '</p>' +
+      '<button type="button" class="onb-cta onb-cta-midnight" data-action="acceso-google" style="margin:14px 0"><i data-lucide="chrome"></i>' + t('ac_continuar_google') + '</button>' +
+      '<p class="onb-eyebrow onb-eyebrow-grupo" style="text-align:center">' + t('ac_o_con_email') + '</p>' +
+      '<label class="per-campo"><span class="onb-eyebrow">' + t('ac_email') + '</span>' +
+        '<input type="email" class="per-input" id="ac-email" autocomplete="email" inputmode="email"></label>' +
+      '<label class="per-campo" style="margin-top:10px"><span class="onb-eyebrow">' + t('ac_password') + '</span>' +
+        '<input type="password" class="per-input" id="ac-pass" autocomplete="' + (esCrear ? 'new-password' : 'current-password') + '"></label>' +
+      (esCrear ? '<p class="per-nota">' + t('pass_min') + '</p>' : '') +
+      (esCrear
+        ? '<label class="veto-chip" style="display:flex;gap:8px;align-items:flex-start;margin-top:12px"><input type="checkbox" id="ac-politica" style="margin-top:3px">' +
+          '<span>' + t('ac_politica_acepto') + ' · <a href="privacy.html" target="_blank" rel="noopener" class="ingrediente-link">' + t('politica_enlace') + '</a></span></label>'
+        : '') +
+      (error ? '<p class="card-msg" style="color:var(--danger);margin-top:10px">' + escapeHtml(error) + '</p>' : '') +
+      (aviso ? '<p class="card-msg" style="margin-top:10px">' + escapeHtml(aviso) + '</p>' : '') +
+      '<button type="button" class="onb-cta onb-cta-oro" data-action="acceso-enviar" data-modo="' + (esCrear ? 'crear' : 'entrar') + '" style="margin-top:14px">' + t(esCrear ? 'ac_crear_cuenta' : 'ac_entrar') + '<i data-lucide="arrow-right"></i></button>' +
+      '<button type="button" class="onb-enlace onb-enlace-pie" data-action="acceso-toggle" data-modo="' + (esCrear ? 'entrar' : 'crear') + '">' + t(esCrear ? 'ac_ya_tienes' : 'ac_no_tienes') + '</button>' +
+      (esCrear ? '' : '<button type="button" class="onb-enlace onb-enlace-pie" data-action="acceso-olvide">' + t('ac_olvide') + '</button>') +
+      '<button type="button" class="onb-enlace onb-enlace-pie" data-action="ver-demo">' + t('onb_ejemplo') + '</button>' +
+      '</div></div>';
+  }
+
+  function renderRevisaCorreo(email, aviso) {
+    return '<div class="onb-scroll"><div class="onb-cuerpo" style="max-width:420px;margin:0 auto;padding-top:48px">' +
+      '<span class="onb-chip-seguridad"><i data-lucide="mail-check"></i>' + t('ver_titulo') + '</span>' +
+      '<h1 class="onb-h2">' + t('ver_titulo') + '</h1>' +
+      '<p class="onb-sub">' + escapeHtml(t('ver_texto').replace('{email}', email || '')) + '</p>' +
+      (aviso ? '<p class="card-msg">' + escapeHtml(aviso) + '</p>' : '') +
+      '<button type="button" class="onb-cta onb-cta-oro" data-action="verificar-recargar" style="margin-top:14px">' + t('ver_ya') + '<i data-lucide="arrow-right"></i></button>' +
+      '<button type="button" class="onb-enlace onb-enlace-pie" data-action="verificar-reenviar">' + t('ver_reenviar') + '</button>' +
+      '<button type="button" class="onb-enlace onb-enlace-pie" data-action="acceso-logout">' + t('cta_cerrar_sesion') + '</button>' +
+      '</div></div>';
+  }
+
+  function renderOlvidePassword(enviado) {
+    return '<div class="onb-scroll"><div class="onb-cuerpo" style="max-width:420px;margin:0 auto;padding-top:48px">' +
+      '<h1 class="onb-h2">' + t('rec_titulo') + '</h1>' +
+      '<p class="onb-sub">' + t('rec_texto') + '</p>' +
+      '<label class="per-campo"><span class="onb-eyebrow">' + t('ac_email') + '</span>' +
+        '<input type="email" class="per-input" id="rec-email" autocomplete="email" inputmode="email"></label>' +
+      (enviado ? '<p class="card-msg">' + t('rec_texto') + '</p>' : '') +
+      '<button type="button" class="onb-cta onb-cta-oro" data-action="recuperar-enviar" style="margin-top:14px">' + t('rec_enviar') + '<i data-lucide="arrow-right"></i></button>' +
+      '<button type="button" class="onb-enlace onb-enlace-pie" data-action="acceso-volver">' + t('ac_ya_tienes') + '</button>' +
+      '</div></div>';
+  }
+
+  // Paso de familia (§1.3): crear (nombre + consentimiento explícito de salud, art. 9 —
+  // checkbox PROPIO, nunca fusionado con la política) o unirse por código.
+  function renderPasoFamilia(error) {
+    return '<div class="onb-scroll"><div class="onb-cuerpo" style="max-width:420px;margin:0 auto;padding-top:48px">' +
+      '<h1 class="onb-h2">' + t('fam_titulo') + '</h1>' +
+      '<div class="onb-tarjeta-servicios" style="margin-top:12px">' +
+      '<p class="onb-servicios-tit">' + t('fam_crear') + '</p>' +
+      '<label class="per-campo"><span class="onb-eyebrow">' + t('fam_nombre') + '</span>' +
+        '<input type="text" class="per-input" id="fam-nombre" maxlength="40"></label>' +
+      '<label class="veto-chip" style="display:flex;gap:8px;align-items:flex-start;margin-top:12px"><input type="checkbox" id="fam-consent" style="margin-top:3px">' +
+        '<span>' + t('fam_consent_salud') + '</span></label>' +
+      '<button type="button" class="onb-cta onb-cta-oro" data-action="familia-crear" style="margin-top:12px">' + t('fam_crear') + '<i data-lucide="arrow-right"></i></button>' +
+      '</div>' +
+      '<div class="onb-tarjeta-servicios" style="margin-top:16px">' +
+      '<p class="onb-servicios-tit">' + t('fam_unirse_titulo') + '</p>' +
+      '<label class="per-campo"><span class="onb-eyebrow">' + t('codigo') + '</span>' +
+        '<input type="text" class="per-input" id="fam-codigo" maxlength="8" autocapitalize="characters" autocomplete="off" placeholder="' + t('8_caracteres') + '"></label>' +
+      '<button type="button" class="onb-cta onb-cta-midnight" data-action="familia-unirse" style="margin-top:12px">' + t('unirme_con_el_codigo') + '</button>' +
+      '</div>' +
+      (error ? '<p class="card-msg" style="color:var(--danger);margin-top:10px">' + escapeHtml(error) + '</p>' : '') +
+      '<button type="button" class="onb-enlace onb-enlace-pie" data-action="acceso-logout">' + t('cta_cerrar_sesion') + '</button>' +
+      '</div></div>';
+  }
+
+  function renderCodigoFamilia(code) {
+    return '<div class="onb-scroll"><div class="onb-cuerpo" style="max-width:420px;margin:0 auto;padding-top:48px;text-align:center">' +
+      '<span class="onb-fin-check"><i data-lucide="check"></i></span>' +
+      '<h1 class="onb-h2">' + t('fam_codigo_titulo') + '</h1>' +
+      '<p class="sync-code" style="font-size:32px;letter-spacing:4px;margin:12px 0">' + escapeHtml(code || '') + '</p>' +
+      '<p class="onb-sub">' + t('fam_codigo_texto') + '</p>' +
+      '<button type="button" class="onb-cta onb-cta-oro" data-action="familia-codigo-continuar" style="margin-top:14px">' + t('fam_continuar') + '<i data-lucide="arrow-right"></i></button>' +
+      '</div></div>';
+  }
+
+  // Ajustes de cuenta (sheet, §2/§5.4): email + cambiar contraseña (solo proveedor
+  // password) + cerrar sesión + salir de familia + borrar cuenta (confirmación escrita).
+  function renderSheetCuenta(info, opts) {
+    opts = opts || {};
+    var proveedorPass = info && info.proveedor === 'password';
+    if (opts.confirmarBorrado) {
+      return sheetHead(t('cta_borrar_cuenta')) + '<div class="sheet-body">' +
+        '<p class="card-msg">' + t('rec_texto').replace('{email}', '') + '</p>' +
+        '<p class="card-msg">Escribe <strong>BORRAR</strong> para confirmar:</p>' +
+        '<label><span class="campo-eyebrow">Confirmación</span><input type="text" id="cuenta-borrar-input" class="input-editorial" placeholder="BORRAR" autocapitalize="characters" autocomplete="off"></label>' +
+        (opts.error ? '<p class="card-msg" style="color:var(--danger)">' + escapeHtml(opts.error) + '</p>' : '') +
+        '<button type="button" class="btn-secondary btn-icono-texto btn-danger-outline" data-action="cuenta-borrar-confirmar"><i data-lucide="trash-2"></i>' + t('cta_borrar_cuenta') + '</button>' +
+        '<button type="button" class="btn-texto" data-action="menu-cuenta">Cancelar</button>' +
+        '</div>';
+    }
+    return sheetHead(t('cta_cuenta')) + '<div class="sheet-body">' +
+      '<p class="card-msg"><strong>' + escapeHtml(info && info.email || '') + '</strong>' +
+      (proveedorPass ? '' : ' · Google') + '</p>' +
+      (opts.aviso ? '<p class="card-msg">' + escapeHtml(opts.aviso) + '</p>' : '') +
+      (opts.error ? '<p class="card-msg" style="color:var(--danger)">' + escapeHtml(opts.error) + '</p>' : '') +
+      (proveedorPass
+        ? '<details class="receta-propia-form" data-detalle-key="cuenta-pass"><summary>' + t('cta_cambiar_pass') + '</summary>' +
+          '<div class="form-miembro">' +
+          '<label>' + t('ac_password') + '<input type="password" id="cuenta-pass-actual" autocomplete="current-password"></label>' +
+          '<label>' + t('cta_cambiar_pass') + ' (' + t('pass_min') + ')<input type="password" id="cuenta-pass-nueva" autocomplete="new-password"></label>' +
+          '<button type="button" class="btn-primary" data-action="cuenta-cambiar-pass">' + t('cta_cambiar_pass') + '</button>' +
+          '</div></details>'
+        : '') +
+      '<button type="button" class="btn-secondary btn-icono-texto" data-action="cuenta-logout"><i data-lucide="log-out"></i>' + t('cta_cerrar_sesion') + '</button>' +
+      '<button type="button" class="btn-secondary btn-icono-texto" data-action="cuenta-salir-familia"><i data-lucide="door-open"></i>' + t('cta_salir_familia') + '</button>' +
+      '<button type="button" class="btn-secondary btn-icono-texto btn-danger-outline" data-action="cuenta-borrar"><i data-lucide="trash-2"></i>' + t('cta_borrar_cuenta') + '</button>' +
+      '<p class="card-msg"><a href="privacy.html" target="_blank" rel="noopener" class="ingrediente-link">' + t('politica_enlace') + '</a></p>' +
+      '</div>';
   }
 
   // Menú del cole — vista semanal de solo lectura (Roger 2026-07-22): el enlace "cole"
@@ -1890,8 +2234,12 @@
     // reabre la MISMA rotación aunque la medianoche cruce entre pintar y tocar.
     // d.foto puede ser null (categoría sin ninguna candidata con foto) — la
     // ficha tiene altura fija y el degradado + texto siguen legibles sin <img>.
+    // v5 (obra de encendido, 31-jul): categorías derivadas de campos reales del banco v5
+    // (estilo de servicio, esfuerzo, temporada, región) — nunca contenido inventado.
     var fecha = hoyISO();
-    var categorias = E.categoriasDescubrir(banco, estado, fecha);
+    var categorias = window.E3MotorV5
+      ? window.E3MotorV5.categoriasDescubrir(fecha, estado.ocultas || [])
+      : E.categoriasDescubrir(banco, estado, fecha);
     var fichasHtml = categorias.map(function (d, idx) {
       return '<button type="button" class="desc-ficha" data-action="descubrir-abrir-categoria" data-idx="' + idx + '" data-fecha="' + fecha + '">' +
         (d.foto ? '<img src="' + escapeHtml(d.foto) + '" alt="" loading="lazy" decoding="async">' : '') +
@@ -1981,6 +2329,13 @@
     renderConfirmarRegenerar: renderConfirmarRegenerar,
     renderVistaMiembro: renderVistaMiembro,
     renderMenuHamburguesa: renderMenuHamburguesa,
+    renderAcceso: renderAcceso,
+    renderRevisaCorreo: renderRevisaCorreo,
+    renderOlvidePassword: renderOlvidePassword,
+    renderPasoFamilia: renderPasoFamilia,
+    renderCodigoFamilia: renderCodigoFamilia,
+    renderSheetCuenta: renderSheetCuenta,
+    renderSheetCampana: renderSheetCampana,
     renderSheetIdioma: renderSheetIdioma,
     renderBatch: renderBatch,
     renderSheetImportarCole: renderSheetImportarCole,

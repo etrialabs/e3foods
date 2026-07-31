@@ -37,13 +37,117 @@
   var FAMILY_KEY = 'e3foods_v2_family';
   var debounceTimer = null;
 
+  // --- CUENTAS (obra auth+push, AUTH_PUSH_SPEC — ejecutada 31-jul por orden de Roger) ---
+  // Fuera signInAnonymously: la cuenta es obligatoria para usar la app (dictado §12.2).
+  // El uid pasa de "dispositivo" a "persona con credencial recuperable"; el código de
+  // familia sigue siendo el mecanismo de unión. Anonymous se deshabilita en consola con
+  // el reset (§8) — esto ya no lo usa ni de respaldo.
+  function esperarSesion() {
+    return new Promise(function (resolve) {
+      var unsub = fbAuth.onAuthStateChanged(function (user) { unsub(); resolve(user); });
+    });
+  }
+
   function ensureSignedIn() {
-    return new Promise(function (resolve, reject) {
-      var unsub = fbAuth.onAuthStateChanged(function (user) {
-        unsub();
-        if (user) return resolve(user);
-        fbAuth.signInAnonymously().then(function (cred) { resolve(cred.user); }).catch(reject);
+    return esperarSesion().then(function (user) {
+      if (!user) throw new Error('sesión requerida');
+      return user;
+    });
+  }
+
+  function idiomaApp() {
+    try { return localStorage.getItem('e3foods_lang') || 'es'; } catch (e) { return 'es'; }
+  }
+
+  // continueUrl de vuelta a la app (verificación y reset salen del email a la página
+  // alojada de Firebase y vuelven aquí)
+  function urlDeVuelta() { return location.origin + location.pathname; }
+
+  function registrarEmail(email, pass) {
+    return fbAuth.createUserWithEmailAndPassword(email, pass).then(function (cred) {
+      fbAuth.languageCode = idiomaApp();
+      return cred.user.sendEmailVerification({ url: urlDeVuelta() })
+        .catch(function () { /* el reenvío manual queda disponible en la pantalla */ })
+        .then(function () { return cred.user; });
+    });
+  }
+
+  function reenviarVerificacion() {
+    var u = fbAuth.currentUser;
+    if (!u) return Promise.reject(new Error('sesión requerida'));
+    fbAuth.languageCode = idiomaApp();
+    return u.sendEmailVerification({ url: urlDeVuelta() });
+  }
+
+  function loginEmail(email, pass) {
+    return fbAuth.signInWithEmailAndPassword(email, pass).then(function (c) { return c.user; });
+  }
+
+  // Popup, no redirect: con authDomain (e3foods.firebaseapp.com) distinto del dominio de la
+  // app, signInWithRedirect está roto en Safari/iOS por partición de almacenamiento (§1.2).
+  function loginGoogle() {
+    return fbAuth.signInWithPopup(new firebase.auth.GoogleAuthProvider())
+      .then(function (c) { return c.user; });
+  }
+
+  function enviarResetPassword(email) {
+    fbAuth.languageCode = idiomaApp();
+    return fbAuth.sendPasswordResetEmail(email, { url: urlDeVuelta() });
+  }
+
+  function recargarUsuario() {
+    var u = fbAuth.currentUser;
+    return u ? u.reload().then(function () { return fbAuth.currentUser; }) : Promise.resolve(null);
+  }
+
+  function usuarioActual() { return fbAuth.currentUser; }
+
+  function cambiarPassword(actual, nueva) {
+    var u = fbAuth.currentUser;
+    if (!u || !u.email) return Promise.reject(new Error('sesión requerida'));
+    var cred = firebase.auth.EmailAuthProvider.credential(u.email, actual);
+    return u.reauthenticateWithCredential(cred).then(function () { return u.updatePassword(nueva); });
+  }
+
+  function cerrarSesion() {
+    // borra el token push de ESTE navegador antes de salir (§2) — best effort
+    var pushOff = (window.E3Push && window.E3Push.borrarToken)
+      ? window.E3Push.borrarToken().catch(function () { return null; })
+      : Promise.resolve(null);
+    return pushOff.then(function () {
+      try { localStorage.removeItem(FAMILY_KEY); } catch (e) { /* sin storage */ }
+      return fbAuth.signOut();
+    });
+  }
+
+  // Re-vinculación tras login (§2): con cuenta, la familia aparece sola — query permitida
+  // por las reglas vivas (era el fallback diseñado; pasa a ser la vía normal).
+  function buscarFamiliaPorUid() {
+    var u = fbAuth.currentUser;
+    if (!u) return Promise.resolve(null);
+    return db.collection('families').where('authorizedUids', 'array-contains', u.uid)
+      .limit(1).get().then(function (q) {
+        if (q.empty) return null;
+        setFamilyId(q.docs[0].id);
+        return q.docs[0].id;
       });
+  }
+
+  function salirDeFamilia() {
+    var familyId = getFamilyId();
+    if (!familyId) return Promise.reject(new Error('sin familyId'));
+    return apiCall('/leave-family', { familyId: familyId }).then(function (data) {
+      try { localStorage.removeItem(FAMILY_KEY); } catch (e) { /* no disponible */ }
+      return data;
+    });
+  }
+
+  function borrarCuenta() {
+    // el proxy encadena la salida de familia y borra la cuenta con Admin SDK (§5.1);
+    // después la sesión local ya no vale — signOut limpia este navegador
+    return apiCall('/delete-account', {}).then(function (data) {
+      try { localStorage.removeItem(FAMILY_KEY); } catch (e) { /* no disponible */ }
+      return fbAuth.signOut().catch(function () { return null; }).then(function () { return data; });
     });
   }
 
@@ -86,8 +190,13 @@
     try { localStorage.setItem(FAMILY_KEY, id); } catch (e) { /* localStorage no disponible */ }
   }
 
-  function crearFamilia(nombreFamilia) {
-    return apiCall('/create-family', { nombreFamilia: nombreFamilia }).then(function (data) {
+  function crearFamilia(nombreFamilia, consentimiento) {
+    // consentimiento (§1.5): {politica:true, salud:true} — la PRUEBA (timestamps+uid) la
+    // escribe el proxy en el doc de familia; sin ambos checks el backend devuelve 400.
+    return apiCall('/create-family', {
+      nombreFamilia: nombreFamilia,
+      consentimiento: consentimiento || {}
+    }).then(function (data) {
       setFamilyId(data.familyId);
       return data; // {familyId, code}
     });
@@ -128,7 +237,8 @@
         ref.get(),
         ref.collection('meta').doc('estado').get(),
         ref.collection('familia').get(),
-        ref.collection('plan').get()
+        ref.collection('plan').get(),
+        ref.collection('meta').doc('historial').get() // historial v5 (obra de encendido F1.1)
       ]);
     }).then(function (r) {
       var familia = r[0].exists ? r[0].data() : {};
@@ -143,7 +253,8 @@
         familia: { nombreFamilia: familia.nombreFamilia, code: familia.code, createdAt: familia.createdAt },
         estado: r[1].exists ? r[1].data() : null,
         miembros: docsDe(r[2]),
-        planes: docsDe(r[3])
+        planes: docsDe(r[3]),
+        historial: r[4].exists ? r[4].data() : null
       };
     });
   }
@@ -222,6 +333,80 @@
     if (planHistoricoTimer) { clearTimeout(planHistoricoTimer); planHistoricoTimer = null; }
   }
 
+  // Historial v5 (obra de encendido F1.1, 31-jul): doc UNICO meta/historial con forma
+  // { semanas: { semanaISO: [...] } }. El write va con set({merge:true}) y SOLO las semanas
+  // nuevas/cambiadas: merge por clave hace la union entre dispositivos sola (una semana ya
+  // archivada es un hecho cerrado — el motor determinista + el plan compartido por el estado
+  // sincronizado garantizan contenido identico si dos dispositivos archivan la misma).
+  // Mismo patron debounce+dedupe que plan/{semanaISO}; cubierto por la regla meta/{doc}
+  // vigente — sin cambio de reglas. JAMAS dentro del blob meta/estado.
+  var historialV5Timer = null;
+  var ultimoHistorialV5 = {}; // semanaISO -> JSON del ultimo contenido conocido en remoto
+  function guardarHistorialV5Debounced(getSemanas) {
+    var familyId = getFamilyId();
+    if (!familyId) return;
+    if (historialV5Timer) clearTimeout(historialV5Timer);
+    historialV5Timer = setTimeout(function () {
+      historialV5Timer = null;
+      var semanas = typeof getSemanas === 'function' ? getSemanas() : getSemanas;
+      var delta = {};
+      Object.keys(semanas || {}).forEach(function (k) {
+        var cuerpo = JSON.stringify(semanas[k]);
+        if (ultimoHistorialV5[k] === cuerpo) return; // ya esta asi en remoto — no reescribir
+        ultimoHistorialV5[k] = cuerpo;
+        delta[k] = semanas[k];
+      });
+      if (!Object.keys(delta).length) return;
+      db.collection('families').doc(familyId).collection('meta').doc('historial')
+        .set({ semanas: delta }, { merge: true })
+        .catch(function (err) {
+          console.error('[sync] guardarHistorialV5 falló', err);
+          Object.keys(delta).forEach(function (k) { delete ultimoHistorialV5[k]; });
+        });
+    }, 900);
+  }
+
+  function cancelarHistorialV5Pendiente() {
+    if (historialV5Timer) { clearTimeout(historialV5Timer); historialV5Timer = null; }
+  }
+
+  // Siembra la cache de dedupe con lo que YA hay en remoto (snapshot) — sin esto, el primer
+  // push tras cada carga reescribiria el mapa entero aunque no haya cambiado nada.
+  function marcarHistorialV5Escrito(semanas) {
+    Object.keys(semanas || {}).forEach(function (k) { ultimoHistorialV5[k] = JSON.stringify(semanas[k]); });
+  }
+
+  // meta/notificaciones (obra auth+push §6.2): el CLIENTE mantiene el resumen minimo
+  // evaluable de la compra — {completa, pendientes, semanaISO} — y el barrido del servidor
+  // lee ese doc pequeño, jamas el blob. Piggyback del debounce de sync, solo si cambia.
+  var notifTimer = null;
+  var ultimoNotif = null;
+  function guardarNotificacionesDebounced(getResumen) {
+    var familyId = getFamilyId();
+    if (!familyId) return;
+    if (notifTimer) clearTimeout(notifTimer);
+    notifTimer = setTimeout(function () {
+      notifTimer = null;
+      var resumen = typeof getResumen === 'function' ? getResumen() : getResumen;
+      if (!resumen) return;
+      var cuerpo = JSON.stringify(resumen);
+      if (ultimoNotif === cuerpo) return; // sin cambios reales — no reescribir
+      ultimoNotif = cuerpo;
+      resumen = Object.assign({}, resumen, { actualizadoEl: firebase.firestore.FieldValue.serverTimestamp() });
+      db.collection('families').doc(familyId).collection('meta').doc('notificaciones')
+        .set({ compra: resumen }, { merge: true }) // `activas` la gobierna la campana, no se pisa
+        .catch(function (err) { console.error('[sync] guardarNotificaciones falló', err); ultimoNotif = null; });
+    }, 1100);
+  }
+
+  function suscribirHistorialV5(familyId, onChange) {
+    return db.collection('families').doc(familyId).collection('meta').doc('historial')
+      .onSnapshot(function (snap) {
+        if (snap.metadata.hasPendingWrites) return; // eco de nuestra propia escritura
+        onChange(snap.exists ? (snap.data().semanas || {}) : {});
+      }, function (err) { console.error('[sync] listener historial falló', err); });
+  }
+
   function suscribirEstado(familyId, onChange) {
     return db.collection('families').doc(familyId).collection('meta').doc('estado')
       .onSnapshot(function (snap) {
@@ -234,6 +419,19 @@
 
   window.E3Sync = {
     getFamilyId: getFamilyId,
+    esperarSesion: esperarSesion,
+    usuarioActual: usuarioActual,
+    registrarEmail: registrarEmail,
+    reenviarVerificacion: reenviarVerificacion,
+    loginEmail: loginEmail,
+    loginGoogle: loginGoogle,
+    enviarResetPassword: enviarResetPassword,
+    recargarUsuario: recargarUsuario,
+    cambiarPassword: cambiarPassword,
+    cerrarSesion: cerrarSesion,
+    buscarFamiliaPorUid: buscarFamiliaPorUid,
+    salirDeFamilia: salirDeFamilia,
+    borrarCuenta: borrarCuenta,
     crearFamilia: crearFamilia,
     unirseFamilia: unirseFamilia,
     obtenerInfoFamilia: obtenerInfoFamilia,
@@ -245,6 +443,11 @@
     cancelarPendiente: cancelarPendiente,
     guardarPlanHistoricoDebounced: guardarPlanHistoricoDebounced,
     cancelarPlanHistoricoPendiente: cancelarPlanHistoricoPendiente,
+    guardarHistorialV5Debounced: guardarHistorialV5Debounced,
+    cancelarHistorialV5Pendiente: cancelarHistorialV5Pendiente,
+    marcarHistorialV5Escrito: marcarHistorialV5Escrito,
+    suscribirHistorialV5: suscribirHistorialV5,
+    guardarNotificacionesDebounced: guardarNotificacionesDebounced,
     suscribirEstado: suscribirEstado
   };
 })();

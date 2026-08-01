@@ -551,6 +551,15 @@
         if (!migrado) {
           migrado = true;
           console.info('[sync] blob heredado detectado → migrando a partición');
+          // ⚠️ CARRERA CERRADA AQUÍ (cazada en el primer arranque real, 01-ago).
+          // Los snapshots de servidor de la migración llegan SIN orden garantizado. Si el
+          // de `meta/estado` (ya partido, sin `familia`) llegaba antes que el de la
+          // colección `familia`, la fusión se hacía con `cache.miembros` todavía VACÍO
+          // (el estado de antes de migrar) → la app recibía una familia de 0 miembros y,
+          // al guardar, el borrado de huérfanos se llevaba por delante los docs recién
+          // escritos. Se siembra la caché con lo que acabamos de escribir: es la verdad
+          // y el snapshot posterior solo la confirma.
+          cache.miembros = (cache.estado.familia || []).slice();
           escribirParticion(familyId, cache.estado);
         }
         return;

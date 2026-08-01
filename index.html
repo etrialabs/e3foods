@@ -26,7 +26,7 @@
      proyecto — versión FIJADA (no @latest, que el prototipo de Design sí usa) para no
      romper en producción si la librería cambia. -->
 <script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.js"></script>
-<link rel="stylesheet" href="css/styles.css?v=113">
+<link rel="stylesheet" href="css/styles.css?v=114">
 </head>
 <body>
 
@@ -50,9 +50,9 @@
     (function () {
       var img = document.getElementById('landing-hero-img');
       img.onerror = function () {
-        if (img.src.indexOf('portada-0.jpg') === -1) img.src = 'assets/portada-0.jpg?v=113';
+        if (img.src.indexOf('portada-0.jpg') === -1) img.src = 'assets/portada-0.jpg?v=114';
       };
-      img.src = 'assets/portada-' + (Math.floor(Date.now() / 1800000) % 3) + '.jpg?v=113';
+      img.src = 'assets/portada-' + (Math.floor(Date.now() / 1800000) % 3) + '.jpg?v=114';
     })();
   </script>
   <button type="button" class="btn-primary landing-cta" data-action="empezar">Empezar</button>
@@ -109,12 +109,12 @@
 
 <!-- i18n (handoff backlog-v3 #18, 2026-07-28): diccionario ES/CA/FR/EN + t() + idioma en
      localStorage. Carga primero — ui.js y app.js dependen de E3I18n. -->
-<script src="js/i18n.js?v=113"></script>
+<script src="js/i18n.js?v=114"></script>
 <!-- Banco de recetas (82 plantillas + postres). Si no carga (404/sintaxis), app.js muestra
      un error visible en vez de arrancar degradado — no hay banco de respaldo. -->
-<script src="data/recetas.js?v=113"></script>
-<script src="js/engine.js?v=113"></script>
-<script src="js/ui.js?v=113"></script>
+<script src="data/recetas.js?v=114"></script>
+<script src="js/engine.js?v=114"></script>
+<script src="js/ui.js?v=114"></script>
 <!-- Firebase compat (multiusuario, Roger 2026-07-14) — build "compat" a propósito:
      el resto del bundle son scripts planos sin módulos ES, esto evita reestructurar
      todo a type="module" solo por esto. -->
@@ -126,8 +126,8 @@
 <!-- Push (obra auth+push §6): clave VAPID pública del par "Web Push certificates" de la
      consola de Firebase (generada por Roger 31-jul; pública por diseño, viaja en el cliente). -->
 <script>window.E3_VAPID_KEY = 'BKJnxfT3RJEbQ490-MM6zhmECDyCx_CfZMYaL0vniPM8z0RdZbWWIFKW6fLNWfuF7A7C6Q2FDM0zEuDEutJBVck';</script>
-<script src="js/sync.js?v=113"></script>
-<script src="js/push.js?v=113"></script>
-<script src="js/app.js?v=113"></script>
+<script src="js/sync.js?v=114"></script>
+<script src="js/push.js?v=114"></script>
+<script src="js/app.js?v=114"></script>
 </body>
 </html>

@@ -238,7 +238,9 @@
         ref.collection('meta').doc('estado').get(),
         ref.collection('familia').get(),
         ref.collection('plan').get(),
-        ref.collection('meta').doc('historial').get() // historial v5 (obra de encendido F1.1)
+        ref.collection('meta').doc('historial').get(), // historial v5 (obra de encendido F1.1)
+        ref.collection('meta').doc('plan').get(),      // partición 01-ago: plan operacional
+        ref.collection('meta').doc('memoria').get()    // partición 01-ago: memoria del motor
       ]);
     }).then(function (r) {
       var familia = r[0].exists ? r[0].data() : {};
@@ -254,7 +256,9 @@
         estado: r[1].exists ? r[1].data() : null,
         miembros: docsDe(r[2]),
         planes: docsDe(r[3]),
-        historial: r[4].exists ? r[4].data() : null
+        historial: r[4].exists ? r[4].data() : null,
+        planOperacional: r[5].exists ? r[5].data() : null,
+        memoria: r[6].exists ? r[6].data() : null
       };
     });
   }
@@ -268,11 +272,113 @@
     });
   }
 
+  /* ===========================================================================
+     PARTICIÓN DEL ESTADO (2026-08-01) — `02_APP/PARTICION_SPEC.md`
+
+     Antes: TODO el estado viajaba como un solo doc `meta/estado`. Medido sobre la
+     familia real (147 KB): `plan`+`planSiguiente` son el 86% y la foto de un solo
+     miembro 19 KB — marcar un ítem de la compra reescribía los 147 KB enteros, y
+     dos dispositivos guardando a la vez se pisaban el documento COMPLETO (LWW).
+
+     Ahora se parte por FRECUENCIA DE ESCRITURA y por quién escribe:
+       familia/{memberId}  1 doc por miembro   → editar una ficha no toca el plan
+       meta/plan           plan+planSiguiente  → regenerar no toca las fichas
+       meta/memoria        valoraciones…       → crece con el uso, aislada
+       meta/estado         el residuo pequeño
+     Cubierto por las reglas VIVAS (`familia/{memberId}` y el comodín `meta/{doc}`)
+     — cero cambio de reglas.
+
+     ⚠️ CONTRATO INNEGOCIABLE: el objeto `estado` EN MEMORIA no cambia de forma.
+     Esta capa trocea al escribir y recompone al leer; motor, selector y UI no se
+     enteran. `orden` es metadato de persistencia y se retira al recomponer.
+     =========================================================================== */
+
+  var CLAVES_PLAN = ['plan', 'planSiguiente'];
+  var CLAVES_MEMORIA = ['valoraciones', 'historialPrincipales', 'historialPares',
+                        'cambios', 'paresComplementariaCambiados'];
+
+  function subconjunto(obj, claves) {
+    var out = {};
+    claves.forEach(function (k) { if (obj[k] !== undefined) out[k] = obj[k]; });
+    return out;
+  }
+
+  // estado en memoria → las 4 parcelas que se persisten
+  function trocear(estado) {
+    var resto = {};
+    Object.keys(estado || {}).forEach(function (k) {
+      if (k === 'familia' || CLAVES_PLAN.indexOf(k) >= 0 || CLAVES_MEMORIA.indexOf(k) >= 0) return;
+      resto[k] = estado[k];
+    });
+    return {
+      estado: resto,
+      plan: subconjunto(estado || {}, CLAVES_PLAN),
+      memoria: subconjunto(estado || {}, CLAVES_MEMORIA),
+      miembros: (estado && estado.familia) || []
+    };
+  }
+
+  // cache de dedupe: clave lógica -> JSON de lo último que sabemos que hay en remoto.
+  // Se pierde al recargar (igual que el resto de dedupes de este fichero): la 1ª
+  // escritura tras cada carga puede repetir un doc idéntico — coste marginal aceptado.
+  var ultimoEscrito = {};
+
+  function refFamilia(familyId) { return db.collection('families').doc(familyId); }
+
+  // Escribe SOLO las parcelas que cambiaron, en un batch atómico. Devuelve la promesa
+  // del commit (o null si no había nada que escribir).
+  function escribirParticion(familyId, estado) {
+    var partes = trocear(estado);
+    var ref = refFamilia(familyId);
+    var batch = db.batch();
+    var hay = false;
+
+    ['estado', 'plan', 'memoria'].forEach(function (nombre) {
+      var cuerpo = JSON.stringify(partes[nombre]);
+      if (ultimoEscrito[nombre] === cuerpo) return;
+      ultimoEscrito[nombre] = cuerpo;
+      // set() SIN merge a propósito: así el doc queda exactamente con las claves de su
+      // parcela — es lo que retira del viejo meta/estado los campos que ahora viven
+      // fuera (la migración del blob heredado ocurre sola en la primera escritura).
+      batch.set(ref.collection('meta').doc(nombre), partes[nombre]);
+      hay = true;
+    });
+
+    var idsVivos = {};
+    partes.miembros.forEach(function (m, i) {
+      if (!m || !m.id) return;
+      idsVivos[m.id] = true;
+      var doc = Object.assign({}, m, { orden: i }); // `orden` mantiene el roster estable
+      var cuerpo = JSON.stringify(doc);
+      var clave = 'miembro:' + m.id;
+      if (ultimoEscrito[clave] === cuerpo) return;
+      ultimoEscrito[clave] = cuerpo;
+      batch.set(ref.collection('familia').doc(m.id), doc);
+      hay = true;
+    });
+
+    // miembro borrado → su doc DEBE morir, o revive en el siguiente dispositivo que lea
+    Object.keys(ultimoEscrito).forEach(function (clave) {
+      if (clave.indexOf('miembro:') !== 0) return;
+      var id = clave.slice('miembro:'.length);
+      if (idsVivos[id]) return;
+      delete ultimoEscrito[clave];
+      batch.delete(ref.collection('familia').doc(id));
+      hay = true;
+    });
+
+    if (!hay) return null;
+    return batch.commit().catch(function (err) {
+      console.error('[sync] escribirParticion falló', err);
+      ultimoEscrito = {}; // cache envenenada: al próximo intento se reescribe todo
+    });
+  }
+
   function subirEstadoInicial(estado) {
     var familyId = getFamilyId();
     if (!familyId) return Promise.reject(new Error('sin familyId'));
     return ensureSignedIn().then(function () {
-      return db.collection('families').doc(familyId).collection('meta').doc('estado').set(estado);
+      return escribirParticion(familyId, estado) || Promise.resolve();
     });
   }
 
@@ -286,9 +392,7 @@
     debounceTimer = setTimeout(function () {
       debounceTimer = null;
       var estadoActual = typeof getEstado === 'function' ? getEstado() : getEstado;
-      db.collection('families').doc(familyId).collection('meta').doc('estado')
-        .set(estadoActual)
-        .catch(function (err) { console.error('[sync] guardarRemoto falló', err); });
+      escribirParticion(familyId, estadoActual);
     }, 800);
   }
 
@@ -407,14 +511,88 @@
       }, function (err) { console.error('[sync] listener historial falló', err); });
   }
 
+  // Suscripción a las 4 fuentes de la partición, recomponiendo el MISMO objeto que
+  // recibía el caller cuando todo vivía en un doc único (contrato intacto: app.js no
+  // sabe que esto está partido). Devuelve una función de baja que las corta todas.
+  //
+  // Dos garantías que no se pueden relajar:
+  //  1. onChange NO se emite hasta que las 4 fuentes han respondido al menos una vez
+  //     (incluido "no existe"). Emitir antes reintroduciría la carrera que cerró el
+  //     audit del 16-jul: el gate de primer snapshot dejaría pasar un push local
+  //     construido sobre una recomposición a medias, y eso BORRA lo que no había
+  //     llegado todavía.
+  //  2. `null` solo si TODAS están vacías (familia recién creada, nadie ha subido
+  //     nada) — es la señal de "el remoto está vacío, empuja el tuyo".
   function suscribirEstado(familyId, onChange) {
-    return db.collection('families').doc(familyId).collection('meta').doc('estado')
-      .onSnapshot(function (snap) {
-        if (snap.metadata.hasPendingWrites) return; // eco de nuestra propia escritura, ignorar
-        // doc inexistente → onChange(null): el caller sabe así que el remoto está
-        // vacío (familia recién creada sin estado subido) y puede empujar el suyo
-        onChange(snap.exists ? snap.data() : null);
-      }, function (err) { console.error('[sync] listener falló', err); });
+    var ref = refFamilia(familyId);
+    var vistas = { estado: false, plan: false, memoria: false, familia: false };
+    var cache = { estado: null, plan: null, memoria: null, miembros: [] };
+    var migrado = false;
+
+    function listas() {
+      return vistas.estado && vistas.plan && vistas.memoria && vistas.familia;
+    }
+
+    function emitir() {
+      if (!listas()) return;
+      var vacio = !cache.estado && !cache.plan && !cache.memoria && !cache.miembros.length;
+      if (vacio) { onChange(null); return; }
+      // BLOB HEREDADO (pre-partición): el meta/estado viejo trae dentro `familia`,
+      // `plan`, etc. Se sirve tal cual — ya tiene la forma completa — y la primera
+      // escritura lo deja partido y limpio (escribirParticion hace set() sin merge).
+      var heredado = cache.estado && cache.estado.familia !== undefined;
+      if (heredado) {
+        onChange(cache.estado);
+        // Migración del blob heredado: se dispara UNA vez, aquí y no en el primer
+        // guardado del usuario, para que el corte no dependa de que alguien toque algo.
+        // Idempotente y sin carrera real: dos dispositivos escribirían el mismo
+        // contenido. El eco de esta escritura se ignora (hasPendingWrites) y el
+        // snapshot siguiente ya llega partido.
+        if (!migrado) {
+          migrado = true;
+          console.info('[sync] blob heredado detectado → migrando a partición');
+          escribirParticion(familyId, cache.estado);
+        }
+        return;
+      }
+      var fusion = Object.assign({}, cache.estado || {}, cache.plan || {}, cache.memoria || {});
+      fusion.familia = cache.miembros;
+      onChange(fusion);
+    }
+
+    function docListener(nombre) {
+      return ref.collection('meta').doc(nombre).onSnapshot(function (snap) {
+        if (snap.metadata.hasPendingWrites) { vistas[nombre] = true; emitir(); return; } // eco propio
+        cache[nombre] = snap.exists ? snap.data() : null;
+        if (snap.exists) ultimoEscrito[nombre] = JSON.stringify(cache[nombre]); // siembra el dedupe
+        vistas[nombre] = true;
+        emitir();
+      }, function (err) { console.error('[sync] listener ' + nombre + ' falló', err); });
+    }
+
+    var bajas = [
+      docListener('estado'),
+      docListener('plan'),
+      docListener('memoria'),
+      ref.collection('familia').onSnapshot(function (q) {
+        if (q.metadata.hasPendingWrites) { vistas.familia = true; emitir(); return; }
+        var ms = [];
+        q.forEach(function (d) {
+          var m = d.data();
+          ultimoEscrito['miembro:' + d.id] = JSON.stringify(m); // siembra el dedupe
+          ms.push(m);
+        });
+        // `orden` es metadato de persistencia: ordena y SALE del objeto en memoria
+        ms.sort(function (a, b) { return (a.orden || 0) - (b.orden || 0); });
+        cache.miembros = ms.map(function (m) {
+          var copia = Object.assign({}, m); delete copia.orden; return copia;
+        });
+        vistas.familia = true;
+        emitir();
+      }, function (err) { console.error('[sync] listener familia falló', err); })
+    ];
+
+    return function () { bajas.forEach(function (baja) { try { baja(); } catch (e) { /* ya dada de baja */ } }); };
   }
 
   window.E3Sync = {

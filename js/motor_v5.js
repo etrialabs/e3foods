@@ -2181,7 +2181,13 @@ function listaCompra(plan, filtro) {
   });
   return Object.keys(acc).sort().map(function (k) {
     var it = acc[k];
-    var unidades = it.unidad_g ? Math.ceil(it.gramos / it.unidad_g) : null;
+    // `unidad_g` se lee del BANCO, no del plan congelado: es propiedad del alimento, no de la
+    // foto del menú. Un plan generado antes de que el dato existiera lo lleva a null para
+    // siempre, y la compra seguiría diciendo "416 g de yogur" en vez de "4 yogures" hasta la
+    // siguiente regeneración (cazado el 01-ago al dar de alta yogur/huevo). El valor del plan
+    // queda de reserva por si el alimento ya no estuviera en el banco.
+    var unidadG = (C.alimIdx[it.id] || {}).unidad_g || it.unidad_g;
+    var unidades = unidadG ? Math.ceil(it.gramos / unidadG) : null;
     return { id: it.id, nombre: it.nombre, gramos: Math.round(it.gramos), naturaleza: it.naturaleza, unidades: unidades };
   });
 }

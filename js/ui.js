@@ -665,7 +665,13 @@
       var marcados = (estado.compra && estado.compra.marcados) || [];
       return window.E3MotorV5.listaCompra(plan, filtro).map(function (it) {
         return { id: it.id, nombre: it.nombre, categoria: CATEGORIA_DE_NATURALEZA_V5[it.naturaleza] || 'otro',
-          gramos: it.gramos, unidades: it.unidades, marcado: marcados.indexOf(it.id) !== -1 };
+          // Redondeo "de cocina" (regresión de v5 reportada por Roger 01-ago: salía "333 g de
+          // patata"). En v3 la lista ya llegaba redondeada desde el motor; el de v5 devuelve el
+          // gramo exacto, así que se redondea AQUÍ, en el borde de presentación — igual que la
+          // vista de receta, y por el mismo motivo: es cosmético y JAMÁS realimenta el cálculo
+          // de kcal, que sigue sobre los gramos reales.
+          gramos: it.gramos == null ? null : E.redondearCantidad(it.gramos),
+          unidades: it.unidades, marcado: marcados.indexOf(it.id) !== -1 };
       });
     }
     return E.listaCompra(estado, plan, rango, banco, null, soloCena);

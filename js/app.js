@@ -915,11 +915,34 @@
   // ---------------------------------------------------------------
   // Landing → wizard (hub de alta) / HOY
   // ---------------------------------------------------------------
+  // Destino pedido por la URL — hoy solo lo usa el clic en la notificación push, que abre
+  // `?tab=compra&rango=hoy` (fcm_options.link del barrido). Se consume UNA vez y se limpia
+  // de la barra con replaceState: sin eso, recargar la app volvería a saltar a Compra para
+  // siempre. Se lee al aterrizar (no al cargar el script) porque antes del primer snapshot
+  // todavía no hay ni familia ni plan que enseñar.
+  function destinoDeLaUrl() {
+    var p;
+    try { p = new URLSearchParams(location.search); } catch (e) { return null; }
+    var tab = p.get('tab');
+    if (!tab) return null;
+    var d = { tab: tab, rango: p.get('rango') };
+    p.delete('tab'); p.delete('rango');
+    var q = p.toString();
+    try { history.replaceState(null, '', location.pathname + (q ? '?' + q : '')); } catch (e) { /* sin history */ }
+    return d;
+  }
+
   function aterrizarSegunFamilia() {
     if (!estado.familia.length) {
       arrancarOnboarding();
     } else {
       asegurarPlanVigente();
+      var destino = destinoDeLaUrl();
+      if (destino && destino.tab === 'compra') {
+        if (destino.rango === 'hoy') rangoCompra = 'hoy';
+        irAVista('compra');
+        return; // irAVista ya renderiza
+      }
       render();
     }
   }
@@ -1395,21 +1418,43 @@
 
   // Resumen mínimo evaluable de la compra para meta/notificaciones (§6.2): pendientes =
   // ítems con cantidad real sin marcar (la despensa "¿lo tengo en casa?" no cuenta).
-  function resumenCompraParaNotif() {
-    if (!estado.plan || !estado.plan.semanaISO) return null;
-    var lista;
-    try {
-      lista = MOTOR_V5 && window.E3MotorV5
-        ? window.E3MotorV5.listaCompra(estado.plan, null)
-        : E.listaCompra(estado, estado.plan, '7d', BANCO, null);
-    } catch (e) { return null; }
+  // Resumen mínimo que lee el barrido del servidor (AUTH_PUSH_SPEC §6.2).
+  // ⚠️ POR FECHA, no un número suelto (bug reportado por Roger 01-ago): el aviso habla de
+  // "hoy", pero este doc lo escribe el CLIENTE cuando guarda — si solo guardáramos el
+  // pendiente de hoy, a medianoche el dato pasa a ser de ayer sin que nadie lo reescriba
+  // (y si la familia no abre la app, que es justo cuando el aviso hace falta, jamás se
+  // corrige). Guardando los 7 días, el servidor elige el de la fecha real del envío.
+  // `dia` = comida+cena · `cena` = solo cena (el barrido de las 17h; misma regla que el
+  // segmento "Hoy" de la pantalla de compra pasadas las 16h, Roger 2026-07-22).
+  function pendientesDeLista(lista) {
     var marcados = (estado.compra && estado.compra.marcados) || [];
-    var pendientes = 0;
+    var n = 0;
     (lista || []).forEach(function (it) {
       if (it.gramos == null && it.unidades == null) return;
-      if (marcados.indexOf(it.id) === -1) pendientes++;
+      if (marcados.indexOf(it.id) === -1) n++;
     });
-    return { completa: pendientes === 0, pendientes: pendientes, semanaISO: estado.plan.semanaISO };
+    return n;
+  }
+
+  function resumenCompraParaNotif() {
+    if (!estado.plan || !estado.plan.semanaISO) return null;
+    var dias = {};
+    try {
+      (estado.plan.dias || []).forEach(function (dia, idx) {
+        if (!dia || !dia.fecha) return;
+        var deDia, deCena;
+        if (MOTOR_V5 && window.E3MotorV5) {
+          deDia = window.E3MotorV5.listaCompra(estado.plan, { dia: idx });
+          deCena = window.E3MotorV5.listaCompra(estado.plan, { dia: idx, soloCena: true });
+        } else {
+          deDia = E.listaCompra(estado, estado.plan, 'hoy', BANCO, dia.fecha, false);
+          deCena = E.listaCompra(estado, estado.plan, 'hoy', BANCO, dia.fecha, true);
+        }
+        dias[dia.fecha] = { dia: pendientesDeLista(deDia), cena: pendientesDeLista(deCena) };
+      });
+    } catch (e) { return null; }
+    if (!Object.keys(dias).length) return null;
+    return { dias: dias, semanaISO: estado.plan.semanaISO };
   }
 
   // Regeneración AUTOMÁTICA por cambio de estado (dictado Roger 31-jul, obra de encendido):

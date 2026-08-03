@@ -8,33 +8,16 @@
 (function (global) {
   'use strict';
 
-  var E = global.E3Engine;
   var I18N = global.E3I18n;
   var t = I18N.t;
+  // MOTOR V6 (bloque 2, 3-ago): la UI lee la semana `/2` VERBATIM — `servicio.plato[]`,
+  // `opciones_eje`, `postre`, `notas`, `fracciones` — contra el banco V6. Prohibido el
+  // adaptador que traduzca la forma de V6 a la de v5 (dictado de Roger: «cero rastro de v5»).
+  var MOTOR = global.E3MotorV6;
   // Funciones, no arrays estaticos: el idioma puede cambiar en caliente (backlog-v3 #18)
   // y estos nombres se leen en cada render, nunca se cachean al cargar el script.
   function NOMBRES_DIA() { return I18N.diasLargo(); }
   function NOMBRES_DIA_CORTO() { return I18N.diasCorto(); }
-
-  // categoría de ingrediente -> etiqueta, para chips de RECETAS y secciones de COMPRA.
-  // Función, no objeto estático (backlog-v3 #18): el idioma cambia en caliente. 'fruta'
-  // sin traducción fuente (no está en el diseño de referencia) -- se queda en castellano.
-  function ETIQUETAS_CATEGORIA() {
-    return {
-      'pescado-blanco': t('cat_pescado_blanco'), 'pescado-azul': t('cat_pescado_azul'), 'marisco': t('cat_marisco'),
-      'carne-blanca': t('cat_carne_blanca'), 'carne-roja': t('cat_carne_roja'), 'legumbre': t('cat_legumbre'),
-      'huevo': t('cat_huevo'), 'lacteo': t('cat_lacteo'), 'cereal': t('cat_cereal'), 'tuberculo': t('cat_tuberculo'),
-      'verdura': t('cat_verdura'), 'fruta': 'Fruta', 'otro': t('cat_otro'),
-      // Roger 2026-07-14: chips presentes aunque el banco no tiene el dato para
-      // filtrar de verdad todavía — ver nota en renderRecetasVista.
-      'vegetariana': t('cat_vegetariana'), 'sin-gluten': t('cat_sin_gluten')
-    };
-  }
-  var ORDEN_CATEGORIA = ['pescado-blanco', 'pescado-azul', 'marisco', 'carne-blanca', 'carne-roja', 'legumbre', 'huevo', 'lacteo', 'cereal', 'tuberculo', 'verdura', 'fruta', 'otro'];
-  // El par casi-colision ETIQUETA_CUOTA / ETIQUETA_CUOTA_AGREGADA (audit 2026-07-20) murio en
-  // la sesion de higiene del 30-jul: las etiquetas viven en i18n (cat_pescado_total, cuota_*)
-  // y aqui solo queda el mapa categoria -> clave de diccionario del aviso de equilibrio.
-  var CLAVE_CUOTA = { legumbre: 'cuota_legumbre', 'pescado-total': 'cuota_pescado_total', 'carne-roja': 'cuota_carne_roja', huevo: 'cuota_huevo' };
 
   function escapeHtml(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
@@ -42,7 +25,59 @@
     });
   }
 
-  var capitaliza = E.capitaliza;
+  function capitaliza(s) { if (!s) return s; return s.charAt(0).toUpperCase() + s.slice(1); }
+
+  // ---------------------------------------------------------------
+  // Fechas del producto — las traía `engine.js`, que muere con v5 (bloque 2.6). Viven aquí,
+  // en UNA sola implementación que también consume app.js vía E3UI: dos copias de la misma
+  // medida es el patrón de bug nº1 del proyecto.
+  //   · `fechaLocalISO` es la ÚNICA que toca el reloj real.
+  //   · La frontera de día del producto es Europe/Madrid (D3 §6.1, dictado de Roger): el
+  //     navegador de la familia ya está en esa zona, así que la fecha local del dispositivo
+  //     ES la fecha del producto. El motor, en cambio, solo opera fechas de calendario ya
+  //     hechas (aritmética UTC de días exactos, inmune al DST).
+  // ---------------------------------------------------------------
+  function fechaLocalISO(d) {
+    d = d || new Date();
+    var y = d.getFullYear(), m = String(d.getMonth() + 1).padStart(2, '0'), day = String(d.getDate()).padStart(2, '0');
+    return y + '-' + m + '-' + day;
+  }
+  function fechaISO(fechaBase, offsetDias) {
+    var d = new Date(fechaBase + 'T00:00:00');
+    d.setDate(d.getDate() + offsetDias);
+    return fechaLocalISO(d);
+  }
+  // Defensa de contrato (bug real 2026-07-23): con un Date en vez del string ISO esperado, la
+  // concatenación daba "NaN-NaN-NaN" y el caller regeneraba el plan en CADA carga.
+  function lunesDeEstaSemana(fechaISOStr) {
+    if (fechaISOStr instanceof Date) fechaISOStr = fechaLocalISO(fechaISOStr);
+    var d = new Date((fechaISOStr || fechaLocalISO()) + 'T00:00:00');
+    var diaJs = d.getDay();
+    d.setDate(d.getDate() + (diaJs === 0 ? -6 : 1 - diaJs));
+    return fechaLocalISO(d);
+  }
+  // Lunes local -> semana ISO del motor, y vuelta. El motor habla `AAAA-Www` (su jueves define
+  // el año, ISO 8601) y `derivar.fechaDia` es LA definición ejecutable — no se reimplementa
+  // aquí: se le pregunta. El lunes de una semana ISO es su día 1.
+  function semanaIsoDeLunes(lunesISOStr) {
+    var d = new Date(lunesISOStr + 'T00:00:00');
+    var jue = new Date(d.getTime());
+    jue.setDate(jue.getDate() + 3);                       // el jueves manda (ISO 8601)
+    var anio = jue.getFullYear();
+    var ene4 = new Date(anio + '-01-04T00:00:00');
+    var lunesW1 = new Date(ene4.getTime());
+    lunesW1.setDate(lunesW1.getDate() - ((ene4.getDay() + 6) % 7));
+    var num = Math.round((d - lunesW1) / (7 * 86400000)) + 1;
+    return anio + '-W' + String(num).padStart(2, '0');
+  }
+  function fechaDeDia(semanaIso, dia) {                   // dia 1-7 (1 = lunes)
+    return MOTOR.derivar.fechaDia(semanaIso, dia).toISOString().slice(0, 10);
+  }
+  function edadEnAnios(anioNacimiento, hoy) {
+    if (!anioNacimiento) return 30;
+    return parseInt((hoy || fechaLocalISO()).slice(0, 4), 10) - anioNacimiento;
+  }
+  var EDAD_MENOR = 12;
 
   // opciones de las píldoras de miembro — compartidas por el asistente de alta y
   // la ficha en acordeón (pildorasPersona las pinta en los dos sitios)
@@ -59,7 +94,7 @@
   // ÚNICOS a propósito: las dos superficies que los pintan (el asistente de 5
   // pasos del onboarding y la ficha en acordeón de Familia) leen de aquí, así
   // no pueden divergir en id, etiqueta ni orden.
-  // Esta taxonomía es la MISMA que va a construir `bd_v5/dietas.js` (4 estilos +
+  // Esta taxonomía es la MISMA que va a construir `bd_v6/dietas.js` (4 estilos +
   // 6 alergias, ver PROMPT_SESION_DIETAS_SELECTOR §2). Aquí solo se CAPTURA y se
   // persiste: el motor v3 no consume todavía `alergias`/`gustos` — lo único
   // cableado al motor es `dieta`, que se deriva de `estilo` (ver estiloADieta).
@@ -72,7 +107,7 @@
   var ETIQUETA_ESTILO = {};
   ESTILOS_VIDA.forEach(function (e) { ETIQUETA_ESTILO[e.id] = e.etiqueta; });
 
-  // Los ids son los de `bd_v5/dietas.js` (ALERGIAS_PERFIL), no los del prototipo: ese
+  // Los ids son los de `bd_v6/dietas.js` (ALERGIAS_PERFIL), no los del prototipo: ese
   // fichero es la fuente única de las reglas de dieta y lo que consumirá el selector.
   // Guardar aquí un vocabulario propio obligaría a remapear datos reales más adelante.
   // Las etiquetas visibles sí son las del handoff.
@@ -81,7 +116,13 @@
     { id: 'sin-lactosa', etiqueta: 'cat_alergia_lactosa', desc: 'cat_alergia_lactosa_desc' },
     { id: 'sin-huevo', etiqueta: 'cat_alergia_huevo', desc: 'cat_alergia_huevo_desc' },
     { id: 'sin-frutos-secos', etiqueta: 'cat_alergia_frutos', desc: 'cat_alergia_frutos_desc' },
-    { id: 'sin-pescado-marisco', etiqueta: 'cat_alergia_pescado', desc: 'cat_alergia_pescado_desc' },
+    // Pescado y marisco separados (handoff 5, 3-ago): eran una sola fila
+    // ('sin-pescado-marisco') y un alérgico solo al marisco perdía también todo
+    // el pescado — son alergias clínicamente distintas. Los ids nuevos ya están
+    // en el motor (bd_v6/dietas.js); el id agrupado se conserva como legacy y se
+    // migra marcando los dos (ver migrarAlergiaPescadoMarisco en app.js).
+    { id: 'sin-pescado', etiqueta: 'cat_alergia_pescado', desc: 'cat_alergia_pescado_desc' },
+    { id: 'sin-marisco', etiqueta: 'cat_alergia_marisco', desc: 'cat_alergia_marisco_desc' },
     { id: 'sin-rosaceas', etiqueta: 'cat_alergia_rosaceas', desc: 'cat_alergia_rosaceas_desc' }
   ];
   var ETIQUETA_ALERGIA = {};
@@ -280,12 +321,101 @@
   }
   // TEXTO_AVISO_MEDIDAS vive en i18n desde la sesion higiene 30-jul ('onb_aviso_medidas')
 
-  // ids de ingrediente del banco ordenados por nombre — listas de nevera, vetos y
-  // selects de receta propia
-  function idsIngredientesOrdenados(banco) {
-    return Object.keys(banco.ingredientes).sort(function (a, b) {
-      return banco.ingredientes[a].nombre.localeCompare(banco.ingredientes[b].nombre);
-    });
+  // alimentos del banco V6 ordenados por nombre — rejilla de vetos de la ficha
+  function alimentosOrdenados(banco) {
+    return banco.alimentos.slice().sort(function (a, b) { return a.nombre.localeCompare(b.nombre); });
+  }
+
+  // ---------------------------------------------------------------
+  // LECTURA NATIVA DE V6 (§15) — el único sitio de la UI que conoce la forma de la semana `/2`.
+  // Todo lo de abajo son lecturas del banco V6 y del servicio; ninguna re-decide nada:
+  // el motor ya resolvió el plato, la política de hogar (§13) y las notas tipadas (§9.2).
+  // ---------------------------------------------------------------
+  var _ix = null;
+  function ix(banco) {
+    if (_ix && _ix.banco === banco) return _ix;
+    var elab = {}, alim = {}, sust = {};
+    banco.elaboraciones.forEach(function (e) { elab[e.id] = e; });
+    banco.alimentos.forEach(function (a) { alim[a.id] = a; });
+    (banco.sustitutos || []).forEach(function (s) { sust[s.original + '>' + s.sustituto_id] = s; });
+    _ix = { banco: banco, elab: elab, alim: alim, sust: sust };
+    return _ix;
+  }
+  function elabDe(banco, id) { return ix(banco).elab[id] || null; }
+  function nombreAlimento(banco, id) { var a = ix(banco).alim[id]; return a ? a.nombre : id; }
+  // la tabla `sustitutos` lleva el HUECO SEMÁNTICO de la frase (§14.2.5); la frase final es
+  // capa de copy y jamás vive en el banco
+  function notaSustituto(banco, original, sustitutoId) {
+    var f = ix(banco).sust[original + '>' + sustitutoId];
+    return (f && f.nota_card) || nombreAlimento(banco, sustitutoId).toLowerCase();
+  }
+
+  // opción del eje que le toca a un miembro en esa elaboración ('*' = toda la mesa)
+  function opcionDe(item, miembroId) {
+    var oe = item && item.opciones_eje;
+    if (!oe) return null;
+    if (miembroId && oe[miembroId]) return oe[miembroId];
+    if (oe['*']) return oe['*'];
+    var ks = Object.keys(oe);
+    return ks.length ? oe[ks[0]] : null;
+  }
+  // La opción con la que la card TITULA el plato: la que come más gente en esa mesa. La card es
+  // UNA (§2-bis) y la identidad para la variedad es la RECETA, no la variante — las diferencias
+  // por persona ya viajan en las notas y en el detalle del badge, que es su sitio. Empate: el id
+  // menor, para que el título sea determinista (mismo criterio que el desempate del motor).
+  // Sin esto, una mesa mixta («pollo al horno» para tres, «tofu al horno» para la vegetariana)
+  // dejaba el título sin proteína — «al horno» a secas, visto en el navegador el 3-ago.
+  function opcionDeMesa(item) {
+    var oe = item && item.opciones_eje;
+    if (!oe) return null;
+    var cuenta = {};
+    Object.keys(oe).forEach(function (k) { cuenta[oe[k]] = (cuenta[oe[k]] || 0) + 1; });
+    return Object.keys(cuenta).sort(function (a, b) { return cuenta[b] - cuenta[a] || (a < b ? -1 : 1); })[0] || null;
+  }
+
+  // EL PLATO PERCIBIDO (§3-M1, fila 6.2 de la lista): `nombre_por_opcion[opción]`. Sin resolverlo
+  // la app enseña el nombre-plantilla del banco tal cual — «{pescado} a la plancha», 30
+  // elaboraciones del banco vivo. La red de abajo cubre el hueco D5 (opción sin entrada en
+  // `nombre_por_opcion`): antes de enseñar una llave, se sustituye por el nombre del alimento.
+  function nombrePercibido(banco, item, miembroId) {
+    var e = elabDe(banco, item.elaboracion_id);
+    if (!e) return item.elaboracion_id;
+    var op = miembroId === '*' ? opcionDeMesa(item) : opcionDe(item, miembroId);
+    if (op && e.nombre_por_opcion && e.nombre_por_opcion[op]) return e.nombre_por_opcion[op];
+    // hueco D5 (opción sin entrada en `nombre_por_opcion`): antes de enseñar la llave literal
+    // —«{pescado} a la plancha», el bug de la fila 6.2— se rellena con el nombre del alimento.
+    if (/\{[^}]+\}/.test(e.nombre)) {
+      return op ? capitaliza(e.nombre.replace(/\{[^}]+\}/, nombreAlimento(banco, op)))
+        : capitaliza(e.nombre.replace(/\{[^}]+\}\s*/, '').trim());
+    }
+    return e.nombre;
+  }
+
+  // el PRINCIPAL de un servicio: la primera elaboración de `plato[]` con tipo 'principal'
+  // (T2 sirve 1-3 y solo una es principal). Sin plato -> null, que es el hueco declarado.
+  function principalDe(banco, servicio) {
+    if (!servicio || !servicio.plato || !servicio.plato.length) return null;
+    for (var i = 0; i < servicio.plato.length; i++) {
+      var e = elabDe(banco, servicio.plato[i].elaboracion_id);
+      if (e && e.tipo === 'principal') return servicio.plato[i];
+    }
+    return servicio.plato[0];
+  }
+  function secundariasDe(banco, servicio) {
+    var p = principalDe(banco, servicio);
+    return (servicio && servicio.plato ? servicio.plato : []).filter(function (x) { return x !== p; });
+  }
+
+  // ── «aún no disponible en V6». Principio literal de Roger: *«quiero que lo dejes preparado
+  //    desde ya, aunque el botón no responda. Ya me ha pasado con la pantalla de coste semanal:
+  //    como no está conectable, no la muestras, y cae en el olvido»*. Lo que depende de las 14
+  //    funciones de superficie (bloque 3, §15.2-§15.6) se enseña VISIBLE y marcado, jamás oculto.
+  function pendienteV6(titulo, texto) {
+    return '<div class="v6-pendiente" role="status">' +
+      '<span class="v6-pendiente-badge"><i data-lucide="hard-hat"></i>' + t('v6_pendiente_badge') + '</span>' +
+      '<p class="v6-pendiente-tit">' + escapeHtml(titulo) + '</p>' +
+      '<p class="v6-pendiente-txt">' + escapeHtml(texto) + '</p>' +
+      '</div>';
   }
 
   // cabecera estándar de cualquier bottom sheet (título + X de cerrar)
@@ -307,28 +437,6 @@
 
   function nombreCortoIngrediente(nombre) {
     return (nombre || '').split(' (')[0];
-  }
-
-  // v3: el motor ya resuelve nombre/pasos/variantes de una elaboración sin plan
-  // real detrás (E.previsualizarElaboracion) — sustituye a nombreEjemplo/
-  // variantesProteina de v2 (que leían plantilla.ejes/nombre_patron a mano).
-  // Cachea por id dentro de una misma pasada de render (varias tarjetas piden
-  // la misma elaboración: grid + chips + búsqueda).
-  var _cachePrevisualizacion = {};
-  function previsualizar(p, banco) {
-    if (!_cachePrevisualizacion[p.id]) _cachePrevisualizacion[p.id] = E.previsualizarElaboracion(p, banco);
-    return _cachePrevisualizacion[p.id];
-  }
-
-  // Un item de catalogo v5 (motor_v5.catalogoRecetas / categoriasDescubrir) ya trae el
-  // nombre previsualizado con la opcion por defecto — no pasa por el previsualizador v3.
-  function nombreEjemplo(p, banco) { return p.v5 ? p.nombre : previsualizar(p, banco).nombre; }
-
-  function variantesTexto(p, banco) {
-    var variantes = previsualizar(p, banco).variantes;
-    if (!variantes.length) return '';
-    var opciones = p.ingredientes && p.ingredientes.opciones;
-    return 'también con ' + variantes.map(function (n) { return nombreCortoIngrediente(n).toLowerCase(); }).join(', ') + (opciones && opciones.length > 4 ? '…' : '');
   }
 
   function iniciales(nombre) {
@@ -382,7 +490,7 @@
     return d.getDate() + ' ' + ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'][d.getMonth()];
   }
 
-  function hoyISO() { return E.fechaLocalISO(new Date()); }
+  function hoyISO() { return fechaLocalISO(new Date()); }
 
   function saludoHora() {
     var h = new Date().getHours();
@@ -394,6 +502,18 @@
   // iconos de sol/luna — mismo estilo de línea que el nav (24x24, stroke)
   var ICONO_SOL = '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.6M12 18.9v2.6M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M2.5 12h2.6M18.9 12h2.6M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8"/></svg>';
   var ICONO_LUNA = '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 14.8A8.5 8.5 0 1 1 9.2 3.5a6.8 6.8 0 0 0 11.3 11.3z"/></svg>';
+
+  // Marcas reales de Google/Apple (handoff 5, §3 — "elegir vía: email, Google,
+  // Apple. Marcas reales"): logomarcas oficiales, no un icono lucide genérico.
+  var ICONO_GOOGLE = '<svg class="onb-marca-ico" viewBox="0 0 256 262" aria-hidden="true">' +
+    '<path fill="#4285F4" d="M255.878 133.451c0-10.734-.871-18.567-2.756-26.687H130.55v48.448h71.947c-1.45 12.04-9.283 30.172-26.687 42.356l-.244 1.622 38.755 30.023 2.685.268c24.659-22.774 38.872-56.28 38.872-96.03"/>' +
+    '<path fill="#34A853" d="M130.55 261.1c35.248 0 64.839-11.605 86.453-31.622l-41.196-31.913c-11.024 7.688-25.82 13.055-45.257 13.055-34.523 0-63.824-22.773-74.269-54.25l-1.531.13-39.9 30.89-.527 1.462C35.393 231.798 79.49 261.1 130.55 261.1"/>' +
+    '<path fill="#FBBC05" d="M56.281 156.37c-2.756-8.123-4.351-16.827-4.351-25.82 0-8.994 1.595-17.697 4.206-25.82l-.073-1.73L15.66 71.7l-1.335.635C5.077 90.539 0 111.14 0 132.55s5.077 42.011 14.325 60.216z"/>' +
+    '<path fill="#EB4335" d="M130.55 50.479c24.514 0 41.05 10.589 50.479 19.438l36.844-35.974C195.245 12.91 165.798 0 130.55 0 79.49 0 35.393 29.301 14.325 71.7l41.956 32.549c10.445-31.477 39.746-54.25 74.269-54.25"/>' +
+    '</svg>';
+  var ICONO_APPLE = '<svg class="onb-marca-ico" viewBox="0 0 384 512" aria-hidden="true">' +
+    '<path fill="currentColor" d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-36.8-2.8-77 21.3-91.7 21.3-15.5 0-51.1-20.3-79.1-20.3C61.2 141.6 8 184.1 8 271.2c0 25.7 4.7 52.2 14.1 79.5 12.6 35.9 44.7 105.3 78.2 104.3 17.5-.4 29.9-12.4 52.7-12.4 22.1 0 33.6 12.4 53.1 12.4 33.8-.5 63-63.2 75-99.2-45.3-21.4-62.4-56.5-62.4-87.1zM255.2 105.2c17.3-20.5 26.4-42.3 24.1-69.2-25.9 1.6-49.8 15.3-66.5 34.5-15.9 18.1-25.3 40.4-23.2 65.3 27.4 2.1 51.5-11.9 65.6-30.6z"/>' +
+    '</svg>';
 
   // soporte de reconocimiento de voz del navegador (nevera) — si no existe, el
   // botón de micro ni se pinta (degradación silenciosa, cero rotura)
@@ -417,21 +537,41 @@
   // rediseñada 2026-07-13 (referencia visual externa, paleta/tipografía
   // traducidas a Etria — nunca los verdes/morados literales del handoff).
   // ---------------------------------------------------------------
-  // quién pertenece estructuralmente a una comida (patrón), quién está presente hoy
-  // (patrón + ausencia puntual) y con quién se resuelve la receta si nadie confirmó —
-  // compartido por la card de comida y el sheet de receta completa.
+  // V6: quién pertenece a un servicio sale de `semana.presencia` VERBATIM — los 14 slots de
+  // cada miembro son explícitos en la semana `/2` y ya incorporan patrón, ausencias fijas y
+  // cole. `presentes` le resta las ausencias PUNTUALES que la familia marca a mano después de
+  // generar (estado de UI, no del motor). Re-escalar la ración con la mesa real es
+  // `reescalarServicio` (§15.4) — bloque 3.
+  function slotKey(diaIndex, tipoComida) { return (diaIndex + 1) + '-' + tipoComida; }
+
   function comensalesDeSlot(estado, plan, diaIndex, tipoComida) {
-    var dia = plan.dias[diaIndex];
+    var clave = slotKey(diaIndex, tipoComida);
+    var pres = (plan && plan.presencia) || {};
     var miembrosDelSlot = (estado.familia || []).filter(function (m) {
-      var patron = m.patron && m.patron[tipoComida];
-      return !patron || patron[diaIndex] === 'casa';
+      return pres[m.id] ? pres[m.id][clave] === true : true;
     });
-    var presentes = E.presentesEnComida(estado, dia.fecha, diaIndex, tipoComida);
+    var fecha = fechaDelDia(plan, diaIndex);
+    var fuera = (estado.ausenciasPuntuales && estado.ausenciasPuntuales[fecha] && estado.ausenciasPuntuales[fecha][tipoComida]) || [];
+    var presentes = miembrosDelSlot.filter(function (m) { return fuera.indexOf(m.id) === -1; });
     return {
       miembrosDelSlot: miembrosDelSlot,
       presentes: presentes,
       comensales: presentes.length ? presentes : miembrosDelSlot.slice(0, 1)
     };
+  }
+
+  // la semana `/2` guarda `semana_iso`, no fechas: la fecha de cada día se DERIVA con la
+  // definición ejecutable del motor (`derivar.fechaDia`), nunca se guarda en el plan.
+  function fechaDelDia(plan, diaIndex) {
+    return plan && plan.semana_iso ? fechaDeDia(plan.semana_iso, diaIndex + 1) : null;
+  }
+  function servicioDe(plan, diaIndex, tipoComida) {
+    if (!plan || !plan.servicios) return null;
+    for (var i = 0; i < plan.servicios.length; i++) {
+      var s = plan.servicios[i];
+      if (s.dia === diaIndex + 1 && s.servicio === tipoComida) return s;
+    }
+    return null;
   }
 
   // Paleta de identidad por miembro (Roger 2026-07-19, handoff Claude Design):
@@ -457,6 +597,185 @@
     }).join('');
   }
 
+  // ---------------------------------------------------------------
+  // Estados de plato por persona (handoff 5, §2 — e3Foods.dc.html / sistema-color.md,
+  // 3-ago 2026). Tres estados, DOS colores: la diferencia la marca el peso (píldora
+  // clara vs relleno sólido), nunca un matiz nuevo. Copy: nunca "come aparte"
+  // —excluye—, siempre "come otra cosa" (handoff).
+  //
+  // Datos reales, sin tocar el motor: mesa.presentes = quién come hoy (lo mismo que ya marca el
+  // check del avatar); los AJUSTES y el «come otra cosa» salen de las notas tipadas de §9.2 —
+  // aquí solo se traducen a texto y color, no se recalcula nada.
+  //
+  // El TERCER estado ("X come otra cosa") es la nota `sustituto`: exclusión ESTRUCTURAL, esa
+  // persona deriva SU plato. El handoff 5 lo dejó preparado y ningún motor lo rellenaba; V6 sí.
+  // Nunca se deriva de "no estar en presentes" — son campos independientes (aviso explícito del
+  // handoff); por eso se filtra contra mesa.presentes en vez de asumir que implica ausencia.
+  // ---------------------------------------------------------------
+  var ESTADO_OLIVA = 'oklch(0.55 0.09 140)';
+  var ESTADO_TERRACOTA = 'oklch(0.55 0.15 45)';
+  var ESTADO_BLOQUEO = 'oklch(0.5 0.16 35)';
+
+  // ── LAS NOTAS TIPADAS DE LA CARD (§9.2 del formato · spec §15.7). Ninguna es opcional de
+  //    pintar. El front NO re-implementa la política de hogar (§13) ni re-comprueba alérgenos:
+  //    el motor ya decidió y aquí solo se PINTA lo que llega.
+  //      eliminar          la línea no se deriva para ese miembro. `miembro: '*'` = para nadie,
+  //                        política de hogar — se dice UNA vez, no por persona (§13.1.3)
+  //      variante-todos    la olla entera cambia de ingrediente («sin huevo en casa: empanado
+  //                        con leche»); el mecanismo real es la COMPRA
+  //      vehiculo-persona  el sustituto es solo de esa persona (pasta sin gluten)
+  //      solo-para         esa elaboración del plato[] solo se sirve a esos miembros
+  //      sustituto         exclusión estructural: esa persona come SU plato
+  //      seguridad-infantil  D2: sanitaria, se enseña siempre (2.5 de la lista)
+  function notasDe(servicio, tipo) {
+    return ((servicio && servicio.notas) || []).filter(function (n) { return n.tipo === tipo; });
+  }
+  function nombreMiembro(estado, id) {
+    var m = (estado.familia || []).filter(function (x) { return x.id === id; })[0];
+    return m ? m.nombre : id;
+  }
+  function unirNombres(estado, ids) {
+    var ns = (ids || []).map(function (id) { return nombreMiembro(estado, id); });
+    if (ns.length <= 1) return ns[0] || '';
+    return ns.slice(0, -1).join(', ') + t('conj_y') + ns[ns.length - 1];
+  }
+
+  // una nota tipada -> su frase. Devuelve null si no toca pintarla en ese ámbito.
+  function fraseNota(estado, banco, n) {
+    if (n.tipo === 'eliminar') {
+      return n.miembro === '*'
+        ? t('nota_hogar_sin').replace('{alimento}', nombreAlimento(banco, n.alimento_id))
+        : t('nota_sin_para').replace('{nombre}', nombreMiembro(estado, n.miembro))
+            .replace('{alimento}', nombreAlimento(banco, n.alimento_id).toLowerCase());
+    }
+    if (n.tipo === 'variante-todos')
+      return t('nota_variante_todos').replace('{sustituto}', notaSustituto(banco, n.alimento_id, n.sustituto_id));
+    if (n.tipo === 'vehiculo-persona')
+      return t('nota_vehiculo').replace('{nombre}', nombreMiembro(estado, n.miembro))
+        .replace('{sustituto}', notaSustituto(banco, n.alimento_id, n.sustituto_id));
+    if (n.tipo === 'solo-para') {
+      var e = elabDe(banco, n.elaboracion_id);
+      return t('nota_solo_para').replace('{plato}', e ? e.nombre : n.elaboracion_id)
+        .replace('{nombres}', unirNombres(estado, n.miembros));
+    }
+    if (n.tipo === 'sustituto') {
+      var piezas = n.ambito === 'postre' ? [n.postre] : (n.plato || []);
+      var nombres = piezas.filter(Boolean).map(function (p) { return nombrePercibido(banco, p, n.miembro); });
+      return t('nota_sustituto').replace('{nombre}', nombreMiembro(estado, n.miembro))
+        .replace('{plato}', nombres.join(' · '));
+    }
+    if (n.tipo === 'seguridad-infantil')
+      return t('nota_seguridad').replace('{nombre}', nombreMiembro(estado, n.miembro))
+        .replace('{alimento}', nombreAlimento(banco, n.alimento_id))
+        .replace('{forma}', n.forma_insegura || n.riesgo || '');
+    return null;
+  }
+
+  // Bloque de notas bajo el plato. La SANITARIA va aparte y primero: es la única que no es
+  // una preferencia ni una restricción de dieta — hoy no la enseñaba nadie (2.5).
+  var ORDEN_NOTAS = ['eliminar', 'variante-todos', 'vehiculo-persona', 'solo-para', 'sustituto'];
+  function renderNotasCard(estado, banco, servicio, oscuro) {
+    var seguridad = notasDe(servicio, 'seguridad-infantil').map(function (n) { return fraseNota(estado, banco, n); }).filter(Boolean);
+    var resto = [];
+    ORDEN_NOTAS.forEach(function (tipo) {
+      notasDe(servicio, tipo).forEach(function (n) {
+        var f = fraseNota(estado, banco, n);
+        if (f) resto.push(f);
+      });
+    });
+    if (!seguridad.length && !resto.length) return '';
+    var linea = function (txt, clase) {
+      return '<li class="ph-nota' + (clase || '') + '"><i data-lucide="' + (clase ? 'shield-alert' : 'dot') + '"></i><span>' + escapeHtml(txt) + '</span></li>';
+    };
+    return '<div class="ph-notas' + (oscuro ? ' ph-notas-oscuro' : '') + '">' +
+      (seguridad.length
+        ? '<p class="ph-notas-tit ph-notas-tit-sanitaria">' + t('notas_seguridad') + '</p>' +
+          '<ul class="ph-notas-lista">' + seguridad.map(function (x) { return linea(x, ' ph-nota-sanitaria'); }).join('') + '</ul>'
+        : '') +
+      (resto.length
+        ? '<p class="ph-notas-tit">' + t('notas_mesa') + '</p>' +
+          '<ul class="ph-notas-lista">' + resto.map(function (x) { return linea(x, ''); }).join('') + '</ul>'
+        : '') +
+      '</div>';
+  }
+
+  function estadoMesaBadge(estado, banco, mesa, servicio) {
+    var familia = estado.familia || [];
+    // «come otra cosa» = nota `sustituto` (exclusión estructural, §9.2). Es el TERCER estado del
+    // handoff 5, que hasta ahora no rellenaba ningún motor: V6 sí lo emite.
+    var otraSet = {}, ajusteDe = {};
+    notasDe(servicio, 'sustituto').forEach(function (n) { otraSet[n.miembro] = true; });
+    // «ajuste» = cualquier nota individual que cambie SU composición sin sacarlo de la mesa
+    notasDe(servicio, 'vehiculo-persona').forEach(function (n) {
+      ajusteDe[n.miembro] = notaSustituto(banco, n.alimento_id, n.sustituto_id);
+    });
+    notasDe(servicio, 'eliminar').forEach(function (n) {
+      if (n.miembro && n.miembro !== '*' && !ajusteDe[n.miembro]) ajusteDe[n.miembro] = t('nota_sin_para')
+        .replace('{nombre}', '').replace(': ', '').replace('{alimento}', nombreAlimento(banco, n.alimento_id).toLowerCase()).trim();
+    });
+    notasDe(servicio, 'solo-para').forEach(function (n) {
+      var e = elabDe(banco, n.elaboracion_id);
+      mesa.presentes.forEach(function (m) {
+        if ((n.miembros || []).indexOf(m.id) === -1 && !ajusteDe[m.id] && e) ajusteDe[m.id] = t('estado_ajuste_con').replace('{ingrediente}', e.nombre.toLowerCase());
+      });
+    });
+
+    // filtro defensivo: "otra" solo cuenta para quien también está en mesa.presentes — nunca
+    // se deriva la ausencia de "otra", son campos independientes (aviso del handoff 5).
+    var otraIds = Object.keys(otraSet).filter(function (id) {
+      return mesa.presentes.some(function (p) { return p.id === id; });
+    });
+
+    var personas = familia.map(function (m) {
+      var idx = familia.indexOf(m);
+      var presente = mesa.presentes.some(function (p) { return p.id === m.id; });
+      var distinto = presente && otraIds.indexOf(m.id) !== -1;
+      var adapt = presente && !distinto ? ajusteDe[m.id] : null;
+      var nota = !presente ? t('estado_fuera')
+        : distinto ? t('estado_otra_nota')
+        : adapt ? t('estado_ajuste_con').replace('{ingrediente}', String(adapt).toLowerCase())
+        : t('estado_come_todo');
+      return {
+        avatarEstilo: avatarEstiloColor(m, colorMiembro(idx)), avatarTxt: avatarInner(m), nombre: m.nombre,
+        dotEstilo: !presente ? 'background:rgba(26,23,18,.22)' : distinto ? 'background:' + ESTADO_BLOQUEO : 'background:' + (adapt ? ESTADO_TERRACOTA : ESTADO_OLIVA),
+        notaEstilo: distinto ? 'color:oklch(0.5 0.14 35)' : adapt ? 'color:oklch(0.48 0.14 45)' : 'color:var(--muted)',
+        nota: nota
+      };
+    });
+    var adaptaciones = Object.keys(ajusteDe).filter(function (id) {
+      return mesa.presentes.some(function (p) { return p.id === id; }) && otraIds.indexOf(id) === -1;
+    });
+
+    if (otraIds.length) {
+      var nombresOtra = familia.filter(function (m) { return otraSet[m.id]; })
+        .map(function (m) { return m.nombre; }).join(t('conj_y'));
+      return {
+        clase: 'otra',
+        label: (otraIds.length === 1 ? t('estado_otra_1') : t('estado_otra_n')).replace(/\{nombre(s)?\}/, nombresOtra),
+        popTitulo: (otraIds.length === 1 ? t('estado_pop_otra_1') : t('estado_pop_otra_n')).replace(/\{nombre(s)?\}/, nombresOtra),
+        popSub: t('estado_pop_otra_sub'), personas: personas
+      };
+    }
+
+    var nAjustes = adaptaciones.length;
+    if (nAjustes) {
+      return {
+        clase: 'terracota',
+        label: nAjustes === 1 ? t('estado_1_ajuste') : t('estado_n_ajustes').replace('{n}', nAjustes),
+        popTitulo: nAjustes === 1 ? t('estado_pop_1_ajuste') : t('estado_pop_n_ajustes').replace('{n}', nAjustes),
+        popSub: t('estado_pop_ajuste_sub'), personas: personas
+      };
+    }
+    var nMain = mesa.presentes.length;
+    var todos = familia.length > 0 && nMain === familia.length;
+    return {
+      clase: 'oliva',
+      label: todos ? t('estado_comen_todos') : t('estado_comen_n').replace('{n}', nMain),
+      popTitulo: todos ? t('estado_pop_todos') : t('estado_pop_n').replace('{n}', nMain),
+      popSub: t('estado_pop_todos_sub'), personas: personas
+    };
+  }
+
   // esfuerzo real de la plantilla -> etiqueta corta (Q3, Roger 2026-07-19):
   // el banco no tiene un campo "tag" (Saludable/Rápido/Ligero...) del handoff;
   // se deriva del dato real que sí existe, en vez de inventar un dato nuevo.
@@ -465,9 +784,8 @@
   // Card comida/cena del pager de Home — identidades opuestas a propósito
   // (Comida blanca/editorial, Cena oscura/cinematográfica) para que se
   // reconozcan sin leer la etiqueta. Handoff: e3Foods.dc.html.
-  function renderCardPager(estado, banco, plan, diaIndex, meal) {
-    var dia = plan.dias[diaIndex];
-    var slot = dia ? dia[meal] : null;
+  function renderCardPager(estado, banco, plan, diaIndex, meal, popupAbierto) {
+    var servicio = servicioDe(plan, diaIndex, meal);
     var mesa = comensalesDeSlot(estado, plan, diaIndex, meal);
     var esCena = meal === 'cena';
     var claseCard = esCena ? 'ph-card ph-card-cena' : 'ph-card ph-card-comida';
@@ -481,33 +799,36 @@
     var badge = '<span class="ph-badge ph-badge-' + (esCena ? 'cena' : 'comida') + '"><span class="ph-badge-icono">' + icono + '</span><span class="ph-badge-texto">' + etiqueta + '</span></span>';
     var cabeceraVacia = '<div class="ph-cab"><span class="ph-tipo ph-tipo-' + (esCena ? 'cena' : 'comida') + '">' + icono + etiqueta + '</span>' + avataresSpan + '</div>';
 
-    // v3: el slot ya trae el menú COMPLETO resuelto (nombre/kcal/complementarias)
-    // desde que se generó — no hace falta volver a llamar al motor en cada render
-    // (antes resolverPlato se invocaba aquí cada vez; ahora es un simple read).
-    var principal = principalDeSlot(estado, banco, slot);
-    // postreDelDia() es del DÍA, no de la comida — sin filtro por esCena
-    // (handoff líneas 105/142: "De postre" aparece igual en las dos cards).
-    // v5: el postre es PARTE del menu (sus macros cuentan, esquema §8.3) y viene resuelto.
-    var postre = (slot && slot.menu && slot.menu.postre) ? slot.menu.postre : E.postreDelDia(banco, dia.fecha, diaIndex);
-    var postreTexto = postre ? (postre.tipo === 'tradicional' ? postre.nombre + ' (receta de finde)' : postre.nombre) : '';
+    // V6: el servicio trae el plato de MESA (1-3 elaboraciones) + postre + notas tipadas. El
+    // nombre que se enseña es el PERCIBIDO (`nombre_por_opcion`), no el nombre-plantilla del
+    // banco: sin resolverlo la card decía «{pescado} a la plancha» (fila 6.2 de la lista).
+    var itemPrincipal = principalDe(banco, servicio);
+    var principal = itemPrincipal ? elabDe(banco, itemPrincipal.elaboracion_id) : null;
+    // el postre lo GOBIERNA el motor (§6, política): si no hay, no se inventa uno
+    var postreTexto = servicio && servicio.postre ? nombrePercibido(banco, servicio.postre, '*') : '';
 
     if (!mesa.miembrosDelSlot.length) {
       return '<div class="' + claseCard + ' ph-card-vacia" data-dia="' + diaIndex + '" data-tipo="' + meal + '">' + cabeceraVacia +
         '<p class="card-msg">Nadie come en casa (' + (esCena ? 'noche' : 'mediodía') + ').</p></div>';
     }
-    if (!slot || !principal) {
+    if (!servicio || !principal) {
+      // el hueco viene DECLARADO por el motor: `no_servido` o `fallo` de semana, nunca en
+      // silencio (contrato `/2` §1). Se dice lo que el motor dijo, no una frase inventada.
+      var motivo = servicio && servicio.no_servido === 'no-gobernado' ? 'Este servicio no lo planificamos.'
+        : (plan && plan.fallo && plan.fallo.motivo) ? 'Esta semana no ha salido menú: ' + plan.fallo.motivo
+        : 'No encontramos un plato que encaje con los gustos y las alergias de esta mesa.';
       return '<div class="' + claseCard + ' ph-card-vacia" data-dia="' + diaIndex + '" data-tipo="' + meal + '">' + cabeceraVacia +
-        '<p class="card-msg">No encontramos un plato que encaje con los gustos/vetos actuales.</p>' +
+        '<p class="card-msg">' + escapeHtml(motivo) + '</p>' +
         '<button type="button" class="btn-secondary" data-action="abrir-cambiar" data-dia="' + diaIndex + '" data-tipo="' + meal + '">Elegir plato</button></div>';
     }
 
-    var subtitulo = (slot.menu.complementariasResueltas || []).map(function (c) { return c.nombre; }).join(' · ');
-    var kcalMedio = mesa.presentes.length ? Math.round(slot.menu.kcalTotal / mesa.presentes.length) : 0;
+    var subtitulo = secundariasDe(banco, servicio).map(function (x) { return nombrePercibido(banco, x, '*'); }).join(' · ');
     var tag = ETIQUETA_ESFUERZO[principal.esfuerzo] || '';
     var fotoHtml = principal.foto ? '<img class="ph-foto" src="' + escapeHtml(principal.foto) + '" alt="">' : '<div class="ph-foto ph-foto-vacia"></div>';
 
+    // sin kcal en la card: la energía por comensal sale del derivador del motor, que llega con
+    // la lista de la compra (§15.2, bloque 3). Se dice dónde falta, en la ficha de receta.
     var metaHtml = '<div class="ph-meta">' +
-      (mesa.presentes.length ? '<span class="ph-meta-item"><i data-lucide="flame"></i>~' + kcalMedio + ' kcal<span class="ph-meta-sub">/pers</span></span><span class="ph-meta-punto"></span>' : '') +
       '<span class="ph-meta-item"><i data-lucide="clock"></i>' + (principal.tiempo_min || '?') + ' min</span>' +
       (tag ? '<span class="ph-meta-punto"></span><span class="ph-meta-item"><i data-lucide="leaf"></i>' + tag + '</span>' : '') +
       '</div>';
@@ -520,14 +841,50 @@
       '<div role="button" tabindex="0" class="ph-abrir" data-action="abrir-receta" data-dia="' + diaIndex + '" data-tipo="' + meal + '" aria-label="Ver receta completa">' +
       '<div class="ph-foto-wrap">' + fotoHtml + badge + avataresSpan + '</div>' +
       '<div class="ph-info">' +
-      '<p class="ph-titulo">' + escapeHtml(slot.menu.nombre) + '</p>' +
+      '<p class="ph-titulo">' + escapeHtml(nombrePercibido(banco, itemPrincipal, '*')) + '</p>' +
       (subtitulo ? '<p class="ph-subtitulo">' + escapeHtml(subtitulo) + '</p>' : '') +
       metaHtml +
       (postreTexto ? '<p class="ph-postre">' + t('de_postre') + ' ' + escapeHtml(postreTexto) + '</p>' : '') +
       '</div>' +
       '</div>' +
+      renderNotasCard(estado, banco, servicio, esCena) +
+      renderEstadoBadgeYPop(estado, banco, mesa, servicio, meal, popupAbierto) +
       '<button type="button" class="ph-cta" data-action="abrir-cambiar" data-dia="' + diaIndex + '" data-tipo="' + meal + '"><i data-lucide="sparkles"></i>' + t('me_apetece_otra_cosa') + '<i data-lucide="arrow-right" class="ph-cta-flecha"></i></button>' +
       '</div>';
+  }
+
+  // Badge de estado ("Comen todos" / "N ajustes") + su tarjeta secundaria — botón
+  // HERMANO de .ph-abrir, no anidado dentro (handoff: "no hereda el clic que abre
+  // la receta"). data-tipo identifica el pager (comida/cena); no lleva data-dia
+  // porque el pager solo existe para el día activo (mismo criterio que el resto
+  // de acciones de esta card).
+  function renderEstadoBadgeYPop(estado, banco, mesa, servicio, meal, popupAbierto) {
+    if (!mesa.presentes.length) return '';
+    var e = estadoMesaBadge(estado, banco, mesa, servicio);
+    var badge = '<button type="button" class="ph-estado-badge ph-estado-badge-' + e.clase + '" ' +
+      'data-action="estado-toggle" data-tipo="' + meal + '" aria-expanded="' + (popupAbierto ? 'true' : 'false') + '" ' +
+      'aria-label="' + escapeHtml(e.label) + '. ' + escapeHtml(t('estado_aria_detalle')) + '">' +
+      '<span class="ph-estado-dot"></span>' +
+      '<span class="ph-estado-texto">' + escapeHtml(e.label) + '</span>' +
+      '<i data-lucide="chevron-down" class="ph-estado-flecha' + (popupAbierto ? ' ph-estado-flecha-abierta' : '') + '"></i>' +
+      '</button>';
+    if (!popupAbierto) return badge;
+    var filas = e.personas.map(function (p) {
+      return '<div class="ph-estado-fila">' +
+        '<span class="ph-avatar ph-estado-fila-av" ' + p.avatarEstilo + '>' + p.avatarTxt + '</span>' +
+        '<span class="ph-estado-fila-info"><span class="ph-estado-fila-nombre">' + escapeHtml(p.nombre) + '</span>' +
+        '<span class="ph-estado-fila-nota" style="' + p.notaEstilo + '">' + escapeHtml(p.nota) + '</span></span>' +
+        '<span class="ph-estado-fila-dot" style="' + p.dotEstilo + '"></span>' +
+        '</div>';
+    }).join('');
+    var pop = '<div class="ph-estado-pop">' +
+      '<div class="ph-estado-pop-cab">' +
+      '<span class="ph-estado-pop-tit ph-estado-pop-tit-' + e.clase + '">' + escapeHtml(e.popTitulo) + '</span>' +
+      '<span class="ph-estado-pop-sub">' + escapeHtml(e.popSub) + '</span>' +
+      '</div>' +
+      '<div class="ph-estado-pop-lista">' + filas + '</div>' +
+      '</div>';
+    return badge + pop;
   }
 
   // Feedback loop (P1, 2026-07-16): "¿qué tal?" post-comida, un toque por slot
@@ -586,142 +943,55 @@
     }).join('');
   }
 
-  // ---------------------------------------------------------------
-  // MOTOR v5 tras FLAG DE DESARROLLO (sesion motor v5, 2026-07-30): un menu v5
-  // (menu.motorV5) trae nombre/foto/pasos/postre resueltos y sus ids son del banco v5 —
-  // estos helpers evitan que la UI dependa del banco v3 para pintarlo. Sin flag,
-  // window.E3MotorV5/E3_BANCO_V5 no existen y nada de esto se ejecuta.
-  // ---------------------------------------------------------------
-  function elabV5(id) {
-    var b5 = window.E3_BANCO_V5;
-    if (!b5) return null;
-    if (!elabV5._idx) { elabV5._idx = {}; b5.elaboraciones.forEach(function (e) { elabV5._idx[e.id] = e; }); }
-    return elabV5._idx[id] || null;
-  }
-
-  // El "principal" que la UI necesita para una card/receta: en v3, la elaboracion del banco;
-  // en v5, una vista equivalente desde el propio menu + el banco v5.
-  function principalDeSlot(estado, banco, slot) {
-    if (!slot || !slot.menu) return null;
-    if (slot.menu.motorV5) {
-      var e5 = elabV5(slot.menu.principalId) || {};
-      return {
-        id: slot.menu.principalId, nombre: slot.menu.nombre,
-        foto: slot.menu.foto || e5.foto || null,
-        tiempo_min: e5.tiempo_min || null, esfuerzo: e5.esfuerzo || null,
-        ninos: e5.ninos !== false, pasos: slot.menu.pasos || []
-      };
-    }
-    return E.elaboracionPorId(banco, estado, slot.menu.principalId);
-  }
-
-  // Cuotas de la semana: en v5 se recuentan de las categorias que cada menu trae del selector
-  // (rebozado se presenta con la clave i18n de fritos); minimos desactivados por la mesa
-  // cuentan como cumplidos — el aviso ya lo dio el motor.
-  function resumenCuotasActivo(plan, banco, estado) {
-    if (plan && plan.motor === 'v5') {
-      // CUOTAS POR ESTILO (Roger, 30-jul): con vegano/vegetariano en la mesa las cuotas estan
-      // A CERO hasta tener valor con fuente — sin cuota activa no hay equilibrio que afirmar
-      // ni incumplir, la linea no se pinta (mismo criterio que CUOTAS_POR_ESTILO en selector.js).
-      var estilos = (estado.familia || []).map(function (m) { return m.estilo; });
-      if (estilos.indexOf('vegano') !== -1 || estilos.indexOf('vegetariano') !== -1) return [];
-      var CUOTAS_V5 = { legumbre: { min: 3, max: 4 }, 'pescado-total': { min: 2, max: null }, 'pescado-azul': { min: 1, max: 2 }, 'carne-roja': { min: 0, max: 2 }, huevo: { min: 3, max: 4 }, fritos: { min: 0, max: 2 } };
-      var cont = {};
-      plan.dias.forEach(function (d) {
-        ['comida', 'cena'].forEach(function (t2) {
-          var s = d[t2];
-          if (!s || !s.menu) return;
-          (s.menu.categorias || []).forEach(function (c) {
-            c = c === 'rebozado' ? 'fritos' : c;
-            cont[c] = (cont[c] || 0) + 1;
-          });
-        });
-      });
-      var desact = {};
-      (plan.avisos || []).forEach(function (a) { if (a.tipo === 'minimo-desactivado') desact[a.categoria] = true; });
-      return Object.keys(CUOTAS_V5).map(function (cat) {
-        var c = CUOTAS_V5[cat], n = cont[cat] || 0;
-        return { categoria: cat, cuenta: n, min_sem: c.min, max_sem: c.max,
-          cumplido: (!c.min || desact[cat] || n >= c.min) && (c.max == null || n <= c.max) };
-      });
-    }
-    return E.resumenCuotasSemana(plan, banco, estado);
-  }
-
-  // Lista de la compra: en v5 sale del motor (gramos reales por comensal), traducida al shape
-  // de fila que esta vista ya pinta. La naturaleza v5 se mapea a la categoria v3 equivalente
-  // solo para reutilizar la agrupacion visual — no es un dato, es presentacion.
-  var CATEGORIA_DE_NATURALEZA_V5 = {
-    carne: 'carne-blanca', pescado: 'pescado-blanco', marisco: 'marisco',
-    huevo: 'huevo', lacteo: 'lacteo', vegetal: 'verdura', cereal: 'cereal', grasa: 'despensa'
-  };
-  function listaCompraActiva(estado, plan, rango, banco, soloCena) {
-    if (plan && plan.motor === 'v5' && window.E3MotorV5) {
-      var filtro = null;
-      if (rango === 'hoy') {
-        var idxHoy = E.diaIndexDesdeFecha(plan, hoyISO());
-        filtro = { dia: idxHoy === -1 ? 0 : idxHoy, soloCena: !!soloCena };
-      }
-      var marcados = (estado.compra && estado.compra.marcados) || [];
-      return window.E3MotorV5.listaCompra(plan, filtro).map(function (it) {
-        return { id: it.id, nombre: it.nombre, categoria: CATEGORIA_DE_NATURALEZA_V5[it.naturaleza] || 'otro',
-          // Redondeo "de cocina" (regresión de v5 reportada por Roger 01-ago: salía "333 g de
-          // patata"). En v3 la lista ya llegaba redondeada desde el motor; el de v5 devuelve el
-          // gramo exacto, así que se redondea AQUÍ, en el borde de presentación — igual que la
-          // vista de receta, y por el mismo motivo: es cosmético y JAMÁS realimenta el cálculo
-          // de kcal, que sigue sobre los gramos reales.
-          gramos: it.gramos == null ? null : E.redondearCantidad(it.gramos),
-          unidades: it.unidades, marcado: marcados.indexOf(it.id) !== -1 };
-      });
-    }
-    return E.listaCompra(estado, plan, rango, banco, null, soloCena);
-  }
-
   function renderVistaReceta(estado, banco, plan, diaIndex, tipoComida) {
-    var dia = plan && plan.dias[diaIndex];
-    var slot = dia ? dia[tipoComida] : null;
-    var principal = principalDeSlot(estado, banco, slot);
-    if (!dia || !slot || !principal) {
+    var servicio = servicioDe(plan, diaIndex, tipoComida);
+    var itemPrincipal = principalDe(banco, servicio);
+    var principal = itemPrincipal ? elabDe(banco, itemPrincipal.elaboracion_id) : null;
+    if (!servicio || !principal) {
       return '<button type="button" class="rv-flotante rv-volver" data-action="receta-volver" aria-label="Volver"><i data-lucide="arrow-left"></i></button>' +
         '<div class="rv-body rv-body-vacia"><p class="card-msg">No encontramos esta receta.</p></div>';
     }
     var mesa = comensalesDeSlot(estado, plan, diaIndex, tipoComida);
-    var menu = slot.menu;
+    var fecha = fechaDelDia(plan, diaIndex);
     var esCena = tipoComida === 'cena';
-    var kcalMedio = mesa.presentes.length ? Math.round(menu.kcalTotal / mesa.presentes.length) : 0;
     var tag = ETIQUETA_ESFUERZO[principal.esfuerzo] || '—';
     var favorita = (estado.favoritas || []).indexOf(principal.id) !== -1;
     var oculta = (estado.ocultas || []).indexOf(principal.id) !== -1;
     var fotoHtml = principal.foto ? '<img src="' + escapeHtml(principal.foto) + '" alt="">' : '<div class="rv-foto-vacia"></div>';
 
-    var ingredientesHtml = menu.ingredientes.slice().sort(function (a, b) {
-      var na = a.nombre || (banco.ingredientes[a.id] ? banco.ingredientes[a.id].nombre : a.id);
-      var nb = b.nombre || (banco.ingredientes[b.id] ? banco.ingredientes[b.id].nombre : b.id);
-      return na.localeCompare(nb);
-    }).map(function (item) {
-      var ing = banco.ingredientes[item.id];
-      var nombre = item.nombre || (ing ? ing.nombre : item.id); // v5: el nombre viaja en el item
-      return '<div class="rv-ingrediente"><span class="rv-ingrediente-bullet"></span><span class="rv-ingrediente-nombre">' + escapeHtml(nombre) + '</span><span class="rv-ingrediente-g">' + E.redondearCantidad(item.gramos) + ' g</span></div>';
-    }).join('');
+    // Ingredientes en gramos y kcal por comensal salen del ÚNICO derivador del motor
+    // (`src/derivar.js`, §15: prohibida una segunda derivación) a través de `listaCompra`
+    // (§15.2) — que es bloque 3. Hasta entonces se dice, no se inventa ni se esconde.
+    var ingredientesHtml = pendienteV6(t('v6_pend_ingredientes'), t('v6_pendiente_sub'));
 
-    // v3: el menú es principal + complementarias, cada una con su propia
-    // preparación — ya no un único bloque "X con Y y Z" (borrador §2).
-    var pasosHtml = menu.pasos.length
-      ? '<div class="rv-pasos">' + pasosCards(menu.pasos) + '</div>'
+    // El plato de mesa son 1-3 elaboraciones y cada una trae SUS pasos: el principal primero,
+    // las secundarias detrás con su propio título (ya no un único bloque "X con Y y Z").
+    var pasosHtml = (principal.pasos || []).length
+      ? '<div class="rv-pasos">' + pasosCards(principal.pasos) + '</div>'
       : '<p class="card-msg">Sin pasos detallados para esta receta.</p>';
-    var complementariasHtml = (menu.complementariasResueltas || []).map(function (c) {
-      return '<p class="detalle-subtitulo" style="margin-top:18px">' + escapeHtml(c.nombre) + '</p>' +
-        '<div class="rv-pasos">' + pasosCards(c.pasos) + '</div>';
+    var complementariasHtml = secundariasDe(banco, servicio).map(function (x) {
+      var e = elabDe(banco, x.elaboracion_id);
+      if (!e || !(e.pasos || []).length) return '';
+      return '<p class="detalle-subtitulo" style="margin-top:18px">' + escapeHtml(nombrePercibido(banco, x, '*')) + '</p>' +
+        '<div class="rv-pasos">' + pasosCards(e.pasos) + '</div>';
     }).join('');
 
-    // Segunda (o tercera...) cocción por mesa mixta (Roger 2026-07-14): si a
-    // alguien le toca un ingrediente distinto en el eje proteína, sus pasos
-    // van aparte — foso #1 del producto, se preserva tal cual.
-    var pasosAdaptadosHtml = (menu.pasosAdaptados || []).map(function (pa) {
-      var m = (estado.familia || []).find(function (mm) { return mm.id === pa.miembroId; });
-      return '<p class="detalle-subtitulo" style="margin-top:18px">Para ' + escapeHtml(m ? m.nombre : '?') + ' (' + escapeHtml(pa.ingrediente) + ')</p>' +
-        '<div class="rv-pasos">' + pasosCards(pa.pasos) + '</div>';
+    // Mesa mixta (foso #1 del producto): quien come SU plato por exclusión estructural trae
+    // su propia receta — nota `sustituto` de §9.2. Sus pasos van aparte, como los del resto.
+    var pasosAdaptadosHtml = notasDe(servicio, 'sustituto').map(function (n) {
+      var piezas = n.ambito === 'postre' ? [n.postre] : (n.plato || []);
+      return piezas.filter(Boolean).map(function (p) {
+        var e = elabDe(banco, p.elaboracion_id);
+        if (!e || !(e.pasos || []).length) return '';
+        return '<p class="detalle-subtitulo" style="margin-top:18px">Para ' + escapeHtml(nombreMiembro(estado, n.miembro)) +
+          ' (' + escapeHtml(nombrePercibido(banco, p, n.miembro)) + ')</p>' +
+          '<div class="rv-pasos">' + pasosCards(e.pasos) + '</div>';
+      }).join('');
     }).join('');
+
+    var postreHtml = servicio.postre
+      ? '<p class="detalle-subtitulo" style="margin-top:18px">' + t('de_postre') + ' ' + escapeHtml(nombrePercibido(banco, servicio.postre, '*')) + '</p>'
+      : '';
 
     return '<div class="rv-hero">' + fotoHtml + '<div class="rv-hero-gradiente"></div>' +
       '<button type="button" class="rv-flotante rv-volver" data-action="receta-volver" aria-label="Volver"><i data-lucide="arrow-left"></i></button>' +
@@ -731,40 +1001,23 @@
       '</div></div>' +
       '<div class="rv-body">' +
       '<span class="rv-pill rv-pill-' + (esCena ? 'cena' : 'comida') + '">' + (esCena ? ICONO_LUNA : ICONO_SOL) + t(esCena ? 'badge_cena' : 'badge_comida') + '</span>' +
-      '<h1 class="rv-titulo">' + escapeHtml(menu.nombre) + '</h1>' +
-      (menu.complementariasResueltas.length ? '<p class="rv-subtitulo">' + escapeHtml(menu.complementariasResueltas.map(function (c) { return c.nombre; }).join(' · ')) + '</p>' : '') +
+      '<h1 class="rv-titulo">' + escapeHtml(nombrePercibido(banco, itemPrincipal, '*')) + '</h1>' +
+      (secundariasDe(banco, servicio).length ? '<p class="rv-subtitulo">' + escapeHtml(secundariasDe(banco, servicio).map(function (x) { return nombrePercibido(banco, x, '*'); }).join(' · ')) + '</p>' : '') +
       '<div class="rv-stats">' +
       '<div class="rv-stat"><i data-lucide="clock"></i><span class="rv-stat-valor">' + (principal.tiempo_min || '?') + ' min</span></div>' +
-      (mesa.presentes.length ? '<div class="rv-stat"><i data-lucide="flame"></i><span class="rv-stat-valor">~' + kcalMedio + ' kcal</span></div>' : '') +
       '<div class="rv-stat"><i data-lucide="leaf"></i><span class="rv-stat-valor">' + tag + '</span></div>' +
       '</div>' +
       (mesa.miembrosDelSlot.length ? '<div class="rv-comensales"><span class="ph-avatares">' + avataresReceta(estado, mesa) + '</span><span class="rv-comensales-texto">' + escapeHtml(textoComensalesReceta(estado, mesa)) + '</span></div>' : '') +
+      renderNotasCard(estado, banco, servicio, false) +
       '<p class="rv-seccion-titulo">' + t('ingredientes') + '</p>' +
-      '<div class="rv-ingredientes">' + ingredientesHtml + '</div>' +
+      ingredientesHtml +
       '<p class="rv-seccion-titulo">' + t('preparacion') + '</p>' +
       pasosHtml +
       complementariasHtml +
       pasosAdaptadosHtml +
-      renderValoracion(estado, dia.fecha, tipoComida) +
-      '<button type="button" class="rv-cta" data-action="ir-vista" data-vista="compra"><i data-lucide="shopping-basket"></i>' + t('ver_en_la_lista_de_la_compra') + '</button>' +
+      postreHtml +
+      (fecha ? renderValoracion(estado, fecha, tipoComida) : '') +
       '</div>';
-  }
-
-  // ---------------------------------------------------------------
-  // Listas de compra (filas de check) — reutilizadas en franja HOY y tab COMPRA
-  // ---------------------------------------------------------------
-  function filaCompraHtml(item) {
-    // gramos null = ítem "¿lo tengo en casa?" (base de despensa/staple, Roger 2026-07-21): sin
-    // cantidad real que comprar, solo el check — no se muestra "0 g" ni ninguna cifra inventada.
-    // unidades (huevo/yogur): se compra por piezas, no por gramos — "6 uds" en vez de "750 g".
-    var cantidadHtml = item.unidades != null ? '<span class="check-cantidad">' + item.unidades + (item.unidades === 1 ? ' ud' : ' uds') + '</span>'
-      : item.gramos == null ? '' : '<span class="check-cantidad">' + item.gramos + ' g</span>';
-    return '<li class="check-item ' + (item.marcado ? 'check-marcado' : '') + '">' +
-      '<label>' +
-      '<input type="checkbox" data-action="toggle-compra-item" data-id="' + item.id + '" ' + (item.marcado ? 'checked' : '') + '>' +
-      '<span class="check-texto">' + escapeHtml(item.nombre) + '</span>' +
-      cantidadHtml +
-      '</label></li>';
   }
 
   // ---------------------------------------------------------------
@@ -817,19 +1070,13 @@
   // un swap inventado. Línea discreta + link al informe completo — decisión
   // del council del 18/19-jul: "respuesta del día primero, informe como
   // línea al final", no un bloque de chips en el cuerpo principal.
+  // V6: el recuento de cuotas de la semana vive en el motor (P1/T4) y llega a la superficie con
+  // el bloque 3. Hasta entonces la línea sigue AHÍ, marcada — que es justo lo que Roger pidió
+  // que no volviera a pasar con la pantalla de coste semanal.
   function renderAvisoEquilibrio(plan, banco, estado) {
-    var resumen = resumenCuotasActivo(plan, banco, estado);
-    if (!resumen.length) return ''; // v5 con cuotas por estilo a cero: nada que afirmar
-    var fallo = resumen.filter(function (r) { return !r.cumplido && CLAVE_CUOTA[r.categoria]; })[0];
-    var texto = !fallo
-      ? t('equilibrio_ok')
-      : t(fallo.max_sem != null && fallo.cuenta > fallo.max_sem ? 'equilibrio_mas' : 'equilibrio_falta')
-        .replace('{cat}', t(CLAVE_CUOTA[fallo.categoria]))
-        .replace('{n}', fallo.cuenta)
-        .replace('{tope}', fallo.max_sem != null && fallo.cuenta > fallo.max_sem ? fallo.max_sem : fallo.min_sem);
-    return '<button type="button" class="ph-equilibrio-link" data-action="abrir-resumen-semana">' +
-      '<i data-lucide="sparkles"></i><span>' + escapeHtml(texto) + '</span><i data-lucide="chevron-right"></i>' +
-      '</button>';
+    return '<button type="button" class="ph-equilibrio-link ph-equilibrio-pendiente" data-action="abrir-resumen-semana">' +
+      '<i data-lucide="hard-hat"></i><span>' + escapeHtml(t('v6_pend_equilibrio') + ' · ' + t('v6_pendiente_badge')) + '</span>' +
+      '<i data-lucide="chevron-right"></i></button>';
   }
 
   // ---------------------------------------------------------------
@@ -838,21 +1085,27 @@
   // días (vigente + siguiente concatenados), banner de despensa+cole, pager
   // swipeable comida/cena, card de importar cole, próximos días, equilibrio
   // como línea discreta al pie (decisión del council: respuesta primero,
-  // informe después). Todo dato real: E.generarSemana/listaCompra/etc — nada
+  // informe después). Todo dato real: la semana `/2` que devuelve `generarCorrida` — nada
   // de la maqueta de Claude Design (esa usaba 3 platos fijos de mentira).
   // ---------------------------------------------------------------
-  function renderHome(estado, banco, diaGlobalSel, pagerIdx, miembroDispositivoId) {
+  function renderHome(estado, banco, diaGlobalSel, pagerIdx, miembroDispositivoId, estadoBadgeAbierto) {
     if (!estado.plan) {
       return renderAppBar() + '<div class="vista-body"><p class="card-msg">Todavía no hay semana generada.</p></div>';
     }
-    var plan14 = (estado.plan.dias || []).concat(estado.planSiguiente ? estado.planSiguiente.dias : []);
+    // La tira de 14 días son las DOS semanas `/2` concatenadas. La semana no guarda fechas
+    // (solo `semana_iso`): se derivan con `derivar.fechaDia`, la definición ejecutable.
+    var plan14 = [];
+    [estado.plan, estado.planSiguiente].forEach(function (pl) {
+      if (!pl || !pl.semana_iso) return;
+      for (var d = 0; d < 7; d++) plan14.push({ fecha: fechaDeDia(pl.semana_iso, d + 1), plan: pl, diaLocal: d });
+    });
     var hoyStr = hoyISO();
     var hoyIdxGlobal = -1;
     for (var gi = 0; gi < plan14.length; gi++) { if (plan14[gi].fecha === hoyStr) { hoyIdxGlobal = gi; break; } }
     var idx = (diaGlobalSel != null && plan14[diaGlobalSel]) ? diaGlobalSel : (hoyIdxGlobal !== -1 ? hoyIdxGlobal : 0);
-    var planDia = idx < 7 ? estado.plan : estado.planSiguiente;
-    var diaLocal = idx % 7;
-    var diaObj = plan14[idx];
+    var diaObj = plan14[idx] || plan14[0];
+    var planDia = diaObj.plan;
+    var diaLocal = diaObj.diaLocal;
     var esHoy = idx === hoyIdxGlobal;
 
     // ---- saludo ----
@@ -898,8 +1151,11 @@
     }
     var tiraHtml = '<div class="ph-tira-fila">' + chipHtml + '<div class="ph-tira-wrap scroll">' + diasHtml + '</div></div>';
 
-    // ---- banner despensa + cole (cole = día que se está mirando; compra = SIEMPRE hoy real) ----
-    var minors = familia.filter(function (m) { return E.edadEnAnios(m.anioNacimiento) < 12; });
+    // ---- banner del cole (día que se está mirando) ----
+    // El contador de "te faltan N cosas de hoy" salía de la lista de la compra: llega con
+    // §15.2 (bloque 3). La línea del cole SÍ es real — la ausencia del menor a mediodía la
+    // aplica el motor vía `presencia`.
+    var minors = familia.filter(function (m) { return edadEnAnios(m.anioNacimiento) < EDAD_MENOR; });
     var coleDiaObj = estado.cole && estado.cole.dias && estado.cole.dias[diaObj.fecha];
     var coleTextoHtml = '';
     if (coleDiaObj && minors.length) {
@@ -911,23 +1167,15 @@
         .replace('{hoy}', esHoy ? t('cole_hoy') : '')
         .replace('{cole}', '<button type="button" class="ingrediente-link" data-action="ir-cole">' + t('cole') + '</button>');
     }
-    // Despensa (staples/recordatorio) fuera del contador de HOY — mismo criterio que renderCompraVista.
-    var itemsHoyReal = listaCompraActiva(estado, estado.plan, 'hoy', banco, new Date().getHours() >= 16).filter(function (i) { return i.categoria !== 'despensa'; });
-    var faltanHoyReal = itemsHoyReal.filter(function (i) { return !i.marcado; });
-    var pantryTexto;
-    if (!itemsHoyReal.length) pantryTexto = '';
-    else if (!faltanHoyReal.length) pantryTexto = t('pantry_todo_listo');
-    else pantryTexto = faltanHoyReal.length + t(faltanHoyReal.length === 1 ? 'pantry_en_tu_lista_sing' : 'pantry_en_tu_lista_plur') + '<button type="button" class="ingrediente-link" data-action="ir-compra-hoy">' + t('revisala') + '</button>' + t('pantry_antes_de_cocinar');
-    var pantryOk = itemsHoyReal.length > 0 && !faltanHoyReal.length;
-    var pantryHtml = (coleTextoHtml || pantryTexto)
-      ? '<div class="ph-pantry' + (pantryOk ? ' ph-pantry-ok' : '') + '"><span class="ph-pantry-icono"><i data-lucide="shopping-basket"></i></span>' +
-        '<p class="ph-pantry-texto">' + coleTextoHtml + pantryTexto + '</p></div>'
+    var pantryHtml = coleTextoHtml
+      ? '<div class="ph-pantry"><span class="ph-pantry-icono"><i data-lucide="graduation-cap"></i></span>' +
+        '<p class="ph-pantry-texto">' + coleTextoHtml + '</p></div>'
       : '';
 
     // ---- pager comida/cena ----
     var pagerHtml = '<div id="home-pager" class="ph-pager-scroll scroll">' +
-      '<div class="ph-pager-slide">' + renderCardPager(estado, banco, planDia, diaLocal, 'comida') + '</div>' +
-      '<div class="ph-pager-slide">' + renderCardPager(estado, banco, planDia, diaLocal, 'cena') + '</div>' +
+      '<div class="ph-pager-slide">' + renderCardPager(estado, banco, planDia, diaLocal, 'comida', estadoBadgeAbierto === 'comida') + '</div>' +
+      '<div class="ph-pager-slide">' + renderCardPager(estado, banco, planDia, diaLocal, 'cena', estadoBadgeAbierto === 'cena') + '</div>' +
       '</div>';
     var segHtml = '<div class="ph-seg">' +
       '<button type="button" id="pager-seg-comida" class="ph-seg-btn' + (pagerIdx === 0 ? ' pager-seg-activo' : '') + '" data-action="pager-ir" data-pager="0"><i data-lucide="sun"></i>' + t('boton_comida') + '</button>' +
@@ -935,11 +1183,14 @@
       '</div>';
 
     // ---- subir menú del cole ----
+    // Lo que HOY hace de verdad: los peques no comen en casa ese mediodía (presencia). Lo que
+    // todavía no: que la cena no repita lo del cole y que sus tomas cuenten en la semana
+    // (§2-ter) — eso necesita `menu_cole` con ids de elaboración, o sea el parser (UPGRADES P1).
     var tieneCargado = !!(estado.cole && estado.cole.dias && Object.keys(estado.cole.dias).length);
     var coleCardHtml = '<button type="button" class="ph-cole-card" data-action="menu-importar-cole">' +
       '<span class="ph-cole-icono"><i data-lucide="paperclip"></i></span>' +
       '<span class="ph-cole-texto"><span class="ph-cole-titulo">' + (tieneCargado ? 'Actualizar menú del cole' : t('subir_menu_del_cole')) + '</span>' +
-      '<span class="ph-cole-sub">' + t('ajustamos_las_cenas_para_compensar') + '</span></span>' +
+      '<span class="ph-cole-sub">' + escapeHtml(t('v6_pend_cole') + ' · ' + t('v6_pendiente_badge')) + '</span></span>' +
       '<i data-lucide="upload" class="ph-cole-flecha"></i></button>';
 
     // ---- próximos días (7, tras hoy real) ----
@@ -947,13 +1198,11 @@
     var proximosItems = '';
     for (var p = inicioProximos; p < Math.min(inicioProximos + 7, plan14.length); p++) {
       var pd = plan14[p];
-      var pLocal = p % 7;
-      var pComidaPl = principalDeSlot(estado, banco, pd.comida);
-      var pCenaPl = principalDeSlot(estado, banco, pd.cena);
-      var pComidaNombre = pd.comida ? pd.comida.menu.nombre : 'Sin plan';
-      var pCenaNombre = pd.cena ? pd.cena.menu.nombre : 'Sin plan';
+      var pLocal = pd.diaLocal;
+      var pComidaNombre = nombreCortoSlot(banco, pd.plan, pd.diaLocal, 'comida');
+      var pCenaNombre = nombreCortoSlot(banco, pd.plan, pd.diaLocal, 'cena');
       var pColeDia = estado.cole && estado.cole.dias && estado.cole.dias[pd.fecha];
-      var pFotoPl = pCenaPl || pComidaPl;
+      var pFotoPl = null; // el banco V6 todavía no lleva fotos de elaboración (0 de 140)
       proximosItems += '<div class="ph-proximo">' +
         '<div class="ph-proximo-fecha"><span>' + NOMBRES_DIA_CORTO()[pLocal].toUpperCase() + '</span><b>' + new Date(pd.fecha + 'T00:00:00').getDate() + '</b></div>' +
         '<div class="ph-proximo-info">' +
@@ -981,364 +1230,67 @@
   // valoración externa de producto (2026-07-16); el pill de arriba ya estaba
   // pintado sin acción — esta es esa acción.
   // ---------------------------------------------------------------
-  function renderEquilibrioSemana(plan, banco, estado) {
-    var resumen = resumenCuotasActivo(plan, banco, estado);
-    if (!resumen.length) return '';
-    var cumplidas = resumen.filter(function (r) { return r.cumplido; }).length;
-    var filas = resumen.map(function (r) {
-      var etiqueta = (r.categoria === 'pescado-total' ? t('cat_pescado_total') : ETIQUETAS_CATEGORIA()[r.categoria]) || capitaliza(r.categoria.replace(/-/g, ' '));
-      // min_sem=0 (p.ej. carne-roja) significa "sin mínimo, solo techo" — mostrar
-      // "N de 0" leería como un objetivo incumplido cuando en realidad no hay suelo;
-      // el dato relevante ahí es el máximo, no el mínimo trivial.
-      var meta = r.min_sem ? (r.cuenta + ' de ' + r.min_sem) : (r.cuenta + (r.max_sem != null ? ' (máx ' + r.max_sem + ')' : ''));
-      return '<li class="equilibrio-fila">' +
-        '<span class="equilibrio-marca ' + (r.cumplido ? 'equilibrio-marca-ok' : 'equilibrio-marca-no') + '" aria-hidden="true">' + (r.cumplido ? '✓' : '!') + '</span>' +
-        '<span class="equilibrio-etiqueta">' + escapeHtml(etiqueta) + '</span>' +
-        '<span class="equilibrio-cuenta">' + escapeHtml(meta) + '</span>' +
-        '</li>';
-    }).join('');
-    return '<div class="equilibrio-semana">' +
-      '<p class="detalle-subtitulo">Equilibrio semanal — ' + cumplidas + ' de ' + resumen.length + '</p>' +
-      '<ul class="equilibrio-lista">' + filas + '</ul>' +
-      '</div>';
+  // nombre corto del plato de un slot para la vista de un vistazo — el PERCIBIDO, con la
+  // opción de eje ya resuelta. Sin plato, el motor dice por qué (`no_servido` / `fallo`).
+  function nombreCortoSlot(banco, plan, diaIndex, tipoComida) {
+    var sv = servicioDe(plan, diaIndex, tipoComida);
+    if (!sv || !sv.plato) return sv && sv.no_servido === 'no-gobernado' ? 'No lo planificamos' : 'Sin plan';
+    var p = principalDe(banco, sv);
+    return p ? nombrePercibido(banco, p, '*') : 'Sin plan';
   }
 
-  // nombre corto de un plato para la vista de un vistazo — v3: el slot ya
-  // trae el nombre resuelto, no hace falta volver a llamar al motor.
-  function nombreCortoSlot(estado, banco, slot) {
-    if (!slot || !slot.menu) return 'Sin plan';
-    return slot.menu.nombre;
-  }
-
-  function renderResumenDia(estado, banco, plan, diaIndex, hoyIdx) {
-    var dia = plan.dias[diaIndex];
-    var esHoy = diaIndex === hoyIdx;
+  function renderResumenDia(banco, plan, diaIndex, hoyFecha) {
+    var fecha = fechaDelDia(plan, diaIndex);
     return '<div class="resumen-semana-dia">' +
-      '<p class="resumen-semana-fecha">' + NOMBRES_DIA()[diaIndex] + ' ' + fechaCorta(dia.fecha) + (esHoy ? ' <span class="badge badge-hoy">HOY</span>' : '') + '</p>' +
-      '<p class="resumen-semana-plato"><span class="resumen-semana-ico">' + ICONO_SOL + '</span>' + escapeHtml(nombreCortoSlot(estado, banco, dia.comida)) + '</p>' +
-      '<p class="resumen-semana-plato"><span class="resumen-semana-ico">' + ICONO_LUNA + '</span>' + escapeHtml(nombreCortoSlot(estado, banco, dia.cena)) + '</p>' +
+      '<p class="resumen-semana-fecha">' + NOMBRES_DIA()[diaIndex] + ' ' + fechaCorta(fecha) + (fecha === hoyFecha ? ' <span class="badge badge-hoy">HOY</span>' : '') + '</p>' +
+      '<p class="resumen-semana-plato"><span class="resumen-semana-ico">' + ICONO_SOL + '</span>' + escapeHtml(nombreCortoSlot(banco, plan, diaIndex, 'comida')) + '</p>' +
+      '<p class="resumen-semana-plato"><span class="resumen-semana-ico">' + ICONO_LUNA + '</span>' + escapeHtml(nombreCortoSlot(banco, plan, diaIndex, 'cena')) + '</p>' +
       '</div>';
   }
 
   function renderSheetResumenSemana(estado, banco, plan) {
     if (!plan) return sheetHead('Resumen de la semana') + '<div class="sheet-body"><p class="card-msg">Todavía no hay semana generada.</p></div>';
-    var hoyIdx = E.diaIndexDesdeFecha(plan, hoyISO());
-    var diasHtml = plan.dias.map(function (d, i) { return renderResumenDia(estado, banco, plan, i, hoyIdx); }).join('');
+    var hoyFecha = hoyISO();
+    var dias = [0, 1, 2, 3, 4, 5, 6].map(function (i) { return renderResumenDia(banco, plan, i, hoyFecha); }).join('');
+    // Relajaciones y descargos de la semana: el motor los DECLARA (`/2` §3) y hasta hoy no los
+    // leía nadie. Son la frase honesta de qué cedió y por qué — se enseñan tal cual llegan.
+    var frases = [];
+    (plan.servicios || []).forEach(function (sv) {
+      (sv.relajaciones || []).forEach(function (r) { if (r.frase && frases.indexOf(r.frase) === -1) frases.push(r.frase); });
+    });
+    var falloHtml = plan.fallo ? '<p class="card-msg"><strong>Esta semana no ha salido menú.</strong> ' + escapeHtml(plan.fallo.motivo) + '</p>' : '';
+    var frasesHtml = frases.length
+      ? '<p class="detalle-subtitulo">Lo que hemos tenido que ceder</p><ul class="equilibrio-lista">' +
+        frases.map(function (f) { return '<li class="equilibrio-fila"><span class="equilibrio-etiqueta">' + escapeHtml(f) + '</span></li>'; }).join('') + '</ul>'
+      : '';
     return sheetHead('Resumen de la semana') +
       '<div class="sheet-body">' +
-      renderEquilibrioSemana(plan, banco, estado) +
-      '<div class="resumen-semana-lista">' + diasHtml + '</div>' +
+      falloHtml +
+      pendienteV6(t('v6_pend_equilibrio'), t('v6_pendiente_sub')) +
+      frasesHtml +
+      '<div class="resumen-semana-lista">' + dias + '</div>' +
       '</div>';
   }
 
   // ---------------------------------------------------------------
-  // RECETAS — banco con chips de filtro por categoría
+  // RECETAS · catálogo del hogar — §15.5 (bloque 3)
   // ---------------------------------------------------------------
-  // Vegetariana en Recetas (Roger, UPGRADES §2/§6, punto 8): reutiliza la misma lógica de dieta
-  // del motor (categoriaExcluidaPorDieta/opcionAptaParaDieta) en vez de simular un dato nuevo.
-  // Si la proteína es eje (varias opciones), basta con que UNA sea apta (la familia la elige,
-  // igual que mesa mixta real). Si es fija (fijoTodo, p.ej. boloñesa), TODAS las fijas deben ser
-  // aptas — a diferencia de elaboracionViableParaMesa (pensada para vetos/temporada de un
-  // candidato ya resuelto), aquí sí hace falta este caso: una proteína fija de carne no es
-  // vegetariana solo porque no haya eje que adaptar.
-  function esVegetarianaApta(p, banco) {
-    var fijoProteina = (p.ingredientes.fijos || {}).proteina;
-    if (fijoProteina) {
-      return fijoProteina.every(function (id) { var ing = banco.ingredientes[id]; return ing && !E.categoriaExcluidaPorDieta(ing.categoria, 'vegetariana', id); });
-    }
-    if (p.ingredientes.eje === 'proteina') return !!E.opcionAptaParaDieta(p.ingredientes.opciones, 'vegetariana', banco, [], null);
-    return true; // sin grupo proteina interno (lo cubre una complementaria externa) -> no bloquea
-  }
-
-  function categoriasDePlantilla(p, banco) {
-    var set = {};
-    var ids = (p.ingredientes.opciones || []).slice();
-    Object.keys(p.ingredientes.fijos || {}).forEach(function (g) { ids = ids.concat(p.ingredientes.fijos[g]); });
-    ids.forEach(function (id) {
-      var ing = banco.ingredientes[id];
-      if (ing) set[ing.categoria] = 1;
-    });
-    return set;
-  }
-
-  function renderFormRecetaPropia(banco) {
-    // v3 (tramo 6): el modelo ya no es 3 ejes fijos — una receta propia es una
-    // elaboración PRINCIPAL (identidad = su ingrediente principal); hidrato y
-    // verdura los añade el ensamblador solo, vía compatibilidad genérica (misma
-    // familia que cualquier plancha/horno). Sin campo de técnica nuevo (cero
-    // mandos nuevos, principio del proyecto) — se asume 'plancha', la más neutra.
-    var categoriasProteina = {};
-    (banco.grupos && banco.grupos.proteina || []).forEach(function (c) { categoriasProteina[c] = 1; });
-    var opcionesIng = idsIngredientesOrdenados(banco)
-      .filter(function (id) { return categoriasProteina[banco.ingredientes[id].categoria]; })
-      .map(function (id) { return '<option value="' + id + '">' + escapeHtml(banco.ingredientes[id].nombre) + '</option>'; }).join('');
-    return '<details class="receta-propia-form" data-detalle-key="receta-propia">' +
-      '<summary>+ Añadir receta propia</summary>' +
-      '<div class="form-miembro">' +
-      '<label>Nombre del plato<input type="text" id="rp-nombre" maxlength="60" placeholder="p.ej. Salmón con puré"></label>' +
-      '<label>Lo principal<select id="rp-proteina"><option value="">(elige un ingrediente)</option>' + opcionesIng + '</select></label>' +
-      '<label>Apta para<select id="rp-apta"><option value="comida,cena">Comida y cena</option><option value="comida">Solo comida</option><option value="cena">Solo cena</option></select></label>' +
-      '<label>Esfuerzo<select id="rp-esfuerzo"><option value="rapido">Rápido (≤25 min)</option><option value="medio">Medio (≤45 min)</option><option value="elaborado">Elaborado (findes)</option></select></label>' +
-      '<button type="button" class="btn-primary" data-action="anadir-receta-propia">Guardar receta</button>' +
-      '</div></details>';
-  }
-
-  // Etiquetas de los chips especiales que no son una categoría de ingrediente
-  // (Roger 2026-07-19, handoff): "Rápidas" deriva de esfuerzo (dato real, mismo
-  // patrón que la etiqueta de la card de Home) y "Favoritas" de estado.favoritas
-  // — ambos reales. El mock también pedía "Saludables", pero el banco no tiene
-  // ese dato y UI_MOBILE.md prohíbe lenguaje de dieta ("healthy"): se omite en
-  // vez de simularlo.
-  function ETIQUETA_CHIP_ESPECIAL() { return { todas: t('chip_todas'), rapidas: t('chip_rapidas'), favoritas: t('chip_favoritas') }; }
-
-  function tarjetaRecetaGrid(p, banco, oculta, favorita) {
-    // lazy (audit 2026-07-20): el grid pinta hasta 82 <img> de golpe — hoy son 4
-    // ficheros únicos, pero con fotos por receta (UPGRADES §3) serían 82 requests
-    var fotoHtml = p.foto ? '<img src="' + escapeHtml(p.foto) + '" alt="" loading="lazy" decoding="async">' : '<div class="rc-foto-vacia"></div>';
-    var tag = ETIQUETA_ESFUERZO[p.esfuerzo] || '';
-    return '<div class="rc-tarjeta' + (oculta ? ' rc-oculta' : '') + '">' +
-      '<button type="button" class="rc-tarjeta-abrir" data-action="abrir-receta-banco" data-plantilla="' + p.id + '">' +
-      '<span class="rc-tarjeta-foto">' + fotoHtml + (tag ? '<span class="rc-tarjeta-tag">' + escapeHtml(tag) + '</span>' : '') + '</span>' +
-      '<span class="rc-tarjeta-info"><span class="rc-tarjeta-nombre">' + escapeHtml(nombreEjemplo(p, banco)) + '</span></span>' +
-      '</button>' +
-      '<div class="rc-tarjeta-pie">' +
-      '<span class="rc-tarjeta-meta"><i data-lucide="clock"></i>' + (p.tiempo_min || '?') + ' min</span>' +
-      '<span class="rc-tarjeta-acciones">' +
-      '<button type="button" class="rc-icono-btn' + (favorita ? ' rc-icono-activo' : '') + '" data-action="toggle-favorita-receta" data-plantilla="' + p.id + '" aria-label="' + (favorita ? 'Quitar de favoritas' : 'Marcar como favorita') + '" aria-pressed="' + favorita + '"><i data-lucide="heart"' + (favorita ? ' style="fill:currentColor"' : '') + '></i></button>' +
-      '<button type="button" class="rc-icono-btn" data-action="toggle-oculta-receta" data-plantilla="' + p.id + '" aria-label="' + (oculta ? 'Mostrar receta' : 'Ocultar receta') + '"><i data-lucide="eye-off"></i></button>' +
-      '</span></div></div>';
-  }
-
-  function filaRecetaLista(p, banco, oculta, favorita) {
-    var fotoHtml = p.foto ? '<img src="' + escapeHtml(p.foto) + '" alt="" loading="lazy" decoding="async">' : '<div class="rc-fila-foto-vacia"></div>';
-    var tag = ETIQUETA_ESFUERZO[p.esfuerzo] || '';
-    return '<div class="rc-fila' + (oculta ? ' rc-oculta' : '') + '">' +
-      '<button type="button" class="rc-fila-abrir" data-action="abrir-receta-banco" data-plantilla="' + p.id + '">' +
-      '<span class="rc-fila-foto">' + fotoHtml + '</span>' +
-      '<span class="rc-fila-info"><span class="rc-fila-nombre">' + escapeHtml(nombreEjemplo(p, banco)) + '</span>' +
-      '<span class="rc-fila-meta"><i data-lucide="clock"></i>' + (p.tiempo_min || '?') + ' min' + (tag ? ' · ' + escapeHtml(tag) : '') + '</span></span>' +
-      '</button>' +
-      '<button type="button" class="rc-icono-btn' + (favorita ? ' rc-icono-activo' : '') + '" data-action="toggle-favorita-receta" data-plantilla="' + p.id + '" aria-label="' + (favorita ? 'Quitar de favoritas' : 'Marcar como favorita') + '" aria-pressed="' + favorita + '"><i data-lucide="heart"' + (favorita ? ' style="fill:currentColor"' : '') + '></i></button>' +
-      '<button type="button" class="rc-icono-btn" data-action="toggle-oculta-receta" data-plantilla="' + p.id + '" aria-label="' + (oculta ? 'Mostrar receta' : 'Ocultar receta') + '"><i data-lucide="eye-off"></i></button>' +
-      '</div>';
-  }
-
-  // Mesas sintéticas de 1 comensal para los chips honestos de Recetas bajo v5: la MISMA
-  // pregunta que responde el motor (sirveAMesa sobre el desglose completo, componentes
-  // incluidos) — en v5 "sin gluten" filtra DE VERDAD (el celiaco y el pan rallado del
-  // empanado, fix de la sesion del selector), no como el chip honesto-vacio de v3.
-  var MESA_CHIP_VEGETARIANA = [{ nombre: 'chip', perfil: { estilo: 'vegetariano', alergias: [] } }];
-  var MESA_CHIP_SIN_GLUTEN = [{ nombre: 'chip', perfil: { estilo: 'de-todo', alergias: ['sin-gluten'] } }];
-
+  // `catalogoRecetas()` / `previsualizarElaboracion(id)` / `sirveAMesa(id, mesa)` son funciones
+  // de la SUPERFICIE del motor (§15.5) y llegan con el bloque 3: el catálogo no es
+  // `banco.elaboraciones.filter(...)` — es el catálogo del HOGAR (política §13 aplicada,
+  // bloqueadas fuera, recalculadas siempre con `bloqueadas.js`). Simularlo aquí con una lectura
+  // cruda del banco enseñaría platos que esta casa no puede comer: peor que decir que falta.
+  // La pestaña se queda VISIBLE y marcada (dictado de Roger), nunca escondida.
   function renderRecetasVista(estado, banco, filtro, busqueda, vista) {
-    filtro = filtro || 'todas';
-    busqueda = busqueda || '';
-    vista = vista === 'list' ? 'list' : 'grid';
-    var esV5 = !!window.E3MotorV5;
-    // solo principales/mixtas son "recetas" navegables — las complementarias
-    // (guarnición de arroz, ensalada de tomate...) son piezas internas del
-    // ensamblador, no algo que la familia elija/oculte/marque favorito.
-    // v5 (obra de encendido, 31-jul): el grid navega el banco v5 (previsualización con la
-    // opción por defecto); favoritas/ocultas operan sobre ids v5 en el MISMO estado.
-    var todas = esV5
-      ? window.E3MotorV5.catalogoRecetas()
-      : E.todasLasElaboraciones(banco, estado).filter(function (p) { return p.roles.indexOf('principal') !== -1; });
-    var ocultas = estado.ocultas || [];
-    var favoritas = estado.favoritas || [];
-
-    var chips;
-    if (esV5) {
-      // sin chips de categoría de ingrediente v3 (ese vocabulario muere con el banco v3);
-      // vegetariana/sin-gluten responden con sirveAMesa — dato real, no simulado.
-      chips = ['todas', 'rapidas', 'favoritas', 'vegetariana', 'sin-gluten'];
-    } else {
-      var categoriasPresentes = {};
-      todas.forEach(function (p) { Object.keys(categoriasDePlantilla(p, banco)).forEach(function (c) { categoriasPresentes[c] = 1; }); });
-      var categorias = ORDEN_CATEGORIA.filter(function (c) { return categoriasPresentes[c]; });
-      // vegetariana ya filtra de verdad (2026-07-22, UPGRADES §2/§6 punto 8: reutiliza
-      // categoriaExcluidaPorDieta/opcionAptaParaDieta, cero dato nuevo). sin-gluten sigue sin dato
-      // en el banco v3 (Roger 2026-07-14) — al elegirla ninguna plantilla coincide y se ve el
-      // mensaje de "sin resultados" habitual: honesto, no simulado.
-      chips = ['todas', 'rapidas', 'favoritas'].concat(categorias, ['vegetariana', 'sin-gluten']);
-    }
-
-    var chipsHtml = chips.map(function (c) {
-      var activo = c === filtro;
-      var nombre = ETIQUETA_CHIP_ESPECIAL()[c] || ETIQUETAS_CATEGORIA()[c] || capitaliza(c);
-      return '<button type="button" class="rc-chip' + (activo ? ' rc-chip-activo' : '') + '" data-action="filtro-receta" data-categoria="' + c + '" aria-pressed="' + activo + '">' + escapeHtml(nombre) + '</button>';
-    }).join('');
-
-    var listaFiltrada = todas;
-    if (filtro === 'rapidas') listaFiltrada = todas.filter(function (p) { return p.esfuerzo === 'rapido'; });
-    else if (filtro === 'favoritas') listaFiltrada = todas.filter(function (p) { return favoritas.indexOf(p.id) !== -1; });
-    else if (filtro === 'vegetariana') listaFiltrada = esV5
-      ? todas.filter(function (p) { return window.E3SelectorV5.sirveAMesa(p.id, MESA_CHIP_VEGETARIANA); })
-      : todas.filter(function (p) { return esVegetarianaApta(p, banco); });
-    else if (filtro === 'sin-gluten' && esV5) listaFiltrada = todas.filter(function (p) { return window.E3SelectorV5.sirveAMesa(p.id, MESA_CHIP_SIN_GLUTEN); });
-    else if (filtro !== 'todas') listaFiltrada = esV5 ? [] : todas.filter(function (p) { return categoriasDePlantilla(p, banco)[filtro]; });
-    if (busqueda.trim()) {
-      var q = normalizarTexto(busqueda);
-      listaFiltrada = listaFiltrada.filter(function (p) { return normalizarTexto(nombreEjemplo(p, banco)).indexOf(q) !== -1; });
-    }
-
-    var listaHtml = listaFiltrada.length
-      ? (vista === 'list'
-        ? '<div class="rc-lista">' + listaFiltrada.map(function (p) { return filaRecetaLista(p, banco, ocultas.indexOf(p.id) !== -1, favoritas.indexOf(p.id) !== -1); }).join('') + '</div>'
-        : '<div class="rc-grid">' + listaFiltrada.map(function (p) { return tarjetaRecetaGrid(p, banco, ocultas.indexOf(p.id) !== -1, favoritas.indexOf(p.id) !== -1); }).join('') + '</div>')
-      : '<p class="card-msg">' + t('no_hay_recetas_en_esta_categoria') + '</p>';
-
-    return '<div class="rc-cabecera">' +
-      '<h1 class="rc-titulo">' + t('recetas') + '</h1>' +
-      '<div class="rc-vista-toggle">' +
-      '<button type="button" class="rc-vista-btn' + (vista === 'list' ? ' rc-vista-btn-activo' : '') + '" data-action="recetas-vista" data-vista="list" aria-label="Vista de lista" aria-pressed="' + (vista === 'list') + '"><i data-lucide="list"></i></button>' +
-      '<button type="button" class="rc-vista-btn' + (vista === 'grid' ? ' rc-vista-btn-activo' : '') + '" data-action="recetas-vista" data-vista="grid" aria-label="Vista de cuadrícula" aria-pressed="' + (vista === 'grid') + '"><i data-lucide="layout-grid"></i></button>' +
-      '</div></div>' +
-      '<div class="vista-body rc-body">' +
-      '<label class="rc-buscador"><i data-lucide="search"></i>' +
-      '<input type="search" id="recetas-buscador" placeholder="' + t('buscar_plato_o_ingrediente') + '" value="' + escapeHtml(busqueda) + '"></label>' +
-      '<div class="rc-chips scroll">' + chipsHtml + '</div>' +
-      listaHtml +
-      // PROVISIONAL bajo v5 (mini-decisión de la obra de encendido, pendiente de Roger):
-      // el formulario de receta propia crea elaboraciones con ids/esquema v3 que el motor v5
-      // ni sirve ni lista — ocultarlo evita un mando que miente. Si Roger decide mantener
-      // propias v3 en paralelo, esto es la única línea a revertir.
-      (esV5 ? '' : renderFormRecetaPropia(banco)) +
-      '</div>';
+    return '<div class="rc-cabecera"><h1 class="rc-titulo">' + t('recetas') + '</h1></div>' +
+      '<div class="vista-body rc-body">' + pendienteV6(t('v6_pend_recetas'), t('v6_pendiente_sub')) + '</div>';
   }
 
-  // Ficha de una elaboración v5 previsualizada (obra de encendido, 31-jul) — la misma
-  // estructura visual que la ficha v3 de abajo, alimentada por previsualizarElaboracion del
-  // motor v5: nombre con la opción por defecto, variantes reales del eje, guarnición de
-  // ejemplo de `combinaciones` y pasos del banco (sin placeholders, verificado en build).
-  function fichaRecetaPreview(estado, previa) {
-    var nombreSplit = splitNombrePlato(previa.nombre);
-    var esCena = !!(previa.apta && previa.apta.length && previa.apta.indexOf('comida') === -1);
-    var tag = ETIQUETA_ESFUERZO[previa.esfuerzo] || '—';
-    var favorita = (estado.favoritas || []).indexOf(previa.id) !== -1;
-    var oculta = (estado.ocultas || []).indexOf(previa.id) !== -1;
-    var fotoHtml = previa.foto ? '<img src="' + escapeHtml(previa.foto) + '" alt="">' : '<div class="rv-foto-vacia"></div>';
-    var acompText = previa.acompanamientoEjemplo.length
-      ? 'Se completa con ' + previa.acompanamientoEjemplo.join(' y ') + '.'
-      : '';
-    var variantesText = previa.variantes.length
-      ? 'también con ' + previa.variantes.map(function (n) { return nombreCortoIngrediente(n).toLowerCase(); }).join(', ')
-      : '';
-    var pasosHtml = previa.pasos.length
-      ? '<div class="rv-pasos">' + pasosCards(previa.pasos) + '</div>'
-      : '<p class="card-msg">Sin pasos detallados para esta receta.</p>';
-    return '<div class="rv-hero">' + fotoHtml + '<div class="rv-hero-gradiente"></div>' +
-      '<button type="button" class="rv-flotante rv-volver" data-action="receta-volver" aria-label="Volver"><i data-lucide="arrow-left"></i></button>' +
-      '<div class="rv-acciones">' +
-      '<button type="button" class="rv-flotante' + (oculta ? ' rv-flotante-activo' : '') + '" data-action="toggle-oculta-receta" data-plantilla="' + previa.id + '" aria-label="' + (oculta ? 'Mostrar receta' : 'Ocultar receta') + '" aria-pressed="' + oculta + '"><i data-lucide="eye-off"></i></button>' +
-      '<button type="button" class="rv-flotante' + (favorita ? ' rv-flotante-activo' : '') + '" data-action="toggle-favorita-receta" data-plantilla="' + previa.id + '" aria-label="' + (favorita ? 'Quitar de favoritas' : 'Marcar como favorita') + '" aria-pressed="' + favorita + '"><i data-lucide="heart"' + (favorita ? ' style="fill:currentColor"' : '') + '></i></button>' +
-      '</div></div>' +
-      '<div class="rv-body">' +
-      '<span class="rv-pill rv-pill-' + (esCena ? 'cena' : 'comida') + '">' + (esCena ? ICONO_LUNA : ICONO_SOL) + t(esCena ? 'badge_cena' : 'badge_comida') + '</span>' +
-      '<h1 class="rv-titulo">' + escapeHtml(nombreSplit.titulo) + '</h1>' +
-      (nombreSplit.subtitulo ? '<p class="rv-subtitulo">' + escapeHtml(nombreSplit.subtitulo) + '</p>' : '') +
-      '<div class="rv-stats">' +
-      '<div class="rv-stat"><i data-lucide="clock"></i><span class="rv-stat-valor">' + (previa.tiempo_min || '?') + ' min</span></div>' +
-      '<div class="rv-stat"><i data-lucide="leaf"></i><span class="rv-stat-valor">' + tag + '</span></div>' +
-      '</div>' +
-      (acompText ? '<p class="rv-variantes"><i data-lucide="info"></i>' + escapeHtml(acompText) + '</p>' : '') +
-      (variantesText ? '<p class="rv-variantes"><i data-lucide="shuffle"></i>' + escapeHtml(capitaliza(variantesText)) + '</p>' : '') +
-      '<p class="rv-seccion-titulo">' + t('preparacion') + '</p>' +
-      pasosHtml +
-      '</div>';
-  }
-
-  // Vista de receta a partir de una plantilla del banco (Roger 2026-07-19):
-  // se abre desde Recetas, sin día ni comensales concretos — a diferencia de
-  // renderVistaReceta (slot ya resuelto del plan), aquí no hay "quién come
-  // esto hoy" ni valoración ni CTA de compra porque no hay plan real detrás.
-  // Ingredientes/pasos con la combinación de ejemplo (nombreEjemplo), igual
-  // que ya hacía la lista del banco.
   function renderVistaRecetaPlantilla(estado, banco, plantillaId) {
-    // v5 (obra de encendido, 31-jul): la ficha sale de la previsualización del motor v5
-    // (opción por defecto, guarnición de ejemplo de `combinaciones`) — sin plan real detrás.
-    if (window.E3MotorV5) {
-      var previa5 = window.E3MotorV5.previsualizarElaboracion(plantillaId);
-      if (previa5) return fichaRecetaPreview(estado, previa5);
-    }
-    var plantilla = E.elaboracionPorId(banco, estado, plantillaId);
-    if (!plantilla) {
-      return '<button type="button" class="rv-flotante rv-volver" data-action="receta-volver" aria-label="Volver"><i data-lucide="arrow-left"></i></button>' +
-        '<div class="rv-body rv-body-vacia"><p class="card-msg">No encontramos esta receta.</p></div>';
-    }
-    // Sin día ni familia detrás: E.previsualizarElaboracion resuelve nombre/pasos
-    // con la 1ª opción del eje paramétrico (si tiene) — sin kcal/gramos reales
-    // (no hay mesa real que calcular; el motor los da al ensamblar de verdad).
-    var previa = previsualizar(plantilla, banco);
-    var nombreSplit = splitNombrePlato(previa.nombre);
-    var esCena = !!(plantilla.apta && plantilla.apta.indexOf('comida') === -1);
-    var tag = ETIQUETA_ESFUERZO[plantilla.esfuerzo] || '—';
-    var favorita = (estado.favoritas || []).indexOf(plantilla.id) !== -1;
-    var oculta = (estado.ocultas || []).indexOf(plantilla.id) !== -1;
-    var fotoHtml = plantilla.foto ? '<img src="' + escapeHtml(plantilla.foto) + '" alt="">' : '<div class="rv-foto-vacia"></div>';
-    var variantes = variantesTexto(plantilla, banco);
-    var acompText = previa.complementariasEjemplo.length
-      ? 'Se completa con ' + previa.complementariasEjemplo.map(function (c) { return c.nombre.toLowerCase(); }).join(' y ') + '.'
-      : '';
-
-    var pasosHtml = previa.pasos.length
-      ? '<div class="rv-pasos">' + pasosCards(previa.pasos) + '</div>'
-      : '<p class="card-msg">Sin pasos detallados para esta receta.</p>';
-    // Pasos de cada complementaria de ejemplo, mismo patrón que renderVistaReceta (Roger
-    // 2026-07-23) — sin esto la preparación de hidrato/verdura desaparecía sin rastro.
-    var complementariasPasosHtml = previa.complementariasEjemplo.map(function (c) {
-      return c.pasos && c.pasos.length
-        ? '<p class="detalle-subtitulo" style="margin-top:18px">' + escapeHtml(c.nombre) + '</p>' +
-          '<div class="rv-pasos">' + pasosCards(c.pasos) + '</div>'
-        : '';
-    }).join('');
-
-    return '<div class="rv-hero">' + fotoHtml + '<div class="rv-hero-gradiente"></div>' +
-      '<button type="button" class="rv-flotante rv-volver" data-action="receta-volver" aria-label="Volver"><i data-lucide="arrow-left"></i></button>' +
-      '<div class="rv-acciones">' +
-      '<button type="button" class="rv-flotante' + (oculta ? ' rv-flotante-activo' : '') + '" data-action="toggle-oculta-receta" data-plantilla="' + plantilla.id + '" aria-label="' + (oculta ? 'Mostrar receta' : 'Ocultar receta') + '" aria-pressed="' + oculta + '"><i data-lucide="eye-off"></i></button>' +
-      '<button type="button" class="rv-flotante' + (favorita ? ' rv-flotante-activo' : '') + '" data-action="toggle-favorita-receta" data-plantilla="' + plantilla.id + '" aria-label="' + (favorita ? 'Quitar de favoritas' : 'Marcar como favorita') + '" aria-pressed="' + favorita + '"><i data-lucide="heart"' + (favorita ? ' style="fill:currentColor"' : '') + '></i></button>' +
-      '</div></div>' +
-      '<div class="rv-body">' +
-      '<span class="rv-pill rv-pill-' + (esCena ? 'cena' : 'comida') + '">' + (esCena ? ICONO_LUNA : ICONO_SOL) + t(esCena ? 'badge_cena' : 'badge_comida') + '</span>' +
-      '<h1 class="rv-titulo">' + escapeHtml(nombreSplit.titulo) + '</h1>' +
-      (nombreSplit.subtitulo ? '<p class="rv-subtitulo">' + escapeHtml(nombreSplit.subtitulo) + '</p>' : '') +
-      '<div class="rv-stats">' +
-      '<div class="rv-stat"><i data-lucide="clock"></i><span class="rv-stat-valor">' + (plantilla.tiempo_min || '?') + ' min</span></div>' +
-      '<div class="rv-stat"><i data-lucide="leaf"></i><span class="rv-stat-valor">' + tag + '</span></div>' +
-      '</div>' +
-      (acompText ? '<p class="rv-variantes"><i data-lucide="info"></i>' + escapeHtml(acompText) + '</p>' : '') +
-      (variantes ? '<p class="rv-variantes"><i data-lucide="shuffle"></i>' + escapeHtml(capitaliza(variantes)) + '</p>' : '') +
-      '<p class="rv-seccion-titulo">' + t('preparacion') + '</p>' +
-      pasosHtml +
-      complementariasPasosHtml +
-      '</div>';
+    return '<button type="button" class="rv-flotante rv-volver" data-action="receta-volver" aria-label="Volver"><i data-lucide="arrow-left"></i></button>' +
+      '<div class="rv-body rv-body-vacia">' + pendienteV6(t('v6_pend_recetas'), t('v6_pendiente_sub')) + '</div>';
   }
 
-  // Carne/Pescado/Frutas y verduras/Despensa/Frío (Roger 2026-07-19, ampliado 2026-07-22 a
-  // petición de Roger: "frescos" único no reflejaba cómo se compra de verdad — carnicería,
-  // pescadería y frutería son secciones/tiendas distintas). Taxonomía de conservación+tienda, no
-  // la nutricional real de categoriasDePlantilla — deliberadamente distinta, es cómo se compra, no
-  // cómo se cuenta la cuota. Solo agrupa la MISMA lista real (E.listaCompra); "Semana que viene"
-  // (3er segmento) se retira de esta pantalla por decisión de Roger 2026-07-19, pero
-  // estado.compra.marcadosSiguiente y generarPlanSiguiente() no se tocan.
-  // 'otros' (Roger 2026-07-23: antes 'despensa' — colisionaba de nombre con la despensa REAL
-  // de abajo, el checklist "¿lo tengo en casa?". Estos sí son cantidad real a comprar
-  // (legumbre/cereal/tubérculo sueltos, ej. lentejas/arroz/patata), no un recordatorio).
-  var GRUPO_COMPRA = {
-    'carne-blanca': 'carne', 'carne-roja': 'carne',
-    'pescado-blanco': 'pescado', 'pescado-azul': 'pescado', marisco: 'pescado',
-    verdura: 'verdura', fruta: 'verdura',
-    legumbre: 'otros', cereal: 'otros', tuberculo: 'otros', otro: 'otros',
-    huevo: 'frio', lacteo: 'frio'
-  };
-  var GRUPOS_COMPRA_INFO = {
-    carne: { nombre: 'Carne', icono: 'beef' },
-    pescado: { nombre: 'Pescado', icono: 'fish' },
-    verdura: { nombre: 'Frutas y verduras', icono: 'carrot' },
-    otros: { nombre: 'Otros', icono: 'wheat' },
-    frio: { nombre: 'Frío', icono: 'snowflake' }
-  };
-  var ORDEN_GRUPO_COMPRA = ['carne', 'pescado', 'verdura', 'otros', 'frio'];
 
   // ---------------------------------------------------------------
   // COMPRA — segmentado Hoy/Próximos 7 días + grupos Frescos/Despensa/Frío
@@ -1384,170 +1336,45 @@
       '</div>';
   }
 
+  // COMPRA · §15.2 (bloque 3). `listaCompra(semana, filtro)` deriva del BANCO VIVO + la semana
+  // `/2` con el ÚNICO derivador del motor (`src/derivar.js`): notas incluidas —`eliminar` quita
+  // la línea a quien la tiene, `variante-todos` compra el sustituto para toda la olla,
+  // `vehiculo-persona` compra los dos, `solo-para` limita la elaboración a sus miembros. Sin ese
+  // derivador la lista sería inventada, así que se dice que falta en vez de enseñar gramos falsos.
   function renderCompraVista(estado, plan, banco, rango, categoriasAbiertas) {
-    categoriasAbiertas = categoriasAbiertas || {};
-    rango = rango === 'hoy' ? 'hoy' : '7d';
-    if (!plan) {
-      return '<div class="rc-cabecera"><h1 class="rc-titulo">Compra</h1></div>' +
-        '<div class="vista-body rc-body"><p class="card-msg">Todavía no hay semana generada.</p></div>';
-    }
-    // Pasadas las 16h, "Compra hoy" ya no necesita ingredientes de comida (Roger 2026-07-22) —
-    // mismo umbral que comidaProximaPorHora (app.js) y saludoHora (arriba), real reloj del navegador.
-    var soloCena = rango === 'hoy' && new Date().getHours() >= 16;
-    var todosLosItems = listaCompraActiva(estado, plan, rango === 'hoy' ? 'hoy' : 'semana', banco, soloCena);
-    // Despensa real (Roger 2026-07-23): categoria==='despensa' son los staples + ingrediente
-    // base (aceite, sal, mayonesa, cebolla, leche...) — gramos siempre null, "¿lo tengo en
-    // casa?", NO cantidad real a comprar. Fuera del contador de pendientes y de los grupos de
-    // arriba; van en su propia sección desplegable al final (no son lo mismo que lentejas/
-    // arroz/patata sueltos, que SÍ son compra real aunque compartieran nombre de grupo antes).
-    var itemsDespensa = todosLosItems.filter(function (i) { return i.categoria === 'despensa'; });
-    var items = todosLosItems.filter(function (i) { return i.categoria !== 'despensa'; });
-    var marcadosN = items.filter(function (i) { return i.marcado; }).length;
-    var pct = items.length ? Math.round(marcadosN / items.length * 100) : 0;
-
-    var porGrupo = {};
-    items.forEach(function (item) {
-      var g = GRUPO_COMPRA[item.categoria] || 'otros';
-      if (!porGrupo[g]) porGrupo[g] = [];
-      porGrupo[g].push(item);
-    });
-
-    // categoría completa = colapsa a una línea (progreso visible sin barra de progreso,
-    // Roger 2026-07-26) — pero SIEMPRE reabrible, un check puede haber sido un error y
-    // sin forma de reabrir ese ingrediente queda inalcanzable. No persistido (mismo
-    // criterio que rangoCompra/filtroRecetas): al recargar vuelve a estar plegada, que
-    // es lo correcto porque el estado real es "completa".
-    var gruposHtml = ORDEN_GRUPO_COMPRA.filter(function (g) { return porGrupo[g] && porGrupo[g].length; }).map(function (g) {
-      var info = GRUPOS_COMPRA_INFO[g];
-      var lista = porGrupo[g];
-      var completo = lista.every(function (i) { return i.marcado; });
-      var abierto = !completo || !!categoriasAbiertas[g];
-      var cabecera = completo
-        ? '<button type="button" class="cp-grupo-titulo cp-grupo-completo" data-action="toggle-categoria-compra" data-grupo="' + g + '" aria-expanded="' + abierto + '">' +
-          '<i data-lucide="' + info.icono + '"></i>' + info.nombre +
-          '<span class="cp-grupo-estado">' + t('completo') + '<i data-lucide="chevron-' + (abierto ? 'up' : 'down') + '"></i></span>' +
-          '</button>'
-        : '<p class="cp-grupo-titulo"><i data-lucide="' + info.icono + '"></i>' + info.nombre + '</p>';
-      return '<div class="cp-grupo' + (completo ? ' cp-grupo-completo-wrap' : '') + '">' + cabecera +
-        (abierto ? '<div class="cp-lista"><ul class="lista-check">' + lista.map(filaCompraHtml).join('') + '</ul></div>' : '') +
-        '</div>';
-    }).join('');
-
-    var despensaHtml = itemsDespensa.length ? '<details class="cp-despensa">' +
-      '<summary>Revisa si te falta algo de despensa</summary>' +
-      '<div class="cp-lista"><ul class="lista-check">' + itemsDespensa.map(filaCompraHtml).join('') + '</ul></div>' +
-      '</details>' : '';
-
-    return '<div class="rc-cabecera">' +
-      '<div><h1 class="rc-titulo">Compra</h1><p class="cp-resumen">' + marcadosN + ' de ' + items.length + ' en el carro</p></div>' +
-      '<div class="cp-cabecera-derecha">' +
-      (marcadosN > 0 ? '<button type="button" class="cp-vaciar" data-action="vaciar-compra" aria-label="Desmarcar todo"><i data-lucide="rotate-ccw"></i></button>' : '') +
-      '<div class="cp-anillo" style="background:conic-gradient(var(--gold) ' + (pct * 3.6) + 'deg, var(--elev2) 0)"><span>' + pct + '%</span></div>' +
-      '</div></div>' +
-      '<div class="vista-body rc-body">' +
-      '<div class="cp-seg">' +
-      '<button type="button" class="cp-seg-btn' + (rango === 'hoy' ? ' cp-seg-btn-activo' : '') + '" data-action="segmento-compra" data-rango="hoy" aria-pressed="' + (rango === 'hoy') + '">Hoy</button>' +
-      '<button type="button" class="cp-seg-btn' + (rango === '7d' ? ' cp-seg-btn-activo' : '') + '" data-action="segmento-compra" data-rango="7d" aria-pressed="' + (rango === '7d') + '">' + t('proximos_7_dias') + '</button>' +
-      '</div>' +
-      (items.length ? gruposHtml : '<p class="card-msg">Nada pendiente de comprar.</p>') +
-      despensaHtml +
-      '</div>';
+    return '<div class="rc-cabecera"><div><h1 class="rc-titulo">Compra</h1></div></div>' +
+      '<div class="vista-body rc-body">' + pendienteV6(t('v6_pend_compra'), t('v6_pendiente_sub')) + '</div>';
   }
 
   // ---------------------------------------------------------------
-  // Sheet: cambiar plato (elegir otro / nevera) — lenguaje visual v3
-  // (Roger 2026-07-19/20, handoff e3Foods.dc.html ~L541-554, tarea #18)
+  // CAMBIAR EL PLATO · §15.3 · NEVERA · §15.6 — bloque 3
   // ---------------------------------------------------------------
-  // 3 opciones (borrador §6, última hora): (a) otro menú completo — el motor
-  // reensambla directo, sin lista de 40 platos que navegar a mano (antes
-  // "elegir otro" abría el recetario entero; el ensamblador ya rankea, así
-  // que un solo botón que reensambla es MENOS mandos, no más); (b) nevera —
-  // ahora con hasta 3 opciones nativas; (c) solo el acompañamiento — mantiene
-  // el principal, cambia hidrato/verdura.
+  // `cambiarPlato(semana, slot, peticion, diario, datos, config)` re-resuelve SOLO ese slot
+  // (T2 sobre el esqueleto vigente + exclusión del plato actual, T3 re-fracciona, T4 re-audita
+  // la semana ENTERA) y devuelve `{semana, desvios[]}` — aviso, JAMÁS bloqueo. `opcionesNevera`
+  // ya no monta menús: los PROPONE, y elegir uno pasa por `cambiarPlato {modo:'asignar'}`, una
+  // sola puerta. Las tres opciones se quedan A LA VISTA, marcadas, para no perderlas de vista.
+  function filaCambioPendiente(icono, claseIcono, titulo) {
+    return '<div class="sheet-fila-opcion sheet-fila-opcion-pendiente" aria-disabled="true">' +
+      '<span class="sheet-fila-opcion-icono ' + claseIcono + '"><i data-lucide="' + icono + '"></i></span>' +
+      '<span class="sheet-fila-opcion-texto"><span class="sheet-fila-opcion-titulo">' + escapeHtml(titulo) + '</span>' +
+      '<span class="sheet-fila-opcion-sub">' + escapeHtml(t('v6_pendiente_badge')) + '</span></span>' +
+      '</div>';
+  }
+
   function renderSheetCambiarInicio(estado, banco, dia, tipoComida) {
     return sheetHead('Cambiar ' + (tipoComida === 'comida' ? 'comida' : 'cena')) +
       '<div class="sheet-body">' +
-      '<p class="card-msg">' + t('que_cambiamos') + '</p>' +
-      '<button type="button" class="sheet-fila-opcion" data-action="modo-otro-menu" data-dia="' + dia + '" data-tipo="' + tipoComida + '">' +
-      '<span class="sheet-fila-opcion-icono sheet-fila-opcion-icono-gold"><i data-lucide="shuffle"></i></span>' +
-      '<span class="sheet-fila-opcion-texto"><span class="sheet-fila-opcion-titulo">' + t('otro_menu') + '</span><span class="sheet-fila-opcion-sub">' + t('un_menu_completo_distinto') + '</span></span>' +
-      '<i data-lucide="chevron-right" class="sheet-fila-opcion-chevron"></i>' +
-      '</button>' +
-      '<button type="button" class="sheet-fila-opcion" data-action="modo-nevera" data-dia="' + dia + '" data-tipo="' + tipoComida + '">' +
-      '<span class="sheet-fila-opcion-icono sheet-fila-opcion-icono-azul"><i data-lucide="refrigerator"></i></span>' +
-      '<span class="sheet-fila-opcion-texto"><span class="sheet-fila-opcion-titulo">' + t('con_lo_que_hay_en_la_nevera') + '</span><span class="sheet-fila-opcion-sub">Recetas con lo de tu nevera</span></span>' +
-      '<i data-lucide="chevron-right" class="sheet-fila-opcion-chevron"></i>' +
-      '</button>' +
-      '<button type="button" class="sheet-fila-opcion" data-action="modo-solo-complementaria" data-dia="' + dia + '" data-tipo="' + tipoComida + '">' +
-      '<span class="sheet-fila-opcion-icono sheet-fila-opcion-icono-gold"><i data-lucide="salad"></i></span>' +
-      '<span class="sheet-fila-opcion-texto"><span class="sheet-fila-opcion-titulo">' + t('cambiar_solo_el_acompanamiento') + '</span><span class="sheet-fila-opcion-sub">' + t('mismo_plato_principal_otra_guarnicion') + '</span></span>' +
-      '<i data-lucide="chevron-right" class="sheet-fila-opcion-chevron"></i>' +
-      '</button>' +
+      pendienteV6(t('v6_pend_cambiar'), t('v6_pendiente_sub')) +
+      filaCambioPendiente('shuffle', 'sheet-fila-opcion-icono-gold', t('otro_menu')) +
+      filaCambioPendiente('refrigerator', 'sheet-fila-opcion-icono-azul', t('con_lo_que_hay_en_la_nevera')) +
+      filaCambioPendiente('salad', 'sheet-fila-opcion-icono-gold', t('cambiar_solo_el_acompanamiento')) +
       '</div>';
   }
 
   function renderNevera(estado, banco, dia, tipoComida) {
-    // v5 (flag dev): el checklist son los alimentos que de verdad deciden si un plato v5 se
-    // monta; sin flag, los ingredientes del banco v3 como siempre.
-    var listaIngredientes = window.E3MotorV5
-      ? window.E3MotorV5.alimentosNevera()
-      : idsIngredientesOrdenados(banco).map(function (id) { return { id: id, nombre: banco.ingredientes[id].nombre }; });
-    var filas = listaIngredientes.map(function (ing) {
-      return '<li data-buscar="' + escapeHtml(normalizarTexto(ing.nombre)) + '"><label class="fila-nevera"><input type="checkbox" value="' + ing.id + '" data-nombre="' + escapeHtml(ing.nombre) + '"> ' + escapeHtml(ing.nombre) + '</label></li>';
-    }).join('');
-    var micHtml = TIENE_VOZ
-      ? '<button type="button" class="btn-filtro-icono btn-mic" data-action="nevera-voz" aria-label="Buscar por voz"><i data-lucide="mic"></i></button>'
-      : '';
     return sheetHead(t('con_lo_que_hay_en_la_nevera')) +
-      '<div class="sheet-body">' +
-      '<p class="card-msg">' + t('marca_lo_que_tienes_en_casa_y_buscamos_un') + '</p>' +
-      '<div class="nevera-top">' +
-      '<div class="nevera-buscador-fila">' +
-      '<label class="rc-buscador"><i data-lucide="search"></i>' +
-      '<input type="search" id="nevera-buscador" placeholder="' + t('buscar_ingrediente') + '" autocomplete="off"></label>' +
-      micHtml +
-      '</div>' +
-      '<div class="nevera-seleccion" id="nevera-seleccion" hidden></div>' +
-      '<button type="button" class="btn-cta-gradiente" id="nevera-confirmar" data-action="confirmar-nevera" data-dia="' + dia + '" data-tipo="' + tipoComida + '">' + t('buscar_plato') + '</button>' +
-      '</div>' +
-      '<ul class="lista-nevera" id="lista-nevera-checks">' + filas + '</ul>' +
-      '</div>';
-  }
-
-  // Resultado del modo nevera — HASTA 3 opciones nativas (borrador §6, última
-  // hora: "la nevera enseña, no decide"). Cada opción es un menú completo ya
-  // resuelto; si le falta exactamente 1 ingrediente de los marcados como
-  // disponibles, aviso + CTA para añadirlo a la compra en vez de descartarla.
-  function renderOpcionesNevera(banco, opciones, dia, tipoComida) {
-    if (!opciones || !opciones.length) {
-      return sheetHead(t('con_lo_que_hay_en_la_nevera')) +
-        '<div class="sheet-body"><p class="card-msg">No encontramos ningún menú que se pueda montar con eso — prueba a marcar algún ingrediente más.</p></div>';
-    }
-    var filas = opciones.map(function (m, i) {
-      var subtitulo = (m.complementariasResueltas || []).map(function (c) { return c.nombre; }).join(' · ');
-      var nombreFalta = m.faltaIngredienteNombre ||
-        (m.faltaIngrediente && banco.ingredientes[m.faltaIngrediente] ? banco.ingredientes[m.faltaIngrediente].nombre : m.faltaIngrediente);
-      var avisoHtml = m.faltaIngrediente
-        ? '<p class="fila-opcion-nevera-aviso"><i data-lucide="alert-circle"></i>Te falta ' + escapeHtml(nombreFalta) + ' — <button type="button" class="ingrediente-link" data-action="nevera-anadir-compra" data-id="' + m.faltaIngrediente + '">¿lo añado a la compra?</button></p>'
-        : '';
-      return '<li><button type="button" class="fila-opcion-nevera" data-action="elegir-opcion-nevera" data-idx="' + i + '" data-dia="' + dia + '" data-tipo="' + tipoComida + '">' +
-        '<span class="fila-opcion-nevera-nombre">' + escapeHtml(m.nombre) + '</span>' +
-        (subtitulo ? '<span class="fila-opcion-nevera-sub">' + escapeHtml(subtitulo) + '</span>' : '') +
-        '</button>' + avisoHtml + '</li>';
-    }).join('');
-    return sheetHead('Elige un menú') +
-      '<div class="sheet-body"><ul class="lista-opciones-nevera">' + filas + '</ul></div>';
-  }
-
-  function renderConfirmarRegenerar(nombrePlato) {
-    return sheetHead('Cambiado', true) +
-      '<div class="sheet-body">' +
-      '<p class="card-msg">Nuevo plato: <strong>' + escapeHtml(nombrePlato) + '</strong>.</p>' +
-      '<p class="card-msg">¿Regenero los días siguientes para que el resto de la semana se reajuste?</p>' +
-      '<div class="fila-botones">' +
-      '<button type="button" class="btn-secondary" data-action="regenerar-no">No, dejarlo así</button>' +
-      '<button type="button" class="btn-primary" data-action="regenerar-si">Sí, regenerar</button>' +
-      '</div></div>';
+      '<div class="sheet-body">' + pendienteV6(t('v6_pend_nevera'), t('v6_pendiente_sub')) + '</div>';
   }
 
   // ---------------------------------------------------------------
@@ -1685,11 +1512,12 @@
         // handoff el día que dietas.js entre en el motor.
         '<p class="onb-sub">' + escapeHtml(t('onb_no_comer_sub')) + '</p>' +
         listaAlergias(draft.alergias, true) +
-        '<div class="onb-aviso-rojo">' +
-          '<span class="onb-aviso-rojo-ico"><i data-lucide="alert-triangle"></i></span>' +
-          '<div><p class="onb-aviso-rojo-tit">' + escapeHtml(t('onb_etiquetas_tit')) + '</p>' +
-          '<p class="onb-aviso-rojo-txt">' + escapeHtml(t('onb_etiquetas_txt')) + '</p></div>' +
-        '</div>' +
+        // La tarjeta con título + texto se consolidó en una línea al pie (handoff 5):
+        // con 7 filas ya no cabía sin scroll — misma info, un tercio del alto.
+        '<p class="onb-aviso-rojo">' +
+          '<i data-lucide="alert-triangle" class="onb-aviso-rojo-ico"></i>' +
+          '<span class="onb-aviso-rojo-txt">' + escapeHtml(t('onb_etiquetas_linea')) + '</span>' +
+        '</p>' +
         '<button type="button" class="onb-btn-linea" data-action="persona-sin-alergias">' + escapeHtml(t('onb_sin_alergias')) + '</button>';
     }
     if (paso === 4) {
@@ -1805,11 +1633,11 @@
   // es su sitio semántico, para que el rediseño no deje a una familia con
   // alergia real sin la herramienta que sí funciona. Cuando dietas.js entre en
   // el motor, este grid es lo primero que puede desaparecer.
-  // Rejilla sobre banco v5 (obra de encendido, 31-jul): con el motor v5 cargado la ficha
-  // lista E3_BANCO_V5.alimentos agrupados por `naturaleza` — los vetos que escribe son ids
-  // v5 y el motor ya los aplica como veto duro (dietas.vetado, fix P0-1). El handler
-  // (toggle-veto) es el mismo: solo cambia el catálogo listado. Sin flag, la rejilla v3.
-  var ORDEN_NATURALEZA_V5 = ['vegetal', 'carne', 'pescado', 'marisco', 'huevo', 'lacteo', 'cereal', 'grasa', 'condimento'];
+  // Rejilla sobre el banco V6: `alimentos` agrupados por `naturaleza`. Los ids que escribe son
+  // ids reales del banco y el contrato de familia los pasa tal cual como veto duro; un id que
+  // no case es AVISO, no error (`contrato_familia.js`: un gusto que no casa es una preferencia
+  // que no se aplica; una alergia que no casa es un niño comiendo su alérgeno).
+  var ORDEN_NATURALEZA = ['vegetal', 'carne', 'pescado', 'marisco', 'huevo', 'lacteo', 'cereal', 'grasa', 'condimento'];
   function chipVeto(miembroId, id, nombre, marcado) {
     // el estado visual del chip marcado lo lleva .veto-chip:has(input:checked) en CSS
     return '<label class="veto-chip">' +
@@ -1819,21 +1647,13 @@
 
   function renderVetos(miembro, banco) {
     var vetos = miembro.vetos || [];
-    if (window.E3_BANCO_V5) {
-      var porNat = {};
-      window.E3_BANCO_V5.alimentos.forEach(function (a) {
-        (porNat[a.naturaleza] = porNat[a.naturaleza] || []).push(a);
-      });
-      return ORDEN_NATURALEZA_V5.filter(function (n) { return porNat[n]; }).map(function (n) {
-        var chips = porNat[n].slice().sort(function (a, b) { return a.nombre.localeCompare(b.nombre); })
-          .map(function (a) { return chipVeto(miembro.id, a.id, a.nombre, vetos.indexOf(a.id) !== -1); }).join('');
-        return '<p class="onb-eyebrow onb-eyebrow-grupo">' + escapeHtml(t('nat_' + n)) + '</p>' +
-          '<div class="vetos-grid">' + chips + '</div>';
-      }).join('');
-    }
-    return '<div class="vetos-grid">' + idsIngredientesOrdenados(banco).map(function (id) {
-      return chipVeto(miembro.id, id, banco.ingredientes[id].nombre, vetos.indexOf(id) !== -1);
-    }).join('') + '</div>';
+    var porNat = {};
+    alimentosOrdenados(banco).forEach(function (a) { (porNat[a.naturaleza] = porNat[a.naturaleza] || []).push(a); });
+    return ORDEN_NATURALEZA.filter(function (n) { return porNat[n]; }).map(function (n) {
+      var chips = porNat[n].map(function (a) { return chipVeto(miembro.id, a.id, a.nombre, vetos.indexOf(a.id) !== -1); }).join('');
+      return '<p class="onb-eyebrow onb-eyebrow-grupo">' + escapeHtml(t('nat_' + n)) + '</p>' +
+        '<div class="vetos-grid">' + chips + '</div>';
+    }).join('');
   }
 
   // Selector de idioma (handoff backlog-v3 #19, 2026-07-28): dos puntos de entrada,
@@ -1986,6 +1806,33 @@
   // (arriba izquierda, donde se toca) — no el sheet grande de abajo. Reservado
   // para listas cortas de acciones; el sheet de abajo sigue siendo para
   // pantallas con contenido real (Familia, nevera, receta...).
+  // ── VERSIÓN DEL PRODUCTO · fuente única. Dictado de Roger (3-ago): la versión y su fecha
+  //    SIEMPRE visibles en Acerca de, y cada deploy suma un patch (6.0.0 → 6.0.1 → 6.0.2…).
+  //    Se sube A MANO en el mismo commit que despliega: si se automatizara con la fecha del
+  //    build, dejaría de decir «qué versión estoy usando» y pasaría a decir «cuándo se compiló».
+  var VERSION_APP = '6.0.0';
+  var VERSION_FECHA = '03/08/2026';
+
+  function renderAcercaDe() {
+    return '<section class="pantalla pantalla-acerca">' +
+      '<header class="cab-simple"><button type="button" class="btn-volver" data-action="volver-semana" aria-label="' + t('volver') + '"><i data-lucide="chevron-left"></i></button>' +
+      '<h1>' + t('acerca_titulo') + '</h1></header>' +
+      // el <img> de aquí apuntaba a assets/logo-e3foods.png, que NO existe (404 en cada apertura
+      // de esta pantalla desde que se creó el 3-ago). El logotipo ya vive como texto en la
+      // app-bar, con su tipografía de marca: se reutiliza en vez de pedir un fichero que no hay.
+      '<div class="acerca-marca"><p class="app-bar-logo acerca-logo">' +
+        '<span class="app-bar-logo-e3">e3</span><span class="app-bar-logo-foods">foods</span></p></div>' +
+      '<p class="acerca-claim">' + t('acerca_claim') + '</p>' +
+      '<dl class="acerca-datos">' +
+        '<div><dt>' + t('acerca_version') + '</dt><dd class="acerca-version">v' + VERSION_APP + '</dd></div>' +
+        '<div><dt>' + t('acerca_fecha') + '</dt><dd>' + VERSION_FECHA + '</dd></div>' +
+        '<div><dt>' + t('acerca_motor') + '</dt><dd>' + (window.E3MotorV6 ? 'V6 · ' + window.E3MotorV6.VERSION : 'v5') + '</dd></div>' +
+        '<div><dt>' + t('acerca_banco') + '</dt><dd>' + ((window.E3_BANCO_V6 && window.E3_BANCO_V6.elaboraciones) ? window.E3_BANCO_V6.elaboraciones.length + ' ' + t('acerca_platos') : '—') + '</dd></div>' +
+      '</dl>' +
+      '<p class="acerca-pie">' + t('acerca_pie') + '</p>' +
+      '</section>';
+  }
+
   function renderMenuHamburguesa(conCuenta) {
     // «Regenerar menús» muere bajo v5 (dictado Roger 31-jul, obra de encendido): su única
     // función real —aplicar cambios de estado— es ahora automática (miembros/elecciones
@@ -1996,42 +1843,86 @@
       '<button type="button" class="menu-dropdown-item" role="menuitem" data-action="menu-sync"><i data-lucide="refresh-cw"></i>' + t('sincronizar_familia') + '</button>' +
       (conCuenta ? '<button type="button" class="menu-dropdown-item" role="menuitem" data-action="menu-cuenta"><i data-lucide="user-round"></i>' + t('cta_cuenta') + '</button>' : '') +
       '<div class="menu-dropdown-sep" role="separator"></div>' +
-      (window.E3MotorV5 ? '' : '<button type="button" class="menu-dropdown-item" role="menuitem" data-action="menu-regenerar-semana"><i data-lucide="sparkles"></i>Regenerar menús</button>') +
       '<button type="button" class="menu-dropdown-item" role="menuitem" data-action="menu-importar-cole"><i data-lucide="paperclip"></i>Importar menú del cole</button>' +
       '<div class="menu-dropdown-sep" role="separator"></div>' +
-      '<button type="button" class="menu-dropdown-item" role="menuitem" data-action="menu-ir-idioma"><i data-lucide="languages"></i>' + t('idioma_titulo') + '</button>';
+      '<button type="button" class="menu-dropdown-item" role="menuitem" data-action="menu-ir-idioma"><i data-lucide="languages"></i>' + t('idioma_titulo') + '</button>' +
+      '<button type="button" class="menu-dropdown-item" role="menuitem" data-action="menu-acerca-de"><i data-lucide="info"></i>' + t('acerca_titulo') + '</button>';
   }
 
   // ---------------------------------------------------------------
-  // CUENTAS (obra auth+push, AUTH_PUSH_SPEC §1-§3 — ejecutada 31-jul). Una sola pantalla
-  // de acceso, no un árbol (máx. 1 decisión por pantalla): Google + email/contraseña con
-  // toggle Entrar/Crear. Los errores SIEMPRE genéricos (anti-enumeración §7.1). El "mira
-  // un ejemplo" sigue sin cuenta (dictado §12.2).
+  // CUENTAS (obra auth+push, AUTH_PUSH_SPEC §1-§3 — ejecutada 31-jul; separada en dos
+  // pantallas en el handoff 6, 2026-08-03: Onboarding.dc.html trae "Entrar / Crear"
+  // (elegir vía) y "Email y contraseña" como pasos independientes, no una sola pantalla
+  // combinada — máx. 1 decisión por pantalla. Los errores SIEMPRE genéricos
+  // (anti-enumeración §7.1). El "mira un ejemplo" sigue sin cuenta (dictado §12.2).
+  //
+  // La casilla de política (AUTH_PUSH_SPEC §1.5: obligatoria al crear cuenta, CUALQUIER
+  // proveedor) no está en el mock de la pantalla 1 — el mock la deja solo en la de email
+  // ("Prototipo: cualquier vía entra. La validación real vive en el repo."). Como Google
+  // se dispara DESDE la pantalla 1 y no hay pantalla intermedia para esa vía, la casilla
+  // se repite aquí en modo crear: mismo id `ac-politica`, nunca las dos pantallas a la vez
+  // en el DOM, así que 'acceso-google' (que la busca por id) sigue funcionando sin tocarlo.
   // ---------------------------------------------------------------
-  function renderAcceso(modo, error, aviso) {
-    var esCrear = modo === 'crear';
-    return '<div class="onb-scroll"><div class="onb-cuerpo" style="max-width:420px;margin:0 auto;padding-top:48px">' +
+  function politicaCheckbox() {
+    return '<label class="veto-chip" style="display:flex;gap:8px;align-items:flex-start;margin-top:14px"><input type="checkbox" id="ac-politica" style="margin-top:3px">' +
+      '<span>' + t('ac_politica_acepto') + ' · <a href="privacy.html" target="_blank" rel="noopener" class="ingrediente-link">' + t('politica_enlace') + '</a></span></label>';
+  }
+
+  // cabecera compartida: círculo "atrás" + título centrado (mismo .onb-atras que la
+  // cabecera del asistente de persona, sin la barra de avance — aquí no hay pasos).
+  function cabeceraAcceso(accionAtras, dataModo, titulo) {
+    return '<div class="onb-cab-fila" style="padding-top:6px">' +
+      '<button type="button" class="onb-atras" data-action="' + accionAtras + '"' + (dataModo ? ' data-modo="' + dataModo + '"' : '') +
+      ' aria-label="' + escapeHtml(t('onb_volver')) + '"><i data-lucide="arrow-left"></i></button>' +
+      '<span style="flex:1;text-align:center;margin-right:45px;font-size:15px;font-weight:800;color:var(--ink)">' + escapeHtml(titulo) + '</span>' +
+      '</div>';
+  }
+
+  // ===== Pantalla 1 · elegir vía (email / Google / Apple) =====
+  function renderAccesoElegir(pantalla, error, aviso) {
+    var esCrear = pantalla === 'crear';
+    var titulo = t(esCrear ? 'ac_crear_cuenta' : 'ac_entrar');
+    return '<div class="onb-scroll"><div class="onb-cuerpo" style="max-width:420px;margin:0 auto">' +
+      cabeceraAcceso('acceso-portada', null, titulo) +
+      '<div style="display:flex;flex-direction:column;align-items:center;text-align:center;padding:30px 8px 6px">' +
       '<p class="onb-eyebrow">e3foods</p>' +
-      '<h1 class="onb-h2" style="margin-bottom:6px">' + t(esCrear ? 'ac_crear_cuenta' : 'ac_entrar') + '</h1>' +
-      '<p class="onb-sub">' + t('claim_menus') + '</p>' +
-      '<button type="button" class="onb-cta onb-cta-midnight" data-action="acceso-google" style="margin:14px 0"><i data-lucide="chrome"></i>' + t('ac_continuar_google') + '</button>' +
-      '<p class="onb-eyebrow onb-eyebrow-grupo" style="text-align:center">' + t('ac_o_con_email') + '</p>' +
+      '<p class="onb-sub" style="margin-top:10px">' + t('claim_menus') + '</p>' +
+      '</div>' +
+      '<button type="button" class="onb-cta onb-cta-oro" data-action="acceso-ir-mail" data-modo="' + (esCrear ? 'crear' : 'entrar') + '" style="margin-top:6px"><i data-lucide="mail"></i>' + t(esCrear ? 'ac_crear_con_email' : 'ac_entrar_con_email') + '</button>' +
+      // Marcas reales (handoff 5, §3): antes un icono lucide genérico ("chrome") sin
+      // relación con la marca real de Google. Apple se añade deshabilitado con su
+      // marca real + "pronto" — la vía existe visualmente, no funcionalmente todavía
+      // (no hay proveedor Apple dado de alta en Firebase Auth).
+      '<button type="button" class="onb-cta onb-cta-midnight" data-action="acceso-google">' + ICONO_GOOGLE + t('ac_continuar_google') + '</button>' +
+      '<button type="button" class="onb-cta onb-cta-apple" disabled aria-disabled="true">' + ICONO_APPLE + t('ac_continuar_apple') + '</button>' +
+      '<p class="onb-apple-pronto">' + t('ac_apple_pronto') + '</p>' +
+      (esCrear ? politicaCheckbox() : '') +
+      (error ? '<p class="card-msg" style="color:var(--danger);margin-top:10px">' + escapeHtml(error) + '</p>' : '') +
+      (aviso ? '<p class="card-msg" style="margin-top:10px">' + escapeHtml(aviso) + '</p>' : '') +
+      '<button type="button" class="onb-enlace onb-enlace-pie" data-action="acceso-toggle" data-modo="' + (esCrear ? 'entrar' : 'crear') + '">' + t(esCrear ? 'ac_ya_tienes' : 'ac_no_tienes') + '</button>' +
+      '<button type="button" class="onb-enlace onb-enlace-pie" data-action="ver-demo">' + t('onb_ejemplo') + '</button>' +
+      '</div></div>';
+  }
+
+  // ===== Pantalla 2 · email y contraseña =====
+  function renderAccesoMail(pantalla, error, aviso) {
+    var esCrear = pantalla === 'crear-mail';
+    var titulo = t(esCrear ? 'ac_crear_cuenta' : 'ac_entrar');
+    return '<div class="onb-scroll"><div class="onb-cuerpo" style="max-width:420px;margin:0 auto">' +
+      cabeceraAcceso('acceso-volver-elegir', esCrear ? 'crear' : 'entrar', titulo) +
+      '<div style="padding-top:22px">' +
       '<label class="per-campo"><span class="onb-eyebrow">' + t('ac_email') + '</span>' +
         '<input type="email" class="per-input" id="ac-email" autocomplete="email" inputmode="email"></label>' +
       '<label class="per-campo" style="margin-top:10px"><span class="onb-eyebrow">' + t('ac_password') + '</span>' +
         '<input type="password" class="per-input" id="ac-pass" autocomplete="' + (esCrear ? 'new-password' : 'current-password') + '"></label>' +
       (esCrear ? '<p class="per-nota">' + t('pass_min') + '</p>' : '') +
-      (esCrear
-        ? '<label class="veto-chip" style="display:flex;gap:8px;align-items:flex-start;margin-top:12px"><input type="checkbox" id="ac-politica" style="margin-top:3px">' +
-          '<span>' + t('ac_politica_acepto') + ' · <a href="privacy.html" target="_blank" rel="noopener" class="ingrediente-link">' + t('politica_enlace') + '</a></span></label>'
-        : '') +
+      (esCrear ? politicaCheckbox() : '') +
       (error ? '<p class="card-msg" style="color:var(--danger);margin-top:10px">' + escapeHtml(error) + '</p>' : '') +
       (aviso ? '<p class="card-msg" style="margin-top:10px">' + escapeHtml(aviso) + '</p>' : '') +
-      '<button type="button" class="onb-cta onb-cta-oro" data-action="acceso-enviar" data-modo="' + (esCrear ? 'crear' : 'entrar') + '" style="margin-top:14px">' + t(esCrear ? 'ac_crear_cuenta' : 'ac_entrar') + '<i data-lucide="arrow-right"></i></button>' +
-      '<button type="button" class="onb-enlace onb-enlace-pie" data-action="acceso-toggle" data-modo="' + (esCrear ? 'entrar' : 'crear') + '">' + t(esCrear ? 'ac_ya_tienes' : 'ac_no_tienes') + '</button>' +
+      '<button type="button" class="onb-cta onb-cta-oro" data-action="acceso-enviar" data-modo="' + (esCrear ? 'crear' : 'entrar') + '" style="margin-top:14px">' + titulo + '<i data-lucide="arrow-right"></i></button>' +
+      '<button type="button" class="onb-enlace onb-enlace-pie" data-action="acceso-toggle" data-modo="' + (esCrear ? 'entrar-mail' : 'crear-mail') + '">' + t(esCrear ? 'ac_ya_tienes' : 'ac_no_tienes') + '</button>' +
       (esCrear ? '' : '<button type="button" class="onb-enlace onb-enlace-pie" data-action="acceso-olvide">' + t('ac_olvide') + '</button>') +
-      '<button type="button" class="onb-enlace onb-enlace-pie" data-action="ver-demo">' + t('onb_ejemplo') + '</button>' +
-      '</div></div>';
+      '</div></div></div>';
   }
 
   function renderRevisaCorreo(email, aviso) {
@@ -2228,54 +2119,17 @@
       '</div>';
   }
 
-  // Descubrir — 3 fichas de categorías REALES rotando a diario (Roger
-  // 2026-07-20: sustituye el placeholder de mentira de la sesión anterior).
-  // `E.categoriasDescubrir` hace todo el trabajo de datos (filtros sobre el
-  // banco real, rotación determinista por día) — aquí solo se renderiza.
-  // Cada ficha abre su lista de recetas (Roger 2026-07-20: tocaba la ficha y
-  // no pasaba nada — las candidatas ya las calculaba el motor, solo faltaba
-  // exponerlas y pintarlas en un sheet).
+  // ---------------------------------------------------------------
+  // DESCUBRIR · §15.5 (bloque 3)
+  // ---------------------------------------------------------------
+  // `categoriasDescubrir(fechaISO, ocultas)` conserva la mecánica (temporada primero, pinned,
+  // rotación determinista por día, sin RNG) pero SOBRE EL CATÁLOGO DEL HOGAR — que es
+  // `catalogoRecetas()`, bloque 3. Sin él, las fichas propondrían platos que esta casa no puede
+  // comer. Se queda visible y marcado.
   function renderDescubrirVista(estado, banco) {
-    // la fecha del render viaja en data-fecha (audit 2026-07-20): el handler
-    // reabre la MISMA rotación aunque la medianoche cruce entre pintar y tocar.
-    // d.foto puede ser null (categoría sin ninguna candidata con foto) — la
-    // ficha tiene altura fija y el degradado + texto siguen legibles sin <img>.
-    // v5 (obra de encendido, 31-jul): categorías derivadas de campos reales del banco v5
-    // (estilo de servicio, esfuerzo, temporada, región) — nunca contenido inventado.
-    var fecha = hoyISO();
-    var categorias = window.E3MotorV5
-      ? window.E3MotorV5.categoriasDescubrir(fecha, estado.ocultas || [])
-      : E.categoriasDescubrir(banco, estado, fecha);
-    var fichasHtml = categorias.map(function (d, idx) {
-      return '<button type="button" class="desc-ficha" data-action="descubrir-abrir-categoria" data-idx="' + idx + '" data-fecha="' + fecha + '">' +
-        (d.foto ? '<img src="' + escapeHtml(d.foto) + '" alt="" loading="lazy" decoding="async">' : '') +
-        '<div class="desc-ficha-degradado"></div>' +
-        '<div class="desc-ficha-texto">' +
-        '<span class="desc-kicker">' + escapeHtml(d.kicker) + '</span>' +
-        '<div class="desc-titulo">' + escapeHtml(d.titulo) + '</div>' +
-        '</div></button>';
-    }).join('');
-    return '<div class="rc-cabecera"><div><h1 class="rc-titulo">' + t('descubrir') + '</h1><p class="cp-resumen">' + t('ideas_nuevas_para_tu_familia') + '</p></div></div>' +
-      '<div class="vista-body rc-body"><div class="desc-lista">' +
-      (fichasHtml || '<p class="card-msg">Muy pronto: ideas nuevas para tu familia.</p>') +
-      '</div></div>';
-  }
-
-  // Descubrir → detalle de categoría: mismas tarjetas que la pestaña Recetas
-  // (Roger 2026-07-20: "quiero pagina de recetas como la generica") — reutiliza
-  // tarjetaRecetaGrid tal cual (foto, badge de esfuerzo, favorita/ocultar) en
-  // vez de inventar una fila propia. Sin chips ni buscador: la categoría ya
-  // viene filtrada por el motor, no hace falta volver a filtrar 7 platos.
-  // Corazón/ojo tocan el mismo estado.favoritas/ocultas que Recetas — apto
-  // porque es la MISMA plantilla, no una copia con su propio estado.
-  function renderSheetDescubrirCategoria(categoria, estado, banco) {
-    var ocultas = estado.ocultas || [];
-    var favoritas = estado.favoritas || [];
-    var tarjetasHtml = categoria.candidatas.map(function (p) {
-      return tarjetaRecetaGrid(p, banco, ocultas.indexOf(p.id) !== -1, favoritas.indexOf(p.id) !== -1);
-    }).join('');
-    return sheetHead(categoria.titulo) +
-      '<div class="sheet-body"><div class="rc-grid">' + tarjetasHtml + '</div></div>';
+    return '<div class="rc-cabecera"><div><h1 class="rc-titulo">' + t('descubrir') + '</h1>' +
+      '<p class="cp-resumen">' + t('ideas_nuevas_para_tu_familia') + '</p></div></div>' +
+      '<div class="vista-body rc-body">' + pendienteV6(t('v6_pend_descubrir'), t('v6_pendiente_sub')) + '</div>';
   }
 
   // Familia — lista de miembros (Roger 2026-07-19, handoff): tarjeta por
@@ -2322,7 +2176,6 @@
     avisoReinicioHtml: avisoReinicioHtml,
     renderHome: renderHome,
     renderDescubrirVista: renderDescubrirVista,
-    renderSheetDescubrirCategoria: renderSheetDescubrirCategoria,
     renderPerfilVista: renderPerfilVista,
     renderRecetasVista: renderRecetasVista,
     renderVistaRecetaPlantilla: renderVistaRecetaPlantilla,
@@ -2331,11 +2184,13 @@
     renderSheetResumenSemana: renderSheetResumenSemana,
     renderSheetCambiarInicio: renderSheetCambiarInicio,
     renderNevera: renderNevera,
-    renderOpcionesNevera: renderOpcionesNevera,
-    renderConfirmarRegenerar: renderConfirmarRegenerar,
     renderVistaMiembro: renderVistaMiembro,
     renderMenuHamburguesa: renderMenuHamburguesa,
-    renderAcceso: renderAcceso,
+    renderAcercaDe: renderAcercaDe,
+    VERSION_APP: VERSION_APP,
+    VERSION_FECHA: VERSION_FECHA,
+    renderAccesoElegir: renderAccesoElegir,
+    renderAccesoMail: renderAccesoMail,
     renderRevisaCorreo: renderRevisaCorreo,
     renderOlvidePassword: renderOlvidePassword,
     renderPasoFamilia: renderPasoFamilia,
@@ -2358,6 +2213,18 @@
     patronSeguro: patronSeguro,
     sheetHead: sheetHead,
     escapeHtml: escapeHtml,
-    normalizarTexto: normalizarTexto
+    normalizarTexto: normalizarTexto,
+    // fechas del producto (venían de engine.js, que muere con v5) + lectura de la semana `/2`:
+    // app.js consume ESTA implementación, no una copia suya
+    fechaLocalISO: fechaLocalISO,
+    fechaISO: fechaISO,
+    lunesDeEstaSemana: lunesDeEstaSemana,
+    semanaIsoDeLunes: semanaIsoDeLunes,
+    fechaDeDia: fechaDeDia,
+    edadEnAnios: edadEnAnios,
+    EDAD_MENOR: EDAD_MENOR,
+    servicioDe: servicioDe,
+    principalDe: principalDe,
+    nombrePercibido: nombrePercibido
   };
 })(typeof window !== 'undefined' ? window : this);

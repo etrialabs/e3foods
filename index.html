@@ -1,30 +1,136 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="e3Foods — planificador de comidas familiares. Menús que piensan por ti, familias que comen mejor.">
 <meta name="theme-color" content="#F5F0E8">
-<title>e3Foods — en obras</title>
+<title>e3Foods</title>
+
+<!-- Instalable en pantalla de inicio (Roger 2026-07-14): iOS no permite auto-instalar
+     al abrir el link (restricción de Apple, siempre Compartir -> "Añadir a inicio"),
+     pero con esto el icono/lanzamiento quedan como una app real, no una captura fea. -->
 <link rel="icon" type="image/svg+xml" href="assets/icons/favicon.svg">
 <link rel="icon" type="image/png" sizes="32x32" href="assets/icons/favicon-32.png">
-<style>
-  body { margin:0; min-height:100vh; display:grid; place-items:center;
-         font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
-         background:#faf7f2; color:#3d3a34; }
-  main { text-align:center; padding:2rem; max-width:26rem; }
-  .logo { font-size:2.4rem; font-weight:700; letter-spacing:-.02em; margin-bottom:.75rem; }
-  .logo span { color:#7a9e5f; }
-  p { line-height:1.55; margin:.4rem 0; color:#6b675f; }
-  .badge { display:inline-block; margin-top:1.2rem; padding:.45rem 1rem; border-radius:999px;
-           background:#eef2e6; color:#55703f; font-size:.85rem; font-weight:600; }
-</style>
+<link rel="icon" type="image/png" sizes="16x16" href="assets/icons/favicon-16.png">
+<link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="e3Foods">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,500;1,600&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<!-- Lucide (Roger 2026-07-19, vía Claude Design): primera dependencia externa real del
+     proyecto — versión FIJADA (no @latest, que el prototipo de Design sí usa) para no
+     romper en producción si la librería cambia. -->
+<script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.js"></script>
+<link rel="stylesheet" href="css/styles.css?v=118">
 </head>
 <body>
-<main>
-  <div class="logo">e3<span>Foods</span></div>
-  <p><strong>Estamos de obras en la cocina.</strong></p>
-  <p>Volvemos pronto con un motor de menús completamente nuevo.</p>
-  <div class="badge">de vuelta en breve</div>
-</main>
+
+<!-- LANDING — cada carga. Tap "Empezar" -> wizard (si no hay familia) o HOY. -->
+<div id="landing-screen" class="landing-screen">
+  <img id="landing-hero-img" class="landing-hero" alt="e3Foods — menús que piensan por ti. Familias que comen mejor.">
+  <script>
+    // Rotación de portada por franja de 30 min (Roger 2026-07-17, evitar fatiga
+    // visual entre aperturas — NO es una animación en vivo, se fija una vez por
+    // carga). Sin src estático arriba a propósito: si el script corriera después
+    // (p.ej. en app.js, cargado al final del body) el navegador ya habría
+    // empezado a pedir la imagen equivocada. Inline y justo aquí = se fija antes
+    // de que el navegador tenga ocasión de pintar nada. Epoch, no hora local:
+    // sin líos de zona horaria, y de paso el cambio cae justo en :00/:30 en
+    // cualquier huso. Las 3 comparten lienzo y geometría del hueco del CTA
+    // (ver SPEC.md) — cambiar de slot no mueve el botón.
+    // Por id, no document.currentScript.previousElementSibling (2026-07-17,
+    // Roger vio el interrogante de imagen rota en su iPhone): más robusto entre
+    // navegadores. onerror con fallback a portada-0 — si el slot calculado
+    // fallara por lo que sea, nunca se queda sin foto.
+    (function () {
+      var img = document.getElementById('landing-hero-img');
+      img.onerror = function () {
+        if (img.src.indexOf('portada-0.jpg') === -1) img.src = 'assets/portada-0.jpg?v=118';
+      };
+      img.src = 'assets/portada-' + (Math.floor(Date.now() / 1800000) % 3) + '.jpg?v=118';
+    })();
+  </script>
+  <button type="button" class="btn-primary landing-cta" data-action="empezar">Empezar</button>
+</div>
+
+<!-- ONBOARDING (handoff "Alta de persona", 2026-07-30) — nombre de familia ->
+     asistente de 5 pasos por persona (básicos, estilo de vida, alergias, gustos,
+     comidas de la semana) -> ficha resumen -> "ya estamos todos" -> app.
+     Contenedor único: app.js pinta dentro la pantalla del paso activo. En los
+     pasos de persona lleva además .wizard-screen-paso (cabecera fija + cuerpo
+     scrollable + pie fijo, en vez de una sola columna que scrollea entera). -->
+<div id="wizard-screen" class="wizard-screen" hidden></div>
+
+<!-- ACCESO (obra auth+push, 2026-07-31 · AUTH_PUSH_SPEC §1-§3): pantalla de cuenta previa
+     a todo — login/registro (Google + email), revisa-tu-correo, recuperación y paso de
+     familia con los consentimientos RGPD del §1.5. Misma capa visual que el wizard. -->
+<div id="acceso-screen" class="wizard-screen" hidden></div>
+
+<!-- Banner de la vista de ejemplo (onboarding con familia demo, Roger 2026-07-16):
+     visible solo mientras modoDemo=true en app.js; nunca se persiste ni sincroniza. -->
+<div id="demo-banner" class="demo-banner" hidden>
+  <span>Estás viendo un ejemplo — no es tu familia real.</span>
+  <button type="button" class="demo-banner-btn" data-action="salir-demo">Crear mi menú</button>
+</div>
+
+<main id="vista-semana" class="vista" aria-label="Semana"></main>
+<main id="vista-recetas" class="vista" hidden aria-label="Recetas"></main>
+<main id="vista-descubrir" class="vista" hidden aria-label="Descubrir"></main>
+<main id="vista-compra" class="vista" hidden aria-label="Compra"></main>
+<main id="vista-perfil" class="vista" hidden aria-label="Familia"></main>
+<main id="vista-receta" class="vista" hidden aria-label="Receta"></main>
+<main id="vista-batch" class="vista" hidden aria-label="Domingo de batch"></main>
+
+<!-- Bottom sheet genérico: familia / compra / cambiar plato / elegir otro / nevera / confirmar regenerar -->
+<div id="sheet-overlay" class="sheet-overlay" hidden>
+  <div class="sheet-panel" role="dialog" aria-modal="true">
+    <div id="sheet-contenido"></div>
+  </div>
+</div>
+
+<!-- Menú del hamburguesa: dropdown pequeño anclado al botón, no el sheet de
+     abajo — reservado para listas de acciones cortas (Roger 2026-07-14) -->
+<div id="menu-dropdown-overlay" class="menu-dropdown-overlay" hidden></div>
+<div id="menu-dropdown" class="menu-dropdown" role="menu" hidden></div>
+
+<div class="bottom-nav-fade" aria-hidden="true"></div>
+<nav class="bottom-nav" aria-label="Navegación principal">
+  <button type="button" class="nav-btn active" data-action="ir-vista" data-vista="semana" aria-current="page"><span class="nav-ico"><i data-lucide="calendar-heart"></i></span><span class="nav-label">Semana</span></button>
+  <button type="button" class="nav-btn" data-action="ir-vista" data-vista="recetas" aria-current="false"><span class="nav-ico"><i data-lucide="book-open"></i></span><span class="nav-label">Recetas</span></button>
+  <button type="button" class="nav-btn" data-action="ir-vista" data-vista="descubrir" aria-current="false"><span class="nav-ico"><i data-lucide="compass"></i></span><span class="nav-label">Descubrir</span></button>
+  <button type="button" class="nav-btn" data-action="ir-vista" data-vista="compra" aria-current="false"><span class="nav-ico"><i data-lucide="shopping-basket"></i></span><span class="nav-label">Compra</span></button>
+  <button type="button" class="nav-btn" data-action="ir-vista" data-vista="perfil" aria-current="false"><span class="nav-ico"><i data-lucide="users"></i></span><span class="nav-label">Familia</span></button>
+</nav>
+
+<!-- i18n (handoff backlog-v3 #18, 2026-07-28): diccionario ES/CA/FR/EN + t() + idioma en
+     localStorage. Carga primero — ui.js y app.js dependen de E3I18n. -->
+<script src="js/i18n.js?v=118"></script>
+<!-- MOTOR V6 (bloque 2 de la obra, 2026-08-03) — conexión NATIVA: mueren data/recetas.js,
+     js/engine.js, data/banco_v5.js y js/motor_v5.js. Los dos ficheros de aquí abajo son
+     GENERADOS por `node _build_banco_v6.js` desde 02_APP/ y no se editan a mano; el banco va
+     PRIMERO porque motor_v6.js lo lee de window.E3_BANCO_V6. Si alguno no carga (404/sintaxis),
+     app.js muestra un error visible en vez de arrancar degradado — no hay banco de respaldo. -->
+<script src="data/banco_v6.js?v=118"></script>
+<script src="js/motor_v6.js?v=118"></script>
+<script src="js/ui.js?v=118"></script>
+<!-- Firebase compat (multiusuario, Roger 2026-07-14) — build "compat" a propósito:
+     el resto del bundle son scripts planos sin módulos ES, esto evita reestructurar
+     todo a type="module" solo por esto. -->
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-check-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-messaging-compat.js"></script>
+<!-- Push (obra auth+push §6): clave VAPID pública del par "Web Push certificates" de la
+     consola de Firebase (generada por Roger 31-jul; pública por diseño, viaja en el cliente). -->
+<script>window.E3_VAPID_KEY = 'BKJnxfT3RJEbQ490-MM6zhmECDyCx_CfZMYaL0vniPM8z0RdZbWWIFKW6fLNWfuF7A7C6Q2FDM0zEuDEutJBVck';</script>
+<script src="js/sync.js?v=118"></script>
+<script src="js/push.js?v=118"></script>
+<script src="js/app.js?v=118"></script>
 </body>
 </html>

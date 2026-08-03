@@ -38,8 +38,17 @@
   --gold-grad-a: color-mix(in oklch, var(--gold) 55%, white);
   --gold-grad-b: var(--gold);
   --gold-link: var(--gold);
-  --cena-a: #444851;
-  --cena-b: #2E3136;
+  /* Escala midnight única (handoff 5, sistema-color.md, 2026-08-03): un solo
+     midnight en toda la app — antes había DOS: el azulado propio del
+     onboarding (#1E2C4A, "Alta de persona" 30-jul) y el gris-carbón de la
+     card de cena (--cena-a/--cena-b, distinto por un puñado de hex). Se
+     retira el azul marino; --cena-a/--cena-b pasan a ser alias exactos de
+     los mismos tres tonos que --midnight/--midnight-elevado/--midnight-profundo,
+     no una familia aparte. */
+  --midnight-elevado: #3E434C;
+  --cena-a: var(--midnight-elevado);
+  --cena-b: var(--midnight);
+  --midnight-profundo: #1E2126;
   --cena-ink: #F7F3EC;
   --danger: #C0392B;
   /* Midnight y rojo-seguridad: dos colores que trae el handoff "Alta de persona"
@@ -50,7 +59,7 @@
      superficies de persona (.onb-* / .per-*); ninguna vista anterior los usa.
      El dorado del handoff (#C6A968) NO se adopta: manda el corporativo Étria
      --gold #C9A96E, mismo criterio que el 2026-07-20 (UI_MOBILE §3). */
-  --midnight: #1E2C4A;
+  --midnight: #2E3138;
   --midnight-ink: #F3EEE4;
   --rojo-seguridad: #9E3A2A;
   --font-display: 'Playfair Display', Georgia, serif;
@@ -276,6 +285,11 @@ body.wizard-open { overflow: hidden; }
    hay mensaje de error en el handoff, el gris ES el mensaje) — aria-disabled lo
    anuncia y el handler corta. */
 .onb-cta-off { background: rgba(26, 23, 18, .1); color: rgba(26, 23, 18, .4); box-shadow: none; }
+/* Apple "pronto" (handoff 5, §3): marca real, sin acción — visible, no funcional
+   (sin proveedor Apple dado de alta en Firebase Auth todavía). */
+.onb-cta-apple { background: var(--panel); color: var(--ink); border: 1px solid rgba(26, 23, 18, .12); opacity: .55; margin-top: 10px; cursor: default; }
+.onb-marca-ico { display: block; }
+.onb-apple-pronto { text-align: center; font-size: 11px; font-weight: 800; letter-spacing: .6px; text-transform: uppercase; color: var(--muted); margin-top: -4px; }
 
 /* --- Pasos de persona: cabecera y pie ------------------------------------ */
 .onb-cab { flex: none; padding: calc(var(--space-4) + var(--safe-t)) 22px 12px; background: var(--bg); box-shadow: 0 12px 22px -20px rgba(30, 26, 20, .8); z-index: 2; }
@@ -307,7 +321,7 @@ body.wizard-open { overflow: hidden; }
 /* --- Pasos de persona: contenido ----------------------------------------- */
 .onb-h2 { font-family: var(--font-display); font-size: 26px; font-weight: 800; line-height: 1.12; letter-spacing: -.4px; color: var(--ink); }
 .onb-sub { font-size: 14px; font-weight: 500; color: var(--soft); line-height: 1.45; margin-top: 7px; }
-.onb-oro { color: #B8944F; }
+.onb-oro { color: var(--gold); }
 .onb-ayuda { font-size: 12.5px; font-weight: 500; color: var(--soft); line-height: 1.4; margin-top: var(--space-2); }
 .onb-eyebrow-grupo { margin-top: 20px; display: flex; align-items: center; gap: var(--space-2); }
 .onb-eyebrow-ico { width: 14px; height: 14px; color: var(--midnight); }
@@ -331,14 +345,14 @@ body.wizard-open { overflow: hidden; }
   background: var(--panel) center/cover no-repeat; display: flex; align-items: center; justify-content: center;
   box-shadow: 0 14px 30px -20px rgba(30, 44, 74, .9);
 }
-.onb-foto-inicial { font-family: var(--font-display); font-size: 34px; font-weight: 700; color: #B8944F; }
+.onb-foto-inicial { font-family: var(--font-display); font-size: 34px; font-weight: 700; color: var(--gold); }
 .onb-foto-badge {
   position: absolute; bottom: -2px; right: -2px; width: 30px; height: 30px; border-radius: 50%;
   background: var(--midnight); border: 3px solid var(--bg); color: var(--midnight-ink);
   display: flex; align-items: center; justify-content: center;
 }
 .onb-foto-badge .lucide, .onb-foto-badge svg { width: 14px; height: 14px; }
-.onb-foto-txt { font-size: 12.5px; font-weight: 700; color: #B8944F; margin-top: 9px; }
+.onb-foto-txt { font-size: 12.5px; font-weight: 700; color: var(--gold); margin-top: 9px; }
 .onb-foto-quitar { background: none; border: none; cursor: pointer; font-family: inherit; text-decoration: underline; padding: var(--space-1) var(--space-2); }
 
 /* avisos */
@@ -346,16 +360,16 @@ body.wizard-open { overflow: hidden; }
 .per-aviso-ico { flex: none; color: var(--midnight); display: flex; }
 .per-aviso-ico .lucide, .per-aviso-ico svg { width: 15px; height: 15px; }
 .onb-aviso-oro { display: flex; align-items: center; gap: 10px; margin-top: 14px; background: rgba(201, 169, 110, .14); border-radius: 14px; padding: 11px 14px; font-size: 12.5px; font-weight: 600; color: rgba(26, 23, 18, .7); line-height: 1.45; }
-.onb-aviso-oro-ico { flex: none; color: #B8944F; display: flex; }
+.onb-aviso-oro-ico { flex: none; color: var(--gold); display: flex; }
 .onb-aviso-oro-ico .lucide, .onb-aviso-oro-ico svg { width: 16px; height: 16px; }
-.onb-aviso-rojo { margin-top: 16px; background: var(--panel); border: 1.5px solid rgba(158, 58, 42, .28); border-radius: 18px; padding: 15px 16px; display: flex; gap: 12px; }
-.onb-aviso-rojo-ico { flex: none; width: 28px; height: 28px; border-radius: 9px; background: var(--rojo-seguridad); color: #fff; display: flex; align-items: center; justify-content: center; }
-.onb-aviso-rojo-ico .lucide, .onb-aviso-rojo-ico svg { width: 15px; height: 15px; }
-.onb-aviso-rojo-tit { font-size: 13.5px; font-weight: 800; color: var(--rojo-seguridad); }
-.onb-aviso-rojo-txt { font-size: 13px; font-weight: 500; color: rgba(26, 23, 18, .68); line-height: 1.5; margin-top: 4px; }
+/* Consolidada en una línea al pie (handoff 5): antes tarjeta con icono+título+texto
+   (3 líneas), ahora icono + una frase — el hueco que gana vuelve a las 7 filas. */
+.onb-aviso-rojo { margin-top: 12px; display: flex; gap: 9px; align-items: flex-start; }
+.onb-aviso-rojo-ico { flex: none; width: 14px; height: 14px; color: var(--rojo-seguridad); margin-top: 2px; }
+.onb-aviso-rojo-txt { font-size: 12px; font-weight: 600; color: var(--soft); line-height: 1.4; }
 .onb-chip-seguridad { display: inline-flex; align-items: center; gap: 7px; background: rgba(158, 58, 42, .1); border-radius: 999px; padding: 5px 12px; margin-bottom: 10px; color: var(--rojo-seguridad); font-size: 11px; font-weight: 800; letter-spacing: .6px; text-transform: uppercase; }
 .onb-chip-seguridad .lucide, .onb-chip-seguridad svg { width: 14px; height: 14px; }
-.onb-btn-linea { width: 100%; margin-top: 14px; border: 1.5px solid rgba(26, 23, 18, .14); background: none; cursor: pointer; border-radius: 14px; padding: 13px; font-family: inherit; font-size: 14px; font-weight: 800; color: var(--midnight); }
+.onb-btn-linea { width: 100%; min-height: 44px; margin-top: 10px; border: none; background: none; cursor: pointer; padding: 10px; font-family: inherit; font-size: 13.5px; font-weight: 800; color: var(--midnight); }
 
 /* leyenda de los chips de gustos — el color no puede ser el único indicador */
 .onb-leyenda { display: flex; gap: 14px; margin-top: 20px; font-size: 12px; font-weight: 700; color: var(--soft); }
@@ -375,7 +389,7 @@ body.wizard-open { overflow: hidden; }
 /* --- Paso 7 · ficha resumen ---------------------------------------------- */
 .onb-ficha-cab { display: flex; align-items: center; gap: 13px; }
 .onb-ficha-av { flex: none; width: 56px; height: 56px; border-radius: 50%; background: var(--gold) center/cover no-repeat; color: var(--midnight); display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-size: 24px; font-weight: 800; }
-.onb-ficha-kicker { font-size: 11px; font-weight: 800; letter-spacing: 1.6px; text-transform: uppercase; color: #B8944F; }
+.onb-ficha-kicker { font-size: 11px; font-weight: 800; letter-spacing: 1.6px; text-transform: uppercase; color: var(--gold); }
 .onb-ficha-nombre { font-family: var(--font-display); font-size: 27px; font-weight: 800; color: var(--ink); line-height: 1.05; margin-top: 2px; }
 .onb-resumenes { display: flex; flex-direction: column; gap: 10px; margin-top: 22px; }
 .onb-resumen { background: var(--panel); border-radius: 18px; padding: 14px 15px; box-shadow: 0 14px 34px -28px rgba(30, 44, 74, 1); }
@@ -392,7 +406,7 @@ body.wizard-open { overflow: hidden; }
 .onb-miembro-quitar { border: none; background: none; cursor: pointer; padding: 0 2px; color: var(--muted); display: flex; }
 .onb-miembro-quitar .lucide, .onb-miembro-quitar svg { width: 15px; height: 15px; }
 .onb-legal { margin-top: 18px; background: rgba(30, 44, 74, .05); border-radius: 14px; padding: 13px 15px; font-size: 12.5px; font-weight: 600; color: var(--soft); line-height: 1.45; }
-.onb-btn-otra { width: 100%; margin-top: 18px; border: 1.5px dashed rgba(201, 169, 110, .8); background: none; cursor: pointer; border-radius: 16px; padding: 15px; display: flex; align-items: center; justify-content: center; gap: var(--space-2); font-family: inherit; font-size: 14.5px; font-weight: 800; color: #B8944F; }
+.onb-btn-otra { width: 100%; margin-top: 18px; border: 1.5px dashed rgba(201, 169, 110, .8); background: none; cursor: pointer; border-radius: 16px; padding: 15px; display: flex; align-items: center; justify-content: center; gap: var(--space-2); font-family: inherit; font-size: 14.5px; font-weight: 800; color: var(--gold); }
 .onb-btn-otra .lucide, .onb-btn-otra svg { width: 17px; height: 17px; }
 .onb-ficha .onb-cta { margin-top: 10px; }
 
@@ -427,7 +441,7 @@ body.wizard-open { overflow: hidden; }
 }
 .per-tarjeta-on { border-color: var(--gold); box-shadow: 0 14px 30px -22px rgba(150, 120, 60, 1); }
 .per-tarjeta-ico { flex: none; width: 38px; height: 38px; border-radius: 12px; display: flex; align-items: center; justify-content: center; background: rgba(30, 44, 74, .06); color: var(--midnight); }
-.per-tarjeta-on .per-tarjeta-ico { background: rgba(201, 169, 110, .22); color: #B8944F; }
+.per-tarjeta-on .per-tarjeta-ico { background: rgba(201, 169, 110, .22); color: var(--gold); }
 .per-tarjeta-ico .lucide, .per-tarjeta-ico svg { width: 18px; height: 18px; }
 .per-tarjeta-txt { flex: 1; min-width: 0; }
 .per-tarjeta-nombre { display: block; font-size: 15.5px; font-weight: 800; color: var(--ink); }
@@ -443,19 +457,22 @@ body.wizard-open { overflow: hidden; }
 .per-densa .per-tarjeta-desc { font-size: 12px; }
 .per-densa .per-check { width: 22px; height: 22px; }
 
-.per-alergias { display: flex; flex-direction: column; gap: 9px; margin-top: 18px; }
+/* Filas compactadas a 48px, descripción a una sola línea (handoff 5): el bloque
+   pasó de 6 a 7 filas (pescado/marisco separados, §4) y sin compactar no cabía
+   sin scroll en 375×812 — mismo patrón, mismo target, una fila más. */
+.per-alergias { display: flex; flex-direction: column; gap: 7px; margin-top: 13px; }
 .per-alergia {
   width: 100%; border: 2px solid rgba(26, 23, 18, .08); background: var(--panel); cursor: pointer;
-  border-radius: 16px; padding: 14px 15px; display: flex; align-items: flex-start; gap: 12px;
+  border-radius: 14px; padding: 9px 13px; display: flex; align-items: center; gap: 11px;
   font-family: inherit; text-align: left;
 }
 .per-alergia-on { border-color: var(--rojo-seguridad); box-shadow: 0 14px 30px -24px rgba(158, 58, 42, 1); }
-.per-caja { flex: none; width: 24px; height: 24px; border-radius: 8px; border: 1.5px solid rgba(26, 23, 18, .2); color: transparent; display: flex; align-items: center; justify-content: center; margin-top: 1px; }
+.per-caja { flex: none; width: 24px; height: 24px; border-radius: 8px; border: 1.5px solid rgba(26, 23, 18, .2); color: transparent; display: flex; align-items: center; justify-content: center; }
 .per-caja .lucide, .per-caja svg { width: 14px; height: 14px; }
 .per-alergia-on .per-caja { border: none; background: var(--rojo-seguridad); color: #fff; }
 .per-alergia-txt { flex: 1; min-width: 0; }
-.per-alergia-nombre { display: block; font-size: 15px; font-weight: 800; color: var(--ink); }
-.per-alergia-desc { display: block; font-size: 12.5px; font-weight: 500; color: var(--soft); line-height: 1.4; margin-top: 2px; }
+.per-alergia-nombre { display: block; font-size: 14.5px; font-weight: 800; color: var(--ink); line-height: 1.2; }
+.per-alergia-desc { display: block; font-size: 11.5px; font-weight: 500; color: var(--soft); line-height: 1.3; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .per-densa .per-alergias { gap: var(--space-1); margin-top: 0; }
 .per-densa .per-alergia { border-radius: 12px; padding: 11px 12px; align-items: center; gap: 11px; background: var(--elev2); }
 .per-densa .per-alergia-on { background: var(--panel); box-shadow: none; }
@@ -513,7 +530,7 @@ body.wizard-open { overflow: hidden; }
 .per-sec-ico { flex: none; width: 30px; height: 30px; border-radius: 10px; display: flex; align-items: center; justify-content: center; }
 .per-sec-ico .lucide, .per-sec-ico svg { width: 15px; height: 15px; }
 .per-sec-ico-mid { background: rgba(30, 44, 74, .07); color: var(--midnight); }
-.per-sec-ico-oro { background: rgba(201, 169, 110, .2); color: #B8944F; }
+.per-sec-ico-oro { background: rgba(201, 169, 110, .2); color: var(--gold); }
 .per-sec-ico-rojo { background: rgba(158, 58, 42, .1); color: var(--rojo-seguridad); }
 .per-sec-txt { flex: 1; min-width: 0; }
 .per-sec-tit { display: block; font-size: 11px; font-weight: 800; letter-spacing: 1.1px; text-transform: uppercase; color: var(--muted); }
@@ -910,7 +927,7 @@ body.sheet-open { overflow: hidden; }
   width: 100%; min-height: 48px; border: none; cursor: pointer; border-radius: 15px; padding: var(--space-2) var(--space-4);
   background: var(--gold); box-shadow: 0 8px 20px -10px color-mix(in oklch, var(--gold) 70%, transparent);
   display: flex; align-items: center; justify-content: center; gap: var(--space-1);
-  font-weight: 800; font-size: 15px; color: #1E2C4A;
+  font-weight: 800; font-size: 15px; color: var(--midnight);
 }
 .btn-sync-activar:active { background: color-mix(in oklch, var(--gold) 85%, black); }
 .btn-sync-activar:disabled { opacity: 0.6; box-shadow: none; cursor: not-allowed; }
@@ -1086,11 +1103,15 @@ body.sheet-open { overflow: hidden; }
 .ph-dia-activo { border: none; background: linear-gradient(180deg, var(--gold-grad-a), var(--gold-grad-b)); color: var(--ink); box-shadow: 0 6px 14px -8px var(--gold-grad-b); }
 .ph-dia-activo .ph-dia-cole { color: var(--ink); opacity: .7; }
 
-.ph-pantry { display: flex; align-items: center; gap: 10px; background: var(--gold-soft); border: 1px solid oklch(0.88 0.08 78); border-radius: 15px; padding: 11px 13px; margin-bottom: 14px; }
-.ph-pantry-ok { background: oklch(0.96 0.04 150); border-color: oklch(0.86 0.08 150); }
-.ph-pantry-icono { flex: none; width: 28px; height: 28px; border-radius: 9px; background: var(--gold-grad-b); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 14px; }
-.ph-pantry-ok .ph-pantry-icono { background: oklch(0.6 0.14 150); }
-.ph-pantry-texto { font-size: 13px; font-weight: 600; color: var(--ink); line-height: 1.35; margin: 0; }
+/* Aviso de despensa a midnight (sistema-color.md, "aplicado en este pase"): antes
+   dorado siempre (con --gold-soft haciendo un segundo trabajo, la disciplina que
+   corrige este pase) — ahora un único bloque midnight, con el color oliva/dorado
+   apagado solo en el icono para distinguir "todo listo" de "falta algo". */
+.ph-pantry { display: flex; align-items: center; gap: 10px; background: var(--midnight); border: 1px solid rgba(255, 255, 255, .08); border-radius: 16px; padding: 11px 13px; margin-bottom: 14px; }
+.ph-pantry-icono { flex: none; width: 28px; height: 28px; border-radius: 9px; background: rgba(255, 255, 255, .1); color: oklch(0.85 0.14 82); display: flex; align-items: center; justify-content: center; font-size: 14px; }
+.ph-pantry-ok .ph-pantry-icono { color: oklch(0.78 0.11 140); }
+.ph-pantry-texto { font-size: 13.5px; font-weight: 700; color: var(--cena-ink); line-height: 1.35; margin: 0; }
+.ph-pantry-texto .ingrediente-link { color: inherit; }
 
 /* pager: scroll-snap nativo, sin JS de gesto — solo listener de posición */
 .ph-pager-scroll { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; margin: 0 calc(-1 * var(--space-3)); }
@@ -1139,9 +1160,9 @@ body.sheet-open { overflow: hidden; }
 .ph-avatar-wrap { position: relative; margin-left: -7px; }
 .ph-avatar-wrap:first-child { margin-left: 0; }
 .ph-avatar { width: 27px; height: 27px; border-radius: 50%; border: 2px solid var(--panel); color: #fff; font-size: 11px; font-weight: 800; display: flex; align-items: center; justify-content: center; cursor: pointer; background-size: cover; background-position: center; }
-.ph-avatar-wrap-oscuro .ph-avatar { border-color: #4B4F57; }
+.ph-avatar-wrap-oscuro .ph-avatar { border-color: var(--midnight-elevado); }
 .ph-avatar-check { position: absolute; bottom: -2px; right: -2px; width: 14px; height: 14px; border-radius: 50%; background: oklch(0.68 0.16 150); color: #fff; border: 2px solid var(--panel); display: flex; align-items: center; justify-content: center; font-size: 8px; }
-.ph-avatar-wrap-oscuro .ph-avatar-check { border-color: #4B4F57; }
+.ph-avatar-wrap-oscuro .ph-avatar-check { border-color: var(--midnight-elevado); }
 
 .ph-abrir { display: block; width: 100%; text-align: left; background: none; border: none; padding: 0; cursor: pointer; color: inherit; font: inherit; }
 .ph-info { padding: 15px 6px 0; }
@@ -1170,7 +1191,65 @@ body.sheet-open { overflow: hidden; }
 .ph-cta { width: 100%; margin-top: 15px; border-radius: 14px; border: none; cursor: pointer; padding: 7.5px; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 800; font-size: 13.5px; position: relative; background: linear-gradient(180deg, oklch(0.85 0.15 82), oklch(0.76 0.17 62)); color: var(--ink); }
 .ph-cta-flecha { position: absolute; right: 14px; }
 .ph-card-comida .ph-cta { box-shadow: 0 8px 20px -8px oklch(0.72 0.17 62 / .8); }
-.ph-card-cena .ph-cta { box-shadow: 0 8px 20px -8px oklch(0.72 0.17 62 / .5); }
+/* CTA de la cena con el dorado apagado (sistema-color.md, regla 5): sobre midnight
+   el dorado baja de luminosidad y pierde el halo de color — degradado propio, sin
+   sombra, o la cena grita más que la comida sin motivo (handoff 5). */
+.ph-card-cena .ph-cta { background: linear-gradient(180deg, oklch(0.79 0.13 82), oklch(0.71 0.14 62)); box-shadow: none; }
+
+/* ============================================================
+   Estados de plato por persona (handoff 5, §2 — e3Foods.dc.html /
+   sistema-color.md, 3-ago 2026). Tres estados, DOS colores: oliva = comen
+   todos, terracota en píldora clara = N ajustes, terracota en relleno
+   sólido = alguien come otra cosa (preparado, sin disparador real hoy —
+   ver comentario en ui.js/estadoMesaBadge). El badge es HERMANO del área
+   que abre la receta (.ph-abrir), nunca anidado — botón propio, clic propio.
+   ============================================================ */
+.ph-estado-badge {
+  position: absolute; top: 136px; left: 26px; z-index: 4;
+  display: flex; align-items: center; gap: 7px; padding: 6px 11px; border-radius: 999px;
+  border: none; cursor: pointer; font-family: inherit;
+  box-shadow: 0 3px 10px -4px rgba(30, 26, 20, .4);
+}
+.ph-card-comida .ph-estado-badge { background: rgba(255, 255, 255, .94); }
+.ph-card-cena .ph-estado-badge { background: rgba(30, 32, 36, .72); }
+.ph-card-comida .ph-estado-badge-oliva { color: oklch(0.42 0.07 140); }
+.ph-card-cena .ph-estado-badge-oliva { color: oklch(0.86 0.06 140); }
+.ph-card-comida .ph-estado-badge-terracota { color: oklch(0.48 0.14 45); }
+.ph-card-cena .ph-estado-badge-terracota { color: oklch(0.84 0.09 45); }
+/* "X come otra cosa" (handoff 6, 2026-08-03 — campo `otra`, construido sobre el
+   preparado del handoff 5): relleno sólido, SIN variante clara/oscura — "el
+   bloqueo va en relleno, una alergia no puede depender de distinguir dos tonos
+   de terracota con prisa y la pantalla al sol" (sistema-color.md). Misma
+   especificidad que las reglas de arriba para ganarles el fondo translúcido. */
+.ph-card-comida .ph-estado-badge-otra, .ph-card-cena .ph-estado-badge-otra { background: oklch(0.5 0.16 35); color: #fff; }
+.ph-estado-badge-otra .ph-estado-dot { background: #fff; }
+.ph-estado-pop-tit-otra { color: oklch(0.42 0.14 35); }
+.ph-estado-dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+.ph-estado-texto { color: inherit; font-size: 11px; font-weight: 800; letter-spacing: .2px; }
+.ph-estado-flecha { color: inherit; display: flex; opacity: .7; transition: transform var(--dur-fast) var(--ease-out); }
+.ph-estado-flecha svg, .ph-estado-flecha .lucide { width: 10px; height: 10px; }
+.ph-estado-flecha-abierta { transform: rotate(180deg); }
+
+/* Tarjeta secundaria: SOBRE la card, no la sustituye (handoff). Se alinea con
+   el padding de 14px de .ph-card (left/right:14px sobre la caja completa
+   coincide con el borde interior, ya que position:absolute ignora el padding
+   del ancestro relativo). */
+.ph-estado-pop {
+  position: absolute; left: 14px; right: 14px; top: 128px; z-index: 20;
+  border-radius: 20px; padding: 15px 16px; background: var(--panel);
+  box-shadow: 0 26px 60px -18px rgba(20, 18, 15, .5), 0 4px 14px -6px rgba(20, 18, 15, .22);
+}
+.ph-estado-pop-tit { display: block; font-size: 13.5px; font-weight: 800; line-height: 1.3; }
+.ph-estado-pop-tit-oliva { color: oklch(0.42 0.07 140); }
+.ph-estado-pop-tit-terracota { color: oklch(0.48 0.14 45); }
+.ph-estado-pop-sub { display: block; font-size: 12px; font-weight: 600; color: rgba(26, 23, 18, .5); margin-top: 2px; line-height: 1.4; }
+.ph-estado-pop-lista { display: flex; flex-direction: column; gap: 10px; margin-top: 13px; }
+.ph-estado-fila { display: flex; align-items: center; gap: 10px; }
+.ph-estado-fila-av { width: 26px; height: 26px; font-size: 11.5px; border: none; cursor: default; }
+.ph-estado-fila-info { flex: 1; min-width: 0; }
+.ph-estado-fila-nombre { display: block; font-size: 13.5px; font-weight: 700; color: var(--ink); }
+.ph-estado-fila-nota { display: block; font-size: 12px; font-weight: 700; margin-top: 1px; }
+.ph-estado-fila-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
 
 .ph-seg { display: flex; gap: 6px; background: rgba(26,23,18,.06); border-radius: 13px; padding: 4px; margin-top: 13px; }
 /* color del inactivo: llevaba rgba(26,23,18,.5) hardcodeado fuera de token
@@ -1179,11 +1258,13 @@ body.sheet-open { overflow: hidden; }
 .ph-seg-btn.pager-seg-activo { background: var(--panel); color: var(--ink); font-weight: 800; box-shadow: 0 2px 6px -2px rgba(26,23,18,.15); }
 
 .ph-cole-card { width: 100%; background: var(--panel); border: 1px solid var(--line); cursor: pointer; border-radius: 17px; padding: 13px 14px; display: flex; align-items: center; gap: 12px; box-shadow: 0 4px 14px -10px rgba(26,23,18,.3); margin-top: 16px; }
-.ph-cole-icono { flex: none; width: 40px; height: 40px; border-radius: 12px; background: var(--gold-soft); color: var(--gold); display: flex; align-items: center; justify-content: center; font-size: 18px; }
+/* Botón del cole a neutro (sistema-color.md, regla 3 + "aplicado en este pase"):
+   es un icono de interfaz (adjuntar/subir), no un dato de receta — tinta, no dorado. */
+.ph-cole-icono { flex: none; width: 40px; height: 40px; border-radius: 12px; background: rgba(26, 23, 18, .06); color: var(--ink); display: flex; align-items: center; justify-content: center; font-size: 18px; }
 .ph-cole-texto { flex: 1; text-align: left; display: flex; flex-direction: column; gap: 1px; }
 .ph-cole-titulo { font-size: 14.5px; font-weight: 800; color: var(--ink); }
 .ph-cole-sub { font-size: 11.5px; color: var(--soft); font-weight: 600; }
-.ph-cole-flecha { color: var(--gold); font-size: 17px; }
+.ph-cole-flecha { color: var(--muted); font-size: 17px; }
 
 .ph-proximos { margin-top: 26px; }
 .ph-proximos-titulo { font-family: var(--font-display); font-weight: 700; font-size: 18px; color: var(--ink); margin-bottom: 10px; }
@@ -1473,3 +1554,85 @@ html[data-motor-v5="1"] .app-bar-logo::after {
   background: var(--gold);
   vertical-align: middle;
 }
+
+
+/* ── ACERCA DE (dictado Roger 3-ago: version y fecha siempre visibles) ────────────
+   Sin bloque midnight: la regla 5 del handoff manda un solo midnight por pantalla
+   visible, y esto vive dentro de un sheet que ya se abre sobre la semana. */
+.pantalla-acerca { padding: 8px 20px 28px; text-align: center; }
+.acerca-marca { margin: 4px 0 14px; }
+/* el logotipo es el MISMO de la app-bar (texto, no imagen: el PNG nunca existió y daba 404
+   en cada apertura). Solo sube de escala — la tipografía y los colores los pone .app-bar-logo. */
+.acerca-logo { font-size: 30px; }
+.acerca-claim { color: var(--soft); font-size: 15px; line-height: 1.45; margin: 0 0 22px; }
+.acerca-datos { display: flex; flex-direction: column; gap: 1px; background: var(--line-solid);
+  border-radius: 14px; overflow: hidden; margin: 0 0 20px; text-align: left; }
+.acerca-datos > div { display: flex; justify-content: space-between; align-items: baseline;
+  gap: 16px; background: var(--panel); padding: 13px 16px; }
+.acerca-datos dt { color: var(--soft); font-size: 14px; margin: 0; }
+.acerca-datos dd { margin: 0; font-size: 15px; font-weight: 600; color: var(--ink); }
+.acerca-version { font-variant-numeric: tabular-nums; letter-spacing: .01em; }
+.acerca-pie { color: var(--muted); font-size: 13px; margin: 0; }
+
+/* ============================================================
+   MOTOR V6 · bloque 2 (2026-08-03)
+   ============================================================ */
+
+/* --- «Aún no disponible en V6» --------------------------------------------------
+   Principio literal de Roger: lo que no está conectable se muestra VISIBLE y marcado,
+   jamás oculto — «como no está conectable, no la muestras, y cae en el olvido».
+   Sin dorado como color de texto (UI_MOBILE §3: --gold sobre --bg da 1.97:1, falla
+   incluso 3:1). El acento va en el borde y el fondo, que son área grande; el texto
+   usa --ink y --soft, medidos AA. Escala de 8px, 4 como único intermedio. */
+.v6-pendiente {
+  border: 1px dashed var(--line-solid);
+  border-radius: 16px;
+  background: var(--elev2);
+  padding: var(--space-3);
+  margin: var(--space-2) 0;
+}
+.v6-pendiente-badge {
+  display: inline-flex; align-items: center; gap: var(--space-1);
+  font-size: 11.5px; font-weight: 800; letter-spacing: .3px; text-transform: uppercase;
+  color: var(--ink); background: var(--gold-soft);
+  border-radius: 999px; padding: var(--space-1) var(--space-2);
+}
+.v6-pendiente-badge i { width: 14px; height: 14px; }
+.v6-pendiente-tit { font-size: 15px; font-weight: 800; color: var(--ink); margin-top: var(--space-2); }
+.v6-pendiente-txt { font-size: 13px; font-weight: 500; color: var(--soft); margin-top: var(--space-1); }
+
+/* fila del sheet "Cambiar" que aún no responde: se ve, se lee y no engaña al dedo */
+.sheet-fila-opcion-pendiente { opacity: .55; cursor: default; }
+.ph-equilibrio-pendiente i:first-child { color: var(--soft); }
+
+/* --- Notas tipadas de la card (§9.2 del formato · spec §15.7) --------------------
+   Todas se enseñan; la SANITARIA (seguridad-infantil, D2) va primero y con el rojo de
+   seguridad del handoff —no el --danger de borrar—, porque no es una preferencia.
+   Sobre la card de cena el fondo es oscuro: los tonos se invierten a --cena-ink. */
+.ph-notas { margin-top: var(--space-3); padding-top: var(--space-2); border-top: 1px solid var(--line); }
+.ph-notas-tit {
+  font-size: 11px; font-weight: 800; letter-spacing: .4px; text-transform: uppercase;
+  color: var(--soft); margin-bottom: var(--space-1);
+}
+.ph-notas-tit-sanitaria { color: var(--rojo-seguridad); }
+.ph-notas-lista { list-style: none; margin: 0 0 var(--space-2); padding: 0; }
+.ph-notas-lista:last-child { margin-bottom: 0; }
+.ph-nota {
+  display: flex; align-items: flex-start; gap: var(--space-1);
+  font-size: 13px; font-weight: 500; line-height: 1.4; color: var(--ink);
+  padding: 2px 0;
+}
+.ph-nota i { flex: none; width: 16px; height: 16px; margin-top: 2px; color: var(--soft); }
+.ph-nota-sanitaria { color: var(--rojo-seguridad); font-weight: 600; }
+.ph-nota-sanitaria i { color: var(--rojo-seguridad); }
+
+.ph-notas-oscuro { border-top-color: rgba(247, 243, 236, .12); }
+.ph-notas-oscuro .ph-notas-tit { color: rgba(247, 243, 236, .55); }
+.ph-notas-oscuro .ph-nota { color: var(--cena-ink); }
+.ph-notas-oscuro .ph-nota i { color: rgba(247, 243, 236, .55); }
+/* el rojo de seguridad sobre midnight no llega a 4.5:1 — sobre fondo oscuro la señal
+   sanitaria pasa a un ámbar claro, que sí cumple. Mismo criterio que el dorado: el
+   color se elige POR EL PAR, no por la marca. */
+.ph-notas-oscuro .ph-notas-tit-sanitaria,
+.ph-notas-oscuro .ph-nota-sanitaria,
+.ph-notas-oscuro .ph-nota-sanitaria i { color: oklch(0.85 0.13 70); }

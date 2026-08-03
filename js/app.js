@@ -108,6 +108,28 @@
     };
   }
 
+  // ---------------------------------------------------------------
+  // SUPERFICIE DE PRODUCTO (§15) — compra, catálogo, descubrir, nevera, cambiar y presencia
+  // ---------------------------------------------------------------
+  // Una sola instancia viva, memoizada por (familia × semana de referencia): dentro cachea el
+  // banco del hogar, los pools y el prevuelo, que es lo caro. Recrearla en cada render pagaría
+  // el prevuelo entero al pintar Recetas. La clave incluye la familia: tocar una alergia o un
+  // veto la invalida sola, sin que nadie tenga que acordarse de hacerlo.
+  var _sup = null, _supClave = null;
+  function superficie() {
+    var plan = planActivo() || estado.plan;
+    var iso = plan && plan.semana_iso;
+    if (!iso || !(estado.familia || []).length) return null;
+    var fam = familiaParaSemana(iso);
+    var clave = iso + '|' + JSON.stringify(fam);
+    if (_sup && _supClave === clave) return _sup;
+    try {
+      _sup = MOTOR.crearSuperficie({ familia: fam, datos: BANCO, config: MOTOR.config, semanaRef: iso });
+      _supClave = clave;
+    } catch (e) { _sup = null; _supClave = null; }
+    return _sup;
+  }
+
   // Genera UNA semana. Devuelve la semana `/2` verbatim, o null si la familia no es válida
   // para el contrato — que es un error DURO y visible, no un menú degradado en silencio.
   var errorMotor = null;
@@ -225,8 +247,11 @@
         window.E3Sync.guardarPlanHistoricoDebounced(function () { return [estado.plan, estado.planSiguiente]; });
       }
       // meta/notificaciones (obra auth+push §6.2): resumen mínimo de la compra para el barrido
-      // del servidor. Sale de `listaCompra` (§15.2) — bloque 3: hasta entonces no se escribe un
-      // resumen inventado, se deja de escribir. El barrido está PAUSED desde el 1-ago.
+      // del servidor — piggyback del mismo debounce, escribe solo si cambia. Sale de la MISMA
+      // `listaCompra` que pinta la pantalla (§15.2): el aviso no puede contar otra cosa.
+      if (window.E3Sync.guardarNotificacionesDebounced) {
+        window.E3Sync.guardarNotificacionesDebounced(resumenCompraParaNotif);
+      }
     }
   }
 
@@ -293,6 +318,11 @@
   // resuelve plan vigente/siguiente vía diaGlobal (sincronizado antes del click
   // por data-dia-global), igual que hacía el sheet — no hace falta duplicarlo.
   var recetaAbierta = null; // { dia, tipo } | null
+  // ficha de una receta del CATÁLOGO (sin día detrás) abierta dentro de la pestaña Recetas —
+  // §15.5: `previsualizarElaboracion`. Estado de UI, no persistido.
+  var recetaPlantillaAbierta = null;
+  var categoriasDescubrirVivas = null; // el resultado del último render de Descubrir (rotación del día)
+  var neveraDisponibles = [];          // lo que la familia marcó en el checklist de la nevera
   var vistaAnterior = 'semana';
   var miembroAbierto = null; // id del miembro cuya ficha está abierta, o null
   var pendienteCambiar = null; // {dia, tipoComida} mientras el sheet de "cambiar" está abierto
@@ -334,6 +364,12 @@
     if (!plan || !plan.semana_iso) return -1;
     for (var i = 0; i < 7; i++) if (fechaDeDia(plan.semana_iso, i + 1) === fechaISOStr) return i;
     return -1;
+  }
+  // día 1-7 de HOY dentro de un plan concreto, o null si hoy no cae en esa semana. Es lo que el
+  // filtro `{dia}` de `listaCompra` (§15.2) necesita para el segmento «Hoy» de la compra.
+  function diaDeHoyEnPlan(plan) {
+    var i = diaIndexEnSemana(plan, fechaLocalISO(new Date()));
+    return i === -1 ? null : i + 1;
   }
   function diaGlobalDeHoy() {
     var hoyISOStr = fechaLocalISO(new Date());
@@ -444,9 +480,13 @@
     document.querySelectorAll('.vista').forEach(function (v) { v.hidden = (v.id !== 'vista-' + vistaActual); });
     document.querySelectorAll('.nav-btn').forEach(function (b) { b.classList.toggle('active', b.dataset.vista === vistaActual); b.setAttribute('aria-current', b.dataset.vista === vistaActual ? 'page' : 'false'); });
     if (vistaActual === 'semana') cont.innerHTML = UI.renderHome(estado, BANCO, diaGlobalActivo(), pagerIdx, obtenerMiembroDispositivo(), estadoBadgeAbierto);
-    else if (vistaActual === 'recetas') cont.innerHTML = UI.renderRecetasVista(estado, BANCO, filtroRecetas, busquedaRecetas, recetasView);
-    else if (vistaActual === 'compra') cont.innerHTML = UI.renderCompraVista(estado, estado.plan, BANCO, rangoCompra, categoriasAbiertasCompra);
-    else if (vistaActual === 'descubrir') cont.innerHTML = UI.renderDescubrirVista(estado, BANCO);
+    else if (vistaActual === 'recetas') cont.innerHTML = recetaPlantillaAbierta
+      ? UI.renderVistaRecetaPlantilla(estado, BANCO, recetaPlantillaAbierta, superficie())
+      : UI.renderRecetasVista(estado, BANCO, filtroRecetas, busquedaRecetas, recetasView, superficie());
+    // la compra SIEMPRE es de la semana vigente (`estado.plan`), no del día que se esté mirando:
+    // el segmento «Hoy» necesita saber qué día de esa semana es hoy, y fuera de ella no hay hoy.
+    else if (vistaActual === 'compra') cont.innerHTML = UI.renderCompraVista(estado, estado.plan, BANCO, rangoCompra, categoriasAbiertasCompra, superficie(), diaDeHoyEnPlan(estado.plan));
+    else if (vistaActual === 'descubrir') cont.innerHTML = UI.renderDescubrirVista(estado, BANCO, superficie());
     else if (vistaActual === 'perfil') cont.innerHTML = (vistaPerfil === 'ficha' && personaDraft)
       ? UI.renderVistaMiembro(estado, BANCO, personaDraft, {
           seccion: fichaSeccion, esNueva: fichaEsNueva, guardado: fichaGuardado,
@@ -455,7 +495,7 @@
       : UI.renderPerfilVista(estado);
     else if (vistaActual === 'batch') cont.innerHTML = UI.renderBatch();
     else if (vistaActual === 'receta') cont.innerHTML = !recetaAbierta ? '' :
-      UI.renderVistaReceta(estado, BANCO, planActivo(), recetaAbierta.dia, recetaAbierta.tipo);
+      UI.renderVistaReceta(estado, BANCO, planActivo(), recetaAbierta.dia, recetaAbierta.tipo, superficie());
     // aviso de reinicio de esquema (descartable): el estado guardado era de una version
     // anterior o estaba corrupto y se ha empezado de cero — sin migrar, decision de Roger
     // 30-jul. Se antepone a CUALQUIER vista (tambien al onboarding, que es donde aterriza
@@ -496,6 +536,7 @@
   function irAVista(nombre) {
     vistaActual = nombre;
     recetaAbierta = null;
+    recetaPlantillaAbierta = null;   // navegar por el nav cierra la ficha de catálogo
     estadoBadgeAbierto = null;
     if (nombre === 'semana') { diaGlobal = null; pagerIdx = comidaProximaPorHora() === 'cena' ? 1 : 0; }
     if (nombre === 'perfil') { vistaPerfil = 'lista'; miembroAbierto = null; }
@@ -1366,15 +1407,38 @@
     return true;
   }
 
-  // Resumen mínimo evaluable de la compra para meta/notificaciones (§6.2): pendientes =
-  // ítems con cantidad real sin marcar (la despensa "¿lo tengo en casa?" no cuenta).
-  // Resumen mínimo que lee el barrido del servidor (AUTH_PUSH_SPEC §6.2).
-  // ⚠️ POR FECHA, no un número suelto (bug reportado por Roger 01-ago): el aviso habla de
-  // "hoy", pero este doc lo escribe el CLIENTE cuando guarda — si solo guardáramos el
-  // pendiente de hoy, a medianoche el dato pasa a ser de ayer sin que nadie lo reescriba
-  // El resumen de la compra que consume el barrido de push (§6.2 de AUTH_PUSH_SPEC) sale de
-  // `listaCompra` (§15.2) — bloque 3. Hasta entonces NO se escribe un resumen inventado: se deja
-  // de escribir, que es lo honesto (y el scheduler está PAUSED desde el 1-ago de todas formas).
+  // Resumen mínimo evaluable de la compra para meta/notificaciones (AUTH_PUSH_SPEC §6.2):
+  // pendientes = ítems con cantidad real sin marcar (la despensa «¿lo tengo en casa?» no cuenta).
+  // ⚠️ POR FECHA, no un número suelto (bug reportado por Roger 01-ago): el aviso habla de «hoy»,
+  // pero este doc lo escribe el CLIENTE cuando guarda — si solo guardáramos el pendiente de hoy,
+  // a medianoche el dato pasa a ser de ayer sin que nadie lo reescriba.
+  // Sale de `listaCompra` (§15.2), la MISMA que pinta la pantalla: el aviso y la lista no pueden
+  // decir números distintos. El barrido sigue PAUSED (checklist de encendido).
+  function pendientesDeLista(lista) {
+    var marcados = (estado.compra && estado.compra.marcados) || [];
+    var n = 0;
+    (lista || []).forEach(function (it) {
+      if (it.despensa) return;                 // recordatorio, no compra
+      if (marcados.indexOf(it.id) === -1) n++;
+    });
+    return n;
+  }
+
+  function resumenCompraParaNotif() {
+    var sup = superficie();
+    if (!estado.plan || !estado.plan.semana_iso || !sup) return null;
+    var dias = {};
+    try {
+      for (var d = 1; d <= 7; d++) {
+        var fecha = fechaDeDia(estado.plan.semana_iso, d);
+        dias[fecha] = {
+          dia: pendientesDeLista(sup.listaCompra(estado.plan, { dia: d })),
+          cena: pendientesDeLista(sup.listaCompra(estado.plan, { dia: d, soloCena: true }))
+        };
+      }
+    } catch (e) { return null; }
+    return { dias: dias, semanaISO: estado.plan.semana_iso };
+  }
 
   // Regeneración AUTOMÁTICA por cambio de estado (dictado Roger 31-jul, obra de encendido):
   // altas/ediciones de miembros y elecciones (vetos, alergias, estilo, gustos, ocultas)
@@ -1557,16 +1621,50 @@
   }
 
   // ---------------------------------------------------------------
-  // CAMBIAR EL PLATO · §15.3 · NEVERA · §15.6 — BLOQUE 3
+  // CAMBIAR EL PLATO · §15.3 · NEVERA · §15.6
   // ---------------------------------------------------------------
   // Aquí vivían `insertarMenuEnSlot`, `cambiarOtroMenu`, `cambiarSoloComplementaria`,
-  // `confirmarNevera`, `elegirOpcionNevera` y `regenerarSiguientes`. Las seis montaban a mano
-  // un plan nuevo desde fuera del motor — exactamente lo que §15.3 prohíbe: `cambiarPlato`
-  // re-resuelve SOLO ese slot (T2 con el esqueleto vigente, T3 re-fracciona, T4 re-audita la
-  // semana entera) y devuelve `{semana, desvios[]}`; los demás slots quedan VERBATIM. La
-  // pregunta "¿regenero los días siguientes?" muere con ella: v5 re-derivaba los slots
-  // siguientes y eso es justo lo que la spec retira («la familia pidió cambiar un plato, no
-  // media semana»). El sheet se queda a la vista, marcado (ver ui.js).
+  // `confirmarNevera`, `elegirOpcionNevera` y `regenerarSiguientes`. Las seis montaban a mano un
+  // plan nuevo desde FUERA del motor. Ahora hay UNA sola puerta: `cambiarPlato` re-resuelve solo
+  // ese slot (T2 con el esqueleto vigente, T3 re-fracciona, T4 re-audita la semana entera) y
+  // devuelve `{semana, desvios[]}`; los demás slots quedan VERBATIM. La pregunta «¿regenero los
+  // días siguientes?» muere con ella: v5 re-derivaba los slots siguientes y eso es justo lo que
+  // la spec retira («la familia pidió cambiar un plato, no media semana»).
+  //
+  // La semana devuelta SUSTITUYE a la que había y se ARCHIVA en el diario: el diario registra lo
+  // SERVIDO, no lo planificado (§15.1) — sin esto, las cuotas «cumplidas» de la semana siguiente
+  // serían ficción, porque contarían un plato que la familia cambió.
+  function aplicarCambio(dia, tipoComida, peticion) {
+    var plan = planActivo();
+    var sup = superficie();
+    if (!plan || !sup) return;
+    var slot = (dia + 1) + '-' + tipoComida;
+    var r;
+    try { r = sup.cambiarPlato(plan, slot, peticion, diario); }
+    catch (e) { abrirSheet(UI.renderSheetCambioSinSalida([{ frase: 'No hemos podido cambiar ese plato.' }])); return; }
+    if (!r.ok) { abrirSheet(UI.renderSheetCambioSinSalida(r.desvios)); return; }
+    // la semana viva es la que se estaba mirando: vigente o siguiente
+    if (plan === estado.plan) estado.plan = r.semana; else estado.planSiguiente = r.semana;
+    archivarSemana(r.semana);
+    guardarEstado();
+    var servicio = null;
+    for (var i = 0; i < r.semana.servicios.length; i++) {
+      var sv = r.semana.servicios[i];
+      if (sv.dia === dia + 1 && sv.servicio === tipoComida) { servicio = sv; break; }
+    }
+    abrirSheet(UI.renderSheetCambioHecho(estado, BANCO, servicio, r.desvios));
+    render();
+  }
+
+  // La nevera PROPONE; elegir una candidata entra por la MISMA puerta (`asignar`).
+  function buscarEnNevera(dia, tipoComida) {
+    var plan = planActivo(), sup = superficie();
+    if (!plan || !sup) return;
+    neveraDisponibles = [];
+    document.querySelectorAll('#lista-nevera-checks input:checked').forEach(function (el) { neveraDisponibles.push(el.value); });
+    var slot = (dia + 1) + '-' + tipoComida;
+    abrirSheet(UI.renderOpcionesNevera(sup.opcionesNevera(slot, neveraDisponibles, plan), dia, tipoComida));
+  }
 
   // ---------------------------------------------------------------
   // MI FAMILIA (sheet) — CRUD miembros existentes, patrón, vetos, recetas
@@ -1906,8 +2004,40 @@
     'filtro-receta': function (btn) { filtroRecetas = btn.dataset.categoria; render(); },
     'recetas-vista': function (btn) { recetasView = btn.dataset.vista; render(); },
 
+    // ── SUPERFICIE §15.3 / §15.5 / §15.6
+    // ficha de una receta del catálogo (desde Recetas o desde Descubrir): no pasa por irAVista,
+    // que cierra justo lo que se acaba de abrir
+    'abrir-receta-banco': function (btn) {
+      recetaPlantillaAbierta = btn.dataset.plantilla;
+      cerrarSheet();
+      vistaActual = 'recetas';
+      render();
+      window.scrollTo(0, 0);
+    },
+    'modo-otro-menu': function (btn) { cerrarSheet(); aplicarCambio(Number(btn.dataset.dia), btn.dataset.tipo, { modo: 'otro' }); },
+    'modo-solo-complementaria': function (btn) { cerrarSheet(); aplicarCambio(Number(btn.dataset.dia), btn.dataset.tipo, { modo: 'guarnicion' }); },
+    'modo-nevera': function (btn) { abrirSheet(UI.renderNevera(estado, BANCO, Number(btn.dataset.dia), btn.dataset.tipo, superficie())); },
+    'confirmar-nevera': function (btn) { buscarEnNevera(Number(btn.dataset.dia), btn.dataset.tipo); },
+    'elegir-opcion-nevera': function (btn) {
+      cerrarSheet();
+      aplicarCambio(Number(btn.dataset.dia), btn.dataset.tipo,
+        { modo: 'asignar', elaboracion_id: btn.dataset.plantilla, opcion: btn.dataset.opcion || null });
+    },
+    'descubrir-abrir-categoria': function (btn) {
+      var sup = superficie();
+      if (!sup) return;
+      // la fecha viaja en el botón: si la medianoche cruza entre pintar y tocar, se reabre la
+      // MISMA rotación que se pintó, no la del día nuevo (audit 2026-07-20)
+      categoriasDescubrirVivas = sup.categoriasDescubrir(btn.dataset.fecha, estado.ocultas || []);
+      var cat = categoriasDescubrirVivas[Number(btn.dataset.idx)];
+      if (cat) abrirSheet(UI.renderSheetDescubrirCategoria(cat, estado));
+    },
+
     'abrir-receta': function (btn) { estadoBadgeAbierto = null; abrirRecetaDetalle(Number(btn.dataset.dia), btn.dataset.tipo); },
-    'receta-volver': function () { cerrarRecetaDetalle(); },
+    'receta-volver': function () {
+      if (recetaPlantillaAbierta) { recetaPlantillaAbierta = null; render(); window.scrollTo(0, 0); return; }
+      cerrarRecetaDetalle();
+    },
     'abrir-miembro-ficha': function (btn) { abrirMiembroFicha(btn.dataset.id); },
     'miembro-volver': function () { cerrarMiembroFicha(); },
     'abrir-resumen-semana': function () { abrirResumenSemana(); },

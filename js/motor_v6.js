@@ -1,6 +1,6 @@
 /* ============================================================
    e3Foods — motor_v6.js (GENERADO por _build_banco_v6.js — NO editar a mano)
-   Motor V6 para navegador: 19 módulos de motor_v6/src/ (la ÚNICA
+   Motor V6 para navegador: 20 módulos de motor_v6/src/ (la ÚNICA
    implementación), con un registro CommonJS mínimo. Requiere data/banco_v6.js antes.
    Regenerar: node _build_banco_v6.js desde 02_APP/.
    ============================================================ */
@@ -2554,6 +2554,795 @@ module.exports = { serializarCorrida, serializarSemana, CAPACIDADES };
 
   };
 
+  /* ---- motor_v6/src/superficie.js ---- */
+  REG['superficie'] = function (module, exports, require) {
+// SUPERFICIE DE PRODUCTO · las funciones de la app sobre la forma de V6 (spec §15).
+//
+// QUÉ ES. V6 exponía UNA función: `generarCorrida`. Esto es el resto de la superficie —lo que
+// la app enseña y toca— como funciones PURAS de (semana `/2` + banco + diario): deterministas,
+// sin DOM, sin reloj, sin red, testeables en node y empaquetadas junto al motor. Prohibido el
+// adaptador que traduzca la forma de V6 a la de v5 (dictado 3-ago: «cero rastro de v5»).
+//
+// LAS DOS REGLAS QUE GOBIERNAN ESTE FICHERO:
+//  1. **UN SOLO DERIVADOR.** Toda cantidad que ve el usuario —lista de compra, cantidad de
+//     receta, kcal por comensal— sale de `src/derivar.js`, el mismo que usan T3, la ficha y el
+//     juez. Aquí no se multiplica ni un gramo a mano. Dos implementaciones de la misma medida es
+//     el patrón de bug nº1 del proyecto.
+//  2. **LA POLÍTICA DE HOGAR SE HEREDA, NO SE RE-COMPRUEBA** (§13). El banco efectivo se compone
+//     una vez con `banco_hogar.js` y de ahí en adelante el alérgeno severo NO EXISTE: catálogo,
+//     nevera, descubrir y compra ven ese banco y nadie vuelve a mirar la alergia severa.
+//
+// POR QUÉ UNA FÁBRICA Y NO 11 FUNCIONES SUELTAS. Las 11 comparten (familia normalizada + banco
+// del hogar + pools + prevuelo). El prevuelo es lo caro —resuelve miembro × elaboración— y la
+// app lo pide en cada render de Recetas, Descubrir y Nevera. La fábrica lo calcula PEREZOSAMENTE
+// y una sola vez; las funciones que devuelve tienen la firma exacta de §15.
+'use strict';
+const { normalizarFamilia } = require('./contrato_familia.js');
+const { bancoDelHogar, anotarHogar } = require('./banco_hogar.js');
+const { compilarPools } = require('./pools.js');
+const { prevuelo } = require('./prevuelo.js');
+const { SLOTS } = require('./t1_esqueleto.js');
+const { rellenarSemana } = require('./t2_relleno.js');
+const { fraccionarSemana } = require('./t3_fracciones.js');
+const { auditar } = require('./t4_auditoria.js');
+const { notasDeServicio, indiceDeFormas } = require('./seguridad_infantil.js');
+const { memoria } = require('./memoria.js');
+const { objetivoDiario } = require('./energia.js');
+const { derivarCorrida, edadEnSemana, estacionDeSemana, fechaDia } = require('./derivar.js');
+
+const ORDEN_SLOTS = SLOTS.map(s => s.slot);
+
+// ── redondeo de CANTIDAD PARA COMPRAR (mecánica v5 conservada, dictada por Roger 2026-07-21):
+//    <10 g al gramo · 10-99 g a múltiplos de 5 · ≥100 g a múltiplos de 10. Se aplica UNA vez y
+//    sobre el TOTAL agregado (§15.2): redondear por línea y sumar después infla la lista.
+function redondearCompra(g) {
+  const n = Math.round(g || 0);
+  if (n <= 0) return 0;
+  if (n < 10) return n;
+  if (n < 100) return Math.round(n / 5) * 5;
+  return Math.round(n / 10) * 10;
+}
+
+// grasa y condimento se asumen EN CASA (supuesto declarado de §15.6, conservado de v5): ni la
+// nevera los pregunta ni la lista de la compra los pone como cantidad a comprar. Siguen
+// derivándose y viajando con su `naturaleza` — quien pinta decide si los enseña como recordatorio.
+const NATURALEZA_DESPENSA = new Set(['grasa', 'condimento']);
+
+// ── CATEGORÍAS DE DESCUBRIR (§15.5: «mecánica v5 conservada» — temporada primero, fijas
+//    delante, rotación determinista por día, sin RNG). Lo que cambia es de dónde sale el test:
+//    v5 leía un campo `tematica` que V6 no tiene, así que cada categoría se define sobre datos
+//    REALES del banco (`perfil_servicio.estilo`, `esfuerzo`, `temporada`) — jamás un dato nuevo
+//    inventado para que la pantalla tenga contenido.
+const CATEGORIAS_DESCUBRIR = [
+  { id: 'ensaladas', kicker: 'Frescas', titulo: 'Ensaladas frescas para el calor',
+    test: e => estiloDe(e) === 'ensalada' },
+  { id: 'rapidas', kicker: 'En poco tiempo', titulo: 'Ideas para cuando no hay tiempo',
+    test: e => e.esfuerzo === 'rapido', orden: (a, b) => (a.tiempo_min || 0) - (b.tiempo_min || 0) },
+  { id: 'guisos', kicker: 'Cuchara', titulo: 'Guisos y potajes de cuchara',
+    test: e => estiloDe(e) === 'guiso' },
+  { id: 'arroces', kicker: 'Arroces', titulo: 'De la paella al arroz caldoso',
+    test: e => estiloDe(e) === 'arroz' },
+  { id: 'horno', kicker: 'Al horno', titulo: 'Se hace solo mientras haces otra cosa',
+    test: e => estiloDe(e) === 'horno' },
+  { id: 'calma', kicker: 'Con calma', titulo: 'Para cocinar sin prisa el fin de semana',
+    test: e => e.esfuerzo === 'elaborado' }
+];
+// fijas delante y en este orden mientras tengan candidatas (criterio de Roger 2026-07-22,
+// conservado); el resto rota por día detrás.
+const FIJAS_DESCUBRIR = ['ensaladas', 'rapidas', 'guisos'];
+const estiloDe = e => (e.perfil_servicio || {}).estilo;
+
+// frase humana de un desvío. El HUECO SEMÁNTICO viene del motor (`tipo` + `detalle`); la frase
+// es capa de copy y vive aquí, en UN solo sitio, nunca en el banco (§15.7).
+const FRASE_DESVIO = {
+  'suelo-proteico': 'Ese día la proteína se queda algo corta de lo que tocaría.',
+  'energia-fuera-de-banda': 'Ese día la ración queda un poco fuera de lo justo.',
+  'minimo-no-cubierto': 'Esta semana os quedáis cortos de algún grupo de alimentos.',
+  'techo-fraccional-vs-reserva': 'Hemos tenido que ajustar las cantidades para que cuadre.',
+  'cupo-novedad-excedido': 'Es un plato nuevo para los peques y ya había otro esta semana.',
+  'postre-inviable': 'Ese día alguien se queda sin postre de la mesa.',
+  'ancla-vs-techo': 'Mandas tú: servimos lo que has pedido aunque se pase de lo recomendado.',
+  'divergencia-de-reserva': 'Alguien come una variante distinta a la prevista para ese día.',
+  'eje-fruta-verdura-corto': 'Ese plato se queda corto de verdura para alguien.',
+  'techo-salud-superado': 'Esta semana se pasa de lo recomendado en un grupo de salud.',
+  'M1-sin-declarar': 'Un plato se repite más cerca de lo habitual.',
+  'M2-sin-declarar': 'Una receta vuelve antes de lo habitual.',
+  'sin-alternativa': 'No hemos encontrado otro plato que encaje en esa mesa.',
+  'cambio-de-tipo': 'Te proponemos otro tipo de plato: no quedaba ninguno más de esa clase.',
+  'variedad-cedida': 'Ese plato se repite más cerca de lo que solemos dejar.',
+  'eje-abierto': 'Ese día el plato se queda sin acompañamiento de alguno de los tres grupos.',
+  'alergia': 'OJO: ese plato lleva un alérgeno de alguien que se sienta a la mesa.',
+  'seguridad-infantil': 'OJO: ese plato tiene una forma de riesgo para un menor de la mesa.'
+};
+const frasearDesvio = (tipo, detalle) => FRASE_DESVIO[tipo] || detalle || tipo;
+
+// El mismo desvío no se cuenta igual según QUIÉN eligió el plato. «Mandas tú» solo vale cuando
+// la familia ha elegido ESE plato (`asignar`); si solo rotó la guarnición o cambió quién se
+// sienta, el plato es el que ya tenía y la frase honesta es otra. El HECHO no cambia —el techo
+// se pasa igual y se declara igual—, cambia a quién se le atribuye.
+const FRASE_SIN_ELECCION = {
+  'ancla-vs-techo': 'Con ese plato la semana se pasa un poco de lo recomendado en un grupo.',
+  'variedad-cedida': 'Ese plato ya se repetía dentro de la semana.',
+  'minimo-no-cubierto': 'Esta semana os quedáis cortos de algún grupo de alimentos.'
+};
+const reatribuir = desvios => desvios.map(d => (FRASE_SIN_ELECCION[d.tipo]
+  ? { ...d, frase: FRASE_SIN_ELECCION[d.tipo] } : d));
+
+function crearSuperficie({ familia: familiaDeclarada, datos, config, semanaRef }) {
+  if (!familiaDeclarada || !datos || !config) throw new Error('superficie: faltan familia, datos o config');
+  const familia = normalizarFamilia(familiaDeclarada, datos).familia;
+  // §13 en UN solo lugar: de aquí abajo, `banco` es el ÚNICO banco que la superficie conoce.
+  const { datos: banco, politica } = bancoDelHogar(datos, familia);
+  const semanaBase = semanaRef || null;
+
+  // ── perezosos: la compra no paga el prevuelo y el catálogo no paga la derivación
+  let _pools = null, _preBase = null, _formas = null;
+  const pools = () => (_pools = _pools || compilarPools(banco));
+  const formas = () => (_formas = _formas || indiceDeFormas(banco));
+  const elabPorId = Object.fromEntries(banco.elaboraciones.map(e => [e.id, e]));
+  const alimPorId = Object.fromEntries(banco.alimentos.map(a => [a.id, a]));
+  const combPorId = Object.fromEntries((banco.combinaciones || []).map(c => [c.principal_id, c]));
+  const lineasDe = {};
+  for (const l of banco.lineas) (lineasDe[l.padre] = lineasDe[l.padre] || []).push(l);
+
+  const edadesEn = semanaIso => Object.fromEntries(
+    familia.miembros.map(m => [m.id, edadEnSemana(m.nacimiento, semanaIso)]));
+
+  // entrada del prevuelo a partir de una PRESENCIA dada (la de la semana servida, o todos
+  // presentes para las vistas de catálogo, que no cuelgan de ningún día concreto)
+  function entradaDe(semanaIso, presencia) {
+    return { semana_iso: semanaIso, estacion: estacionDeSemana(semanaIso), presencia,
+      edades: edadesEn(semanaIso), familia, memoria: null };
+  }
+  const presenciaLlena = () => Object.fromEntries(familia.miembros.map(m =>
+    [m.id, Object.fromEntries(ORDEN_SLOTS.map(s => [s, true]))]));
+
+  // prevuelo de CATÁLOGO: la casa entera sentada a la mesa, semana de referencia. Es el que
+  // responde «¿esta receta sirve en esta casa?» sin colgar de ningún día.
+  function preBase() {
+    if (_preBase) return _preBase;
+    if (!semanaBase) throw new Error('superficie: sin `semanaRef` no hay catálogo (la edad y la temporada dependen de la semana)');
+    return (_preBase = prevuelo(entradaDe(semanaBase, presenciaLlena()), pools(), banco, config));
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // §15.2 · LISTA DE COMPRA — y con ella la cantidad de receta y las kcal por comensal
+  // ─────────────────────────────────────────────────────────────────────────────
+  // TODO sale de `derivarCorrida`, el derivador ÚNICO del motor, que ya aplica en este orden:
+  //   1. plato/postre de mesa, menos quien tiene nota `sustituto` (que suma SU plato)
+  //   2. `solo-para` limita la elaboración a sus miembros
+  //   3. `opciones_eje`: cada presente computa SU opción
+  //   4. `variante-todos`: la línea computa con el sustituto para toda la olla
+  //   5. `vehiculo-persona`: sustituto para ese miembro, original para el resto
+  //   6. `eliminar`: la línea no computa para ese miembro (`'*'` = para nadie, §13)
+  //   7. ración de su edad × su fracción, y `ajustes_linea` SUSTITUYE ese número, jamás suma
+  // Aquí solo se AGREGA por alimento real y se redondea una vez. El menú del cole no compra:
+  // ni aparece en `servicios` (el menor va con presencia `false`) ni tiene gramos declarados.
+  const _cacheDer = new WeakMap();
+  function derivacion(semana) {
+    if (_cacheDer.has(semana)) return _cacheDer.get(semana);
+    const corrida = { formato: 'e3f-menu-neutro/2', familia, semanas: [semana] };
+    // `failFast: false`: una nota ilegal es un bug del generador y lo caza el juez — pero jamás
+    // puede dejar a la familia sin lista de la compra el sábado por la mañana.
+    const der = derivarCorrida(corrida, banco, config, { failFast: false })[0];
+    _cacheDer.set(semana, der);
+    return der;
+  }
+
+  // gramos que se COMPRAN de una línea derivada: los crudos. El banco declara muchas líneas en
+  // base `cocido` (200 g de lentejas guisadas) y lo que entra en la cesta es el peso crudo que
+  // las da (80 g secos) — el mismo `factor_agua` que usa el derivador para los macros.
+  const gramosCompra = l => (l.gramos_crudos != null ? l.gramos_crudos : l.gramos_base);
+
+  const enFiltro = (slot, filtro) => {
+    if (!filtro) return true;
+    if (filtro.slot && filtro.slot !== slot) return false;
+    const [dia, servicio] = slot.split('-');
+    if (filtro.dia != null && Number(filtro.dia) !== Number(dia)) return false;
+    // `soloCena` (Roger 2026-07-22): pasadas las 16 h la compra de hoy ya no necesita el
+    // mediodía. Presentacional: solo cambia qué se ACUMULA, jamás el plan ni una cantidad.
+    if (filtro.soloCena && servicio !== 'cena') return false;
+    return true;
+  };
+
+  // agregación cruda por alimento sobre los servicios que pasan el filtro
+  function agregar(semana, filtro) {
+    const der = derivacion(semana);
+    const total = {}, porElaboracion = {}, comensales = [], huecos = [];
+    for (const sv of der.servicios) {
+      if (!sv.servido || !enFiltro(sv.slot, filtro)) continue;
+      for (const [mid, m] of Object.entries(sv.por_miembro)) {
+        comensales.push({ slot: sv.slot, miembro: mid, kcal: Math.round(m.kcal), fraccion: m.fraccion,
+          es_nino: m.es_nino, edad: m.edad });
+        for (const h of m.huecos) huecos.push({ slot: sv.slot, miembro: mid, ...h });
+        for (const parte of m.partes) {
+          for (const l of parte.lineas) {
+            const g = gramosCompra(l);
+            if (!(g > 0)) continue;
+            total[l.alimento] = (total[l.alimento] || 0) + g;
+            const pe = porElaboracion[parte.elaboracion_id] = porElaboracion[parte.elaboracion_id] || {};
+            pe[l.alimento] = (pe[l.alimento] || 0) + g;
+          }
+        }
+      }
+    }
+    return { total, porElaboracion, comensales, huecos };
+  }
+
+  const catPorId = Object.fromEntries((banco.categorias_aesan || []).map(f => [f.alimento_id, f]));
+  const lineaCompra = (id, gramos) => {
+    const a = alimPorId[id] || {};
+    return { id, nombre: a.nombre || id, gramos: redondearCompra(gramos),
+      naturaleza: a.naturaleza || null,
+      // la categoría AESAN del alimento viaja porque es como se COMPRA (carnicería, pescadería,
+      // frutería): agrupar por `naturaleza` metería la lenteja con la lechuga. Es dato del banco,
+      // no una taxonomía inventada en la pantalla.
+      categoria: (catPorId[id] || {}).categoria || a.naturaleza || null,
+      // unidades sobre el total SIN redondear (huevo/yogur se compran por piezas): mínimo 1 si
+      // hay gramos, para no enseñar «0 uds» por un redondeo hacia abajo
+      unidades: a.unidad_g ? Math.max(1, Math.round(gramos / a.unidad_g)) : null,
+      despensa: NATURALEZA_DESPENSA.has(a.naturaleza) };
+  };
+  const ordenar = obj => Object.keys(obj).sort().map(id => lineaCompra(id, obj[id]));
+
+  function listaCompra(semana, filtro) {
+    if (!semana || !semana.servicios) return [];
+    return ordenar(agregar(semana, filtro).total);
+  }
+
+  // §0.5 · la CANTIDAD DE RECETA sale de esta MISMA derivación: la suma agregada de las
+  // cantidades personales, jamás ración estándar × comensales (una mesa con fracciones
+  // {1 · 0,75 · 1,5 · 1} cocina 4,25 raciones, no 4).
+  function cantidadesServicio(semana, slot) {
+    const r = agregar(semana, { slot });
+    // la PIEZA servida viaja entera (`{elaboracion_id, opciones_eje}`) porque el nombre que ve
+    // la familia es el PERCIBIDO —`nombre_por_opcion` resuelto con la opción de mesa— y esa
+    // resolución vive en UN solo sitio, la capa que pinta. Devolver aquí `elaboracion.nombre` a
+    // secas enseñaba «{hoja} rellenas» en la ficha: el bug 6.2, otra vez, por otra puerta.
+    const sv = semana.servicios.find(x => `${x.dia}-${x.servicio}` === slot);
+    const piezas = {};
+    if (sv) {
+      const registrar = pe => { if (pe && !piezas[pe.elaboracion_id]) piezas[pe.elaboracion_id] = pe; };
+      (sv.plato || []).forEach(registrar);
+      registrar(sv.postre);
+      for (const n of sv.notas || []) {
+        if (n.tipo !== 'sustituto') continue;
+        (n.plato || []).forEach(registrar);
+        registrar(n.postre);
+      }
+    }
+    return {
+      slot,
+      ingredientes: ordenar(r.total),
+      por_elaboracion: Object.keys(r.porElaboracion).sort().map(eid => ({
+        elaboracion_id: eid,
+        pieza: piezas[eid] || { elaboracion_id: eid, opciones_eje: null },
+        nombre_plantilla: (elabPorId[eid] || {}).nombre || eid,
+        ingredientes: ordenar(r.porElaboracion[eid])
+      })),
+      comensales: r.comensales,
+      huecos: r.huecos
+    };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // §15.5 · FICHA Y CATÁLOGO
+  // ─────────────────────────────────────────────────────────────────────────────
+  // El catálogo es el del HOGAR: `bancoDelHogar` ya sacó lo que la alergia severa prohíbe, y
+  // `pools.servible` RECALCULA la servibilidad de cada (elaboración × opción) contra el banco
+  // vivo — que es la definición de «bloqueada por falta de dato» (BD_ESQUEMA §7). Nunca un campo
+  // guardado: `bd_v6/bloqueadas.js` es la herramienta de TRAZABILIDAD con esa misma regla, no
+  // una fuente que este fichero pueda leer (vive fuera del bundle, a propósito).
+  function opcionesDe(id) {
+    return [...new Set(pools().candidatos.concat(pools().piezas || [])
+      .filter(c => c.elaboracion_id === id).map(c => c.opcion))].filter(x => x != null).sort();
+  }
+  const nombrePorOpcion = (e, op) => (op && (e.nombre_por_opcion || {})[op]) || e.nombre;
+
+  function fichaResumida(e) {
+    const ops = opcionesDe(e.id);
+    return { id: e.id, nombre: nombrePorOpcion(e, ops[0]), nombre_plantilla: e.nombre,
+      tipo: e.tipo, tiempo_min: e.tiempo_min, esfuerzo: e.esfuerzo, temporada: e.temporada,
+      region: e.region, apta: e.apta || [], ninos: e.ninos === true, foto: e.foto || null,
+      opcion: ops[0] || null, opciones: ops };
+  }
+
+  function catalogoRecetas() {
+    const vivos = new Set(pools().candidatos.map(c => c.elaboracion_id));
+    return banco.elaboraciones.filter(e => e.tipo === 'principal' && vivos.has(e.id))
+      .map(fichaResumida)
+      .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
+  }
+
+  // líneas planas de una elaboración (componentes incluidos), con la opción del eje resuelta
+  function lineasPlanas(id, opcion, out = [], escala = 1, visto = new Set()) {
+    if (visto.has(id)) return out;
+    visto.add(id);
+    for (const l of lineasDe[id] || []) {
+      if (l.componente_id) { lineasPlanas(l.componente_id, opcion, out, escala * (l.escala_adulto || 1), visto); continue; }
+      const alimento_id = Array.isArray(l.alternativas) ? opcion : l.alimento_id;
+      if (!alimento_id) continue;
+      out.push({ ...l, alimento_id, escala, eje: Array.isArray(l.alternativas) });
+    }
+    return out;
+  }
+
+  function previsualizarElaboracion(id, opcionPedida) {
+    const e = elabPorId[id];
+    if (!e) return null;
+    const ops = opcionesDe(id);
+    const opcion = opcionPedida && ops.includes(opcionPedida) ? opcionPedida : (ops[0] || null);
+    const ficha = fichaResumida(e);
+    ficha.nombre = nombrePorOpcion(e, opcion);
+    ficha.opcion = opcion;
+    ficha.pasos = (e.pasos || []).slice();
+    ficha.tips = (e.tips || []).slice();
+    // variantes del eje: lo que la familia puede pedir «también con…»
+    ficha.variantes = ops.filter(op => op !== opcion)
+      .map(op => ({ id: op, nombre: (alimPorId[op] || {}).nombre || op, nombre_plato: nombrePorOpcion(e, op) }));
+    // ALÉRGENOS DEL DESGLOSE REAL, no de una etiqueta: los del alimento de cada línea servida
+    const lineas = lineasPlanas(id, opcion);
+    ficha.alergenos = [...new Set(lineas.flatMap(l => (alimPorId[l.alimento_id] || {}).alergenos || []))].sort();
+    ficha.ingredientes = lineas.filter(l => l.alimento_id)
+      .map(l => ({ id: l.alimento_id, nombre: (alimPorId[l.alimento_id] || {}).nombre || l.alimento_id,
+        papel: l.papel, eje: !!l.eje }));
+    // acompañamiento DE EJEMPLO vía `combinaciones` (lo que el motor le pondría al lado)
+    const comb = combPorId[id] || {};
+    const clase = comb.admite_base_fibra;
+    const fibra = clase && clase !== 'ninguna'
+      ? banco.elaboraciones.filter(x =>
+        (clase === 'ambas' && (x.tipo === 'secundaria-ensalada' || x.tipo === 'secundaria-verdura'))
+        || (clase === 'ensalada' && x.tipo === 'secundaria-ensalada')
+        || (clase === 'verdura' && x.tipo === 'secundaria-verdura')).slice(0, 1)
+      : [];
+    ficha.acompanamiento = (comb.admite_base_hidrato || []).slice(0, 1).map(x => elabPorId[x])
+      .concat(fibra).filter(Boolean)
+      .map(x => ({ id: x.id, nombre: x.nombre, pasos: (x.pasos || []).slice() }));
+    // NOTAS DE SEGURIDAD INFANTIL aplicables (2.5: son sanitarias, se enseñan) — con la MISMA
+    // función que las emite en la card, sobre un servicio sintético de esta sola elaboración.
+    if (semanaBase) {
+      const edades = edadesEn(semanaBase);
+      const sv = { plato: [{ elaboracion_id: id, opciones_eje: opcion ? { '*': opcion } : null }], notas: [] };
+      ficha.seguridad_infantil = notasDeServicio(sv, familia.miembros.map(m => m.id), edades, banco, lineasDe, formas());
+    } else ficha.seguridad_infantil = [];
+    return ficha;
+  }
+
+  // ── ¿sirve a esta mesa? La resolución del prevuelo, ni más ni menos: estado ≠ `excluido` para
+  //    ≥1 presente (y con eje, alguna opción legal). `mesa` = ids de miembros de la familia, o
+  //    miembros SINTÉTICOS de 1 comensal para los chips del catálogo (vegetariana · sin-gluten):
+  //    el chip responde con el mismo motor que la mesa real, no con una simulación.
+  const _preSint = {};
+  function preDeMesa(mesa) {
+    if (!mesa || !mesa.length || typeof mesa[0] === 'string')
+      return { pre: preBase(), mids: (mesa && mesa.length ? mesa : familia.miembros.map(m => m.id)) };
+    const clave = JSON.stringify(mesa);
+    if (_preSint[clave]) return _preSint[clave];
+    const fam = normalizarFamilia({ id: 'chip', gobierno: null, ausencias_fijas: [], anclas: [],
+      miembros: mesa.map((m, i) => ({ ...MANIQUI_CHIP, ...m, id: m.id || `chip${i}` })) }, banco).familia;
+    const presencia = Object.fromEntries(fam.miembros.map(m =>
+      [m.id, Object.fromEntries(ORDEN_SLOTS.map(s => [s, true]))]));
+    const entrada = { semana_iso: semanaBase, estacion: estacionDeSemana(semanaBase), presencia,
+      edades: Object.fromEntries(fam.miembros.map(m => [m.id, edadEnSemana(m.nacimiento, semanaBase)])),
+      familia: fam, memoria: null };
+    return (_preSint[clave] = { pre: prevuelo(entrada, pools(), banco, config), mids: fam.miembros.map(m => m.id) });
+  }
+
+  function sirveAMesa(id, mesa) {
+    const { pre, mids } = preDeMesa(mesa);
+    return mids.some(mid => {
+      const res = pre.resolucion[mid] && pre.resolucion[mid][id];
+      if (!res || res.estado === 'excluido') return false;
+      const legales = pre.opcionesLegales[mid][id];
+      return legales == null || legales.length > 0;
+    });
+  }
+
+  // ── DESCUBRIR: temporada primero, fijas delante, rotación determinista por día (sin RNG),
+  //    sobre el catálogo del HOGAR. `fechaISO` es ENTRADA: esta función no toca el reloj.
+  function categoriasDescubrir(fechaISO, ocultas) {
+    const fuera = new Set(ocultas || []);
+    const disponibles = catalogoRecetas().filter(p => !fuera.has(p.id)).map(p => elabPorId[p.id]);
+    const d = new Date(`${fechaISO}T00:00:00Z`);
+    const mes = d.getUTCMonth() + 1;
+    const estacion = config.ESTACION_POR_MES[mes];
+    const pool = CATEGORIAS_DESCUBRIR.slice();
+    if (estacion) pool.unshift({ id: 'temporada', kicker: 'De temporada',
+      titulo: estacion === 'verano' || estacion === 'primavera'
+        ? 'Recetas fresquitas para el buen tiempo' : 'Recetas de cuchara para el frío',
+      test: e => e.temporada === estacion });
+    const conCandidatas = pool.map(cat => {
+      let candidatas = disponibles.filter(cat.test);
+      if (!candidatas.length) return null;
+      if (cat.orden) candidatas = candidatas.slice().sort(cat.orden);
+      return { id: cat.id, kicker: cat.kicker, titulo: cat.titulo,
+        candidatas: candidatas.map(fichaResumida) };
+    }).filter(Boolean);
+    if (!conCandidatas.length) return [];
+    const fijas = FIJAS_DESCUBRIR.map(id => conCandidatas.find(c => c.id === id)).filter(Boolean);
+    const idsFijas = new Set(fijas.map(c => c.id));
+    const resto = conCandidatas.filter(c => !idsFijas.has(c.id));
+    const diaNum = Math.floor(d.getTime() / 86400000);
+    const off = resto.length ? diaNum % resto.length : 0;
+    return fijas.concat(resto.slice(off), resto.slice(0, off)).map((cat, i) => ({
+      ...cat,
+      // la que se enseña en la ficha rota con el día, como en v5
+      destacada: cat.candidatas[(diaNum + i) % cat.candidatas.length],
+      foto: (cat.candidatas.find(p => p.foto) || {}).foto || null
+    }));
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // §15.6 · NEVERA — PROPONE, ya no monta menús
+  // ─────────────────────────────────────────────────────────────────────────────
+  // El filtro está INVERTIDO: manda la disponibilidad. `alimentosNevera()` es el checklist real
+  // (lo que de verdad decide si un plato se puede montar); grasa y condimento se asumen en casa.
+  function alimentosNevera() {
+    const usados = {};
+    for (const p of catalogoRecetas()) {
+      for (const op of (p.opciones.length ? p.opciones : [null])) {
+        for (const l of lineasPlanas(p.id, op)) {
+          const a = alimPorId[l.alimento_id];
+          if (!a || NATURALEZA_DESPENSA.has(a.naturaleza)) continue;
+          usados[a.id] = { id: a.id, nombre: a.nombre, naturaleza: a.naturaleza };
+        }
+      }
+    }
+    return Object.values(usados).sort((x, y) => x.nombre.localeCompare(y.nombre, 'es'));
+  }
+
+  // montables (todo lo fijo disponible + eje con ≥1 opción disponible y comible) y
+  // casi-montables (falta UNO), con `faltan[]`. NO monta el menú: elegir candidata pasa por
+  // `cambiarPlato {modo:'asignar'}` — una sola puerta para cambiar la semana.
+  function opcionesNevera(slot, disponibles, semana) {
+    const hay = new Set(disponibles || []);
+    const servicio = slot && slot.split('-')[1];
+    const presentes = semana && semana.presencia
+      ? familia.miembros.map(m => m.id).filter(mid => semana.presencia[mid] && semana.presencia[mid][slot] === true)
+      : familia.miembros.map(m => m.id);
+    const montables = [], casi = [];
+    for (const p of catalogoRecetas()) {
+      if (servicio && !p.apta.includes(servicio)) continue;
+      if (presentes.length && !sirveAMesa(p.id, presentes)) continue;
+      // la opción del eje que la mesa puede comer Y está en la nevera
+      const legales = p.opciones.filter(op => presentes.some(mid =>
+        (preBase().opcionesLegales[mid][p.id] || []).includes(op)));
+      const conEje = p.opciones.length > 0;
+      const opsDisponibles = legales.filter(op => hay.has(op));
+      const faltan = [];
+      for (const l of lineasPlanas(p.id, opsDisponibles[0] || legales[0] || null)) {
+        const a = alimPorId[l.alimento_id];
+        if (!a || NATURALEZA_DESPENSA.has(a.naturaleza)) continue;   // asumidos en casa
+        if (Array.isArray(l.alternativas) || l.eje) continue;        // el eje se juzga aparte
+        if (!hay.has(a.id) && !faltan.includes(a.id)) faltan.push(a.id);
+      }
+      if (conEje && !opsDisponibles.length) {
+        // el eje no está en la nevera: falta UNA opción legal cualquiera (la primera, ordenada)
+        if (!legales.length) continue;
+        faltan.push(legales[0]);
+      }
+      const ficha = { ...p, opcion: opsDisponibles[0] || legales[0] || null,
+        faltan: faltan.map(id => ({ id, nombre: (alimPorId[id] || {}).nombre || id })) };
+      if (!faltan.length) montables.push(ficha);
+      else if (faltan.length === 1) casi.push(ficha);
+    }
+    return { montables, casi_montables: casi };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // §15.3 · CAMBIAR EL PLATO — SOLO ese slot; T4 re-audita la semana ENTERA
+  // ─────────────────────────────────────────────────────────────────────────────
+  // El «esqueleto vigente» se LEE de la propia semana servida: los 14 slots con plato son
+  // exactamente los que T1 repartió (los demás llevan `no_servido`), y la categoría de cada uno
+  // es la del candidato (elaboración × opción) que se sirvió. Reconstruirlo así —en vez de
+  // re-correr T1— garantiza que la reserva contra la que se busca es la que la familia TIENE.
+  function categoriaServida(pe) {
+    const ops = pe.opciones_eje ? Object.values(pe.opciones_eje) : [null];
+    const cuenta = {};
+    for (const o of ops) cuenta[o] = (cuenta[o] || 0) + 1;
+    const op = Object.keys(cuenta).sort((a, b) => cuenta[b] - cuenta[a] || (a < b ? -1 : 1))[0];
+    const opcion = op === 'null' || op === 'undefined' ? null : op;
+    const c = pools().candidatos.find(x => x.elaboracion_id === pe.elaboracion_id && x.opcion === opcion);
+    return { categoria: c ? c.categoria : 'sin-cuota', opcion };
+  }
+  const principalDe = sv => (sv.plato || []).find(pe => (elabPorId[pe.elaboracion_id] || {}).tipo === 'principal')
+    || (sv.plato || [])[0] || null;
+
+  function esqueletoVigente(semana) {
+    const slots = [];
+    for (const s of SLOTS) {
+      const sv = semana.servicios.find(x => `${x.dia}-${x.servicio}` === s.slot);
+      if (!sv || !sv.plato) continue;
+      const pe = principalDe(sv);
+      const { categoria } = categoriaServida(pe);
+      slots.push({ slot: s.slot, dia: s.dia, servicio: s.servicio, categoria,
+        esfuerzo: (elabPorId[pe.elaboracion_id] || {}).esfuerzo || 'medio', ancla: null });
+    }
+    return { ok: true, slots, relajaciones: [] };
+  }
+
+  // declaraciones (relajaciones + descargos + gates de T4) de una semana, como claves comparables
+  function declaraciones(semana, aud) {
+    const out = new Map();
+    for (const sv of semana.servicios) {
+      const slot = `${sv.dia}-${sv.servicio}`;
+      for (const r of sv.relajaciones || []) out.set(`rel|${slot}|${r.peldano}`, { tipo: r.peldano, slot, frase: r.frase, detalle: r.detalle });
+      for (const d of sv.descargos || []) out.set(`des|${slot}|${d.tipo}|${d.miembro || ''}`, { tipo: d.tipo, slot, miembro: d.miembro || null, detalle: d.detalle, frase: frasearDesvio(d.tipo, d.detalle) });
+    }
+    for (const grupo of ['silenciosas', 'divergencias', 'eje_corto']) {
+      for (const x of (aud && aud[grupo]) || [])
+        out.set(`t4|${x.slot || ''}|${x.tipo}|${x.miembro || ''}`, { tipo: x.tipo, slot: x.slot || null, miembro: x.miembro || null, detalle: x.detalle, frase: frasearDesvio(x.tipo, x.detalle) });
+    }
+    return out;
+  }
+
+  const objetivosDe = semanaIso => Object.fromEntries(
+    familia.miembros.map(m => [m.id, objetivoDiario(m, semanaIso, config)]));
+  const auditarSemana = semana => auditar({ familia, semanas: [semana] }, banco, config, objetivosDe(semana.semana_iso));
+
+  // avisos DUROS de una asignación directa (§15.3): alergia no severa o seguridad infantil. No
+  // bloquean —la familia está por encima de la app— pero nombran persona y alérgeno y persisten.
+  function avisosDeAsignacion(elaboracionId, presentes, semanaIso, opcionPedida) {
+    const out = [];
+    const e = elabPorId[elaboracionId];
+    if (!e) return [{ tipo: 'sin-alternativa', detalle: `${elaboracionId} no existe en el banco de esta casa`, frase: frasearDesvio('sin-alternativa') }];
+    const ops = opcionesDe(elaboracionId);
+    const opcion = opcionPedida && ops.includes(opcionPedida) ? opcionPedida : (ops[0] || null);
+    const lineas = lineasPlanas(elaboracionId, opcion);
+    for (const mid of presentes) {
+      const m = familia.miembros.find(x => x.id === mid);
+      if (!m) continue;
+      const suyas = (m.alergias || []).concat(m.intolerancias || []);
+      for (const l of lineas) {
+        const a = alimPorId[l.alimento_id];
+        if (!a) continue;
+        const choque = (a.alergenos || []).find(x => suyas.includes(x));
+        if (choque) out.push({ tipo: 'alergia', miembro: mid, alimento_id: a.id, alergeno: choque,
+          detalle: `${a.nombre} lleva ${choque} y ${m.nombre || mid} lo tiene declarado`,
+          frase: `${m.nombre || mid}: ese plato lleva ${a.nombre.toLowerCase()} (${choque}).`, duro: true });
+      }
+    }
+    const edades = edadesEn(semanaIso);
+    const sv = { plato: [{ elaboracion_id: elaboracionId, opciones_eje: opcion ? { '*': opcion } : null }], notas: [] };
+    for (const n of notasDeServicio(sv, presentes, edades, banco, lineasDe, formas())) {
+      const m = familia.miembros.find(x => x.id === n.miembro) || {};
+      out.push({ tipo: 'seguridad-infantil', miembro: n.miembro, alimento_id: n.alimento_id,
+        detalle: `${n.alimento_id}: ${n.forma_insegura} (menores de ${n.edad_max_anos})`,
+        frase: `${m.nombre || n.miembro}: ${n.forma_insegura}.`, duro: true });
+    }
+    return out;
+  }
+
+  function cambiarPlato(semanaEntrada, slot, peticion, diario, datosOpc, configOpc) {
+    const cfg = configOpc || config;
+    // FUNCIÓN PURA: se trabaja sobre una copia. Los slots fijados viajan por referencia dentro de
+    // T2 y la pasada de cierre puede colgarles una declaración — sobre el clon, jamás sobre la
+    // semana que la app tiene en la mano.
+    const original = semanaEntrada;
+    const semana = structuredClone(semanaEntrada);
+    const svActual = semana.servicios.find(x => `${x.dia}-${x.servicio}` === slot);
+    const noHay = (tipo, detalle) => ({ ok: false, semana: original,
+      desvios: [{ tipo, slot, detalle, frase: frasearDesvio(tipo, detalle) }] });
+    if (!svActual || !svActual.plato) return noHay('sin-alternativa', `${slot} no tiene plato que cambiar`);
+    const modo = (peticion && peticion.modo) || 'otro';
+    const peActual = principalDe(svActual);
+
+    // 1 · MEMORIA de entrada: la del diario de lo YA servido, exactamente como en la generación
+    //     (diario → memoria → semana). El resto de la semana no va aquí: va en `fijados`.
+    const lunes = fechaDia(semana.semana_iso, 1).toISOString().slice(0, 10);
+    const mem = memoria(diario && Array.isArray(diario.servicios) ? diario : { servicios: [] }, banco, cfg, lunes);
+    const entrada = { ...entradaDe(semana.semana_iso, semana.presencia), memoria: mem };
+    const pre = prevuelo(entrada, pools(), banco, cfg);
+
+    // 2 · el esqueleto vigente + lo que este modo pide de ESE slot
+    const esq = esqueletoVigente(semana);
+    const s = esq.slots.find(x => x.slot === slot);
+    if (!s) return noHay('sin-alternativa', `${slot} no está en el esqueleto de la semana`);
+    const evitar = { principales: new Set(), piezas: new Set() };
+    let avisos = [];
+    if (modo === 'asignar') {
+      if (!peticion.elaboracion_id) return noHay('sin-alternativa', 'asignar sin `elaboracion_id`');
+      s.ancla = peticion.elaboracion_id;
+      s.ancla_libre = true;                            // apta/temporada ceden: manda la familia
+      const presentes = familia.miembros.map(m => m.id)
+        .filter(mid => semana.presencia[mid] && semana.presencia[mid][slot] === true);
+      // LO QUE LA FAMILIA ELIGE ES EL PLATO PERCIBIDO, no la plantilla: «alitas de pollo al
+      // horno» y «dorada al horno» son la MISMA elaboración con distinta opción de eje. Sin
+      // fijar la opción, pedir alitas servía dorada (cazado en el navegador, 3-ago). Se fija
+      // para todos los presentes y quien no pueda comerla conserva su resolución: la guardia
+      // dura de `resolverEje` no la vence una elección de la familia.
+      if (peticion.opcion) s.opciones_previas = Object.fromEntries(presentes.map(mid => [mid, peticion.opcion]));
+      avisos = avisosDeAsignacion(peticion.elaboracion_id, presentes, semana.semana_iso, peticion.opcion);
+    } else if (modo === 'guarnicion') {
+      // mismo principal, otra complementaria. La opción del eje se conserva: `asado-horno` sirve
+      // alitas o dorada, y rotar la guarnición no puede cambiarle el plato a nadie (el mismo
+      // defecto que en `asignar`, por la otra puerta — cazado en el navegador).
+      s.ancla = peActual.elaboracion_id;
+      s.ancla_libre = true;
+      s.opciones_previas = peActual.opciones_eje || null;
+      for (const pe of svActual.plato) if (pe !== peActual) evitar.piezas.add(pe.elaboracion_id);
+      if (!evitar.piezas.size) return noHay('sin-alternativa', 'ese plato no lleva acompañamiento que rotar');
+    } else {
+      evitar.principales.add(peActual.elaboracion_id);
+    }
+
+    // 3 · T2 SOLO sobre ese slot: el resto de la semana entra como `fijados` y se precarga en el
+    //     estado vivo, así variedad, techos y ventanas cuentan contra lo que la familia ya tiene.
+    const fijados = {};
+    for (const sv of semana.servicios) {
+      const sl = `${sv.dia}-${sv.servicio}`;
+      if (sl !== slot && sv.plato) fijados[sl] = sv;
+    }
+    const correr = () => {
+      try {
+        return rellenarSemana({ entrada, esq, pre, pools: pools(), datos: banco, config: cfg,
+          memoria: mem, menuCole: familia.menu_cole, fijados, evitar });
+      } catch (e) { return { ok: false, motivo: `no se pudo re-resolver ${slot}: ${e.message}` }; }
+    };
+    let r = correr();
+    // AVISO, JAMÁS BLOQUEO: si en la clase que T1 reservó no queda otro plato, se abre la reserva
+    // antes que devolver «no hay nada». El cambio de tipo se DECLARA como desvío.
+    if (!r.ok && modo === 'otro') {
+      s.categoria_libre = true;
+      const r2 = correr();
+      if (r2.ok) { r = r2; avisos = avisos.concat([{ tipo: 'cambio-de-tipo', slot,
+        detalle: `sin otro plato de ${s.categoria} servible en ese slot: se abre la reserva de la semana`,
+        frase: frasearDesvio('cambio-de-tipo') }]); }
+    }
+    if (!r.ok) return { ok: false, semana: original,
+      desvios: [{ tipo: 'sin-alternativa', slot, detalle: r.motivo, frase: frasearDesvio('sin-alternativa') }]
+        .concat(avisos) };
+
+    // 4 · T3 re-fracciona ESE slot. Se corre sobre la semana ENTERA —el acumulado de salud es de
+    //     semana— y solo se aplica al slot cambiado: los demás quedan VERBATIM (§15.3).
+    const nueva = r.semana;
+    nueva.semana_iso = semana.semana_iso;
+    // los slots sin plato conservan SU motivo declarado (`sin-presentes` / `no-gobernado`): T2 lo
+    // reconstruye desde su propio esqueleto y aquí el esqueleto son solo los slots servidos
+    for (const sv of nueva.servicios) {
+      if (sv.plato) continue;
+      const antes = original.servicios.find(x => x.dia === sv.dia && x.servicio === sv.servicio);
+      if (antes) sv.no_servido = antes.no_servido;
+    }
+    const t3 = fraccionarSemana({ semana: nueva, familia, config: cfg }, banco);
+    for (const sv of nueva.servicios) {
+      const sl = `${sv.dia}-${sv.servicio}`;
+      if (sl !== slot) {                               // verbatim: se re-cuelga lo que ya tenía
+        const antes = fijados[sl];
+        if (antes) { sv.fracciones = antes.fracciones; if (antes.ajustes_linea) sv.ajustes_linea = antes.ajustes_linea; }
+        continue;
+      }
+      const f = t3.servicios.find(x => x.slot === sl);
+      if (!f || !sv.plato) continue;
+      sv.fracciones = Object.keys(f.fracciones || {}).length ? f.fracciones : null;
+      if (f.ajustes_linea && f.ajustes_linea.length) sv.ajustes_linea = f.ajustes_linea;
+      sv.descargos = (sv.descargos || []).concat(f.descargos);
+      sv.relajaciones = (sv.relajaciones || []).concat(f.relajaciones);
+      // D2 y §13 sobre el servicio NUEVO (solo él: `anotarSemana` no deduplica y re-correrla
+      // sobre la semana entera duplicaría las notas de los slots que no se han tocado)
+      const edades = edadesEn(semana.semana_iso);
+      const presentes = familia.miembros
+        .filter(m => nueva.presencia[m.id] && nueva.presencia[m.id][sl] === true).map(m => m.id);
+      sv.notas = (sv.notas || []).concat(notasDeServicio(sv, presentes, edades, banco, lineasDe, formas()));
+      anotarHogar({ servicios: [sv] }, politica);
+    }
+
+    // 5 · T4 re-audita la semana ENTERA y los desvíos son los NUEVOS (§15.3). Aviso, jamás
+    //     bloqueo: cuotas, variedad, ejes y energía se declaran y no impiden nada.
+    const antes = declaraciones(original, auditarSemana(original));
+    const despues = declaraciones(nueva, auditarSemana(nueva));
+    const desvios = [];
+    for (const [k, v] of despues) if (!antes.has(k)) desvios.push(v);
+    return { ok: true, semana: nueva,
+      desvios: avisos.concat(modo === 'asignar' ? desvios : reatribuir(desvios)) };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // §15.4 · PRESENCIA DEL DÍA — mismo plato, mesa real
+  // ─────────────────────────────────────────────────────────────────────────────
+  // «Hoy no como / hoy vuelve papá»: no toca el plato ni el resto de la semana. Re-corre T2 sobre
+  // ESE slot con el principal, las guarniciones y el postre FIJADOS —solo se re-resuelven las
+  // opciones de eje y las notas con la mesa de hoy— y luego T3 para las cantidades. El alérgeno
+  // severo no puede aparecer: es independiente de la presencia (§13), y ya no está en el banco.
+  function reescalarServicio(semanaEntrada, slot, presentes, diario) {
+    const original = semanaEntrada;
+    const semana = structuredClone(semanaEntrada);     // pura, igual que `cambiarPlato`
+    const svActual = semana.servicios.find(x => `${x.dia}-${x.servicio}` === slot);
+    if (!svActual || !svActual.plato) return { ok: false, semana: original,
+      desvios: [{ tipo: 'sin-alternativa', slot, frase: 'Ese servicio no tiene plato que reescalar.' }] };
+    const nuevaPresencia = {};
+    for (const m of familia.miembros)
+      nuevaPresencia[m.id] = { ...(semana.presencia[m.id] || {}), [slot]: presentes.includes(m.id) };
+    const semanaConMesa = { ...semana, presencia: nuevaPresencia };
+    if (!presentes.length) {                           // nadie come: el slot queda sin servir
+      const sv = semanaConMesa.servicios.find(x => `${x.dia}-${x.servicio}` === slot);
+      sv.plato = null; sv.postre = null; sv.notas = []; sv.fracciones = null; sv.no_servido = 'sin-presentes';
+      return { ok: true, semana: semanaConMesa, servicio: sv, desvios: [] };
+    }
+    const peActual = principalDe(svActual);
+    const esq = esqueletoVigente(semanaConMesa);
+    const s = esq.slots.find(x => x.slot === slot);
+    if (!s) return { ok: false, semana: original, desvios: [{ tipo: 'sin-alternativa', slot, frase: 'Ese servicio no está en el esqueleto.' }] };
+    s.ancla = peActual.elaboracion_id;
+    s.ancla_libre = true;
+    s.opciones_previas = peActual.opciones_eje || null;
+    s.piezas_fijas = (svActual.plato || []).filter(pe => pe !== peActual);
+    s.postre_fijo = svActual.postre || null;
+    const lunes = fechaDia(semana.semana_iso, 1).toISOString().slice(0, 10);
+    const mem = memoria(diario && Array.isArray(diario.servicios) ? diario : { servicios: [] }, banco, config, lunes);
+    const entrada = { ...entradaDe(semana.semana_iso, nuevaPresencia), memoria: mem };
+    const pre = prevuelo(entrada, pools(), banco, config);
+    const fijados = {};
+    for (const sv of semanaConMesa.servicios) {
+      const sl = `${sv.dia}-${sv.servicio}`;
+      if (sl !== slot && sv.plato) fijados[sl] = sv;
+    }
+    let r;
+    try {
+      r = rellenarSemana({ entrada, esq, pre, pools: pools(), datos: banco, config,
+        memoria: mem, menuCole: familia.menu_cole, fijados });
+    } catch (e) {
+      return { ok: false, semana: original, desvios: [{ tipo: 'sin-alternativa', slot, detalle: e.message,
+        frase: 'No hemos podido recalcular ese servicio con esa mesa.' }] };
+    }
+    if (!r.ok) return { ok: false, semana: original, desvios: [{ tipo: 'sin-alternativa', slot, detalle: r.motivo,
+      frase: 'Con esa mesa el plato ya no se sostiene: cámbialo y te proponemos otro.' }] };
+    const nueva = r.semana;
+    nueva.semana_iso = semana.semana_iso;
+    for (const sv of nueva.servicios) {
+      if (sv.plato) continue;
+      const antes = original.servicios.find(x => x.dia === sv.dia && x.servicio === sv.servicio);
+      if (antes) sv.no_servido = antes.no_servido;
+    }
+    const t3 = fraccionarSemana({ semana: nueva, familia, config }, banco);
+    const desvios = [];
+    for (const sv of nueva.servicios) {
+      const sl = `${sv.dia}-${sv.servicio}`;
+      if (sl !== slot) {
+        const antes = fijados[sl];
+        if (antes) { sv.fracciones = antes.fracciones; if (antes.ajustes_linea) sv.ajustes_linea = antes.ajustes_linea; }
+        continue;
+      }
+      const f = t3.servicios.find(x => x.slot === sl);
+      if (!f) continue;
+      sv.fracciones = Object.keys(f.fracciones || {}).length ? f.fracciones : null;
+      if (f.ajustes_linea && f.ajustes_linea.length) sv.ajustes_linea = f.ajustes_linea;
+      sv.descargos = (sv.descargos || []).concat(f.descargos);
+      const edades = edadesEn(semana.semana_iso);
+      sv.notas = (sv.notas || []).concat(notasDeServicio(sv, presentes, edades, banco, lineasDe, formas()));
+      anotarHogar({ servicios: [sv] }, politica);
+      for (const d of sv.descargos || [])
+        desvios.push({ tipo: d.tipo, slot: sl, miembro: d.miembro || null, detalle: d.detalle,
+          frase: frasearDesvio(d.tipo, d.detalle) });
+    }
+    const servicio = nueva.servicios.find(x => `${x.dia}-${x.servicio}` === slot);
+    return { ok: true, semana: nueva, servicio, desvios: reatribuir(desvios) };
+  }
+
+  return {
+    // §15.2 — y de la misma derivación, la cantidad de receta y las kcal por comensal
+    listaCompra, cantidadesServicio,
+    // §15.3 · §15.4
+    cambiarPlato, reescalarServicio,
+    // §15.5
+    catalogoRecetas, previsualizarElaboracion, categoriasDescubrir, sirveAMesa,
+    // §15.6
+    alimentosNevera, opcionesNevera,
+    // lo que la política de hogar dejó fuera: SALIDA, jamás silencio (§13.4)
+    politicaHogar: politica,
+    familia, banco
+  };
+}
+
+// maniquí de los chips del catálogo: adulto P50 declarado como tal. Es ENTRADA sintética (misma
+// convención que las familias del harness), jamás dato nutricional del banco.
+const MANIQUI_CHIP = { sexo: 'f', nacimiento: '1988-06', altura_cm: 165, peso_kg: 62,
+  actividad: 'media', objetivo: 'mantenimiento' };
+
+module.exports = { crearSuperficie, redondearCompra, CATEGORIAS_DESCUBRIR, FRASE_DESVIO };
+
+  };
+
   /* ---- motor_v6/src/t1_esqueleto.js ---- */
   REG['t1_esqueleto'] = function (module, exports, require) {
 // T1 · ESQUELETO de la semana (spec §1, primer tiempo del motor V6).
@@ -2979,7 +3768,13 @@ const DIA_MS = 86400000;
 const ORDEN_CAL = [];
 for (let d = 1; d <= 7; d++) for (const s of ['comida', 'cena']) ORDEN_CAL.push(`${d}-${s}`);
 
-function rellenarSemana({ entrada, esq, pre, pools, datos, config, memoria, menuCole }) {
+// `fijados` y `evitar` (spec §15.3, superficie): lo que permite RE-RESOLVER UN SOLO SLOT sin
+// duplicar el relleno. `fijados` = { slot → servicio ya servido }: se precarga en el estado vivo
+// con el MISMO `aplicar()` que un slot recién decidido —así variedad, techos y ventanas cuentan
+// contra el resto de la semana— y queda FUERA del bucle de decisión, verbatim en la salida.
+// `evitar` = { principales:Set, piezas:Set }: lo que el usuario acaba de rechazar. Sin estos dos
+// parámetros el comportamiento es EXACTAMENTE el de siempre (generación de semana entera).
+function rellenarSemana({ entrada, esq, pre, pools, datos, config, memoria, menuCole, fijados, evitar }) {
   const { semana_iso, familia, presencia, edades, estacion } = entrada;
   const semanaNum = Number(semana_iso.split('-W')[1]);
   const ix = indexar(datos);
@@ -3035,6 +3830,9 @@ function rellenarSemana({ entrada, esq, pre, pools, datos, config, memoria, menu
 
   const slots = esq.slots.map(s => ({ ...s }));
   const activos = new Set(slots.map(s => s.slot));
+  const fijos = fijados || {};
+  const evitarPrincipales = evitar && evitar.principales;
+  const evitarPiezas = evitar && evitar.piezas;
 
   // ── ÍNDICE EN SERVICIOS REALMENTE SERVIDOS (no posiciones de calendario).
   // La ventana M2 se mide en SERVICIOS: para una familia que solo cena en casa, «hace 4
@@ -3143,9 +3941,13 @@ function rellenarSemana({ entrada, esq, pre, pools, datos, config, memoria, menu
   }
 
   // ── resolver el EJE comensal a comensal para un candidato (el foso)
-  function resolverEje(c, presentes, relaj) {
+  function resolverEje(c, presentes, relaj, s) {
     if (!ix.tieneEje[c.elaboracion_id]) return { opciones: null, divergencias: [] };
     const porMiembro = {}, divergencias = [];
+    // §15.4 (`reescalarServicio`): quien YA estaba sentado conserva su opción mientras le siga
+    // siendo legal — que vuelva papá no puede cambiarle el plato a nadie más. Solo se resuelve
+    // de nuevo al que llega. Sin `opciones_previas` (el caso normal) esto no existe.
+    const previas = (s && s.opciones_previas) || null;
     // ¿el cubo del candidato viene del EJE? (pizza×atún: sí; potaje×zanahoria: no — su cubo es
     // la legumbre fija). Solo entonces la opción del omnívoro se ata a la CATEGORÍA EXACTA
     // reservada — «algún cubo con banda» dejaba colar salmón (azul) en un slot de blanco y el
@@ -3156,6 +3958,11 @@ function rellenarSemana({ entrada, esq, pre, pools, datos, config, memoria, menu
       if (pre.resolucion[mid][c.elaboracion_id].estado === 'excluido') continue;
       let legales = sinVariantesInnecesarias(pre.opcionesLegales[mid][c.elaboracion_id] || []);
       if (!legales.length) continue;                 // sin opción: quedará excluido→sustituto
+      if (previas && previas[mid] != null
+        && (pre.opcionesLegales[mid][c.elaboracion_id] || []).includes(previas[mid])) {
+        porMiembro[mid] = previas[mid];
+        continue;
+      }
       const m = familia.miembros.find(x => x.id === mid);
       // omnívoro en eje proteico: su opción DENTRO de la categoría reservada si existe (la
       // reserva se cumple por construcción); si no → legal de otra CON descargo (H manda)
@@ -3367,6 +4174,11 @@ function rellenarSemana({ entrada, esq, pre, pools, datos, config, memoria, menu
   // ── cierre del plato: ejes que faltan → guarniciones vía combinaciones
   function cerrarPlato(c, presentes, s, relaj) {
     const dia = s.dia;
+    // §15.4 (`reescalarServicio`): «mismo plato, mesa real». Las guarniciones NO se re-eligen —
+    // se conservan tal cual y solo se recalcula a quién se le sirve cada una (`solo-para`) y qué
+    // notas de adaptación le tocan a cada presente. Es la MISMA emisión de notas de siempre, con
+    // el pool reducido a lo que ya hay en la mesa.
+    if (s.piezas_fijas) return cerrarPlatoFijado(presentes, s);
     const e = ix.elab[c.elaboracion_id];
     const cubiertos = new Set(e.ejes || []);
     // la etiqueta no basta para fruta-verdura: si los gramos no llegan, el eje NO está cubierto
@@ -3376,6 +4188,13 @@ function rellenarSemana({ entrada, esq, pre, pools, datos, config, memoria, menu
     const comb = ix.comb[c.elaboracion_id] || {};
     const piezas = [], notas = [];
     let usoR2 = false;
+    // §15.3: con el plato FIJADO por la familia, un eje que no se puede cerrar se DECLARA y el
+    // servicio sale igual — «los ejes se declaran como desvío y no impiden nada». Sin esto,
+    // pedir salmón al horno un día sin guarnición disponible devolvía «no hay alternativa»
+    // (cazado por la suite de la superficie). En la generación normal `abierto()` no existe: el
+    // candidato sigue cayendo y T2 prueba el siguiente, que es lo correcto cuando elige el motor.
+    const ejesAbiertos = [];
+    const abierto = eje => { if (!s.ancla_libre) return false; ejesAbiertos.push(eje); return true; };
     for (const eje of falta) {
       let pool = [];
       if (eje === 'hidrato') pool = (comb.admite_base_hidrato || []).map(id => ix.elab[id]).filter(Boolean)
@@ -3394,7 +4213,7 @@ function rellenarSemana({ entrada, esq, pre, pools, datos, config, memoria, menu
         const conGramos = pool.filter(x => cubreFV([x.id], 'adulto'));
         if (conGramos.length) pool = conGramos;
       } else pool = [];                              // proteína la cubre el principal SIEMPRE (tipo)
-      if (!pool.length && eje !== 'proteina') return null;   // no hay cierre → candidato fuera
+      if (!pool.length && eje !== 'proteina') { if (abierto(eje)) continue; return null; }   // sin cierre → fuera
       if (!pool.length) continue;
       // servible + no repetida M4 + coste S de pieza; primero las que sirven a TODOS
       const distM4 = relaj.R2 ? 1 : config.VENTANAS.M4_servicios;
@@ -3408,6 +4227,7 @@ function rellenarSemana({ entrada, esq, pre, pools, datos, config, memoria, menu
       const principalPesado = ix.esPesada(c.elaboracion_id);
       const hayLigera = pool.some(x => !ix.esPesada(x.id));
       const evaluar = pool.map(x => {
+        if (evitarPiezas && evitarPiezas.has(x.id)) return null;   // §15.3 `guarnicion`: rota
         if (ix.esPesada(x.id) && (fritosLlenos || (!principalPesado && hayLigera))) return null;
         const excluidos = presentes.filter(mid => pre.resolucion[mid][x.id] == null
           || pre.resolucion[mid][x.id].estado === 'excluido'
@@ -3430,7 +4250,7 @@ function rellenarSemana({ entrada, esq, pre, pools, datos, config, memoria, menu
         || (a.x.id < b.x.id ? -1 : 1));
       const rot = evaluar.length ? (semanaNum + dia) % evaluar.length : 0;
       const elegida = evaluar.length ? evaluar[(0 + rot) % evaluar.length] : null;
-      if (!elegida) return null;
+      if (!elegida) { if (abierto(eje)) continue; return null; }
       if (elegida.soloConR2) usoR2 = true;
       piezas.push({ elaboracion_id: elegida.x.id,
         opciones_eje: elegida.opMesa != null ? { '*': elegida.opMesa } : null });
@@ -3442,10 +4262,11 @@ function rellenarSemana({ entrada, esq, pre, pools, datos, config, memoria, menu
         // excluidos de la A. Sin pieza B posible (o sin hueco en las 3 del plato) el candidato
         // no cierra.
         const poolB = pool.filter(x => x.id !== elegida.x.id
+          && !(evitarPiezas && evitarPiezas.has(x.id))
           && elegida.excluidos.every(mid => pre.resolucion[mid][x.id]
             && pre.resolucion[mid][x.id].estado === 'tal-cual'
             && (!ix.tieneEje[x.id] || (pre.opcionesLegales[mid][x.id] || []).length)));
-        if (!poolB.length || 1 + piezas.length >= 3) return null;
+        if (!poolB.length || 1 + piezas.length >= 3) { if (abierto(eje)) continue; return null; }
         // la pieza B respeta la MISMA distancia M4 que la A (computa en memorias vía plato[];
         // sin este filtro su elección era ciega a la repetición — pedido de auditoría QA-2)
         const bLejos = poolB.filter(x => {
@@ -3465,8 +4286,37 @@ function rellenarSemana({ entrada, esq, pre, pools, datos, config, memoria, menu
         if (r && r.estado === 'adaptado') notas.push(...notasDeResolucion(mid, elegida.x.id, r, presentes));
       }
     }
-    return { piezas, notas: dedupNotas(notas), usoR2 };
+    return { piezas, notas: dedupNotas(notas), usoR2, ejes_abiertos: ejesAbiertos };
   }
+  // guarniciones YA servidas, con la mesa de hoy (§15.4). Una pieza que hoy no come nadie sale
+  // del plato; una que come parte de la mesa lleva su `solo-para`; quien vuelve trae sus notas.
+  function cerrarPlatoFijado(presentes, s) {
+    const piezas = [], notas = [];
+    for (const pf of s.piezas_fijas) {
+      const eid = pf.elaboracion_id;
+      const excluidos = presentes.filter(mid => !pre.resolucion[mid][eid]
+        || pre.resolucion[mid][eid].estado === 'excluido'
+        || (ix.tieneEje[eid] && !(pre.opcionesLegales[mid][eid] || []).length));
+      if (excluidos.length === presentes.length) continue;
+      const incluidos = presentes.filter(mid => !excluidos.includes(mid));
+      let opciones = pf.opciones_eje || null;
+      if (ix.tieneEje[eid]) {
+        const previa = opciones ? (opciones['*'] || Object.values(opciones)[0]) : null;
+        const sigueLegal = previa != null && incluidos.every(mid => (pre.opcionesLegales[mid][eid] || []).includes(previa));
+        const op = sigueLegal ? previa : elegirOpcionMesa(eid, incluidos);
+        if (op == null) continue;                     // hoy nadie puede una opción común: fuera
+        opciones = { '*': op };
+      }
+      piezas.push({ elaboracion_id: eid, opciones_eje: opciones });
+      if (excluidos.length) notas.push({ tipo: 'solo-para', miembros: incluidos, elaboracion_id: eid });
+      for (const mid of incluidos) {
+        const r = pre.resolucion[mid][eid];
+        if (r && r.estado === 'adaptado') notas.push(...notasDeResolucion(mid, eid, r, presentes));
+      }
+    }
+    return { piezas, notas: dedupNotas(notas), usoR2: false };
+  }
+
   // variantes de restricción (sin-lactosa…) FUERA de la rotación de quien no las necesita
   // (cazado en vivo: yogur-sin-lactosa servido por rotación a una mesa sana): una opción que la
   // tabla `sustitutos` declara sustituto de OTRA opción legal disponible no es elegible
@@ -3559,8 +4409,9 @@ function rellenarSemana({ entrada, esq, pre, pools, datos, config, memoria, menu
     return plato;
   }
 
-  // ── EL BUCLE: slots por orden most-constrained (estático v1), anclas primero
-  const orden = slots.slice().sort((a, b) => {
+  // ── EL BUCLE: slots por orden most-constrained (estático v1), anclas primero.
+  //    Los `fijados` (§15.3) no se deciden: ya están servidos y solo se precargan (más abajo).
+  const orden = slots.filter(s => !fijos[s.slot]).sort((a, b) => {
     const anc = (b.ancla ? 1 : 0) - (a.ancla ? 1 : 0);
     if (anc) return anc;
     const na = candidatosDe(a).length, nb = candidatosDe(b).length;
@@ -3570,10 +4421,19 @@ function rellenarSemana({ entrada, esq, pre, pools, datos, config, memoria, menu
     const esfuerzoOK = c => c.esfuerzo === s.esfuerzo
       // R0: `medio` vale donde se prefirió `rapido` (jamás `elaborado` fuera de su cupo)
       || (relaj && relaj.R0 && s.esfuerzo === 'rapido' && c.esfuerzo === 'medio');
+    // `ancla_libre` (§15.3, modo `asignar`): la familia ELIGE ese plato — apta y temporada son
+    // preferencias, no seguridad, y no pueden convertir una elección explícita en un bloqueo
+    // («aviso, jamás bloqueo»). Lo que NO cede nunca es `pre.servible`: ahí viven la alergia, la
+    // dieta y el dato que falta.
+    const libre = !!(s.ancla && s.ancla_libre);
     return pools.candidatos.map((c, i) => ({ c, i })).filter(({ c, i }) =>
-      (s.ancla ? c.elaboracion_id === s.ancla : c.categoria === s.categoria && esfuerzoOK(c))
-      && c.apta.includes(s.servicio)
-      && (c.temporada == null || c.temporada === estacion)
+      // `categoria_libre` (§15.3, «dame otra cosa» sin más platos de esa clase): antes que dejar
+      // a la familia sin alternativa se abre la reserva de T1 y el cambio de tipo se DECLARA.
+      (s.ancla ? c.elaboracion_id === s.ancla
+        : (s.categoria_libre || c.categoria === s.categoria) && esfuerzoOK(c))
+      && !(evitarPrincipales && evitarPrincipales.has(c.elaboracion_id))
+      && (libre || c.apta.includes(s.servicio))
+      && (libre || c.temporada == null || c.temporada === estacion)
       && pre.servible[s.slot] && pre.servible[s.slot].has(i));
   }
 
@@ -3597,6 +4457,17 @@ function rellenarSemana({ entrada, esq, pre, pools, datos, config, memoria, menu
     semanaNum, clasesViables, config);
 
   precargaCole();                                    // antes de rellenar: el cole ya está puesto
+  // LOS SLOTS FIJADOS (§15.3): se aplican al estado vivo en orden de calendario ANTES del bucle,
+  // con el mismo `aplicar()` que cualquier slot decidido — así el slot que sí se re-resuelve ve
+  // la variedad, los techos y las ventanas del resto de la semana exactamente como las vería en
+  // una generación completa. No se re-deciden ni se re-verifican: son lo que la familia ya tiene.
+  for (const slot of ORDEN_CAL) {
+    const sv = fijos[slot];
+    const s = slots.find(x => x.slot === slot);
+    if (!sv || !s) continue;
+    st.porSlot[slot] = sv;
+    aplicar(sv, s, presentesDe(slot));
+  }
   const descargosEstructurales = pre.descargos.map(d => ({ tipo: d.tipo, miembro: d.miembro, detalle: d.detalle }));
   // escalera pública de la spec §7, aplicada POR SLOT (Q6-A). R0 = esfuerzo: T2 puede servir
   // `medio` donde T1 prefirió `rapido` (cazado con mesa-6: tres huevos rápidos con una sola
@@ -3620,7 +4491,7 @@ function rellenarSemana({ entrada, esq, pre, pools, datos, config, memoria, menu
       for (const { c } of candidatosDe(s, relaj)) {
         const k = `${c.elaboracion_id}|${c.opcion}`;
         if (vistos.has(k)) continue;
-        const eje = resolverEje(c, presentes, relaj);
+        const eje = resolverEje(c, presentes, relaj, s);
         const res = contratos(c, eje.opciones, presentes, s, relaj);
         if (ENV.E3F_DEBUG_SLOT === s.slot)
           console.error(`[debug ${s.slot} n${nivel}] ${k}: ${res ? (typeof res === 'string' ? res : res.motivo) : 'contratos OK'}`);
@@ -3630,7 +4501,11 @@ function rellenarSemana({ entrada, esq, pre, pools, datos, config, memoria, menu
           // techo no-salud en el ÚLTIMO nivel: candidato de RESERVA con descargo (jamás mata
           // la semana ni pasa en silencio). En slot ANCLADO el techo cede en CUALQUIER nivel
           // (el ancla manda — sin esperar peldaños que no hacen falta).
-          if (typeof res === 'object' && res.techoDeclarable
+          // Y con `ancla_libre` (§15.3: el plato lo ha FIJADO la familia) cede TODO contrato C
+          // —variedad, mínimos, techos— porque el dictado es «aviso, JAMÁS bloqueo»: lo que la
+          // familia pide se sirve y lo que se cede se DECLARA. Sin el flag, nada cambia.
+          if (s.ancla_libre) descargoTecho = motivo;
+          else if (typeof res === 'object' && res.techoDeclarable
             && (nivel === RELAJACIONES.length - 1 || res.esAncla))
             descargoTecho = motivo;
           else {
@@ -3745,11 +4620,20 @@ function rellenarSemana({ entrada, esq, pre, pools, datos, config, memoria, menu
     for (const d of eje.divergencias) descargos.push({ tipo: d.tipo, miembro: d.miembro, detalle: d.detalle });
     if (el.novedadExcedida) descargos.push({ tipo: 'cupo-novedad-excedido',
       detalle: `única vía de cierre del slot ${s.slot}: se sirve novedad sobre el cupo P4` });
-    if (el.descargoTecho) descargos.push(s.ancla
-      ? { tipo: 'ancla-vs-techo',
-        detalle: `${el.descargoTecho} — el ancla ${s.ancla} manda (dictado): el techo cede declarado` }
-      : { tipo: 'techo-fraccional-vs-reserva',
-        detalle: `${el.descargoTecho} — la reserva del esqueleto choca con las raciones reales (D1-bis pendiente); T3 ajustará con fracciones` });
+    // el TIPO del descargo lo dicta el contrato que cedió, no el mecanismo: un M1 que cede es
+    // variedad, no un techo. En la generación normal `descargoTecho` solo lleva techos, así que
+    // esto es idéntico a lo de siempre; con `ancla_libre` (§15.3) puede llevar cualquiera.
+    if (el.descargoTecho) {
+      const m = el.descargoTecho;
+      const tipo = /^M[1-9]/.test(m) ? 'variedad-cedida'
+        : /^mínimo /.test(m) ? 'minimo-no-cubierto'
+          : s.ancla ? 'ancla-vs-techo' : 'techo-fraccional-vs-reserva';
+      descargos.push({ tipo, detalle: tipo === 'ancla-vs-techo'
+        ? `${m} — el ancla ${s.ancla} manda (dictado): el techo cede declarado`
+        : tipo === 'techo-fraccional-vs-reserva'
+          ? `${m} — la reserva del esqueleto choca con las raciones reales (D1-bis pendiente); T3 ajustará con fracciones`
+          : `${m} — el plato ${s.ancla} lo ha fijado la familia (§15.3): se sirve y se declara` });
+    }
     // RELAJACIONES REALMENTE USADAS, no las del nivel donde se encontró el candidato. Medido
     // 2-ago: declarar el nivel entero ponía R0-R4 en el 57% de los servicios para UNA violación
     // real de origen en 224 — ruido que contamina el recuento honesto que leen C y G. Ahora se
@@ -3776,6 +4660,9 @@ function rellenarSemana({ entrada, esq, pre, pools, datos, config, memoria, menu
       }
     }
     if (cierre.usoR2) usados.add('R2');
+    // un eje que se quedó sin cerrar porque el plato lo fijó la familia (§15.3): se DECLARA
+    for (const eje of cierre.ejes_abiertos || []) descargos.push({ tipo: 'eje-abierto',
+      detalle: `${eje} sin cerrar en ${s.slot}: no había acompañamiento disponible para el plato que has fijado` });
     // notas del principal (adaptaciones del prevuelo) + sustitutos de excluidos
     for (const mid of presentes) {
       const r = pre.resolucion[mid][c.elaboracion_id];
@@ -3804,6 +4691,9 @@ function rellenarSemana({ entrada, esq, pre, pools, datos, config, memoria, menu
     postreUsoR2 = false;
     const clase = politica.porSlot[s.slot];
     const notas = [], descargos = [];
+    // §15.4: con postre YA servido, la clase de la política no vuelve a decidir nada — el postre
+    // es el que hay; lo único que se recalcula son sus opciones y sus notas con la mesa de hoy.
+    if (s.postre_fijo) return postrePorId(s.postre_fijo.elaboracion_id, s, presentes, notas, descargos);
     if (clase == null) return { postre: null, notas, descargos: [{ tipo: 'postre-inviable', detalle: `sin clase de postre comible en ${s.slot}` }] };
     const deClase = Object.entries(config.CLASE_POSTRE).filter(([, c]) => c === clase).map(([pid]) => pid)
       .filter(pid => ix.elab[pid]);
@@ -3821,7 +4711,15 @@ function rellenarSemana({ entrada, esq, pre, pools, datos, config, memoria, menu
     }).sort((a, b) => b.u - a.u || (a.pid < b.pid ? -1 : 1));
     const validos = orden.filter(o => o.u >= config.VENTANAS.M4_servicios);
     const pool = validos.length ? validos : (postreUsoR2 = true, orden);
-    const pid = pool[(semanaNum + s.dia) % pool.length].pid;
+    return postrePorId(pool[(semanaNum + s.dia) % pool.length].pid, s, presentes, notas, descargos);
+  }
+
+  // el postre YA elegido, resuelto comensal a comensal (opción de eje, fruta individual del que
+  // no puede la clase, notas de adaptación). Es el cuerpo de siempre de `postrePara`, extraído
+  // para que §15.4 pueda entrar por aquí con un postre dado sin duplicar una línea.
+  function postrePorId(pid, s, presentes, notas, descargos) {
+    if (!ix.elab[pid]) return { postre: null, notas: [], descargos: [{ tipo: 'postre-inviable', detalle: `${pid} no existe en el banco del hogar` }] };
+    const idxCal = ORDEN_CAL.indexOf(s.slot);
     const opciones = {};
     let algunoDentro = false;
     for (const mid of presentes) {
@@ -3841,22 +4739,28 @@ function rellenarSemana({ entrada, esq, pre, pools, datos, config, memoria, menu
       }
       algunoDentro = true;
       if (ix.tieneEje[pid]) {
-        // sin variantes de restricción innecesarias, sin repetir la última P2, y fuera de la
-        // ventana M4 de la PROPIA semana (la uva no repite en servicios pegados)
-        const enVentana = op => {
-          const u = distSec(percibidoDe(pid, op), idxCal);
-          return u != null && u < config.VENTANAS.M4_servicios;
-        };
-        let pool = sinVariantesInnecesarias(pre.opcionesLegales[mid][pid]);
-        const ultima = ((mem.personas[mid] || {}).P2 || {})[pid];
-        const frescas = pool.filter(f => (!ultima || ultima.opcion !== f) && !enVentana(f));
-        pool = frescas.length ? frescas : pool.filter(f => !enVentana(f)).length ? pool.filter(f => !enVentana(f)) : pool;
-        opciones[mid] = pool[(semanaNum + s.dia + mid.length) % pool.length];
+        // §15.4: la fruta que ya tenía servida no cambia porque hoy se siente otro a la mesa
+        const previa = s.postre_fijo && s.postre_fijo.opciones_eje
+          && (s.postre_fijo.opciones_eje[mid] || s.postre_fijo.opciones_eje['*']);
+        if (previa != null && (pre.opcionesLegales[mid][pid] || []).includes(previa)) opciones[mid] = previa;
+        else {
+          // sin variantes de restricción innecesarias, sin repetir la última P2, y fuera de la
+          // ventana M4 de la PROPIA semana (la uva no repite en servicios pegados)
+          const enVentana = op => {
+            const u = distSec(percibidoDe(pid, op), idxCal);
+            return u != null && u < config.VENTANAS.M4_servicios;
+          };
+          let pool = sinVariantesInnecesarias(pre.opcionesLegales[mid][pid]);
+          const ultima = ((mem.personas[mid] || {}).P2 || {})[pid];
+          const frescas = pool.filter(f => (!ultima || ultima.opcion !== f) && !enVentana(f));
+          pool = frescas.length ? frescas : pool.filter(f => !enVentana(f)).length ? pool.filter(f => !enVentana(f)) : pool;
+          opciones[mid] = pool[(semanaNum + s.dia + mid.length) % pool.length];
+        }
       }
       const r2 = pre.resolucion[mid][pid];
       if (r2 && r2.estado === 'adaptado') notas.push(...notasDeResolucion(mid, pid, r2, presentes));
     }
-    if (!algunoDentro) return { postre: null, notas: [], descargos: [{ tipo: 'postre-inviable', detalle: `nadie puede la clase ${clase} en ${s.slot}` }] };
+    if (!algunoDentro) return { postre: null, notas: [], descargos: [{ tipo: 'postre-inviable', detalle: `nadie puede ${pid} en ${s.slot}` }] };
     return { postre: { elaboracion_id: pid, opciones_eje: ix.tieneEje[pid] ? opciones : null }, notas, descargos };
   }
 
@@ -3935,7 +4839,11 @@ function rellenarSemana({ entrada, esq, pre, pools, datos, config, memoria, menu
   // ── RE-VERIFICACIÓN POR PRESENTE (doble contabilidad interna: divergencia = bug, se aborta)
   for (const s of slots) {
     const sv = st.porSlot[s.slot];
-    if (!sv) continue;
+    if (!sv || fijos[s.slot]) continue;               // lo fijado ya se verificó al construirse
+    // un slot con el plato FIJADO por la familia (§15.3) puede salir con un eje abierto: ya está
+    // DECLARADO como descargo arriba, y abortar aquí convertiría el aviso en el bloqueo que el
+    // dictado prohíbe. La doble contabilidad sigue intacta donde decide el motor, que es su sitio.
+    if (s.ancla_libre) continue;
     const presentes = presentesDe(s.slot);
     const sustDe = {};
     for (const n of sv.notas) if (n.tipo === 'sustituto' && n.ambito === 'plato') sustDe[n.miembro] = n;
@@ -4617,6 +5525,9 @@ module.exports = { auditar };
     normalizarFamilia: require('./contrato_familia.js').normalizarFamilia,
     memoria: require('./memoria.js'),
     diario: require('./diario.js'),
+    // SUPERFICIE DE PRODUCTO (spec §15): las 11 funciones que la app enseña y toca —compra,
+    // cambiar plato, presencia, catálogo, descubrir, ficha y nevera— sobre la semana `/2`.
+    crearSuperficie: require('./superficie.js').crearSuperficie,
     // los DOS hashes del banco, constantes de build: el diario D3 guarda `banco_generacion`
     // con cada servicio para que el pasado sea auditable (D3 §5) — y son los del banco
     // FUENTE, así que una corrida del navegador es comparable con una de node.

@@ -1636,3 +1636,33 @@ html[data-motor-v5="1"] .app-bar-logo::after {
 .ph-notas-oscuro .ph-notas-tit-sanitaria,
 .ph-notas-oscuro .ph-nota-sanitaria,
 .ph-notas-oscuro .ph-nota-sanitaria i { color: oklch(0.85 0.13 70); }
+
+/* ---------------------------------------------------------------
+   NEVERA · lo que propone (§15.6) — montables y casi-montables
+   ---------------------------------------------------------------
+   Fila de 56px de alto (target 44px cumplido de sobra con el padding), separación de 8px
+   entre opciones y el aviso de "te falta X" FUERA del botón: es información, no un destino
+   tocable, y meterlo dentro haría un target de dos acciones (UI_MOBILE §2 y §6). */
+.lista-opciones-nevera { list-style: none; display: flex; flex-direction: column; gap: var(--space-1); margin-top: var(--space-1); }
+.fila-opcion-nevera {
+  width: 100%; display: flex; flex-direction: column; align-items: flex-start; gap: 4px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 16px;
+  padding: var(--space-2); text-align: left; cursor: pointer; color: inherit; font: inherit;
+  box-shadow: 0 6px 18px -14px rgba(60, 45, 20, .4);
+}
+.fila-opcion-nevera-nombre { font-family: var(--font-display); font-size: 15.5px; font-weight: 700; color: var(--ink); line-height: 1.2; }
+.fila-opcion-nevera-sub { font-size: var(--fs-aux); font-weight: 600; color: var(--soft); }
+.fila-opcion-nevera-aviso {
+  display: flex; align-items: center; gap: 6px;
+  margin: 4px 0 0 var(--space-2); font-size: var(--fs-aux); font-weight: 600; color: var(--soft);
+}
+.fila-opcion-nevera-aviso i { flex: none; width: 15px; height: 15px; }
+
+/* kcal por comensal en la ficha del día (§15.2): misma tarjeta que las stats de arriba, en
+   fila envolvente — una familia de 6 no cabe en una sola línea de 4 columnas. */
+.rv-stats-kcal { flex-wrap: wrap; }
+.rv-stats-kcal .rv-stat { flex: 1 1 40%; min-width: 120px; }
+
+/* título de grupo dentro de la lista de ingredientes: la fila deja de ser un ingrediente y
+   pasa a ser el nombre de la cazuela, sin borde inferior que la ate a lo de abajo. */
+.rv-ingrediente .detalle-subtitulo { margin-top: 0; }

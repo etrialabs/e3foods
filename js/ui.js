@@ -943,7 +943,45 @@
     }).join('');
   }
 
-  function renderVistaReceta(estado, banco, plan, diaIndex, tipoComida) {
+  // INGREDIENTES Y CALORÍAS DE LA FICHA DEL DÍA · §15.2 (§0.5: la cantidad de receta es la SUMA
+  // de las cantidades personales, jamás ración estándar × comensales). Sale de
+  // `cantidadesServicio`, que es la MISMA derivación que la lista de la compra: un solo
+  // derivador. Las fracciones NO se pintan (son maquinaria, §0.5) — se pinta lo que se cocina.
+  function renderIngredientesServicio(estado, banco, sup, plan, diaIndex, tipoComida) {
+    if (!sup || !plan) return pendienteV6(t('v6_pend_ingredientes'), t('v6_pendiente_sub'));
+    var slot = (diaIndex + 1) + '-' + tipoComida;
+    var c = sup.cantidadesServicio(plan, slot);
+    if (!c.ingredientes.length) return '<p class="card-msg">' + t('sin_comensales_hoy') + '</p>';
+    // se reutilizan las clases que ya existen (`rv-ingrediente*`, `detalle-subtitulo`,
+    // `rv-variantes`): CSS nuevo solo cuando no hay nada que sirva — UI_MOBILE §1.
+    var fila = function (i) {
+      var cant = i.unidades != null ? i.unidades + (i.unidades === 1 ? ' ud' : ' uds') : i.gramos + ' g';
+      return '<li class="rv-ingrediente"><span class="rv-ingrediente-bullet" aria-hidden="true"></span>' +
+        '<span class="rv-ingrediente-nombre">' + escapeHtml(i.nombre) + '</span>' +
+        '<span class="rv-ingrediente-g">' + escapeHtml(cant) + '</span></li>';
+    };
+    // por ELABORACIÓN cuando hay más de una (el plato de mesa son 1-3 piezas + postre + los
+    // platos sustituto de la mesa mixta): una lista plana no dice qué va en qué cazuela, y los
+    // pasos de abajo ya vienen separados igual. Con una sola, lista plana y sin ruido.
+    var filas = c.por_elaboracion.length > 1
+      ? c.por_elaboracion.map(function (p) {
+        // el PERCIBIDO, con la opción de mesa ya resuelta — nunca el nombre-plantilla del banco
+        return '<li class="rv-ingrediente"><span class="detalle-subtitulo">' +
+          escapeHtml(nombrePercibido(banco, p.pieza, '*')) + '</span></li>' +
+          p.ingredientes.map(fila).join('');
+      }).join('')
+      : c.ingredientes.map(fila).join('');
+    // kcal POR COMENSAL: el número que la familia entiende. Sale del mismo derivador, con la
+    // composición individual real de cada uno (su plato, sus notas, su cantidad).
+    var kcal = c.comensales.map(function (x) {
+      return '<div class="rv-stat"><span class="rv-stat-valor">' + x.kcal + ' kcal</span>' +
+        '<span class="rc-fila-meta">' + escapeHtml(nombreMiembro(estado, x.miembro)) + '</span></div>';
+    }).join('');
+    return '<ul class="rv-ingredientes">' + filas + '</ul>' +
+      (kcal ? '<div class="rv-stats rv-stats-kcal">' + kcal + '</div>' : '');
+  }
+
+  function renderVistaReceta(estado, banco, plan, diaIndex, tipoComida, sup) {
     var servicio = servicioDe(plan, diaIndex, tipoComida);
     var itemPrincipal = principalDe(banco, servicio);
     var principal = itemPrincipal ? elabDe(banco, itemPrincipal.elaboracion_id) : null;
@@ -959,10 +997,9 @@
     var oculta = (estado.ocultas || []).indexOf(principal.id) !== -1;
     var fotoHtml = principal.foto ? '<img src="' + escapeHtml(principal.foto) + '" alt="">' : '<div class="rv-foto-vacia"></div>';
 
-    // Ingredientes en gramos y kcal por comensal salen del ÚNICO derivador del motor
-    // (`src/derivar.js`, §15: prohibida una segunda derivación) a través de `listaCompra`
-    // (§15.2) — que es bloque 3. Hasta entonces se dice, no se inventa ni se esconde.
-    var ingredientesHtml = pendienteV6(t('v6_pend_ingredientes'), t('v6_pendiente_sub'));
+    // Ingredientes en gramos y kcal por comensal: del ÚNICO derivador del motor
+    // (`src/derivar.js`, §15: prohibida una segunda derivación), vía `cantidadesServicio`.
+    var ingredientesHtml = renderIngredientesServicio(estado, banco, sup, plan, diaIndex, tipoComida);
 
     // El plato de mesa son 1-3 elaboraciones y cada una trae SUS pasos: el principal primero,
     // las secundarias detrás con su propio título (ya no un único bloque "X con Y y Z").
@@ -1070,9 +1107,13 @@
   // un swap inventado. Línea discreta + link al informe completo — decisión
   // del council del 18/19-jul: "respuesta del día primero, informe como
   // línea al final", no un bloque de chips en el cuerpo principal.
-  // V6: el recuento de cuotas de la semana vive en el motor (P1/T4) y llega a la superficie con
-  // el bloque 3. Hasta entonces la línea sigue AHÍ, marcada — que es justo lo que Roger pidió
-  // que no volviera a pasar con la pantalla de coste semanal.
+  // ⚑ SIGUE MARCADO A PROPÓSITO, y ahora con la razón MEDIDA (bloque 3, 3-ago). §15 no define
+  // ninguna función de equilibrio: el recuento de cuotas es del motor (T1/T2/T4) y hoy sus dos
+  // varas NO COINCIDEN — T1 reserva en SERVICIOS y T2 acumula en RACIONES (fila 5.4 de la lista).
+  // Medido en la semana real de `omnivora-2a2n`: 7,9 «raciones» de huevo para un adulto contra un
+  // techo de 4 tomas. Pintar hoy un semáforo de equilibrio sería enseñar a la familia un número
+  // que el propio motor no usa para decidir — el patrón de bug nº1 del proyecto, en pantalla.
+  // Se conecta cuando 5.4 cierre el contrato. Mientras tanto, la línea se queda AHÍ, marcada.
   function renderAvisoEquilibrio(plan, banco, estado) {
     return '<button type="button" class="ph-equilibrio-link ph-equilibrio-pendiente" data-action="abrir-resumen-semana">' +
       '<i data-lucide="hard-hat"></i><span>' + escapeHtml(t('v6_pend_equilibrio') + ' · ' + t('v6_pendiente_badge')) + '</span>' +
@@ -1273,22 +1314,161 @@
   }
 
   // ---------------------------------------------------------------
-  // RECETAS · catálogo del hogar — §15.5 (bloque 3)
+  // RECETAS · catálogo del hogar — §15.5
   // ---------------------------------------------------------------
-  // `catalogoRecetas()` / `previsualizarElaboracion(id)` / `sirveAMesa(id, mesa)` son funciones
-  // de la SUPERFICIE del motor (§15.5) y llegan con el bloque 3: el catálogo no es
-  // `banco.elaboraciones.filter(...)` — es el catálogo del HOGAR (política §13 aplicada,
-  // bloqueadas fuera, recalculadas siempre con `bloqueadas.js`). Simularlo aquí con una lectura
-  // cruda del banco enseñaría platos que esta casa no puede comer: peor que decir que falta.
-  // La pestaña se queda VISIBLE y marcada (dictado de Roger), nunca escondida.
-  function renderRecetasVista(estado, banco, filtro, busqueda, vista) {
-    return '<div class="rc-cabecera"><h1 class="rc-titulo">' + t('recetas') + '</h1></div>' +
-      '<div class="vista-body rc-body">' + pendienteV6(t('v6_pend_recetas'), t('v6_pendiente_sub')) + '</div>';
+  // `catalogoRecetas()` es el catálogo del HOGAR: política §13 aplicada (el alérgeno severo no
+  // existe) y servibilidad recalculada contra el banco vivo, jamás un campo guardado. Aquí no se
+  // filtra nada por dieta ni por alergia: el motor ya decidió qué universo tiene esta casa.
+  // Los chips vegetariana/sin-gluten preguntan con `sirveAMesa` sobre mesas sintéticas de 1
+  // comensal — dato real del mismo prevuelo que sirve la semana, no una simulación.
+  var MESA_CHIP_VEGETARIANA = [{ estilo: 'vegetariano' }];
+  var MESA_CHIP_SIN_GLUTEN = [{ alergias: ['sin-gluten'] }];
+  function ETIQUETA_CHIP() {
+    return { todas: t('chip_todas'), rapidas: t('chip_rapidas'), favoritas: t('chip_favoritas'),
+      vegetariana: t('cat_estilo_vegetariano'), 'sin-gluten': t('cat_alergia_gluten') };
   }
 
-  function renderVistaRecetaPlantilla(estado, banco, plantillaId) {
-    return '<button type="button" class="rv-flotante rv-volver" data-action="receta-volver" aria-label="Volver"><i data-lucide="arrow-left"></i></button>' +
-      '<div class="rv-body rv-body-vacia">' + pendienteV6(t('v6_pend_recetas'), t('v6_pendiente_sub')) + '</div>';
+  function tarjetaRecetaGrid(p, oculta, favorita) {
+    var fotoHtml = p.foto ? '<img src="' + escapeHtml(p.foto) + '" alt="" loading="lazy" decoding="async">' : '<div class="rc-foto-vacia"></div>';
+    var tag = ETIQUETA_ESFUERZO[p.esfuerzo] || '';
+    return '<div class="rc-tarjeta' + (oculta ? ' rc-oculta' : '') + '">' +
+      '<button type="button" class="rc-tarjeta-abrir" data-action="abrir-receta-banco" data-plantilla="' + p.id + '">' +
+      '<span class="rc-tarjeta-foto">' + fotoHtml + (tag ? '<span class="rc-tarjeta-tag">' + escapeHtml(tag) + '</span>' : '') + '</span>' +
+      '<span class="rc-tarjeta-info"><span class="rc-tarjeta-nombre">' + escapeHtml(p.nombre) + '</span></span>' +
+      '</button>' +
+      '<div class="rc-tarjeta-pie">' +
+      '<span class="rc-tarjeta-meta"><i data-lucide="clock"></i>' + (p.tiempo_min || '?') + ' min</span>' +
+      '<span class="rc-tarjeta-acciones">' +
+      '<button type="button" class="rc-icono-btn' + (favorita ? ' rc-icono-activo' : '') + '" data-action="toggle-favorita-receta" data-plantilla="' + p.id + '" aria-label="' + (favorita ? 'Quitar de favoritas' : 'Marcar como favorita') + '" aria-pressed="' + favorita + '"><i data-lucide="heart"' + (favorita ? ' style="fill:currentColor"' : '') + '></i></button>' +
+      '<button type="button" class="rc-icono-btn" data-action="toggle-oculta-receta" data-plantilla="' + p.id + '" aria-label="' + (oculta ? 'Mostrar receta' : 'Ocultar receta') + '"><i data-lucide="eye-off"></i></button>' +
+      '</span></div></div>';
+  }
+
+  function filaRecetaLista(p, oculta, favorita) {
+    var tag = ETIQUETA_ESFUERZO[p.esfuerzo] || '';
+    return '<div class="rc-fila' + (oculta ? ' rc-oculta' : '') + '">' +
+      '<button type="button" class="rc-fila-abrir" data-action="abrir-receta-banco" data-plantilla="' + p.id + '">' +
+      '<span class="rc-fila-foto">' + (p.foto ? '<img src="' + escapeHtml(p.foto) + '" alt="" loading="lazy" decoding="async">' : '<div class="rc-fila-foto-vacia"></div>') + '</span>' +
+      '<span class="rc-fila-info"><span class="rc-fila-nombre">' + escapeHtml(p.nombre) + '</span>' +
+      '<span class="rc-fila-meta"><i data-lucide="clock"></i>' + (p.tiempo_min || '?') + ' min' + (tag ? ' · ' + escapeHtml(tag) : '') + '</span></span>' +
+      '</button>' +
+      '<button type="button" class="rc-icono-btn' + (favorita ? ' rc-icono-activo' : '') + '" data-action="toggle-favorita-receta" data-plantilla="' + p.id + '" aria-label="' + (favorita ? 'Quitar de favoritas' : 'Marcar como favorita') + '" aria-pressed="' + favorita + '"><i data-lucide="heart"' + (favorita ? ' style="fill:currentColor"' : '') + '></i></button>' +
+      '<button type="button" class="rc-icono-btn" data-action="toggle-oculta-receta" data-plantilla="' + p.id + '" aria-label="' + (oculta ? 'Mostrar receta' : 'Ocultar receta') + '"><i data-lucide="eye-off"></i></button>' +
+      '</div>';
+  }
+
+  function renderRecetasVista(estado, banco, filtro, busqueda, vista, sup) {
+    filtro = filtro || 'todas';
+    busqueda = busqueda || '';
+    vista = vista === 'list' ? 'list' : 'grid';
+    if (!sup) return '<div class="rc-cabecera"><h1 class="rc-titulo">' + t('recetas') + '</h1></div>' +
+      '<div class="vista-body rc-body"><p class="card-msg">' + t('todavia_no_hay_semana_generada') + '</p></div>';
+    var todas = sup.catalogoRecetas();
+    var ocultas = estado.ocultas || [];
+    var favoritas = estado.favoritas || [];
+
+    var chips = ['todas', 'rapidas', 'favoritas', 'vegetariana', 'sin-gluten'];
+    var chipsHtml = chips.map(function (c) {
+      var activo = c === filtro;
+      return '<button type="button" class="rc-chip' + (activo ? ' rc-chip-activo' : '') + '" data-action="filtro-receta" data-categoria="' + c + '" aria-pressed="' + activo + '">' +
+        escapeHtml(ETIQUETA_CHIP()[c] || capitaliza(c)) + '</button>';
+    }).join('');
+
+    var lista = todas;
+    if (filtro === 'rapidas') lista = todas.filter(function (p) { return p.esfuerzo === 'rapido'; });
+    else if (filtro === 'favoritas') lista = todas.filter(function (p) { return favoritas.indexOf(p.id) !== -1; });
+    else if (filtro === 'vegetariana') lista = todas.filter(function (p) { return sup.sirveAMesa(p.id, MESA_CHIP_VEGETARIANA); });
+    else if (filtro === 'sin-gluten') lista = todas.filter(function (p) { return sup.sirveAMesa(p.id, MESA_CHIP_SIN_GLUTEN); });
+    if (busqueda.trim()) {
+      var q = normalizarTexto(busqueda);
+      lista = lista.filter(function (p) { return normalizarTexto(p.nombre).indexOf(q) !== -1; });
+    }
+
+    var listaHtml = lista.length
+      ? (vista === 'list'
+        ? '<div class="rc-lista">' + lista.map(function (p) { return filaRecetaLista(p, ocultas.indexOf(p.id) !== -1, favoritas.indexOf(p.id) !== -1); }).join('') + '</div>'
+        : '<div class="rc-grid">' + lista.map(function (p) { return tarjetaRecetaGrid(p, ocultas.indexOf(p.id) !== -1, favoritas.indexOf(p.id) !== -1); }).join('') + '</div>')
+      : '<p class="card-msg">' + t('no_hay_recetas_en_esta_categoria') + '</p>';
+
+    return '<div class="rc-cabecera">' +
+      '<div><h1 class="rc-titulo">' + t('recetas') + '</h1><p class="cp-resumen">' + lista.length + ' de ' + todas.length + '</p></div>' +
+      '<div class="rc-vista-toggle">' +
+      '<button type="button" class="rc-vista-btn' + (vista === 'list' ? ' rc-vista-btn-activo' : '') + '" data-action="recetas-vista" data-vista="list" aria-label="Vista de lista" aria-pressed="' + (vista === 'list') + '"><i data-lucide="list"></i></button>' +
+      '<button type="button" class="rc-vista-btn' + (vista === 'grid' ? ' rc-vista-btn-activo' : '') + '" data-action="recetas-vista" data-vista="grid" aria-label="Vista de cuadrícula" aria-pressed="' + (vista === 'grid') + '"><i data-lucide="layout-grid"></i></button>' +
+      '</div></div>' +
+      '<div class="vista-body rc-body">' +
+      '<label class="rc-buscador"><i data-lucide="search"></i>' +
+      '<input type="search" id="recetas-buscador" placeholder="' + t('buscar_plato_o_ingrediente') + '" value="' + escapeHtml(busqueda) + '"></label>' +
+      '<div class="rc-chips scroll">' + chipsHtml + '</div>' +
+      listaHtml +
+      '</div>';
+  }
+
+  // Ficha de una receta del catálogo, SIN plan detrás: `previsualizarElaboracion` (§15.5) —
+  // nombre con la opción resuelta, variantes reales del eje, acompañamiento de ejemplo vía
+  // `combinaciones`, alérgenos del desglose REAL y las notas de seguridad infantil (2.5:
+  // sanitarias, se enseñan siempre). Sin cantidades: aquí no hay mesa, y una cantidad sin mesa
+  // sería inventada — la real vive en la ficha del día, que sí tiene comensales.
+  function renderVistaRecetaPlantilla(estado, banco, plantillaId, sup) {
+    var p = sup && sup.previsualizarElaboracion(plantillaId);
+    if (!p) {
+      return '<button type="button" class="rv-flotante rv-volver" data-action="receta-volver" aria-label="Volver"><i data-lucide="arrow-left"></i></button>' +
+        '<div class="rv-body rv-body-vacia"><p class="card-msg">No encontramos esta receta.</p></div>';
+    }
+    var nombreSplit = splitNombrePlato(p.nombre);
+    var esCena = p.apta.length > 0 && p.apta.indexOf('comida') === -1;
+    var tag = ETIQUETA_ESFUERZO[p.esfuerzo] || '—';
+    var favorita = (estado.favoritas || []).indexOf(p.id) !== -1;
+    var oculta = (estado.ocultas || []).indexOf(p.id) !== -1;
+    var fotoHtml = p.foto ? '<img src="' + escapeHtml(p.foto) + '" alt="">' : '<div class="rv-foto-vacia"></div>';
+    var acomp = p.acompanamiento.length
+      ? t('se_completa_con').replace('{platos}', p.acompanamiento.map(function (a) { return a.nombre.toLowerCase(); }).join(' + ')) : '';
+    var variantes = p.variantes.length
+      ? t('tambien_con').replace('{opciones}', p.variantes.slice(0, 4).map(function (v) { return nombreCortoIngrediente(v.nombre).toLowerCase(); }).join(', ')) : '';
+    var pasosHtml = p.pasos.length
+      ? '<div class="rv-pasos">' + pasosCards(p.pasos) + '</div>'
+      : '<p class="card-msg">Sin pasos detallados para esta receta.</p>';
+    var acompPasos = p.acompanamiento.map(function (a) {
+      return a.pasos && a.pasos.length
+        ? '<p class="detalle-subtitulo" style="margin-top:18px">' + escapeHtml(a.nombre) + '</p><div class="rv-pasos">' + pasosCards(a.pasos) + '</div>' : '';
+    }).join('');
+    // sanitarias primero y aparte, igual que en la card (§15.7)
+    var seguridad = p.seguridad_infantil.length
+      ? '<div class="ph-notas"><p class="ph-notas-tit ph-notas-tit-sanitaria">' + t('notas_seguridad') + '</p><ul class="ph-notas-lista">' +
+        p.seguridad_infantil.map(function (n) {
+          return '<li class="ph-nota ph-nota-sanitaria"><i data-lucide="shield-alert"></i><span>' +
+            escapeHtml(t('nota_seguridad').replace('{nombre}', nombreMiembro(estado, n.miembro))
+              .replace('{alimento}', nombreAlimento(banco, n.alimento_id)).replace('{forma}', n.forma_insegura || n.riesgo || '')) +
+            '</span></li>';
+        }).join('') + '</ul></div>' : '';
+    var alergenos = p.alergenos.length
+      ? '<p class="rv-variantes"><i data-lucide="alert-circle"></i>' + escapeHtml(t('contiene') + ' ' + p.alergenos.join(', ')) + '</p>' : '';
+
+    return '<div class="rv-hero">' + fotoHtml + '<div class="rv-hero-gradiente"></div>' +
+      '<button type="button" class="rv-flotante rv-volver" data-action="receta-volver" aria-label="Volver"><i data-lucide="arrow-left"></i></button>' +
+      '<div class="rv-acciones">' +
+      '<button type="button" class="rv-flotante' + (oculta ? ' rv-flotante-activo' : '') + '" data-action="toggle-oculta-receta" data-plantilla="' + p.id + '" aria-label="' + (oculta ? 'Mostrar receta' : 'Ocultar receta') + '" aria-pressed="' + oculta + '"><i data-lucide="eye-off"></i></button>' +
+      '<button type="button" class="rv-flotante' + (favorita ? ' rv-flotante-activo' : '') + '" data-action="toggle-favorita-receta" data-plantilla="' + p.id + '" aria-label="' + (favorita ? 'Quitar de favoritas' : 'Marcar como favorita') + '" aria-pressed="' + favorita + '"><i data-lucide="heart"' + (favorita ? ' style="fill:currentColor"' : '') + '></i></button>' +
+      '</div></div>' +
+      '<div class="rv-body">' +
+      '<span class="rv-pill rv-pill-' + (esCena ? 'cena' : 'comida') + '">' + (esCena ? ICONO_LUNA : ICONO_SOL) + t(esCena ? 'badge_cena' : 'badge_comida') + '</span>' +
+      '<h1 class="rv-titulo">' + escapeHtml(nombreSplit.titulo) + '</h1>' +
+      (nombreSplit.subtitulo ? '<p class="rv-subtitulo">' + escapeHtml(nombreSplit.subtitulo) + '</p>' : '') +
+      '<div class="rv-stats">' +
+      '<div class="rv-stat"><i data-lucide="clock"></i><span class="rv-stat-valor">' + (p.tiempo_min || '?') + ' min</span></div>' +
+      '<div class="rv-stat"><i data-lucide="leaf"></i><span class="rv-stat-valor">' + tag + '</span></div>' +
+      '</div>' +
+      seguridad +
+      (acomp ? '<p class="rv-variantes"><i data-lucide="info"></i>' + escapeHtml(acomp) + '</p>' : '') +
+      (variantes ? '<p class="rv-variantes"><i data-lucide="shuffle"></i>' + escapeHtml(capitaliza(variantes)) + '</p>' : '') +
+      alergenos +
+      '<p class="rv-seccion-titulo">' + t('preparacion') + '</p>' +
+      pasosHtml + acompPasos +
+      // sin CTA de «ponlo en el menú»: `cambiarPlato {modo:'asignar'}` ya existe, pero el ALCANCE
+      // fino de esa acción (a qué día, si desplaza o sustituye) está declarado PENDIENTE DE ROGER
+      // en §15.3. Inventarlo aquí sería decidir por él. La puerta de asignar que sí tiene día
+      // conocido —el sheet de cambiar y la nevera— está conectada.
+      '</div>';
   }
 
 
@@ -1336,45 +1516,224 @@
       '</div>';
   }
 
-  // COMPRA · §15.2 (bloque 3). `listaCompra(semana, filtro)` deriva del BANCO VIVO + la semana
-  // `/2` con el ÚNICO derivador del motor (`src/derivar.js`): notas incluidas —`eliminar` quita
-  // la línea a quien la tiene, `variante-todos` compra el sustituto para toda la olla,
-  // `vehiculo-persona` compra los dos, `solo-para` limita la elaboración a sus miembros. Sin ese
-  // derivador la lista sería inventada, así que se dice que falta en vez de enseñar gramos falsos.
-  function renderCompraVista(estado, plan, banco, rango, categoriasAbiertas) {
-    return '<div class="rc-cabecera"><div><h1 class="rc-titulo">Compra</h1></div></div>' +
-      '<div class="vista-body rc-body">' + pendienteV6(t('v6_pend_compra'), t('v6_pendiente_sub')) + '</div>';
+  // COMPRA · §15.2. `listaCompra(semana, filtro)` deriva del BANCO VIVO + la semana `/2` con el
+  // ÚNICO derivador del motor (`src/derivar.js`): notas incluidas —`eliminar` quita la línea a
+  // quien la tiene, `variante-todos` compra el sustituto para toda la olla, `vehiculo-persona`
+  // compra los dos, `solo-para` limita la elaboración a sus miembros— y redondea UNA vez sobre el
+  // total. Aquí no se calcula ni un gramo: solo se AGRUPA como se compra y se pinta.
+  //
+  // La taxonomía de abajo es de TIENDA (carnicería · pescadería · frutería · despensa · frío), no
+  // la nutricional: es cómo se compra, no cómo se cuenta la cuota. La clave es la categoría AESAN
+  // que viaja en cada línea — dato del banco, no una etiqueta inventada en la pantalla.
+  var GRUPO_COMPRA = {
+    'carne-blanca': 'carne', 'carne-roja': 'carne', 'carne-procesada': 'carne',
+    'pescado-blanco': 'pescado', 'pescado-azul': 'pescado', marisco: 'pescado',
+    verdura: 'verdura', fruta: 'verdura',
+    legumbre: 'otros', cereal: 'otros', tuberculo: 'otros', 'fruto-seco': 'otros',
+    otros: 'otros', 'azucar-anadido': 'otros',
+    huevo: 'frio', lacteo: 'frio'
+  };
+  var GRUPOS_COMPRA_INFO = {
+    carne: { nombre: 'Carne', icono: 'beef' },
+    pescado: { nombre: 'Pescado', icono: 'fish' },
+    verdura: { nombre: 'Frutas y verduras', icono: 'carrot' },
+    otros: { nombre: 'Otros', icono: 'wheat' },
+    frio: { nombre: 'Frío', icono: 'snowflake' }
+  };
+  var ORDEN_GRUPO_COMPRA = ['carne', 'pescado', 'verdura', 'otros', 'frio'];
+
+  function filaCompraHtml(item, marcado) {
+    // unidades (huevo/yogur): se compra por piezas, no por gramos — «6 uds» en vez de «360 g».
+    // Los de despensa (aceite, sal, ajo…) van SIN cantidad: son «¿lo tengo en casa?», no compra.
+    var cantidadHtml = item.despensa ? ''
+      : item.unidades != null ? '<span class="check-cantidad">' + item.unidades + (item.unidades === 1 ? ' ud' : ' uds') + '</span>'
+        : '<span class="check-cantidad">' + item.gramos + ' g</span>';
+    return '<li class="check-item ' + (marcado ? 'check-marcado' : '') + '">' +
+      '<label>' +
+      '<input type="checkbox" data-action="toggle-compra-item" data-id="' + item.id + '" ' + (marcado ? 'checked' : '') + '>' +
+      '<span class="check-texto">' + escapeHtml(item.nombre) + '</span>' +
+      cantidadHtml +
+      '</label></li>';
+  }
+
+  function renderCompraVista(estado, plan, banco, rango, categoriasAbiertas, sup, diaHoy) {
+    categoriasAbiertas = categoriasAbiertas || {};
+    rango = rango === 'hoy' ? 'hoy' : '7d';
+    if (!plan || !sup) {
+      return '<div class="rc-cabecera"><h1 class="rc-titulo">Compra</h1></div>' +
+        '<div class="vista-body rc-body"><p class="card-msg">Todavía no hay semana generada.</p></div>';
+    }
+    // Pasadas las 16 h, «Compra hoy» ya no necesita el mediodía (Roger 2026-07-22) — mismo umbral
+    // que `saludoHora`, real reloj del navegador. El filtro lo aplica el motor, no esta función.
+    var filtro = rango === 'hoy'
+      ? { dia: diaHoy, soloCena: new Date().getHours() >= 16 }
+      : null;
+    var todos = diaHoy == null && rango === 'hoy' ? [] : sup.listaCompra(plan, filtro);
+    var marcados = {};
+    ((estado.compra && estado.compra.marcados) || []).forEach(function (id) { marcados[id] = 1; });
+    var despensa = todos.filter(function (i) { return i.despensa; });
+    var items = todos.filter(function (i) { return !i.despensa; });
+    var marcadosN = items.filter(function (i) { return marcados[i.id]; }).length;
+    var pct = items.length ? Math.round(marcadosN / items.length * 100) : 0;
+
+    var porGrupo = {};
+    items.forEach(function (item) {
+      var g = GRUPO_COMPRA[item.categoria] || 'otros';
+      (porGrupo[g] = porGrupo[g] || []).push(item);
+    });
+    // categoría completa = colapsa a una línea (progreso visible sin barra), pero SIEMPRE
+    // reabrible: un check puede haber sido un error. No se persiste (al recargar vuelve plegada,
+    // que es el estado real).
+    var gruposHtml = ORDEN_GRUPO_COMPRA.filter(function (g) { return porGrupo[g] && porGrupo[g].length; }).map(function (g) {
+      var info = GRUPOS_COMPRA_INFO[g];
+      var lista = porGrupo[g];
+      var completo = lista.every(function (i) { return marcados[i.id]; });
+      var abierto = !completo || !!categoriasAbiertas[g];
+      var cabecera = completo
+        ? '<button type="button" class="cp-grupo-titulo cp-grupo-completo" data-action="toggle-categoria-compra" data-grupo="' + g + '" aria-expanded="' + abierto + '">' +
+          '<i data-lucide="' + info.icono + '"></i>' + info.nombre +
+          '<span class="cp-grupo-estado">' + t('completo') + '<i data-lucide="chevron-' + (abierto ? 'up' : 'down') + '"></i></span></button>'
+        : '<p class="cp-grupo-titulo"><i data-lucide="' + info.icono + '"></i>' + info.nombre + '</p>';
+      return '<div class="cp-grupo' + (completo ? ' cp-grupo-completo-wrap' : '') + '">' + cabecera +
+        (abierto ? '<div class="cp-lista"><ul class="lista-check">' + lista.map(function (i) { return filaCompraHtml(i, !!marcados[i.id]); }).join('') + '</ul></div>' : '') +
+        '</div>';
+    }).join('');
+
+    var despensaHtml = despensa.length ? '<details class="cp-despensa">' +
+      '<summary>' + t('revisa_despensa') + '</summary>' +
+      '<div class="cp-lista"><ul class="lista-check">' + despensa.map(function (i) { return filaCompraHtml(i, !!marcados[i.id]); }).join('') + '</ul></div>' +
+      '</details>' : '';
+
+    return '<div class="rc-cabecera">' +
+      '<div><h1 class="rc-titulo">Compra</h1><p class="cp-resumen">' + marcadosN + ' de ' + items.length + ' en el carro</p></div>' +
+      '<div class="cp-cabecera-derecha">' +
+      (marcadosN > 0 ? '<button type="button" class="cp-vaciar" data-action="vaciar-compra" aria-label="Desmarcar todo"><i data-lucide="rotate-ccw"></i></button>' : '') +
+      '<div class="cp-anillo" style="background:conic-gradient(var(--gold) ' + (pct * 3.6) + 'deg, var(--elev2) 0)"><span>' + pct + '%</span></div>' +
+      '</div></div>' +
+      '<div class="vista-body rc-body">' +
+      '<div class="cp-seg">' +
+      '<button type="button" class="cp-seg-btn' + (rango === 'hoy' ? ' cp-seg-btn-activo' : '') + '" data-action="segmento-compra" data-rango="hoy" aria-pressed="' + (rango === 'hoy') + '">Hoy</button>' +
+      '<button type="button" class="cp-seg-btn' + (rango === '7d' ? ' cp-seg-btn-activo' : '') + '" data-action="segmento-compra" data-rango="7d" aria-pressed="' + (rango === '7d') + '">' + t('proximos_7_dias') + '</button>' +
+      '</div>' +
+      (items.length ? gruposHtml : '<p class="card-msg">Nada pendiente de comprar.</p>') +
+      despensaHtml +
+      '</div>';
   }
 
   // ---------------------------------------------------------------
-  // CAMBIAR EL PLATO · §15.3 · NEVERA · §15.6 — bloque 3
+  // CAMBIAR EL PLATO · §15.3 · NEVERA · §15.6
   // ---------------------------------------------------------------
-  // `cambiarPlato(semana, slot, peticion, diario, datos, config)` re-resuelve SOLO ese slot
-  // (T2 sobre el esqueleto vigente + exclusión del plato actual, T3 re-fracciona, T4 re-audita
-  // la semana ENTERA) y devuelve `{semana, desvios[]}` — aviso, JAMÁS bloqueo. `opcionesNevera`
-  // ya no monta menús: los PROPONE, y elegir uno pasa por `cambiarPlato {modo:'asignar'}`, una
-  // sola puerta. Las tres opciones se quedan A LA VISTA, marcadas, para no perderlas de vista.
-  function filaCambioPendiente(icono, claseIcono, titulo) {
-    return '<div class="sheet-fila-opcion sheet-fila-opcion-pendiente" aria-disabled="true">' +
+  // `cambiarPlato(semana, slot, peticion, diario)` re-resuelve SOLO ese slot (T2 con el esqueleto
+  // vigente, T3 re-fracciona, T4 re-audita la semana ENTERA) y devuelve `{semana, desvios[]}` —
+  // AVISO, JAMÁS BLOQUEO. `opcionesNevera` ya no monta menús: los PROPONE, y elegir uno pasa por
+  // `cambiarPlato {modo:'asignar'}` — una sola puerta para cambiar la semana.
+  function filaCambio(accion, dia, tipoComida, icono, claseIcono, titulo, sub) {
+    return '<button type="button" class="sheet-fila-opcion" data-action="' + accion + '" data-dia="' + dia + '" data-tipo="' + tipoComida + '">' +
       '<span class="sheet-fila-opcion-icono ' + claseIcono + '"><i data-lucide="' + icono + '"></i></span>' +
       '<span class="sheet-fila-opcion-texto"><span class="sheet-fila-opcion-titulo">' + escapeHtml(titulo) + '</span>' +
-      '<span class="sheet-fila-opcion-sub">' + escapeHtml(t('v6_pendiente_badge')) + '</span></span>' +
-      '</div>';
+      '<span class="sheet-fila-opcion-sub">' + escapeHtml(sub) + '</span></span>' +
+      '<i data-lucide="chevron-right" class="sheet-fila-opcion-chevron"></i>' +
+      '</button>';
   }
 
   function renderSheetCambiarInicio(estado, banco, dia, tipoComida) {
     return sheetHead('Cambiar ' + (tipoComida === 'comida' ? 'comida' : 'cena')) +
       '<div class="sheet-body">' +
-      pendienteV6(t('v6_pend_cambiar'), t('v6_pendiente_sub')) +
-      filaCambioPendiente('shuffle', 'sheet-fila-opcion-icono-gold', t('otro_menu')) +
-      filaCambioPendiente('refrigerator', 'sheet-fila-opcion-icono-azul', t('con_lo_que_hay_en_la_nevera')) +
-      filaCambioPendiente('salad', 'sheet-fila-opcion-icono-gold', t('cambiar_solo_el_acompanamiento')) +
+      '<p class="card-msg">' + t('que_cambiamos') + '</p>' +
+      filaCambio('modo-otro-menu', dia, tipoComida, 'shuffle', 'sheet-fila-opcion-icono-gold', t('otro_menu'), t('un_menu_completo_distinto')) +
+      filaCambio('modo-nevera', dia, tipoComida, 'refrigerator', 'sheet-fila-opcion-icono-azul', t('con_lo_que_hay_en_la_nevera'), t('recetas_con_lo_de_tu_nevera')) +
+      filaCambio('modo-solo-complementaria', dia, tipoComida, 'salad', 'sheet-fila-opcion-icono-gold', t('cambiar_solo_el_acompanamiento'), t('mismo_plato_principal_otra_guarnicion')) +
       '</div>';
   }
 
-  function renderNevera(estado, banco, dia, tipoComida) {
+  // Resultado de un cambio: lo que ha pasado y lo que se ha cedido, en frase humana. Los desvíos
+  // los DECLARA el motor (§15.3): aquí no se decide cuál enseñar ni se suaviza ninguno — el aviso
+  // DURO (alergia o seguridad infantil de un presente) va primero y aparte, con su color de
+  // bloqueo, porque nombra a una persona.
+  function renderSheetCambioHecho(estado, banco, servicio, desvios) {
+    var duros = (desvios || []).filter(function (d) { return d.duro; });
+    var blandos = (desvios || []).filter(function (d) { return !d.duro; });
+    var itemP = servicio && principalDe(banco, servicio);
+    var nombre = itemP ? nombrePercibido(banco, itemP, '*') : '';
+    var sec = servicio ? secundariasDe(banco, servicio).map(function (x) { return nombrePercibido(banco, x, '*'); }).join(' · ') : '';
+    var lista = function (arr, clase) {
+      return '<ul class="ph-notas-lista">' + arr.map(function (d) {
+        return '<li class="ph-nota' + clase + '"><i data-lucide="' + (clase ? 'shield-alert' : 'dot') + '"></i><span>' + escapeHtml(d.frase) + '</span></li>';
+      }).join('') + '</ul>';
+    };
+    return sheetHead(t('cambiado')) +
+      '<div class="sheet-body">' +
+      '<p class="card-msg">' + t('nuevo_plato') + ' <strong>' + escapeHtml(nombre) + '</strong>' + (sec ? ' <span class="ph-subtitulo">' + escapeHtml(sec) + '</span>' : '') + '</p>' +
+      (duros.length ? '<div class="ph-notas"><p class="ph-notas-tit ph-notas-tit-sanitaria">' + t('ojo') + '</p>' + lista(duros, ' ph-nota-sanitaria') + '</div>' : '') +
+      (blandos.length ? '<div class="ph-notas"><p class="ph-notas-tit">' + t('lo_que_hemos_cedido') + '</p>' + lista(blandos, '') + '</div>' : '') +
+      '<button type="button" class="btn-cta-gradiente" data-action="cerrar-sheet">' + t('vale') + '</button>' +
+      '</div>';
+  }
+
+  // Cuando no hay alternativa: la semana NO se toca y se dice por qué. Jamás un cambio a peor
+  // sin avisar, jamás un botón que no hace nada en silencio.
+  function renderSheetCambioSinSalida(desvios) {
+    return sheetHead(t('cambiado')) +
+      '<div class="sheet-body">' +
+      '<p class="card-msg">' + escapeHtml(((desvios || [])[0] || {}).frase || t('no_hemos_encontrado_otro')) + '</p>' +
+      '<button type="button" class="btn-cta-gradiente" data-action="cerrar-sheet">' + t('vale') + '</button>' +
+      '</div>';
+  }
+
+  // NEVERA · §15.6 — filtro INVERTIDO: manda la disponibilidad. El checklist son los alimentos
+  // que de verdad deciden si un plato se monta (`alimentosNevera`); grasa y condimento no se
+  // preguntan porque se asumen en casa (supuesto declarado del motor, no de esta pantalla).
+  function renderNevera(estado, banco, dia, tipoComida, sup) {
+    var lista = sup ? sup.alimentosNevera() : [];
+    var filas = lista.map(function (a) {
+      return '<li data-buscar="' + escapeHtml(normalizarTexto(a.nombre)) + '"><label class="fila-nevera">' +
+        '<input type="checkbox" value="' + a.id + '" data-nombre="' + escapeHtml(a.nombre) + '"> ' + escapeHtml(a.nombre) + '</label></li>';
+    }).join('');
     return sheetHead(t('con_lo_que_hay_en_la_nevera')) +
-      '<div class="sheet-body">' + pendienteV6(t('v6_pend_nevera'), t('v6_pendiente_sub')) + '</div>';
+      '<div class="sheet-body">' +
+      '<p class="card-msg">' + t('marca_lo_que_tienes_en_casa_y_buscamos_un') + '</p>' +
+      '<div class="nevera-top">' +
+      '<div class="nevera-buscador-fila">' +
+      '<label class="rc-buscador"><i data-lucide="search"></i>' +
+      '<input type="search" id="nevera-buscador" placeholder="' + t('buscar_ingrediente') + '" autocomplete="off"></label>' +
+      '</div>' +
+      '<div class="nevera-seleccion" id="nevera-seleccion" hidden></div>' +
+      '<button type="button" class="btn-cta-gradiente" id="nevera-confirmar" data-action="confirmar-nevera" data-dia="' + dia + '" data-tipo="' + tipoComida + '">' + t('buscar_plato') + '</button>' +
+      '</div>' +
+      '<ul class="lista-nevera" id="lista-nevera-checks">' + filas + '</ul>' +
+      '</div>';
+  }
+
+  // Lo que la nevera PROPONE: montables primero, y detrás las que necesitan UNA cosa más (con su
+  // nombre, para poder decidir). Elegir una no monta nada aquí: llama a `cambiarPlato
+  // {modo:'asignar'}`, la única puerta que cambia la semana.
+  function renderOpcionesNevera(opciones, dia, tipoComida) {
+    var todas = (opciones.montables || []).concat(opciones.casi_montables || []);
+    if (!todas.length) {
+      return sheetHead(t('con_lo_que_hay_en_la_nevera')) +
+        '<div class="sheet-body"><p class="card-msg">' + t('nevera_sin_resultados') + '</p></div>';
+    }
+    var fila = function (m) {
+      var falta = (m.faltan || [])[0];
+      // la opción del eje VIAJA: lo que la familia elige es el plato percibido («alitas al
+      // horno»), no la plantilla («asado al horno»), que sirve también dorada o pollo entero
+      return '<li><button type="button" class="fila-opcion-nevera" data-action="elegir-opcion-nevera" data-plantilla="' + m.id + '"' +
+        (m.opcion ? ' data-opcion="' + m.opcion + '"' : '') + ' data-dia="' + dia + '" data-tipo="' + tipoComida + '">' +
+        '<span class="fila-opcion-nevera-nombre">' + escapeHtml(m.nombre) + '</span>' +
+        '<span class="fila-opcion-nevera-sub">' + (m.tiempo_min || '?') + ' min' + (ETIQUETA_ESFUERZO[m.esfuerzo] ? ' · ' + ETIQUETA_ESFUERZO[m.esfuerzo] : '') + '</span>' +
+        '</button>' +
+        (falta ? '<p class="fila-opcion-nevera-aviso"><i data-lucide="alert-circle"></i>' +
+          escapeHtml(t('te_falta').replace('{alimento}', falta.nombre)) + '</p>' : '') +
+        '</li>';
+    };
+    return sheetHead(t('elige_un_plato')) +
+      '<div class="sheet-body">' +
+      '<ul class="lista-opciones-nevera">' + (opciones.montables || []).map(fila).join('') + '</ul>' +
+      ((opciones.casi_montables || []).length
+        ? '<p class="detalle-subtitulo">' + t('casi_montables') + '</p>' +
+          '<ul class="lista-opciones-nevera">' + opciones.casi_montables.map(fila).join('') + '</ul>'
+        : '') +
+      '</div>';
   }
 
   // ---------------------------------------------------------------
@@ -1810,7 +2169,7 @@
   //    SIEMPRE visibles en Acerca de, y cada deploy suma un patch (6.0.0 → 6.0.1 → 6.0.2…).
   //    Se sube A MANO en el mismo commit que despliega: si se automatizara con la fecha del
   //    build, dejaría de decir «qué versión estoy usando» y pasaría a decir «cuándo se compiló».
-  var VERSION_APP = '6.0.0';
+  var VERSION_APP = '6.0.1';
   var VERSION_FECHA = '03/08/2026';
 
   function renderAcercaDe() {
@@ -2120,16 +2479,40 @@
   }
 
   // ---------------------------------------------------------------
-  // DESCUBRIR · §15.5 (bloque 3)
+  // DESCUBRIR · §15.5
   // ---------------------------------------------------------------
-  // `categoriasDescubrir(fechaISO, ocultas)` conserva la mecánica (temporada primero, pinned,
-  // rotación determinista por día, sin RNG) pero SOBRE EL CATÁLOGO DEL HOGAR — que es
-  // `catalogoRecetas()`, bloque 3. Sin él, las fichas propondrían platos que esta casa no puede
-  // comer. Se queda visible y marcado.
-  function renderDescubrirVista(estado, banco) {
+  // `categoriasDescubrir(fechaISO, ocultas)` conserva la mecánica de siempre (temporada primero,
+  // fijas delante, rotación determinista por día, SIN RNG) sobre el catálogo del HOGAR. La fecha
+  // viaja en `data-fecha` (audit 2026-07-20): el handler reabre la MISMA rotación aunque la
+  // medianoche cruce entre pintar y tocar.
+  function renderDescubrirVista(estado, banco, sup) {
+    var fecha = hoyISO();
+    var categorias = sup ? sup.categoriasDescubrir(fecha, estado.ocultas || []) : [];
+    var fichasHtml = categorias.map(function (d, idx) {
+      return '<button type="button" class="desc-ficha" data-action="descubrir-abrir-categoria" data-idx="' + idx + '" data-fecha="' + fecha + '">' +
+        (d.foto ? '<img src="' + escapeHtml(d.foto) + '" alt="" loading="lazy" decoding="async">' : '') +
+        '<div class="desc-ficha-degradado"></div>' +
+        '<div class="desc-ficha-texto">' +
+        '<span class="desc-kicker">' + escapeHtml(d.kicker) + '</span>' +
+        '<div class="desc-titulo">' + escapeHtml(d.titulo) + '</div>' +
+        '</div></button>';
+    }).join('');
     return '<div class="rc-cabecera"><div><h1 class="rc-titulo">' + t('descubrir') + '</h1>' +
       '<p class="cp-resumen">' + t('ideas_nuevas_para_tu_familia') + '</p></div></div>' +
-      '<div class="vista-body rc-body">' + pendienteV6(t('v6_pend_descubrir'), t('v6_pendiente_sub')) + '</div>';
+      '<div class="vista-body rc-body"><div class="desc-lista">' +
+      (fichasHtml || '<p class="card-msg">Muy pronto: ideas nuevas para tu familia.</p>') +
+      '</div></div>';
+  }
+
+  // Descubrir → detalle de categoría: las MISMAS tarjetas que Recetas (Roger 2026-07-20), sin
+  // chips ni buscador — la categoría ya viene filtrada por el motor.
+  function renderSheetDescubrirCategoria(categoria, estado) {
+    var ocultas = estado.ocultas || [], favoritas = estado.favoritas || [];
+    return sheetHead(categoria.titulo) +
+      '<div class="sheet-body"><div class="rc-grid">' +
+      categoria.candidatas.map(function (p) {
+        return tarjetaRecetaGrid(p, ocultas.indexOf(p.id) !== -1, favoritas.indexOf(p.id) !== -1);
+      }).join('') + '</div></div>';
   }
 
   // Familia — lista de miembros (Roger 2026-07-19, handoff): tarjeta por
@@ -2183,6 +2566,10 @@
     renderVistaReceta: renderVistaReceta,
     renderSheetResumenSemana: renderSheetResumenSemana,
     renderSheetCambiarInicio: renderSheetCambiarInicio,
+    renderSheetCambioHecho: renderSheetCambioHecho,
+    renderSheetCambioSinSalida: renderSheetCambioSinSalida,
+    renderSheetDescubrirCategoria: renderSheetDescubrirCategoria,
+    renderOpcionesNevera: renderOpcionesNevera,
     renderNevera: renderNevera,
     renderVistaMiembro: renderVistaMiembro,
     renderMenuHamburguesa: renderMenuHamburguesa,

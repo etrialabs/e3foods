@@ -1,6 +1,6 @@
 /* ============================================================
    e3Foods — motor_v6.js (GENERADO por _build_banco_v6.js — NO editar a mano)
-   Motor V6 para navegador: 20 módulos de motor_v6/src/ (la ÚNICA
+   Motor V6 para navegador: 23 módulos de motor_v6/src/ (la ÚNICA
    implementación), con un registro CommonJS mínimo. Requiere data/banco_v6.js antes.
    Regenerar: node _build_banco_v6.js desde 02_APP/.
    ============================================================ */
@@ -318,7 +318,8 @@ module.exports = {
   SATURACIONES_S: {
     frescura_dias: 28,                 // S1: a ≥28 días el plato es «nuevo del todo» (ventana D3)
     origen_servicios: 8,               // S2: a ≥8 servicios el origen ya no pesa
-    progreso_raciones: 2,              // S3: ≥2 raciones de avance saturan el término
+    progreso_tomas: 2,                 // S3: ≥2 TOMAS de avance saturan el término (5.4: la
+                                       // cuota es frecuencia; era `progreso_raciones`)
     tiempo_min: 90                     // S6: minutos de cocina que saturan la escala
   },
 
@@ -374,9 +375,25 @@ module.exports = {
     huevo: { adulto: [2, 4], nino: [3, 4] },
     'carne-total': { adulto: [2, 4], nino: [null, 3] },      // AC25 comedor: ≤3
     'carne-roja': { adulto: [null, 2], nino: [null, 1] },    // TECHO DE SALUD: jamás relajable
-    'carne-procesada': { adulto: [null, null], nino: [null, null] } // semanal sin cota; niño ≤2/MES aparte
+    // ⚑ 4-ago · FILA 5.1 — el techo del menor era `null` y T1 NO LO VEÍA. AC25 publica ≤2 al MES
+    // y T2 sí lo aplicaba (`PROCESADA_MENSUAL_NINO_MAX / 4`), así que el esqueleto reservaba una
+    // casilla de procesada que el niño no podía comer y el relleno la rechazaba: callejón puro.
+    // Estaba enmascarado porque los tres platos que la traen se etiquetaban `sin-cuota` (fila
+    // 5.2, el mismo bug de fondo) — al cerrar 5.2 salieron **3 semanas de 48 sin menú**, con el
+    // motivo literal «procesada del niño n1 (techo mensual, aprox semanal)». Ahora T1 lo ve.
+    // El valor es el mismo número repartido a semana, escrito una sola vez abajo: dos copias de
+    // un techo es cómo T1 y T2 acabaron en desacuerdo.
+    'carne-procesada': { adulto: [null, null], nino: [null, 2 / 4] }
   },
+  // fila 5.5 · los techos de D2 con `limite_g_dia` NO tienen todos la misma ventana (el atún es
+  // de mes, los nitratos de día), así que la ventana es DATO DEL BANCO —`ventana_dias` en
+  // `seguridad_infantil`— y no una constante de aquí. Escribirla en config habría vuelto a poner
+  // un número de la fuente lejos de su unidad, que es el bug que 5.4 pagó. El contador vive en
+  // `src/ventana_movil.js` y arranca del diario D3, la única memoria del motor que pasa de la semana.
   PROCESADA_MENSUAL_NINO_MAX: 2,       // AC25 ≤2/mes → ventana móvil de 28 días (convención declarada)
+                                       // ⚠️ el techo semanal del menor en CUOTAS es este /4. Al
+                                       // cablear la ventana móvil real (fila 5.5) los dos pasan a
+                                       // salir del diario y esta aproximación muere.
 
   // ── REFUNDACIÓN DE LA UNIDAD (spec §4, OK Roger 2-ago): la cuota es FRECUENCIA en TOMAS;
   //    la cantidad es personal en gramos; los techos de salud son absolutos en gramos/semana.
@@ -384,6 +401,34 @@ module.exports = {
                                        // de la ración de referencia de SU tramo — sustituye a la
                                        // asimetría vieja («no cumplir pescado con tropiezos»).
                                        // A CALIBRAR §11
+  // ── CATEGORÍAS CONTABLES (Roger, 4-ago): las que la fuente publica en PIEZAS, no en comidas.
+  //    A22 escribe el huevo como «2-4/semana (unidades medianas, 53-63 g)» — son HUEVOS, no veces.
+  //    En estas, un servicio aporta `round(gramos / unidad)`: la tortilla de dos huevos gasta 2 de
+  //    los 4, el huevo duro 1, y los 15 g de un rebozado siguen aportando 0. Sin ellas, «4» de la
+  //    fuente se leía como 4 COMIDAS y cuatro tortillas pasaban con 8 huevos dentro (caso C, 4-ago).
+  //    Roger, textual: «nadie pesa los huevos y cortar por 12 g es una broma» — por eso la unidad
+  //    es la pieza contada y NO un techo de gramos, que fue la propuesta que descartó.
+  //    Legumbre, pescado y carne NO entran: su fuente las publica en raciones-cantidad y ahí un
+  //    plato es una ración; su exceso lo gobiernan los techos de salud en gramos.
+  CUOTAS_CONTABLES: ['huevo'],
+  // ── EL PAPEL DE LA LÍNEA manda sobre cuánto puede moverla T3 (Roger, 4-ago). Es la misma
+  //    regla que D12 detectó en el hidrato (AESAN publica arroz/pasta a 50-90 g en plato
+  //    principal, 20-25 g en sopa, 20-40 g en guarnición), aquí en el huevo:
+  //    · PROTAGONISTA — el huevo ES el plato. T3 lo mueve entre 1 y 2 piezas según sus kcal.
+  //      Roger: «una tortilla de 1 huevo es pobre»; el suelo real medido en r/eggs también es 2.
+  //    · COMPLEMENTO — el huevo marca la receta y no se mueve: salmorejo (1 huevo por cuenco),
+  //      ensaladilla rusa (3 huevos/4 personas = 0,75), arroz tres delicias, flan. Roger:
+  //      «subir el nivel de huevo rompe el equilibrio de receta».
+  //    Los `ligante` del banco (empanado, rebozado, torrijas, pastel de carne) ya caen solos:
+  //    15-30 g no llegan a pieza. ⚠️ DEUDA: esto es dato de BANCO viviendo en el motor — debe
+  //    migrar a un campo de `lineas` cuando se pueda tocar `elaboraciones.js` (hoy lo tiene
+  //    abierto la sesión de fotos, fila 6.4).
+  PIEZAS_PROTAGONISTA: {
+    huevo: ['tortilla-patata', 'tortilla-francesa', 'tortilla-francesa-verdura', 'tortilla-atun',
+      'tortilla-campera', 'huevos-fritos-patatas', 'huevos-revueltos-tomate', 'huevos-rotos-jamon',
+      'huevos-flamenca', 'huevo-duro'],
+  },
+  PIEZAS_PROTAGONISTA_RANGO: [1, 2],   // «siempre entre 1 y 2 (no más) en función de la persona»
   // ── COBERTURA DE EJE EN GRAMOS (bloqueante cazado por Roger leyendo el menú, 2-ago).
   //    `ejes` era una ETIQUETA: la hamburguesa declaraba cubrir fruta-verdura con 30 g de lechuga
   //    y 50 g de tomate, ambos CONDIMENTO, frente a una ración de 175 g — y salía sola en la
@@ -714,8 +759,11 @@ module.exports = {
 // dato que falta no puede regalar puntos.
 //   dias_desde_percibido      nº días desde que la mesa vio este plato percibido (null = jamás)
 //   servicios_desde_origen    nº servicios desde el último con este origen dominante (null = jamás)
-//   avance_raciones           raciones fraccionales que el candidato aporta a mínimos AÚN
-//                             pendientes de los presentes esta semana (Σ, saturado en config)
+//   avance_tomas              TOMAS que el candidato aporta a mínimos AÚN pendientes de los
+//                             presentes esta semana (Σ sobre miembro×cubo, saturado en config).
+//                             Era `avance_raciones` y contaba fracciones de ración contra una
+//                             banda escrita en tomas — fila 5.4, 4-ago: lo que hace progresar
+//                             «legumbre 3 veces» es comerla una vez más, no comer más de una vez.
 //   es_favorito               true/false — SIN SEÑAL HOY (Q4: peso 0; vendrá de la UI, explícito)
 //   temporada                 0 = elaboración en estación (u opción en mes) · 0.5 = sin declarar
 //   tiempo_min                minutos de la elaboración · finde: bool del slot
@@ -734,7 +782,7 @@ const TERMINOS = {
   distancia_origen: (s, sat) => s.servicios_desde_origen == null ? 0
     : clamp01((sat.origen_servicios - s.servicios_desde_origen) / sat.origen_servicios),
   progreso_cuotas: (s, sat) =>
-    1 - clamp01((s.avance_raciones || 0) / sat.progreso_raciones),
+    1 - clamp01((s.avance_tomas || 0) / sat.progreso_tomas),
   favoritos: s => s.es_favorito === true ? 0 : 1,
   temporada: s => s.temporada == null ? 0.5 : clamp01(s.temporada),
   // L-V manda la promesa (rápido primero): menos minutos = mejor. En finde vive la cocina con
@@ -803,6 +851,173 @@ function politicaPostre(slotsActivos, semanaNum, clasesViables, config) {
 }
 
 module.exports = { costeS, politicaPostre, TERMINOS };
+
+  };
+
+  /* ---- motor_v6/src/cuotas.js ---- */
+  REG['cuotas'] = function (module, exports, require) {
+// CUOTAS · LA DEFINICIÓN ÚNICA DE LA UNIDAD EN QUE SE CUENTA UNA CUOTA (fila 5.4, 4-ago).
+//
+// ── QUÉ ARREGLA
+// `config.CUOTAS` está escrita en TOMAS («legumbre 2-4/semana» = comer legumbre 2-4 VECES,
+// spec §4). T1 la respetaba —presupuesta en SERVICIOS, peso 1— y T4 también —cuenta tomas
+// enteras con `TOMA_MIN_FRACCION`—, pero **T2 acumulaba fracciones de ración contra la misma
+// banda**: `st.minimos[mid][cubo] += gramos/racionRef`. Dos monedas, un solo número, y el motor
+// las sumaba como si fueran una. Medido el 4-ago sobre la parrilla (12 familias × 4 semanas):
+//   · 1.442 de 2.240 servicios-miembro (64,4%) con al menos un cubo donde la fracción no es la
+//     toma que aporta.
+//   · 262 de 1.031 veredictos de banda (25,4%) en los que las dos varas dicen COSAS DISTINTAS:
+//     `omnivora-2a2n` W04 a1 huevo — 6,5 «raciones» ⇒ PASADO contra un techo de 4, cuando las
+//     tomas reales son 3 y la semana está en banda. Y al revés: n1 legumbre 2,9 ⇒ CORTO con 4
+//     tomas servidas, o sea un descargo de «mínimo no cubierto» que era falso.
+// La consecuencia de producto es la que bloqueaba el bloque 3: el panel de equilibrio no podía
+// pintarse porque el número que la familia vería no era el que el motor usa para decidir.
+//
+// ── EL PATRÓN, HEREDADO DE LA ETAPA D (`ejes.js`): UNA definición, DOS recuentos
+// Este módulo NO recorre nada. Recibe las líneas YA RESUELTAS por quien llama —T2 sobre la
+// PLANTILLA de la elaboración, T4 sobre lo SERVIDO a cada miembro— y solo aplica el metro. Eso
+// es lo que mantiene viva la doble contabilidad de §1-T4: lo propio del juez es el RECORRIDO
+// (qué se sirvió, a quién, con cuántos gramos), jamás la DEFINICIÓN de la unidad. Dos
+// definiciones del mismo número no auditan mejor; hacen que el desacuerdo sea ininterpretable.
+// La batería A del harness conserva su implementación INDEPENDIENTE a propósito: es el tercer
+// testigo y su careo con T4 es un gate vivo — no se toca.
+//
+// ── LAS TRES MONEDAS DE §4, SEPARADAS AQUÍ Y NO CONVERTIBLES ENTRE SÍ
+//  1. TOMAS — frecuencia, idéntica para todos. Un servicio aporta **1 toma** de un cubo al
+//     comensal que lo come, tenga el plato el tamaño que tenga: «nadie gasta más cuota por comer
+//     más» (Roger, 2-ago). Umbral para que cuente: gramos del cubo EN EL SERVICIO ENTERO ≥
+//     `TOMA_MIN_FRACCION` × la ración de referencia de SU tramo — evita cumplir pescado con
+//     tropiezos. Es la unidad de `config.CUOTAS`.
+//  2. GRAMOS DE TECHO DE SALUD — absolutos y poblacionales (`TECHOS_SALUD_G_SEMANA`). No escalan
+//     con la persona porque el riesgo tampoco. Cuenta TODO gramo: no existe «demasiado poco para
+//     contar», existe el gramo (fila 4.5).
+//  3. FRACCIONES — se calculan y se exponen porque son la materia prima de las otras dos y la
+//     señal de progreso de T2 las usa, pero **jamás se comparan contra una banda de `CUOTAS`**.
+//     Ese era exactamente el bug.
+//
+// ── POR QUÉ LA TOMA SE DECIDE SOBRE EL SERVICIO Y NO SOBRE LA PIEZA
+// El umbral es del plato que se come, no de cada trozo: 0,3 raciones de legumbre en el principal
+// y 0,3 en la guarnición son 0,6 y son UNA toma, no dos medias ni ninguna. Por eso la API
+// acumula gramos y decide al cerrar el servicio; sumar tomas pieza a pieza contaba de más y
+// filtrar pieza a pieza contaba de menos.
+'use strict';
+const { racionParaLinea } = require('./raciones.js');
+
+// categoría D1 → cubos de cuota que alimenta (ella misma + sus agregados de §4).
+// Único sitio donde se dice qué cubo alimenta qué: `t1_esqueleto.js` lo deriva de aquí vía
+// `AGREGADOS`/`cubosDe`, que sigue siendo suyo porque T1 razona sobre CATEGORÍAS de pool.
+const CUBOS_DE = {
+  legumbre: ['legumbre'],
+  'pescado-blanco': ['pescado-total'],
+  'pescado-azul': ['pescado-total', 'pescado-azul'],
+  marisco: ['pescado-total'],
+  huevo: ['huevo'],
+  'carne-roja': ['carne-total', 'carne-roja'],
+  'carne-blanca': ['carne-total'],
+  'carne-procesada': ['carne-total', 'carne-procesada']
+};
+
+// índice alimento_id → fila D1, cacheado por banco (mismo patrón y motivo que `ejes.js`:
+// este módulo lo llaman T2, T4 y la superficie, y no puede depender de que traigan índice).
+const cacheD1 = new WeakMap();
+function filaD1De(datos, alimentoId) {
+  let ix = cacheD1.get(datos);
+  if (!ix) {
+    ix = {};
+    for (const f of datos.categorias_aesan || []) ix[f.alimento_id] = f;
+    cacheD1.set(datos, ix);
+  }
+  return ix[alimentoId];
+}
+
+// unidad física del alimento en gramos (`alimentos.unidad_g`), cacheada por banco.
+// ⚑ Por qué NO vale la ración de la categoría para contar piezas (4-ago, sesión 6): D1 publica
+// `racion_ref_g: 58` para las TRES formas del huevo —entero, yema y clara— porque su rango
+// «53-63 g» es el de la UNIDAD MEDIANA. Dividir por 58 los 34 g de yema de unas natillas da 1
+// pieza, cuando el banco dice que una yema pesa 17 g: son DOS. La nota de D1 en `clara-huevo`
+// («fracción de unidad: el conteo fraccional por gramos lo resuelve») era cierta mientras la
+// cuota fuese fraccional; 5.4 la pasó a piezas contadas y la nota quedó obsoleta sin que nadie
+// la revisara. El error va hacia CONTAR DE MENOS, que es el lado peligroso: un adulto con
+// natillas y crema catalana en la misma semana come 4 yemas y el motor le apuntaba 2.
+const cacheUnidad = new WeakMap();
+function unidadDe(datos, alimentoId) {
+  let ix = cacheUnidad.get(datos);
+  if (!ix) {
+    ix = {};
+    for (const a of datos.alimentos || []) if (a.unidad_g > 0) ix[a.id] = a.unidad_g;
+    cacheUnidad.set(datos, ix);
+  }
+  return ix[alimentoId];
+}
+
+// ── LA FUNCIÓN DE LA UNIDAD
+// `piezas` = líneas ya resueltas por quien llama: { alimento, gramos } (`papel` se ignora a
+// propósito — fila 4.5: una etiqueta que EXIME de contar es tan peligrosa como una que afirma).
+// `miembro` = { edad } · null/undefined ⇒ vara adulta.
+// Devuelve, POR SERVICIO:
+//   tomas      — { cubo: 1 } de los cubos que superan el umbral. La unidad de `config.CUOTAS`.
+//   fracciones — { cubo: nº } raciones acumuladas. Informativo: NUNCA contra una banda.
+//   gramosSalud— { categoria: gramos } de las categorías con techo absoluto en gramos/semana.
+//   huecos     — líneas cuyo alimento no tiene ración publicada para ese comensal. No son
+//                incumplimientos: son dato que falta, y se cuentan aparte para que un veredicto
+//                no pueda salir verde PORQUE no se midió.
+function cuotaDeServicio(piezas, miembro, datos, config, opts = {}) {
+  const edad = miembro ? miembro.edad : null;
+  const gramosCubo = {}, racionCubo = {}, gramosSalud = {}, huecos = [], protagonista = {};
+  const piezasCubo = {};                       // solo para categorías CONTABLES: piezas físicas
+  for (const l of piezas) {
+    const filaD1 = filaD1De(datos, l.alimento);
+    if (!filaD1) continue;
+    const cubos = CUBOS_DE[filaD1.categoria];
+    if (!cubos) continue;
+    const r = racionParaLinea(datos, filaD1, edad);
+    if (r.hueco) { huecos.push({ alimento: l.alimento, gramos: l.gramos, hueco: r.hueco }); continue; }
+    // la legumbre del banco viaja en SECO y su ración también: se convierte ANTES de dividir,
+    // igual que en el eje. Es la única categoría con base doble hoy.
+    let g = l.gramos || 0;
+    if (filaD1.categoria === 'legumbre') g = g / config.FACTOR_LEGUMBRE_SECO_COCIDO;
+    // piezas FÍSICAS de esta línea, con la unidad de SU alimento y no la de su categoría. Se
+    // acumulan fraccionales y se redondea UNA vez al cerrar el servicio: dos yemas y un huevo
+    // entero son tres piezas, y media yema en un ligante sigue sin llegar a ninguna.
+    const u = unidadDe(datos, l.alimento);
+    for (const c of cubos) {
+      gramosCubo[c] = (gramosCubo[c] || 0) + g; racionCubo[c] = r.g;
+      if (u > 0) piezasCubo[c] = (piezasCubo[c] || 0) + g / u;
+      // ¿esta categoría contable llega por una elaboración donde es PROTAGONISTA? Entonces T3
+      // podrá moverla dentro del rango, y quien PREVÉ (T2) tiene que contar con el extremo alto.
+      if (((config.PIEZAS_PROTAGONISTA || {})[filaD1.categoria] || []).includes(l.elaboracion_id))
+        protagonista[c] = true;
+    }
+    // el techo de salud cuenta el gramo REAL servido, sin conversión ni umbral
+    if (config.TECHOS_SALUD_G_SEMANA[filaD1.categoria])
+      gramosSalud[filaD1.categoria] = (gramosSalud[filaD1.categoria] || 0) + (l.gramos || 0);
+  }
+  const contables = config.CUOTAS_CONTABLES || [];
+  const tomas = {}, fracciones = {};
+  for (const [c, g] of Object.entries(gramosCubo)) {
+    if (!(racionCubo[c] > 0)) continue;
+    fracciones[c] = g / racionCubo[c];
+    // categorías CONTABLES (huevo): la fuente publica PIEZAS, así que el servicio aporta las
+    // piezas que sirve — 120 g de tortilla son 2 huevos de los 4 de la semana, no «una comida
+    // con huevo». En el resto la unidad es la toma: 1 si supera el umbral, y comer más no gasta
+    // más cuota (§4 punto 1).
+    if (contables.includes(c)) {
+      // sin `unidad_g` en el banco no se inventa una pieza: se cae a la ración de la categoría,
+      // que es lo que había antes, y el hueco es visible en el dato, no aquí.
+      let piezas = Math.round(piezasCubo[c] != null ? piezasCubo[c] : g / racionCubo[c]);
+      // PREVISIÓN vs VERDAD: T2 decide ANTES de que T3 exista, y en las protagonistas T3 puede
+      // subir la ración hasta el extremo del rango. Quien prevé cuenta con ese extremo — si
+      // contara la receta, serviría por encima del techo creyendo que le cabe. T4 no lo hace:
+      // mide lo servido, que ya es la verdad. Es la misma DEFINICIÓN con dos recorridos (§1-T4).
+      if (opts.peorCaso && protagonista[c] && piezas > 0)
+        piezas = Math.max(piezas, config.PIEZAS_PROTAGONISTA_RANGO[1]);
+      if (piezas > 0) tomas[c] = piezas;
+    } else if (g >= racionCubo[c] * config.TOMA_MIN_FRACCION) tomas[c] = 1;
+  }
+  return { tomas, fracciones, gramosSalud, huecos };
+}
+
+module.exports = { cuotaDeServicio, CUBOS_DE, filaD1De, unidadDe };
 
   };
 
@@ -1164,6 +1379,111 @@ module.exports = { apendizarSemana, podarDiario, fusionarDiario, diarioVacio: va
 
   };
 
+  /* ---- motor_v6/src/ejes.js ---- */
+  REG['ejes'] = function (module, exports, require) {
+// EJES · ETAPA D — la DEFINICIÓN ÚNICA de «cuánto es una ración de este eje para este comensal»,
+// EN GRAMOS y por comensal (fila 4.1 de la lista única, 3-ago).
+//
+// ── QUÉ SE UNIFICA Y QUÉ NO (decisión explícita, porque las dos cosas se pedían a la vez)
+//
+// Se UNIFICA la definición. Antes vivía duplicada como literales en TRES sitios:
+//   · `t2_relleno.js`  → `const RACION_FV_ADULTO = 175`
+//   · `t4_auditoria.js`→ `const RACION_FV = { adulto: 175, nino: 135 }`
+//   · `bd_v6/validar.js` → `var RACION_VERDURA_ADULTO = 175`
+// Tres copias del mismo número, ninguna leída del banco, y ya divergentes: T2 medía SIEMPRE con
+// vara adulta y T4 con la del tramo. Es el patrón de bug nº1 del proyecto («dos implementaciones
+// de la misma medida: una está mal») con el agravante de que el número ni siquiera salía del
+// banco — 175 es la ración de verdura de A22 y estaba escrita a mano en el código.
+//
+// NO se unifica el RECUENTO, y es deliberado. §1-T4 exige que el juez tenga vara propia: T2
+// recorre la PLANTILLA de la elaboración (antes de saber quién se sienta, con el peor caso en
+// las líneas de eje) y T4 recorre lo SERVIDO a cada miembro (con sustitutos, eliminaciones y la
+// opción realmente elegida). Son dos preguntas distintas y las dos implementaciones se conservan
+// intactas. Lo que este módulo da a los dos es EL METRO —qué categorías cuentan, cuántos gramos
+// son una ración para ese comensal, qué fracción exige el umbral—, jamás la medición.
+//
+// ── CÓMO SE MIDE: en FRACCIONES DE RACIÓN, no en gramos contra un divisor único
+// Un eje lo cubren categorías con raciones distintas (verdura 175 g y fruta 160 g; arroz 70 g y
+// patata 175 g). Dividir todo por un solo número era posible mientras el eje medible era uno;
+// con `hidrato` es imposible —70 g de arroz y 175 g de patata son la MISMA ración— así que cada
+// línea aporta `gramos / su ración` y se suman las fracciones. La ración por línea sale de
+// `raciones.js`, que ya es la vara única de la batería A, el prevuelo y el relleno: aquí no se
+// inventa ninguna ración nueva, se reusa la que ya existe.
+//
+// ── BASE: si no se puede comparar, se declara hueco
+// La ración trae la base en la que la fuente la pesó (`crudo` el grano, `cocido` el pan). Si la
+// línea del banco declara otra base, los gramos NO son comparables y la línea se cuenta como
+// HUECO — nunca se convierte a ojo. Hoy no hay ni un choque (medido: 56 líneas de cereal y
+// tuberculo, 0 choques), pero el día que entre uno tiene que verse, no colarse.
+'use strict';
+const { racionParaLinea } = require('./raciones.js');
+
+// eje → categorías D1 que lo cubren. Único sitio donde se dice qué cuenta para qué eje.
+// `proteina` se define para que la etapa D esté completa, pero NO se usa como gate: la cubre
+// SIEMPRE el principal por tipo (T2) y su suelo real es el proteico de T3, en gramos de
+// proteína y no de alimento. Aquí está para medir, no para bloquear.
+const EJE_CATEGORIAS = {
+  'fruta-verdura': ['verdura', 'fruta'],
+  hidrato: ['cereal', 'tuberculo'],
+  proteina: ['legumbre', 'pescado-blanco', 'pescado-azul', 'marisco', 'huevo',
+    'carne-roja', 'carne-blanca', 'carne-procesada'],
+};
+const EJES = Object.keys(EJE_CATEGORIAS);
+
+const catDeEje = {};
+for (const [eje, cats] of Object.entries(EJE_CATEGORIAS)) for (const c of cats) catDeEje[c] = eje;
+
+// ¿la categoría D1 de este alimento cuenta para este eje?
+const cuentaParaEje = (filaD1, eje) => !!filaD1 && catDeEje[filaD1.categoria] === eje;
+
+// índice alimento_id → fila D1, cacheado por banco. T2 y T4 tienen cada uno el suyo, pero este
+// módulo se llama también desde el validador y desde la superficie: que no dependa de que quien
+// llama traiga índice. WeakMap = no retiene el banco del hogar cuando la familia se va.
+const cacheD1 = new WeakMap();
+function filaD1De(datos, alimentoId) {
+  let ix = cacheD1.get(datos);
+  if (!ix) {
+    ix = {};
+    for (const f of datos.categorias_aesan || []) ix[f.alimento_id] = f;
+    cacheD1.set(datos, ix);
+  }
+  return ix[alimentoId];
+}
+
+// Fracción de ración que aporta UNA línea ya resuelta.
+//   linea: { alimento, gramos, papel, base }  — la forma mínima que T2 y T4 pueden dar los dos
+//   miembro: { edad }                          — null/undefined = vara adulta
+// Devuelve { fraccion } o { hueco: 'sin-racion' | 'menor-3' | 'base-incompatible' }.
+function fraccionDeLinea(datos, filaD1, linea, miembro) {
+  const r = racionParaLinea(datos, filaD1, miembro ? miembro.edad : null);
+  if (r.hueco) return { hueco: r.hueco };
+  if (filaD1.base && linea.base && filaD1.base !== linea.base) return { hueco: 'base-incompatible' };
+  return { fraccion: (linea.gramos || 0) / r.g };
+}
+
+// ── LA FUNCIÓN DE LA ETAPA D
+// `piezas` = las líneas YA resueltas por quien llama, cada una { alimento, gramos, papel, base }.
+// Quien llama es dueño de su recorrido (plantilla en T2, servido en T4): eso es lo que mantiene
+// viva la doble contabilidad. Aquí solo se aplica el metro.
+function cubreEje(piezas, miembro, eje, datos, config) {
+  let fraccion = 0;
+  const huecos = [];
+  for (const l of piezas) {
+    if (l.papel === 'condimento') continue;          // el condimento no cierra ejes (spec §2-bis)
+    const filaD1 = filaD1De(datos, l.alimento);
+    if (!cuentaParaEje(filaD1, eje)) continue;
+    const r = fraccionDeLinea(datos, filaD1, l, miembro);
+    if (r.hueco) { huecos.push({ alimento: l.alimento, gramos: l.gramos, hueco: r.hueco }); continue; }
+    fraccion += r.fraccion;
+  }
+  const umbral = config.EJE_MIN_FRACCION;
+  return { fraccion, umbral, cubre: fraccion >= umbral, huecos };
+}
+
+module.exports = { cubreEje, fraccionDeLinea, cuentaParaEje, EJE_CATEGORIAS, EJES };
+
+  };
+
   /* ---- motor_v6/src/energia.js ---- */
   REG['energia'] = function (module, exports, require) {
 // ENERGÍA · objetivo diario por persona y suelo proteico. Mifflin-St Jeor para adultos,
@@ -1219,10 +1539,13 @@ const { esqueleto, SLOTS } = require('./t1_esqueleto.js');
 const { rellenarSemana } = require('./t2_relleno.js');
 const { fraccionarSemana } = require('./t3_fracciones.js');
 const { serializarCorrida } = require('./serializar.js');
+const { auditar } = require('./t4_auditoria.js');
+const { objetivoDiario } = require('./energia.js');
 const { normalizarFamilia } = require('./contrato_familia.js');
 const { bancoDelHogar, anotarHogar } = require('./banco_hogar.js');
 const { anotarSemana } = require('./seguridad_infantil.js');
 const { memoria, diarioDesdeCorrida } = require('./memoria.js');
+const { acumuladoPrevio } = require('./ventana_movil.js');
 const { edadEnSemana, estacionDeSemana, fechaDia, juevesISO } = require('./derivar.js');
 
 const VERSION = 'v6-t2';
@@ -1293,6 +1616,12 @@ function generarCorrida(familiaDeclarada, arranqueIso, nSemanas, datos, config, 
     for (const s of semanasDelCole(familia, arranqueIso, i, semanaIso)) diario.servicios.push(s);
     const hoy = fechaDia(semanaIso, 1).toISOString().slice(0, 10);   // lunes de la semana a generar
     const mem = memoria(diario, banco, config, hoy);
+    // fila 5.5 · los techos de D2 que son de MES viven fuera de la semana: lo ya servido en la
+    // ventana móvil sale del diario, igual que la memoria. Se calcula aquí, junto a `memoria()`,
+    // porque comparte exactamente su fuente y su momento — el diario ya montado con el pasado
+    // real, el cole incluido, antes de que T1 reparta nada.
+    const ventanaPrevia = acumuladoPrevio(diario, banco, config, entrada.edades,
+      fechaDia(semanaIso, 1), fechaDia);
 
     entrada.memoria = mem;                           // el prevuelo la necesita para las claves
     const pre = prevuelo(entrada, pools, banco, config);   // de profundidad 1 (spec §7)
@@ -1322,7 +1651,7 @@ function generarCorrida(familiaDeclarada, arranqueIso, nSemanas, datos, config, 
         if (!e.ok) { esq = esq && esq.ok ? esq : e; continue; }
         esq = e;
         r = rellenarSemana({ entrada, esq: e, pre, pools, datos: banco, config: cfg, memoria: mem,
-          menuCole: familia.menu_cole });
+          menuCole: familia.menu_cole, ventanaPrevia });
         if (r.ok) { cedioElaborado = cfg === configSinCalma; break; }
       }
       if (r && r.ok) break;
@@ -1368,7 +1697,47 @@ function generarCorrida(familiaDeclarada, arranqueIso, nSemanas, datos, config, 
     }
     semanaIso = siguienteSemana(semanaIso);
   }
-  return serializarCorrida({ familia, semanas, version: VERSION, datos });
+  // ── T4 · AUDITORÍA, DENTRO DEL PIPELINE (fila 4.2, 3-ago). Hasta hoy `auditar()` estaba
+  // escrita y la GENERACIÓN no la llamaba: el único invocador real era `cambiarPlato` de la
+  // superficie, así que un menú generado salía por la puerta sin que nadie lo re-contase.
+  //
+  // QUÉ HACE Y QUÉ NO. NO regenera, NO corrige y NO tumba la semana: si T4 corrigiera al
+  // generador dejaría de ser un contador independiente y pasaría a ser parte del generador
+  // (§1-T4: «divergencia = BUG, jamás ajuste»). Lo que hace es dejar el veredicto PEGADO a la
+  // corrida —`auditoria`, con su gate binario POR SERVICIO en `auditoria.servicios`— para que
+  // ningún consumidor pueda leer un menú sin ver si pasó o no. Quien decide qué hacer con un
+  // gate rojo es el llamador; lo que ya no puede es no enterarse.
+  const corrida = serializarCorrida({ familia, semanas, version: VERSION, datos });
+  corrida.auditoria = auditoriaDeCorrida(corrida, banco, config);
+  return corrida;
+}
+
+// veredicto de T4 + su desglose BINARIO por servicio (dia-servicio → true/false y por qué)
+function auditoriaDeCorrida(corrida, banco, config) {
+  const objetivos = Object.fromEntries(corrida.familia.miembros.map(m =>
+    [m.id, objetivoDiario(m, corrida.semanas[0].semana_iso, config)]));
+  const r = auditar(corrida, banco, config, objetivos);
+  // gate por servicio: un servicio es ROJO si arrastra una relajación sin declarar, una
+  // divergencia o un eje corto DE LOS QUE HOY SON GATE (fruta-verdura). El hidrato viaja en
+  // `informativos` porque su umbral está pendiente de Roger — visible, nunca callado.
+  const servicios = {};
+  const marca = (lista, campo) => {
+    for (const x of lista) {
+      if (!x.semana || !x.slot) continue;
+      const k = `${x.semana}|${x.slot}`;
+      const s = servicios[k] = servicios[k] || { ok: true, motivos: [], informativos: [] };
+      if (campo === 'informativos') { s.informativos.push(x.tipo); continue; }
+      s.ok = false;
+      s.motivos.push(x.tipo);
+    }
+  };
+  marca(r.silenciosas, 'motivos');
+  marca(r.divergencias, 'motivos');
+  marca(r.eje_corto.filter(e => e.tipo === 'eje-fruta-verdura-corto'), 'motivos');
+  marca(r.eje_corto.filter(e => e.tipo !== 'eje-fruta-verdura-corto'), 'informativos');
+  return { gates: r.gates, gates_informativos: r.gates_informativos, ok: r.ok,
+    metricas: r.metricas, servicios,
+    servicios_en_rojo: Object.values(servicios).filter(s => !s.ok).length };
 }
 
 // menú del cole → servicios de diario de la semana ANTERIOR y la EN CURSO (la memoria mira
@@ -1536,6 +1905,13 @@ function diarioDesdeCorrida(corrida, fechaDia) {
         return acc;
       }, {})),
       fracciones: sv.fracciones, servido: true,
+      // fila 5.5 · las NOTAS son parte de lo que se sirvió, no un derivado: son la forma en que
+      // la mesa mixta expresa quién come qué (`solo-para`, `sustituto`, `eliminar`). Sin ellas el
+      // diario dice que todos comieron el plato de la mesa, y cualquier contador que mire hacia
+      // atrás —el de ventana móvil de D2, el primero— atribuye a un comensal comida que no probó.
+      // Medido al construirlo: 247 g de atún imputados a un niño de 9 años que come CERO.
+      // Es campo ADITIVO: un diario viejo sin `notas` se lee igual, solo que sin poder afinar.
+      notas: sv.notas || [],
       banco_generacion: corrida.generador.banco_generacion || corrida.generador.banco
     });
   });
@@ -1670,6 +2046,24 @@ function compilarPools(datos) {
   }
 
   // línea proteica dominante con esta opción → su cubo AESAN
+  //
+  // ⚑ 4-ago · FILA 5.2 — `sin-cuota` ESCONDÍA CARNE ROJA. El encabezado de este fichero define
+  // `sin-cuota` como «NINGUNA línea cae en cubo con banda», y el código no lo implementaba:
+  // elegía el animal de más gramos SIN mirar si su categoría tenía banda y, si el ganador caía
+  // fuera de los cubos, devolvía `sin-cuota` tirando el resto. Con `canelones-carne` ganaba la
+  // LECHE de la bechamel —`lacteo` es ANIMAL pero no es cubo de cuota— y los 110 g de carne roja
+  // desaparecían del reparto: T1 reservaba la casilla como «no consume techo» y T2 después SÍ
+  // contaba esos gramos, así que la semana rompía un techo de SALUD que el esqueleto creía
+  // intacto. Medido sobre el banco: de 5 candidatos `sin-cuota`, **3 escondían un cubo con banda
+  // y los 3 eran techo de salud** — `canelones-carne` (carne-roja 110 g), `pasta-gratinada`
+  // (procesada 60 g) y `croquetas-caseras×jamon-serrano` (procesada 50 g).
+  //
+  // Es la MISMA familia que 4.5 (una etiqueta que exime de contar) y se cierra igual: quitando
+  // la exención, no poniéndole umbral. La diferencia con 4.5 es dónde vivía — allí era el
+  // `papel === 'condimento'` del cómputo de T2; aquí es un `lacteo` que gana por peso y silencia
+  // a los demás. `papel === 'condimento'` SÍ se conserva aquí, y no es una exención de contar
+  // sino de RESERVAR: T2 y T4 cuentan esos gramos igual (4.5), y si el condimento pudiera ser
+  // dominante, un plato de verdura con 5 g de jamón se reservaría como carne procesada.
   function categoriaDe(id, opcion) {
     let mejorAnimal = null, mejorProt = null;
     const recorrer = (padre, escala) => {
@@ -1680,17 +2074,21 @@ function compilarPools(datos) {
         const a = alim[alimentoId];
         if (!a) continue;
         const g = (l.gramos_adulto || 0) * escala;
-        if (ANIMAL.has(a.naturaleza) && (!mejorAnimal || g > mejorAnimal.g)) mejorAnimal = { id: alimentoId, g };
-        // sin animal: manda la proteína real, no los gramos (una pasta pesa más que su legumbre)
         const f = cat[alimentoId];
-        if (f && CUBOS.has(f.categoria) && (!mejorProt || g > mejorProt.g)) mejorProt = { id: alimentoId, g };
+        // el candidato a dominante tiene que PODER serlo: solo cuenta si su categoría es un cubo
+        // que T1 reserva. Un animal fuera de cubo (la leche de la bechamel) no gana la carrera —
+        // ni la gana ni la tapa.
+        if (f && CUBOS.has(f.categoria)) {
+          if (ANIMAL.has(a.naturaleza) && (!mejorAnimal || g > mejorAnimal.g)) mejorAnimal = { id: alimentoId, g };
+          // sin animal: manda la proteína real, no los gramos (una pasta pesa más que su legumbre)
+          if (!mejorProt || g > mejorProt.g) mejorProt = { id: alimentoId, g };
+        }
       }
     };
     recorrer(id, 1);
     const elegido = mejorAnimal || mejorProt;
-    if (!elegido) return 'sin-cuota';
-    const fila = cat[elegido.id];
-    return fila && CUBOS.has(fila.categoria) ? fila.categoria : 'sin-cuota';
+    // ahora sí: `sin-cuota` significa lo que el encabezado dice, ninguna línea en cubo con banda
+    return elegido ? cat[elegido.id].categoria : 'sin-cuota';
   }
 
   // candidatos = PRINCIPALES (lo que T1 reserva). piezas = SECUNDARIAS y POSTRES servibles por
@@ -2448,7 +2846,11 @@ const CLAVES = {
   servicio: ['dia', 'servicio', 'plato', 'postre', 'fracciones', 'ajustes_linea', 'relajaciones', 'descargos', 'notas', 'no_servido'],
   plato_item: ['elaboracion_id', 'opciones_eje'],
   relajacion: ['peldano', 'detalle', 'frase'],
-  descargo: ['tipo', 'miembro', 'detalle'],
+  // `cubo` (5.4, 4-ago): QUÉ grupo de alimentos cedió. Es dato del hecho declarado, no estado del
+  // solver — sin él, un techo superado se sabía pero no se podía carear contra el recuento de T4,
+  // y «cero relajaciones silenciosas» no llegaba a cubrir las cuotas. Opcional: solo lo llevan
+  // los descargos de techo y de mínimo.
+  descargo: ['tipo', 'miembro', 'cubo', 'detalle'],
   semana: ['semana_iso', 'presencia', 'servicios', 'fallo']
 };
 
@@ -2638,7 +3040,10 @@ const FRASE_DESVIO = {
   'suelo-proteico': 'Ese día la proteína se queda algo corta de lo que tocaría.',
   'energia-fuera-de-banda': 'Ese día la ración queda un poco fuera de lo justo.',
   'minimo-no-cubierto': 'Esta semana os quedáis cortos de algún grupo de alimentos.',
-  'techo-fraccional-vs-reserva': 'Hemos tenido que ajustar las cantidades para que cuadre.',
+  // 5.4 · era `techo-fraccional-vs-reserva` y su frase decía «hemos ajustado las cantidades»,
+  // que describía la vara vieja (fracciones de ración) y no lo que pasa: lo que se pasa es la
+  // FRECUENCIA de un grupo, y las cantidades no tienen nada que ver.
+  'techo-vs-reserva': 'Esta semana un grupo de alimentos se repite más veces de lo recomendado.',
   'cupo-novedad-excedido': 'Es un plato nuevo para los peques y ya había otro esta semana.',
   'postre-inviable': 'Ese día alguien se queda sin postre de la mesa.',
   'ancla-vs-techo': 'Mandas tú: servimos lo que has pedido aunque se pase de lo recomendado.',
@@ -3762,7 +4167,11 @@ const ENV = (typeof process !== 'undefined' && process.env) ? process.env : {};
 const { cubosDe } = require('./t1_esqueleto.js');
 const { costeS, politicaPostre } = require('./costes.js');
 const { fechaDia } = require('./derivar.js');
-const { racionParaLinea } = require('./raciones.js');
+const { cuotaDeServicio } = require('./cuotas.js');
+const { reglasDeVentana, techoVentana } = require('./ventana_movil.js');
+const { cubreEje, EJE_CATEGORIAS } = require('./ejes.js');
+const ejeDeCategoria = {};
+for (const [eje, cats] of Object.entries(EJE_CATEGORIAS)) for (const c of cats) ejeDeCategoria[c] = eje;
 
 const DIA_MS = 86400000;
 const ORDEN_CAL = [];
@@ -3774,7 +4183,7 @@ for (let d = 1; d <= 7; d++) for (const s of ['comida', 'cena']) ORDEN_CAL.push(
 // contra el resto de la semana— y queda FUERA del bucle de decisión, verbatim en la salida.
 // `evitar` = { principales:Set, piezas:Set }: lo que el usuario acaba de rechazar. Sin estos dos
 // parámetros el comportamiento es EXACTAMENTE el de siempre (generación de semana entera).
-function rellenarSemana({ entrada, esq, pre, pools, datos, config, memoria, menuCole, fijados, evitar }) {
+function rellenarSemana({ entrada, esq, pre, pools, datos, config, memoria, menuCole, fijados, evitar, ventanaPrevia }) {
   const { semana_iso, familia, presencia, edades, estacion } = entrada;
   const semanaNum = Number(semana_iso.split('-W')[1]);
   const ix = indexar(datos);
@@ -3783,11 +4192,17 @@ function rellenarSemana({ entrada, esq, pre, pools, datos, config, memoria, menu
   // ── estado vivo de la semana (muere al emitir: jamás se serializa — contrato anti-fuga)
   const st = {
     porSlot: {},                                    // slot → servicio construido
-    minimos: {}, techos: {},                        // mid → cubo → raciones fraccionales
-    minSvc: {},                                     // mid → cubo → nº de SERVICIOS que se lo dieron
+    // ⚑ 5.4 · LA MONEDA DE CADA CONTADOR, y son DOS, inconvertibles (spec §4):
+    tomas: {},                                      // mid → cubo → nº de TOMAS (entero) ← config.CUOTAS
+    saludG: {},                                     // mid → categoría → GRAMOS ← TECHOS_SALUD_G_SEMANA
     fritos: 0, dulces: 0, lacteos: 0,
     novedades: {},                                  // mid → n novedades servidas (menores)
-    procesadaNino: {},                              // mid → raciones esta semana (aprox v1)
+    procesadaNino: {},                              // mid → TOMAS de procesada esta semana
+    // ⚑ 5.5 · mid → alimento → GRAMOS dentro de la ventana móvil de 30 días. Tercera moneda y
+    // tampoco convertible: no es una toma (frecuencia) ni un gramo de techo SEMANAL, es un techo
+    // de MES de `seguridad_infantil`. Arranca con lo que el diario ya trae servido — sin eso el
+    // contador se reiniciaría cada lunes y un techo mensual medido por semanas no es un techo.
+    ventanaG: JSON.parse(JSON.stringify(ventanaPrevia || {})),
     percibidos: {},                                 // percibido principal → [dia…] (TODOS)
     elabServida: {},                                // elaboracion_id → [idxCal…] (TODOS)
     secPercibidos: {},                              // percibido secundaria/postre → [idxCal…] (TODOS)
@@ -3796,7 +4211,7 @@ function rellenarSemana({ entrada, esq, pre, pools, datos, config, memoria, menu
     alimentosSemana: new Set(),
     costeBandaAcum: [], idxServicio: 0
   };
-  for (const m of familia.miembros) { st.minimos[m.id] = {}; st.techos[m.id] = {}; st.minSvc[m.id] = {}; }
+  for (const m of familia.miembros) { st.tomas[m.id] = {}; st.saludG[m.id] = {}; }
 
   // banderas de FALLBACK: se encienden cuando no hay pieza fuera de ventana M4 y se sirve la
   // cercana — eso ES una relajación R2 y se declara (jamás un silencio, doctrina §7)
@@ -3853,37 +4268,64 @@ function rellenarSemana({ entrada, esq, pre, pools, datos, config, memoria, menu
   const tramoDe = mid => edades[mid] < config.EDAD_RACION_ADULTO ? 'nino' : 'adulto';
   const presentesDe = slot => familia.miembros.map(m => m.id).filter(mid => presencia[mid][slot] === true);
 
-  // aporte fraccional del candidato: dominante/eje para MÍNIMOS, todo no-condimento para
-  // TECHOS. POR MIEMBRO: sus gramos de línea (niño/adulto) ÷ SU ración de referencia
-  // por edad (D1-bis). <3 años no tiene ración publicada ⇒ no computa cuotas (hueco declarado
-  // por el prevuelo; jamás se extrapola).
+  // ⚑ 4-ago · FILA 5.4 — LA UNIDAD DE LA CUOTA. Esto devolvía `{minimos, techos}` en RACIONES
+  // FRACCIONALES y el motor las comparaba contra las bandas de `config.CUOTAS`, que están
+  // escritas en TOMAS («legumbre 2-4/semana» = comer legumbre 2-4 VECES, spec §4). Dos monedas,
+  // un solo número. Medido sobre la parrilla antes de tocarlo: **64,4% de los servicios-miembro
+  // con al menos un cubo donde la fracción no es la toma que aporta, y 25,4% de los veredictos
+  // de banda dando resultados DISTINTOS con una vara y con la otra** (a1 huevo: 6,5 «raciones»
+  // ⇒ techo PASADO, cuando las tomas reales son 3 contra un techo de 4).
+  //
+  // Ahora `aportes` devuelve LAS LÍNEAS RESUELTAS del candidato para ese comensal, y quien las
+  // junta decide la cuota con `cuotas.js` — la misma definición que usa T4. El recorrido sigue
+  // siendo propio de cada uno (T2 la PLANTILLA, T4 lo SERVIDO): eso es lo que §1-T4 protege.
+  //
+  // MUERE también la asimetría dominante-para-mínimos / todo-para-techos que vivía aquí. No es
+  // una pérdida: el umbral `TOMA_MIN_FRACCION` hace ya ese trabajo mejor (los 10 g de limón no
+  // llegan a media ración y no cuentan solos), y sobre todo **T4 y la batería A nunca la
+  // tuvieron** — mantenerla en T2 era garantizar que generador y juez contaran distinto, que es
+  // literalmente el defecto que 5.4 cierra. El condimento sigue SIN cerrar ejes (`cubreEje` lo
+  // excluye): esa es la puerta de la hamburguesa sola y sigue cerrada.
+  //
+  // POR MIEMBRO: sus gramos de línea (niño/adulto). <3 años no tiene ración publicada ⇒ no
+  // computa cuotas (hueco declarado por el prevuelo; jamás se extrapola).
   const cacheAporte = {};
   function aportes(c, mid) {
     const k = `${c.elaboracion_id}|${c.opcion}|${mid}`;
     if (cacheAporte[k]) return cacheAporte[k];
-    const edad = edades[mid];
-    const esNino = edad < config.EDAD_RACION_ADULTO;
-    const minimos = {}, techos = {};
-    const dominante = dominanteDe(ix, c.elaboracion_id, c.opcion);
+    const esNino = edades[mid] < config.EDAD_RACION_ADULTO;
+    const lineas = [];
     for (const l of lineasPlanas(ix, c.elaboracion_id)) {
       const alimentoId = Array.isArray(l.alternativas) ? c.opcion : l.alimento_id;
-      const fila = ix.cat[alimentoId];
-      if (!fila || l.papel === 'condimento') continue;
-      const cubos = cubosDe(fila.categoria).filter(x => config.CUOTAS[x]);
-      if (!cubos.length) continue;
-      const racRef = racionParaLinea(datos, fila, edad);
-      if (racRef.hueco) continue;
-      let g = (esNino ? l.gramos_nino : l.gramos_adulto) * (l.escala || 1);
-      if (fila.categoria === 'legumbre') g = g / config.FACTOR_LEGUMBRE_SECO_COCIDO;
-      const rac = g / racRef.g;
-      const esMin = Array.isArray(l.alternativas) || (dominante && dominante.linea === l);
-      for (const cubo of cubos) {
-        techos[cubo] = (techos[cubo] || 0) + rac;
-        if (esMin) minimos[cubo] = (minimos[cubo] || 0) + rac;
-      }
+      if (!ix.cat[alimentoId]) continue;
+      lineas.push({ alimento: alimentoId, elaboracion_id: c.elaboracion_id,
+        gramos: (esNino ? l.gramos_nino : l.gramos_adulto) * (l.escala || 1) });
     }
-    return cacheAporte[k] = { minimos, techos, categoria: ix.cat[dominante ? dominante.id : ''] };
+    return cacheAporte[k] = lineas;
   }
+
+  // la cuota de un SERVICIO para un comensal: se juntan TODAS sus líneas y se decide una vez.
+  // El umbral es del plato que se come, no de cada trozo (0,3 raciones en el principal + 0,3 en
+  // la guarnición son UNA toma, no dos medias ni ninguna) — por eso nunca se llama por pieza.
+  const cuotaDe = (lineas, mid) => cuotaDeServicio(lineas, { edad: edades[mid] }, datos, config, { peorCaso: true });
+  const reglasVentana = reglasDeVentana(datos);
+
+  // ⚑ 5.4 (sesión 6, 4-ago) — EL POSTRE ES COMIDA Y CUENTA. Los contadores de este fichero
+  // recorrían `sv.plato` y **el postre no entraba en ninguno**: ni en tomas ni en gramos de
+  // salud. T3 y T4 sí lo recorren (`piezasDe`, `composicion`), así que las dos varas medían
+  // composiciones distintas y de ahí salían los 6 casos rojos que la sesión 5 dejó sin
+  // diagnosticar (T2 preveía 6 piezas de huevo y T4 contaba 7, todos en W05 y en adultos).
+  // El hueco es del banco entero, no del huevo: cuatro postres llevan un cubo de cuota dentro
+  // —`flan-huevo` 60 g, `crema-catalana` 40 g, `natillas` 34 g, `torrijas` 30 g— y contra la
+  // ración adulta de 60 g cada uno es UNA pieza que T2 no veía. En niños la ración de su tramo
+  // es menor y el redondeo cae del otro lado, que es por qué los 6 casos eran todos de adulto.
+  // Roger ya lo había dictado el 4-ago sobre el flan: «cuenta 100%… para tu cuerpo un huevo es
+  // un huevo». La composición se resuelve igual que en T4 (`composicion`): el sustituto de
+  // postre manda sobre el postre de mesa.
+  const postreDe = (sv, mid, sustPostre) => {
+    const p = sustPostre[mid] ? sustPostre[mid].postre : sv.postre;
+    return p ? [p] : [];
+  };
 
   // distancia M4 de una secundaria/postre: el MÍNIMO |Δ| contra TODOS sus índices de la semana
   // (el relleno no es cronológico: quedarse con el último registrado deja pasar repeticiones)
@@ -3986,7 +4428,7 @@ function rellenarSemana({ entrada, esq, pre, pools, datos, config, memoria, menu
         let avance = 0;
         for (const cubo of cubos) {
           const banda = (pre.bandasEfectivas[mid] || {})[cubo];
-          if (banda && (st.minimos[mid][cubo] || 0) < banda.min - 1e-9) avance++;
+          if (banda && (st.tomas[mid][cubo] || 0) < banda.min - 1e-9) avance++;
         }
         if (avance > mejorAvance) { mejorAvance = avance; mejor = op; }
       }
@@ -4013,71 +4455,111 @@ function rellenarSemana({ entrada, esq, pre, pools, datos, config, memoria, menu
       return `M2: ${c.elaboracion_id} a ${sm2} servicios`;
     if (!relaj.R4) {
       // M3 sobre ADYACENTES TEMPORALES ya rellenos (el orden de relleno no es el de la semana):
-      // servicio anterior y siguiente en el calendario
+      // los servicios a MENOS de `VENTANAS.M3_servicios` de distancia en el calendario, a ambos
+      // lados. ⚑ 4-ago (censo): la ventana estaba cableada a mano como «el vecino» y la constante
+      // de `config` no la leía nadie — un mando de calibración que no calibraba. Con el valor
+      // vigente (2) el comportamiento es EXACTAMENTE el mismo que antes —distancia 1, el vecino—
+      // y se verificó con la huella: cero menús movidos. Misma convención que M2 y M4, que ya
+      // comparaban «distancia < ventana».
       const org = ix.origenDe[`${c.elaboracion_id}|${c.opcion}`];
       if (org) {
         const idxCal = ORDEN_CAL.indexOf(s.slot);
-        for (const vecino of [ORDEN_CAL[idxCal - 1], ORDEN_CAL[idxCal + 1]]) {
+        const radio = Math.max(1, (config.VENTANAS.M3_servicios || 2) - 1);
+        for (let dd = 1; dd <= radio; dd++) for (const vecino of [ORDEN_CAL[idxCal - dd], ORDEN_CAL[idxCal + dd]]) {
           if (vecino && st.porSlot[vecino] && st.origenDeSlot[vecino] === org)
-            return `M3: origen ${org} consecutivo con ${vecino}`;
+            return `M3: origen ${org} a ${dd} servicio(s) de ${vecino}`;
         }
         if (idxCal === 0 && mem.mesa.M3 && mem.mesa.M3.origen === org && mem.mesa.M3.servicios === 0)
           return `M3: origen ${org} consecutivo con la semana anterior`;
       }
     }
     if (ix.esPesada(c.elaboracion_id) && st.fritos >= config.FRITOS_SEMANA_MAX) return 'M6: techo de fritos semanal';
-    // techos fraccionales por presente APTO (roja y procesada: innegociables; el resto, banda)
-    // — con PROYECCIÓN: el candidato debe dejar sitio para lo que los slots reservados
-    // pendientes consumirán COMO MÍNIMO (cazado en vivo: una procesada de 3,2 raciones se comía
-    // el techo de carne-total y el slot de roja reservado ya no cabía)
+    // ⚑ 5.4 · techos EN SU MONEDA por presente APTO — con PROYECCIÓN: el candidato debe dejar
+    // sitio para lo que los slots reservados pendientes consumirán COMO MÍNIMO (cazado en vivo:
+    // una procesada se comía el techo de carne-total y el slot de roja reservado ya no cabía).
+    // Son DOS comprobaciones porque son dos monedas (§4), y ninguna sustituye a la otra:
+    //   · el techo de FRECUENCIA de `config.CUOTAS`, en TOMAS;
+    //   · el techo de SALUD de `TECHOS_SALUD_G_SEMANA`, en GRAMOS absolutos.
+    // «Conviven con su límite de frecuencia y manda el más restrictivo de los dos» (§4).
     for (const mid of presentes) {
       if (pre.resolucion[mid][c.elaboracion_id].estado === 'excluido') continue;
       const tramo = tramoDe(mid);
       const op = opciones ? opciones[mid] : null;
-      const ap = aportes({ ...c, opcion: op != null ? op : c.opcion }, mid);
-      for (const [cubo, rac] of Object.entries(ap.techos)) {
+      const q = cuotaDe(aportes({ ...c, opcion: op != null ? op : c.opcion }, mid), mid);
+      for (const cubo of Object.keys(q.tomas)) {
         const banda = (pre.bandasEfectivas[mid] || {})[cubo];
         if (!banda) continue;
-        // roja y procesada: innegociables SIEMPRE. El resto de techos fraccionales pueden
-        // chocar con la reserva del esqueleto (unidades D1-bis pendientes: 3 potajes del niño
-        // = 4,35 raciones-adulto): ese choque se sirve CON DESCARGO, jamás mata la semana ni
-        // pasa en silencio — T3 (fracciones) y D1-bis lo resuelven de raíz.
+        // roja y procesada: innegociables SIEMPRE. El resto puede chocar con la reserva del
+        // esqueleto y ese choque se sirve CON DESCARGO, jamás mata la semana ni pasa en silencio.
         const salud = cubo === 'carne-roja' || cubo === 'carne-procesada';
         // EL ANCLA MANDA (dictado Roger, spec §1.5): si el slot es anclado, el techo — salud
         // incluida — cede CON descargo humano, jamás se desobedece el ancla en silencio
-        if ((st.techos[mid][cubo] || 0) + rac > banda.max + 1e-9)
+        // lo que este candidato aporta NO es siempre 1: en categorías contables (huevo) son las
+        // piezas que sirve. Sumar 1 aquí dejaba entrar una tortilla que gasta 2 creyendo que cabía.
+        const aporta = q.tomas[cubo] || 0;
+        if ((st.tomas[mid][cubo] || 0) + aporta > banda.max + 1e-9)
           return { motivo: `techo de ${cubo} de ${mid}`, techoDeclarable: !salud || !!s.ancla, esAncla: !!s.ancla };
         if (banda.max < Infinity) {
+          // los slots pendientes que alimentan este cubo aportarán UNA TOMA cada uno: es la
+          // misma unidad en que T1 los reservó, y por fin la misma en que T2 los cuenta.
           let pendienteMin = 0;
           for (const p of pendientes) {
             if (p.slot === s.slot || !presencia[mid][p.slot]) continue;
-            if (!cubosDe(p.categoria).includes(cubo)) continue;
-            const t = (pre.aporteCubo && pre.aporteCubo.min[cubo]) || {};
-            pendienteMin += t[mid] || 0;
+            if (cubosDe(p.categoria).includes(cubo)) pendienteMin++;
           }
-          if ((st.techos[mid][cubo] || 0) + rac + pendienteMin > banda.max + 1e-9)
+          if ((st.tomas[mid][cubo] || 0) + aporta + pendienteMin > banda.max + 1e-9)
             return { motivo: `techo proyectado de ${cubo} de ${mid}`, techoDeclarable: !salud };
         }
       }
-      if (tramo === 'nino') {
-        const proc = (ap.techos['carne-procesada'] || 0);
-        if (proc > 0 && (st.procesadaNino[mid] || 0) + proc > config.PROCESADA_MENSUAL_NINO_MAX / 4 + 1e-9)
+      // TECHOS DE SALUD EN GRAMOS: absolutos y poblacionales, no escalan con la persona porque
+      // el riesgo tampoco (§4). Cuentan TODO gramo, sin umbral de toma. Innegociables salvo ancla.
+      for (const [cat, g] of Object.entries(q.gramosSalud)) {
+        const techo = config.TECHOS_SALUD_G_SEMANA[cat];
+        if (techo == null) continue;
+        if ((st.saludG[mid][cat] || 0) + g > techo + 1e-6)
+          return { motivo: `techo de salud de ${cat} de ${mid} (gramos/semana)`,
+            techoDeclarable: !!s.ancla, esAncla: !!s.ancla };
+      }
+      // ⚑ 5.5 · TECHOS DE VENTANA MÓVIL (D2 con `limite_g_dia`). El atún del tramo 10-14 son
+      // 120 g al MES, no 4 g al día: el `4` del banco es el mes partido por 30 y su nota lo dice.
+      // Innegociable como los demás techos de seguridad — el ancla tampoco lo vence, porque no
+      // es un contrato de menú sino una prohibición sanitaria por edad (misma familia que las
+      // prohibiciones puras de D2, que ya son H y filtran antes de llegar aquí).
+      for (const l of aportes({ ...c, opcion: op != null ? op : c.opcion }, mid)) {
+        const techo = techoVentana(reglasVentana, l.alimento, edades[mid]);
+        if (techo == null) continue;
+        if (((st.ventanaG[mid] || {})[l.alimento] || 0) + (l.gramos || 0) > techo + 1e-6)
+          return { motivo: `${l.alimento} de ${mid}: techo de ventana de D2 `
+            + `(${Math.round(((st.ventanaG[mid] || {})[l.alimento] || 0) + (l.gramos || 0))} g > ${techo} g)` };
+      }
+      if (tramo === 'nino' && q.tomas['carne-procesada']) {
+        // AC25 ≤2 al MES. Repartido a semana mientras el contador mensual no viva en el diario
+        // (fila 5.5): la convención está declarada, no escondida.
+        if ((st.procesadaNino[mid] || 0) + 1 > config.PROCESADA_MENSUAL_NINO_MAX / 4 + 1e-9)
           return { motivo: `procesada del niño ${mid} (techo mensual, aprox semanal)`,
             techoDeclarable: !!s.ancla, esAncla: !!s.ancla };   // solo el ancla lo vence, declarado
       }
       // MÍNIMOS PROYECTADOS por miembro (cazado por G: la pizza dio jamón al niño y su
       // pescado-azul murió sin declarar): servir este candidato debe dejar los mínimos
-      // pendientes de CADA presente aún alcanzables con los slots que quedan. En SERVICIOS,
-      // coherente con el interino de T1 (1 servicio ≈ 1 ración hasta D1-bis).
+      // pendientes de CADA presente aún alcanzables con los slots que quedan. En TOMAS — la
+      // misma unidad que la banda y que la reserva de T1.
       for (const [cubo, banda] of Object.entries(pre.bandasEfectivas[mid] || {})) {
         if (!(banda.min > 0) || !(pre.puedeCubo[mid] || {})[cubo]) continue;
-        const leDa = (ap.minimos[cubo] || 0) > 1e-9 ? 1 : 0;
-        const pendiente = Math.ceil(banda.min - (st.minSvc[mid][cubo] || 0) - leDa - 1e-9);
+        const leDa = q.tomas[cubo] || 0;
+        const pendiente = Math.ceil(banda.min - (st.tomas[mid][cubo] || 0) - leDa - 1e-9);
         if (pendiente <= 0) continue;
+        // ⚑ 5.4 (sesión 6): la capacidad también va en TOMAS. Contaba SLOTS —un slot, una toma—
+        // y eso dejó de ser cierto con las categorías contables: un servicio de huevo puede
+        // aportar hasta `PIEZAS_PROTAGONISTA_RANGO[1]` piezas. Es una cota OPTIMISTA a propósito:
+        // este guard poda, y una poda que subestima la capacidad mata ramas viables (medido: con
+        // capacidad en slots, `omnivora-2a2n` se quedaba sin reparto legal en W03 con «pendiente
+        // 3 > capacidad 2» para el mínimo de huevo del niño, que sí cabía en 2 servicios).
+        const porSlot = (config.CUOTAS_CONTABLES || []).includes(cubo)
+          ? config.PIEZAS_PROTAGONISTA_RANGO[1] : 1;
         let capacidad = 0;
         for (const p of pendientes) {
           if (!presencia[mid][p.slot]) continue;
-          if (cubosDe(p.categoria).includes(cubo)) capacidad++;
+          if (cubosDe(p.categoria).includes(cubo)) capacidad += porSlot;
         }
         if (pendiente > capacidad)
           return `mínimo de ${cubo} de ${mid} moriría sirviendo esto (pendiente ${pendiente} > capacidad ${capacidad})`;
@@ -4115,13 +4597,15 @@ function rellenarSemana({ entrada, esq, pre, pools, datos, config, memoria, menu
         if (st.origenDeSlot[ORDEN_CAL[i]] === org) { sOrg = idxCal - i; break; }
     }
     const media = st.costeBandaAcum.length ? st.costeBandaAcum.reduce((s, x) => s + x, 0) / st.costeBandaAcum.length : 2;
+    // ⚑ 5.4 · avance EN TOMAS, no en fracciones de ración: lo que hace progresar un mínimo de
+    // «legumbre 3 veces» es comer legumbre una vez más, no comer más legumbre de una vez.
     let avance = 0;
     for (const mid of Object.keys(pre.bandasEfectivas)) {
       const op = opciones && opciones[mid] != null ? opciones[mid] : c.opcion;
-      const ap = aportes({ ...c, opcion: op }, mid);
-      for (const [cubo, rac] of Object.entries(ap.minimos)) {
+      const q = cuotaDe(aportes({ ...c, opcion: op }, mid), mid);
+      for (const cubo of Object.keys(q.tomas)) {
         const banda = pre.bandasEfectivas[mid][cubo];
-        if (banda && (st.minimos[mid][cubo] || 0) < banda.min - 1e-9) avance += Math.min(rac, banda.min - (st.minimos[mid][cubo] || 0));
+        if (banda && (st.tomas[mid][cubo] || 0) < banda.min - 1e-9) avance++;
       }
     }
     let rotRep = 0, rotTot = 0;
@@ -4132,7 +4616,7 @@ function rellenarSemana({ entrada, esq, pre, pools, datos, config, memoria, menu
     return {
       dias_desde_percibido: dmin.length ? Math.min(...dmin) : null,
       servicios_desde_origen: sOrg,
-      avance_raciones: avance,
+      avance_tomas: avance,
       temporada: c.temporada === estacion ? 0 : c.temporada == null ? 0.5 : 1,
       tiempo_min: e && e.tiempo_min != null ? e.tiempo_min : null,
       finde,
@@ -4142,34 +4626,50 @@ function rellenarSemana({ entrada, esq, pre, pools, datos, config, memoria, menu
     };
   }
 
-  // ── COBERTURA DEL EJE FRUTA-VERDURA EN GRAMOS, no por etiqueta (spec §2-bis; bloqueante
-  // cazado por Roger leyendo el menú, 2-ago). `ejes` decía la verdad de boquilla: la hamburguesa
-  // declaraba cubrirlo con 30 g de lechuga y 50 g de tomate, ambos CONDIMENTO, frente a una
-  // ración de 175 g — y salía sola en la comida del lunes. Mismo defecto que el difunto campo
-  // `aporte` (BD_ESQUEMA §1.8). Aquí se cuentan gramos NO-condimento; una línea de eje solo
-  // cuenta si TODAS sus opciones son fruta/verdura (peor caso: el motor elige después).
-  // Solo se valida fruta-verdura: `cereal` y `tuberculo` no tienen ración de referencia en el
-  // banco, así que hidrato no es medible todavía — declarado, no silenciado.
-  const RACION_FV_ADULTO = 175;                    // verdura; la fruta (160) es más laxa
-  const gramosFVCache = {};
-  function gramosFV(eid, tramo) {
+  // ── COBERTURA DEL EJE EN GRAMOS, no por etiqueta (spec §2-bis; bloqueante cazado por Roger
+  // leyendo el menú, 2-ago). `ejes` decía la verdad de boquilla: la hamburguesa declaraba cubrir
+  // fruta-verdura con 30 g de lechuga y 50 g de tomate, ambos CONDIMENTO, frente a una ración de
+  // 175 g — y salía sola en la comida del lunes. Mismo defecto que el difunto campo `aporte`
+  // (BD_ESQUEMA §1.8).
+  //
+  // ⚑ 3-ago (fila 4.1): el `175` que vivía escrito a mano aquí MUERE. La ración sale de
+  // `ejes.js` → `raciones.js` → banco, que es la misma definición que usa el juez (T4). El
+  // RECORRIDO sigue siendo el de aquí —la PLANTILLA de la elaboración, con el peor caso en las
+  // líneas de eje, porque T2 mide antes de saber quién se sienta— y ese es el que T4 no comparte.
+  //
+  // TRAMO: se mide contra la vara ADULTA porque lo que se decide aquí es el PLATO DE LA MESA, no
+  // la ración de una persona (eso lo ajusta T3 y lo audita T4 por comensal). La vara adulta es
+  // la más exigente en fruta-verdura (175 g frente a 135 de un menor de 12), así que el sesgo va
+  // al lado estricto — el único aceptable cuando se construye.
+  const gramosCache = {};
+  function piezasDe(eid, tramo) {
     const k = `${eid}|${tramo}`;
-    if (gramosFVCache[k] != null) return gramosFVCache[k];
-    const esFV = aid => { const f = ix.cat[aid]; return !!f && (f.categoria === 'verdura' || f.categoria === 'fruta'); };
-    let g = 0;
+    if (gramosCache[k]) return gramosCache[k];
+    const out = [];
     for (const l of lineasPlanas(ix, eid)) {
-      if (l.papel === 'condimento') continue;
-      const gr = (tramo === 'nino' ? l.gramos_nino : l.gramos_adulto) || 0;
-      if (Array.isArray(l.alternativas)) { if (l.alternativas.every(esFV)) g += gr * (l.escala || 1); continue; }
-      if (esFV(l.alimento_id)) g += gr * (l.escala || 1);
+      const gramos = ((tramo === 'nino' ? l.gramos_nino : l.gramos_adulto) || 0) * (l.escala || 1);
+      if (Array.isArray(l.alternativas)) {
+        // PEOR CASO declarado: el motor elige la opción DESPUÉS de esta comprobación, así que una
+        // línea de eje solo cuenta si TODAS sus opciones caen en el MISMO eje — y entonces cuenta
+        // con la que tiene la ración MAYOR, que es la que menos fracción aporta. (Comparar por
+        // categoría en vez de por eje habría descartado en silencio un futuro `[patata, arroz]`,
+        // que son dos categorías y un solo eje. Hoy no hay ninguna: 14 líneas de eje con
+        // categorías mixtas, 0 con eje único — medido.)
+        const ejes = new Set(l.alternativas.map(a => ejeDeCategoria[(ix.cat[a] || {}).categoria]));
+        if (ejes.size !== 1 || ejes.has(undefined)) continue;
+        const peor = l.alternativas.reduce((p, a) =>
+          ((ix.cat[a] || {}).racion_ref_g || 0) > ((ix.cat[p] || {}).racion_ref_g || 0) ? a : p);
+        out.push({ alimento: peor, gramos, papel: l.papel, base: l.base });
+        continue;
+      }
+      out.push({ alimento: l.alimento_id, gramos, papel: l.papel, base: l.base });
     }
-    return (gramosFVCache[k] = g);
+    return (gramosCache[k] = out);
   }
-  // ¿el conjunto de piezas cubre fruta-verdura EN GRAMOS para el tramo dado?
-  const cubreFV = (ids, tramo) => {
-    const umbral = RACION_FV_ADULTO * config.EJE_MIN_FRACCION;
-    return ids.reduce((s, id) => s + gramosFV(id, tramo), 0) >= umbral;
-  };
+  // ¿el conjunto de piezas cubre el eje EN GRAMOS para el tramo dado?
+  const cubreEjeDe = (ids, eje, tramo) => cubreEje(
+    ids.flatMap(id => piezasDe(id, tramo)), null, eje, datos, config).cubre;
+  const cubreFV = (ids, tramo) => cubreEjeDe(ids, 'fruta-verdura', tramo);
 
   // ── cierre del plato: ejes que faltan → guarniciones vía combinaciones
   function cerrarPlato(c, presentes, s, relaj) {
@@ -4468,7 +4968,11 @@ function rellenarSemana({ entrada, esq, pre, pools, datos, config, memoria, menu
     st.porSlot[slot] = sv;
     aplicar(sv, s, presentesDe(slot));
   }
-  const descargosEstructurales = pre.descargos.map(d => ({ tipo: d.tipo, miembro: d.miembro, detalle: d.detalle }));
+  // el `cubo` del prevuelo se CONSERVA (5.4): lo sabía y lo tiraba aquí, así que un mínimo
+  // declarado inalcanzable no se podía cruzar con el recuento de T4 y parecía un incumplimiento
+  // silencioso. El campo ya es parte del contrato del formato (`serializar.js`).
+  const descargosEstructurales = pre.descargos.map(d =>
+    ({ tipo: d.tipo, miembro: d.miembro, cubo: d.cubo || null, detalle: d.detalle }));
   // escalera pública de la spec §7, aplicada POR SLOT (Q6-A). R0 = esfuerzo: T2 puede servir
   // `medio` donde T1 prefirió `rapido` (cazado con mesa-6: tres huevos rápidos con una sola
   // elaboración ligera — la flamenca, de esfuerzo medio, salva el slot). Jamás `elaborado`
@@ -4589,16 +5093,31 @@ function rellenarSemana({ entrada, esq, pre, pools, datos, config, memoria, menu
     const primero = ORDEN_CAL.map(sl => st.porSlot[sl]).find(Boolean);
     if (primero) primero.descargos.push(...descargosEstructurales);
   }
-  // RED FINAL: mínimo que aun así quedó sin cubrir → descargo declarado en el último servicio
-  // (jamás en silencio; el detalle usa «alcanzar <cubo>», el formato que la batería G exime)
+  // RED FINAL: la cuota que quedó FUERA DE BANDA, por arriba o por abajo, declarada en el último
+  // servicio con el RECUENTO DE T2 (jamás en silencio; el detalle del mínimo usa «alcanzar
+  // <cubo>», el formato que la batería G exime).
+  //
+  // ⚑ 5.4 · el techo se declara AQUÍ y no en el servicio, por dos motivos medidos el 4-ago:
+  //  · `contratos` hace `return` en cuanto UN presente choca, así que el descargo del servicio
+  //    nombraba solo al primero — en `omnivora-2a2n` W04 los cinco servicios con legumbre
+  //    declaraban el techo de n1 y NINGUNO el de n2, que se pasaba igual;
+  //  · `contratos` solo ve el candidato PRINCIPAL, y lo que el cierre (guarnición, postre) añade
+  //    encima no lo comprobaba nadie.
+  // Y sobre todo: aquí el contador de T2 está CERRADO, así que el número que se declara es
+  // careable contra el recuento independiente de T4. Un descargo que dice «4 tomas» cuando el
+  // juez cuenta 5 delata que las dos varas volvieron a separarse — que es la única forma de que
+  // esta fila no se vuelva a abrir sola. El descargo del servicio (§7, «aquí cedí») sigue
+  // emitiéndose donde cede: éste es el resumen de semana, no lo sustituye.
   const ultimoSv = [...ORDEN_CAL].reverse().map(sl => st.porSlot[sl]).find(Boolean);
   if (ultimoSv) for (const [mid, bandas] of Object.entries(pre.bandasEfectivas)) {
     for (const [cubo, banda] of Object.entries(bandas)) {
-      if (!(banda.min > 0)) continue;
-      const recibido = st.minSvc[mid][cubo] || 0;
-      if (recibido < banda.min - 1e-9)
-        ultimoSv.descargos.push({ tipo: 'minimo-no-cubierto', miembro: mid,
-          detalle: `${mid} no puede alcanzar ${cubo} esta semana (${recibido}/${banda.min.toFixed(1)} servicios): divergencia de eje o pool — se compensa vía memoria` });
+      const recibido = st.tomas[mid][cubo] || 0;
+      if (banda.min > 0 && recibido < banda.min - 1e-9)
+        ultimoSv.descargos.push({ tipo: 'minimo-no-cubierto', miembro: mid, cubo,
+          detalle: `${mid} no puede alcanzar ${cubo} esta semana (${recibido}/${banda.min.toFixed(1)} tomas): divergencia de eje o pool — se compensa vía memoria` });
+      if (banda.max < Infinity && recibido > banda.max + 1e-9)
+        ultimoSv.descargos.push({ tipo: 'techo-vs-reserva', miembro: mid, cubo,
+          detalle: `${mid} se pasa de ${cubo} esta semana (${recibido}/${banda.max} tomas): la reserva del esqueleto choca con lo que el pool puede servir a esta mesa` });
     }
   }
 
@@ -4627,12 +5146,21 @@ function rellenarSemana({ entrada, esq, pre, pools, datos, config, memoria, menu
       const m = el.descargoTecho;
       const tipo = /^M[1-9]/.test(m) ? 'variedad-cedida'
         : /^mínimo /.test(m) ? 'minimo-no-cubierto'
-          : s.ancla ? 'ancla-vs-techo' : 'techo-fraccional-vs-reserva';
-      descargos.push({ tipo, detalle: tipo === 'ancla-vs-techo'
-        ? `${m} — el ancla ${s.ancla} manda (dictado): el techo cede declarado`
-        : tipo === 'techo-fraccional-vs-reserva'
-          ? `${m} — la reserva del esqueleto choca con las raciones reales (D1-bis pendiente); T3 ajustará con fracciones`
-          : `${m} — el plato ${s.ancla} lo ha fijado la familia (§15.3): se sirve y se declara` });
+          : s.ancla ? 'ancla-vs-techo' : 'techo-vs-reserva';
+      // ⚑ 5.4 · el descargo dice QUÉ CUBO cedió y A QUIÉN. Sin eso, un techo superado no se
+      // puede carear contra el recuento de T4: se sabía que «algo cedió», no qué, y el gate de
+      // «cero silenciosas» no podía cubrir las cuotas. El tipo se llamaba
+      // `techo-fraccional-vs-reserva` y ya no hay nada fraccional que declarar: la reserva de T1
+      // y el recuento de T2 están por fin en la misma unidad, y lo que puede chocar es el techo
+      // con el pool, no una vara con otra.
+      const mc = /^techo (?:proyectado )?de ([a-z-]+) de (\S+)/.exec(m)
+        || /^techo de salud de ([a-z-]+) de (\S+)/.exec(m);
+      descargos.push({ tipo, cubo: mc ? mc[1] : null, miembro: mc ? mc[2] : null,
+        detalle: tipo === 'ancla-vs-techo'
+          ? `${m} — el ancla ${s.ancla} manda (dictado): el techo cede declarado`
+          : tipo === 'techo-vs-reserva'
+            ? `${m} — la reserva del esqueleto choca con lo que el pool puede servir a esta mesa; se sirve y se declara`
+            : `${m} — el plato ${s.ancla} lo ha fijado la familia (§15.3): se sirve y se declara` });
     }
     // RELAJACIONES REALMENTE USADAS, no las del nivel donde se encontró el candidato. Medido
     // 2-ago: declarar el nivel entero ponía R0-R4 en el 57% de los servicios para UNA violación
@@ -4808,29 +5336,42 @@ function rellenarSemana({ entrada, esq, pre, pools, datos, config, memoria, menu
     }
     st.origenDeSlot[s.slot] = ix.origenDe[`${principal.elaboracion_id}|${principal.opciones_eje ? Object.values(principal.opciones_eje)[0] : null}`] || null;
     // contadores por miembro (composición REAL: sustituto aparte, excluidos fuera)
-    const sustDe = {};
-    for (const n of sv.notas) if (n.tipo === 'sustituto' && n.ambito === 'plato') sustDe[n.miembro] = n;
+    const sustDe = {}, sustPostre = {};
+    for (const n of sv.notas) {
+      if (n.tipo !== 'sustituto') continue;
+      if (n.ambito === 'plato') sustDe[n.miembro] = n;
+      else if (n.ambito === 'postre') sustPostre[n.miembro] = n;
+    }
     for (const mid of presentes) {
       const tramo = tramoDe(mid);
-      const piezas = sustDe[mid] ? sustDe[mid].plato : sv.plato.filter(pe => {
+      const piezas = (sustDe[mid] ? sustDe[mid].plato : sv.plato.filter(pe => {
         const soloPara = sv.notas.find(n => n.tipo === 'solo-para' && n.elaboracion_id === pe.elaboracion_id);
         if (soloPara && !soloPara.miembros.includes(mid)) return false;
         const r = pre.resolucion[mid][pe.elaboracion_id];
         return r && r.estado !== 'excluido';
-      });
+      })).concat(postreDe(sv, mid, sustPostre));
+      // ⚑ 5.4 · la cuota se cierra UNA VEZ por servicio, con TODAS las líneas del comensal
+      // juntas. Acumularla pieza a pieza contaba de más (dos medias raciones = dos tomas) o de
+      // menos (dos medias raciones = ninguna); es del plato que se come, no de cada trozo.
+      const lineasDelServicio = [];
       for (const pe of piezas) {
         const op = pe.opciones_eje ? (pe.opciones_eje[mid] || pe.opciones_eje['*']) : null;
-        const ap = aportes({ elaboracion_id: pe.elaboracion_id, opcion: op }, mid);
-        for (const [cubo, r] of Object.entries(ap.minimos)) {
-          st.minimos[mid][cubo] = (st.minimos[mid][cubo] || 0) + r;
-          if (r > 1e-9) st.minSvc[mid][cubo] = (st.minSvc[mid][cubo] || 0) + 1;
-        }
-        for (const [cubo, r] of Object.entries(ap.techos)) {
-          st.techos[mid][cubo] = (st.techos[mid][cubo] || 0) + r;
-          if (cubo === 'carne-procesada' && tramo === 'nino') st.procesadaNino[mid] = (st.procesadaNino[mid] || 0) + r;
-        }
+        lineasDelServicio.push(...aportes({ elaboracion_id: pe.elaboracion_id, opcion: op }, mid));
         if (tramo === 'nino' && esNovedadPara(mid, { elaboracion_id: pe.elaboracion_id, opcion: op }, null))
           st.novedades[mid] = (st.novedades[mid] || 0) + 1;
+      }
+      const q = cuotaDe(lineasDelServicio, mid);
+      for (const cubo of Object.keys(q.tomas)) {
+        st.tomas[mid][cubo] = (st.tomas[mid][cubo] || 0) + q.tomas[cubo];
+        if (cubo === 'carne-procesada' && tramo === 'nino') st.procesadaNino[mid] = (st.procesadaNino[mid] || 0) + q.tomas[cubo];
+      }
+      for (const [cat, g] of Object.entries(q.gramosSalud))
+        st.saludG[mid][cat] = (st.saludG[mid][cat] || 0) + g;
+      // 5.5 · y los gramos vigilados por ventana móvil, que siguen contando la semana que viene
+      for (const l of lineasDelServicio) {
+        if (techoVentana(reglasVentana, l.alimento, edades[mid]) == null) continue;
+        (st.ventanaG[mid] = st.ventanaG[mid] || {})[l.alimento] =
+          ((st.ventanaG[mid] || {})[l.alimento] || 0) + (l.gramos || 0);
       }
     }
     st.idxServicio++;
@@ -5046,6 +5587,7 @@ module.exports = { rellenarSemana };
 const { derivarElaboracion, indexar, kcalDe, edadEnSemana } = require('./derivar.js');
 const { objetivoDiario } = require('./energia.js');
 const { racionParaLinea } = require('./raciones.js');
+const { unidadDe } = require('./cuotas.js');
 const { cubosDe } = require('./t1_esqueleto.js');
 
 // TECHOS DE SALUD: innegociables por spec §7 («Jamás: H entero, ni los techos de salud»). La
@@ -5219,6 +5761,47 @@ function fraccionarSemana({ semana, familia, config }, datos) {
         }
       }
 
+      // 2-ter · PIEZAS ENTERAS en categorías contables (Roger, 4-ago: «nadie pesa los huevos»).
+      // Un huevo se sirve entero: servir 84 g —huevo y medio— no existe en una cocina, y con la
+      // cuota contada en piezas hacía además que T2 predijera una cosa y T4 contara otra (26% de
+      // los servicios con huevo). Donde el huevo es PROTAGONISTA la ración se mueve entre 1 y 2
+      // según su energía; donde es COMPLEMENTO manda la receta y no se mueve.
+      for (const cat of (config.CUOTAS_CONTABLES || [])) {
+        const protagonistas = (config.PIEZAS_PROTAGONISTA || {})[cat] || [];
+        const [pMin, pMax] = config.PIEZAS_PROTAGONISTA_RANGO;
+        for (const pe of piezasDe(sv, m.id).piezas) {
+          for (const l of ix.lineasDe[pe.elaboracion_id] || []) {
+            if (Array.isArray(l.alternativas) || l.componente_id || !l.alimento_id) continue;
+            const ficha = (datos.categorias_aesan || []).find(x => x.alimento_id === l.alimento_id);
+            if (!ficha || ficha.categoria !== cat) continue;
+            // ⚑ 4-ago (sesión 6) · LA MISMA UNIDAD QUE CUENTA LA CUOTA, no una propia. Aquí
+            // vivía `racionParaLinea`, que devuelve los 58 g de la UNIDAD MEDIANA del huevo para
+            // las tres formas —entero, yema y clara—, y con ella este bloque convertía los 34 g
+            // de yema de la carbonara en «1 pieza = 58 g»: 3,4 yemas servidas donde la receta
+            // pone 2. Era el patrón de bug nº1 del proyecto —dos implementaciones de la misma
+            // medida— y además rompía el dictado de Roger del 4-ago: donde el huevo es
+            // COMPLEMENTO manda la receta y no se mueve. Con la unidad correcta, el complemento
+            // se re-ancla a sus propias piezas y deja de moverse.
+            const unidad = unidadDe(datos, l.alimento_id)
+              || (racionParaLinea(datos, ficha, obj.edad) || {}).g;
+            if (!(unidad > 0)) continue;
+            const nominal = (esNino ? l.gramos_nino : l.gramos_adulto) || 0;
+            const piezasReceta = Math.round(nominal / unidad);
+            if (piezasReceta < 1) continue;             // ligante: 15-30 g, no llega a pieza
+            let piezas = piezasReceta;
+            if (protagonistas.includes(pe.elaboracion_id)) {
+              // el huevo ES el plato: la energía puede moverlo, pero solo en piezas y dentro del
+              // rango que la receta admite
+              piezas = Math.min(pMax, Math.max(pMin, Math.round(nominal * mejor / unidad)));
+            }
+            const g = Math.round(piezas * unidad);
+            if (g === Math.round(nominal * mejor)) continue;
+            ajustesLinea.push({ miembro: m.id, elaboracion_id: pe.elaboracion_id,
+              alimento_id: l.alimento_id, gramos: g });
+          }
+        }
+      }
+
       // 3 · DECLARACIONES — «conflicto → descargo, jamás silencio» (spec §1-T3). El `tipo` es
       // SIEMPRE `suelo-proteico`, que es lo que la vara busca (b_energia): el matiz del caso va
       // en `detalle`, jamás en un tipo propio, o la violación viajaría muda ante el juez.
@@ -5261,31 +5844,31 @@ module.exports = { fraccionarSemana, piezasDe };
 // que el motor declaró. **Divergencia = BUG, jamás ajuste.**
 //
 // ⚠️ VARA PROPIA, DELIBERADAMENTE (pedido de auditoría QA-2, 2-ago): este módulo NO importa
-// `harness/raciones.js` ni ninguna batería. Motor y juez comparten esa vara —correcto para que
-// el careo signifique algo— pero T4 existe justamente para cazar el caso en que AMBOS se
-// equivoquen igual. Si T4 llamara a la misma función, no auditaría: confirmaría. Por eso aquí
-// se releen las MISMAS FUENTES (el banco) con implementación propia, y una divergencia entre
-// las dos implementaciones es exactamente la señal que este tiempo busca.
+// ninguna batería, y su RECORRIDO —composición del miembro, sustitutos, opción elegida, gramos
+// finales— está reimplementado aquí y no se comparte con nadie. T4 existe justamente para cazar
+// el caso en que generador y juez se equivoquen igual: si T4 llamara a las funciones del motor,
+// no auditaría, confirmaría.
+//
+// ⚑ FRONTERA, fijada el 3-ago al cerrar la fila 4.1: lo propio es el RECUENTO, no el METRO.
+// `src/ejes.js` (y a través de él `src/raciones.js`, la vara única del banco) sí se importa: la
+// ración de referencia es DATO del banco y tener dos copias a mano del mismo número no era
+// independencia, era el bug nº1 esperando —de hecho ya divergían: T4 medía con la ración del
+// tramo y T2 con la adulta para todos—. Dos varas distintas no auditan mejor: hacen que el
+// desacuerdo sea ininterpretable. Lo que T4 conserva es lo que sí puede fallar de forma
+// distinta: qué líneas se sirvieron, a quién y con cuántos gramos.
 //
 // GATE (spec §9 y §1-T4): **cero relajaciones silenciosas.** Toda ventana incumplida tiene que
 // llevar su peldaño declarado en el servicio; todo suelo o techo roto, su descargo.
 'use strict';
 
+const { cubreEje } = require('./ejes.js');
+const { cuotaDeServicio } = require('./cuotas.js');
+
 const KCAL = { proteina: 4, hidratos: 4, grasa: 9, fibra: 2 };
-const CUBOS_DE = {                                   // categoría D1 → cubos de cuota (propio)
-  legumbre: ['legumbre'],
-  'pescado-blanco': ['pescado-total'],
-  'pescado-azul': ['pescado-total', 'pescado-azul'],
-  marisco: ['pescado-total'],
-  huevo: ['huevo'],
-  'carne-roja': ['carne-total', 'carne-roja'],
-  'carne-blanca': ['carne-total'],
-  'carne-procesada': ['carne-total', 'carne-procesada']
-};
 
 // ── índices propios (no se reutiliza `indexar` del derivador: misma fuente, otra implementación)
 function indice(datos) {
-  const alim = {}, cat = {}, nut = {}, lin = {}, elab = {}, infantil = [];
+  const alim = {}, cat = {}, nut = {}, lin = {}, elab = {};
   for (const a of datos.alimentos) alim[a.id] = a;
   for (const f of datos.categorias_aesan || []) cat[f.alimento_id] = f;
   for (const n of datos.nutricion) {
@@ -5294,18 +5877,7 @@ function indice(datos) {
   }
   for (const l of datos.lineas) (lin[l.padre] = lin[l.padre] || []).push(l);
   for (const e of datos.elaboraciones) elab[e.id] = e;
-  for (const f of datos.raciones_infantiles || []) infantil.push(f);
-  return { alim, cat, nut, lin, elab, infantil };
-}
-
-// ración de referencia por (categoría × edad) — RE-IMPLEMENTADA a propósito
-function racionPropia(ix, categoria, edad, filaD1) {
-  if (edad != null && edad < 3) return null;                    // fuera de alcance del producto
-  if (edad != null && edad < 19) {
-    const f = ix.infantil.find(x => x.categoria === categoria && edad >= x.edad_min && edad <= x.edad_max);
-    if (f) return f.racion_ref_g;
-  }
-  return filaD1 && filaD1.racion_ref_g != null ? filaD1.racion_ref_g : null;
+  return { alim, cat, nut, lin, elab };
 }
 
 // composición individual de un miembro en un servicio, según las notas /2 (re-implementada)
@@ -5361,15 +5933,16 @@ function lineasServidas(ix, sv, mid, esNino, fraccion) {
   return out;
 }
 
-// ¿el plato servido llega a media ración de fruta/verdura EN GRAMOS? (bloqueante 2-ago: `ejes`
-// era una etiqueta y la hamburguesa salía sola). Recuento propio sobre las líneas ya resueltas
-// del miembro, sin reutilizar la función del motor: si ambas se equivocan igual, no se ve.
-const RACION_FV = { adulto: 175, nino: 135 };
-const gramosFVServidos = (ix, lineas) => lineas.reduce((s, l) => {
-  if (l.papel === 'condimento') return s;
-  const f = ix.cat[l.alimento];
-  return s + (f && (f.categoria === 'verdura' || f.categoria === 'fruta') ? l.gramos : 0);
-}, 0);
+// ¿el plato servido llega a media ración del eje EN GRAMOS? (bloqueante 2-ago: `ejes` era una
+// etiqueta y la hamburguesa salía sola).
+//
+// EL RECUENTO SIGUE SIENDO PROPIO —`lineasServidas` de aquí arriba, con su composición, sus
+// sustitutos y su opción elegida— y eso es lo que §1-T4 protege. Lo que ya NO es propio es la
+// DEFINICIÓN de ración: el `{ adulto: 175, nino: 135 }` que vivía aquí era una copia a mano de
+// la ración de verdura de A22, no coincidía con la del constructor (que usaba 175 para todos) y
+// dejaba `hidrato` sin medir. Ahora la vara sale de `ejes.js` → `raciones.js` → banco. Compartir
+// el METRO no es compartir la MEDICIÓN: si el motor y el juez leen el mismo dato del banco y
+// caminan las líneas por su cuenta, la divergencia que T4 busca sigue siendo visible.
 
 const protDeLinea = (ix, l) => {
   const porBase = ix.nut[l.alimento] || {};
@@ -5380,7 +5953,7 @@ const protDeLinea = (ix, l) => {
 // ── AUDITORÍA de una corrida ya serializada
 function auditar(corrida, datos, config, objetivos) {
   const ix = indice(datos);
-  const divergencias = [], silenciosas = [], ejeCorto = [];
+  const divergencias = [], silenciosas = [], ejeCorto = [], huecosEje = [], minimoCorto = [];
   const miembros = Object.fromEntries(corrida.familia.miembros.map(m => [m.id, m]));
   const anclas = new Set((corrida.familia.anclas || []).map(a => `${a.dia}-${a.servicio}:${a.elaboracion_id}`));
   const tomasPorSemana = {};
@@ -5442,17 +6015,23 @@ function auditar(corrida, datos, config, objetivos) {
         const lineas = lineasServidas(ix, sv, mid, esNino, fraccion);
         const reparto = (sv.dia >= 6 ? config.ENERGIA.reparto_finde : config.ENERGIA.reparto)[sv.servicio];
 
-        // eje fruta-verdura en gramos, sobre el plato en la ración BASE de su tramo (fracción 1).
+        // ejes en gramos, sobre el plato en la ración BASE de su tramo (fracción 1).
         // La fracción de T3 ajusta ENERGÍA, no composición: quien come al 45% por su gasto come
         // también menos verdura, y medir el eje después de la fracción convertiría este gate en
         // un gate de energía disfrazado. Son dos capas y la spec las mantiene separadas. Si se
         // decidiera lo contrario, basta pasar `fraccion` aquí en vez de 1.
-        const gFV = gramosFVServidos(ix, lineasServidas(ix, sv, mid, esNino, 1));
-        const umbralFV = RACION_FV[esNino ? 'nino' : 'adulto'] * config.EJE_MIN_FRACCION;
-        if (gFV < umbralFV)
-          ejeCorto.push({ semana: sem.semana_iso, slot: `${sv.dia}-${sv.servicio}`, miembro: mid,
-            tipo: 'eje-fruta-verdura-corto',
-            detalle: `${Math.round(gFV)} g < ${Math.round(umbralFV)} g (media ración de su tramo)` });
+        const lineasBase = lineasServidas(ix, sv, mid, esNino, 1);
+        for (const eje of ['fruta-verdura', 'hidrato']) {
+          const d = cubreEje(lineasBase, { edad: obj.edad }, eje, datos, config);
+          if (d.huecos.length) for (const h of d.huecos)
+            huecosEje.push({ semana: sem.semana_iso, slot: `${sv.dia}-${sv.servicio}`, miembro: mid,
+              eje, alimento: h.alimento, gramos: Math.round(h.gramos), motivo: h.hueco });
+          if (!d.cubre)
+            ejeCorto.push({ semana: sem.semana_iso, slot: `${sv.dia}-${sv.servicio}`, miembro: mid,
+              tipo: `eje-${eje}-corto`,
+              detalle: `${d.fraccion.toFixed(2)} raciones < ${d.umbral} (media ración de su tramo)`
+                + (d.huecos.length ? ` · ${d.huecos.length} línea(s) sin ración en el banco` : '') });
+        }
 
         const prot = lineas.reduce((s, l) => s + protDeLinea(ix, l), 0);
         const sueloSv = obj.suelo_proteina_dia * reparto;
@@ -5462,25 +6041,33 @@ function auditar(corrida, datos, config, objetivos) {
             detalle: `${prot.toFixed(1)} g < ${sueloSv.toFixed(1)} g y el servicio no lo declara` });
         }
 
-        // tomas y gramos de salud, con recuento propio
-        const gramosCubo = {}, refCubo = {};
-        for (const l of lineas) {
-          if (l.papel === 'condimento') continue;
-          const fila = ix.cat[l.alimento];
-          if (!fila) continue;
-          const cubos = CUBOS_DE[fila.categoria];
-          if (!cubos) continue;
-          const ref = racionPropia(ix, fila.categoria, obj.edad, fila);
-          if (ref == null) continue;
-          let g = l.gramos;
-          if (fila.categoria === 'legumbre') g = g / config.FACTOR_LEGUMBRE_SECO_COCIDO;
-          for (const c of cubos) { gramosCubo[c] = (gramosCubo[c] || 0) + g; refCubo[c] = ref; }
-          if (config.TECHOS_SALUD_G_SEMANA[fila.categoria])
-            ((saludG[mid] = saludG[mid] || {})[fila.categoria] = (saludG[mid][fila.categoria] || 0) + l.gramos);
-        }
-        for (const [c, g] of Object.entries(gramosCubo))
-          if (refCubo[c] > 0 && g >= refCubo[c] * config.TOMA_MIN_FRACCION)
-            ((tomas[mid] = tomas[mid] || {})[c] = (tomas[mid][c] || 0) + 1);
+        // tomas y gramos de salud, con RECORRIDO propio y METRO compartido.
+        //
+        // ⚑ 3-ago (fila 4.5): AQUÍ YA NO SE MIRA `papel === 'condimento'`. Era una ETIQUETA
+        // eximiendo de contar, y este proyecto ya mató una vez esa figura (`aporte`): «toda
+        // etiqueta que gobierne una decisión del motor debe ser derivable desde gramos». Medido
+        // el 3-ago sobre el banco: de 58 líneas de condimento, **una** cae en cubo de cuota —
+        // `jamon-serrano` 40 g en `huevos-rotos-jamon`, que son 0,8 raciones de carne procesada
+        // que ni consumían cuota ni tocaban el techo de salud. Un techo de salud es ABSOLUTO
+        // (spec §4): no existe «demasiado poco para contar», existe el gramo.
+        // Y no hace falta ningún umbral nuevo: para las TOMAS ya filtra `TOMA_MIN_FRACCION`
+        // (los 10 g de limón son 0,06 raciones y no cuentan solos), y para los TECHOS cuenta
+        // todo. El condimento sigue SIN cerrar ejes —eso lo protege `cubreEje`— que es por
+        // donde volvería la hamburguesa sola: la asimetría es la que declara el encabezado de
+        // `categorias_aesan` («los mínimos, el gramo del eje; los techos, todo gramo»).
+        //
+        // ⚑ 4-ago (fila 5.4): el bucle que vivía aquí —CUBOS_DE propio, `racionPropia` propia,
+        // umbral aplicado a mano— pasa a `src/cuotas.js`. NO se pierde independencia: lo que se
+        // comparte es la DEFINICIÓN de la unidad (qué cubo alimenta qué, cuántos gramos son una
+        // ración de ese comensal, qué umbral hace una toma), y lo propio sigue siendo el
+        // RECORRIDO — `lineasServidas` de este mismo fichero, con su composición, sus sustitutos
+        // y su opción elegida. Es la misma frontera que ya se cruzó con `ejes.js` el 3-ago, y el
+        // motivo es el mismo: T4 conservaba una vara y T2 otra, y de ahí salía 5.4.
+        const q = cuotaDeServicio(lineas, { edad: obj.edad }, datos, config);
+        for (const c of Object.keys(q.tomas))
+          ((tomas[mid] = tomas[mid] || {})[c] = (tomas[mid][c] || 0) + q.tomas[c]);
+        for (const [cat, g] of Object.entries(q.gramosSalud))
+          ((saludG[mid] = saludG[mid] || {})[cat] = (saludG[mid][cat] || 0) + g);
       }
     }
 
@@ -5493,27 +6080,236 @@ function auditar(corrida, datos, config, objetivos) {
             detalle: `${cat}: ${g.toFixed(0)} g > ${techo} g/semana (recuento independiente)` });
       }
     }
+
+    // 4 · MÍNIMOS DE FRECUENCIA con recuento propio (5.4, 4-ago).
+    //
+    // POR QUÉ ES NUEVO Y POR QUÉ ES INFORMATIVO. Hasta hoy T4 no miraba los mínimos: no podía,
+    // porque T2 los contaba en fracciones de ración y «corto» significaba cosas distintas a cada
+    // lado. Ahora los dos cuentan TOMAS y la comparación por fin significa algo — y lo primero
+    // que dice es que **71 mínimos de la parrilla quedan cortos sin que nadie lo declare**.
+    //
+    // El motivo está medido y es de arquitectura, no un descuido de T2: la toma se mide sobre lo
+    // SERVIDO (dictado de Roger, 4-ago: «manda T3»), y T2 decide ANTES de que T3 exista. T2
+    // cuenta la ración de la receta, T3 la ajusta a la energía de esa persona, y si la deja por
+    // debajo de media ración la toma desaparece. Medido: pasa en 93 de 2.002 servicios-miembro
+    // (4,6%), y en pescado —el cubo donde quedarse corto duele— en 25 de 587. El sesgo es el
+    // seguro en los techos (T2 nunca cuenta MENOS que T4: 0 casos de 115) y el peligroso en los
+    // mínimos, que es exactamente esto.
+    //
+    // Va a `gates_informativos` y NO a `gates` por la misma razón que el eje hidrato: cerrarlo
+    // pide que T3 respete un suelo de toma en los cubos con mínimo pendiente —simétrico al que
+    // YA tiene para los de salud (`t3_fracciones.js`, que baja la fracción a propósito para que
+    // una toma de carne roja no consuma techo)— y eso toca el reparto de energía de §5. Es
+    // decisión de Roger y fila propia. Aquí se MIDE y se ENSEÑA: un hueco con número es deuda
+    // declarada; sin número es un silencio.
+    for (const m of corrida.familia.miembros) {
+      const edad = (objetivos[m.id] || {}).edad;
+      if (edad == null || edad < 3) continue;
+      const tramo = edad < config.EDAD_RACION_ADULTO ? 'nino' : 'adulto';
+      const presentes = Object.values(sem.presencia[m.id] || {}).filter(Boolean).length;
+      if (!presentes) continue;
+      for (const [cubo, porEdad] of Object.entries(config.CUOTAS)) {
+        const [min] = porEdad[tramo];
+        if (min == null) continue;
+        const minPro = min * presentes / 14;
+        const real = ((tomas[m.id] || {})[cubo] || 0);
+        if (real >= minPro - 1e-9) continue;
+        // lo que la semana YA declara (el prevuelo lo marca inalcanzable, o T2 no-cubierto) no
+        // es un silencio: es deuda dicha. Solo se cuenta lo que nadie nombró.
+        const dicho = sem.servicios.some(sv => (sv.descargos || []).some(d => d.miembro === m.id
+          && (d.cubo === cubo || (d.detalle || '').includes(cubo))
+          && /minimo|inalcanzable/.test(d.tipo)));
+        if (!dicho) minimoCorto.push({ semana: sem.semana_iso, miembro: m.id, cubo,
+          tipo: 'minimo-corto-sin-declarar',
+          detalle: `${real} de ${minPro.toFixed(1)} tomas — T2 lo contó cubierto con la ración de la receta y T3 la dejó bajo el umbral` });
+      }
+    }
   }
 
+  const cortos = eje => ejeCorto.filter(e => e.tipo === `eje-${eje}-corto`).length;
+  // ⚑ DOS GATES DE EJE, NO UNO — decisión declarada del 3-ago (fila 4.1), NO un descuido:
+  //  · `ejes_cubiertos_en_gramos` es el gate que ya existía y solo mide FRUTA-VERDURA. Sigue
+  //    significando exactamente lo mismo que el 2-ago (verificado: veredicto idéntico servicio a
+  //    servicio con la vara vieja y con la nueva) y sigue verde. Es el que cablea el pipeline.
+  //  · `eje_hidrato_cubierto` es NUEVO: hasta el 3-ago el hidrato no era medible porque el banco
+  //    no tenía ración de cereal ni de tuberculo. Hoy sí, y lo primero que la medida dice es que
+  //    **181 de 644 servicios de la parrilla se quedan entre 0,25 y 0,50 raciones** — ninguno a
+  //    cero: los platos SÍ llevan hidrato, no llega a media ración. Convertirlo en bloqueo
+  //    reescribiría un cuarto de los menús por un umbral que nadie ha aprobado, así que se MIDE
+  //    y se REPORTA, y la decisión (D1 de la lista: ¿media ración por servicio o ración completa
+  //    por día? ¿y la ración de la sopa es la del plato principal?) es de Roger.
+  //    Un gate rojo que se apaga solo no vale: por eso está en `gates`, a la vista, no escondido.
   const gates = { relajaciones_silenciosas_cero: silenciosas.length === 0,
-    ejes_cubiertos_en_gramos: ejeCorto.length === 0,
+    ejes_cubiertos_en_gramos: cortos('fruta-verdura') === 0,
     techos_salud_respetados: divergencias.filter(d => d.tipo === 'techo-salud-superado').length === 0 };
-  return { tiempo: 'T4', gates, ok: Object.values(gates).every(Boolean),
-    metricas: { silenciosas: silenciosas.length, divergencias: divergencias.length, eje_fv_corto: ejeCorto.length },
+  const gatesInformativos = { eje_hidrato_cubierto: cortos('hidrato') === 0,
+    minimos_de_frecuencia_cubiertos: minimoCorto.length === 0 };
+  return { tiempo: 'T4', gates, gates_informativos: gatesInformativos,
+    ok: Object.values(gates).every(Boolean),
+    metricas: { silenciosas: silenciosas.length, divergencias: divergencias.length,
+      eje_fv_corto: cortos('fruta-verdura'), eje_hidrato_corto: cortos('hidrato'),
+      // huecos = líneas cuyo alimento no tiene ración en el banco (o la tiene en otra base): no
+      // son incumplimientos, son dato que falta. Se cuentan aparte para que un gate verde nunca
+      // pueda estarlo PORQUE no se midió (§«un gate puede estar verde POR el ruido»).
+      eje_huecos: huecosEje.length, minimo_corto: minimoCorto.length },
     // recuento propio de tomas, expuesto para contrastarlo contra el de la batería A: si las dos
     // implementaciones difieren, una de las dos tiene un bug — que es justo lo que T4 busca
     tomas: tomasPorSemana,
-    silenciosas: silenciosas.slice(0, 50), divergencias: divergencias.slice(0, 50), eje_corto: ejeCorto.slice(0, 50) };
+    silenciosas: silenciosas.slice(0, 50), divergencias: divergencias.slice(0, 50),
+    eje_corto: ejeCorto.slice(0, 50), eje_huecos: huecosEje.slice(0, 50),
+    minimo_corto: minimoCorto.slice(0, 50) };
 }
 
 module.exports = { auditar };
 
   };
 
+  /* ---- motor_v6/src/ventana_movil.js ---- */
+  REG['ventana_movil'] = function (module, exports, require) {
+// VENTANA MÓVIL · los techos de D2 que la fuente publica POR MES, no por semana (fila 5.5).
+//
+// ── QUÉ ARREGLA
+// De las 25 reglas de `seguridad_infantil` (D2), dos no se aplicaban en ninguna parte del motor:
+// las que traen `limite_g_dia`. `derivar.js` y `prevuelo.js` las SALTAN explícitamente
+// (`if (f.limite_g_dia != null || f.condicion != null) continue`) porque no son prohibiciones
+// puras, y la única implementación viva —la batería E del harness— las acumula POR DÍA. Por día
+// el límite del atún son 4 g, así que una lata de 120 g en la ensalada del martes salía como
+// violación y 120 g cada semana durante un mes salían como cuatro violaciones de un día cada
+// una, cuando la fuente dice exactamente lo contrario:
+//
+//   AESAN AI22, tramo 10-14 años: **120 g de atún al MES**. El `4` del banco es ese 120 partido
+//   por 30 —lo dice su propia nota: «se expresa como 4 g/día equivalentes para que el contador
+//   diario pueda acumularlo en ventana móvil de 30 días»— y **copiar ese 4 sin copiar su ventana
+//   es el mismo bug que 5.4**: el número de la fuente sin su unidad. Aquí la unidad es el mes.
+//
+// Un mes no cabe en una semana, que es la única memoria que T2 tiene viva. Por eso el contador
+// arranca del DIARIO (D3): lo servido en los 30 días anteriores es un hecho registrado, y sobre
+// él se sigue acumulando lo que la semana en curso vaya sirviendo.
+//
+// ── POR QUÉ NO ES UNA CUOTA MÁS
+// `config.CUOTAS` son bandas SEMANALES en tomas y las gobierna `cuotas.js`. Esto es otra cosa:
+// un techo de SEGURIDAD, en gramos, con ventana propia y por alimento (no por cubo AESAN), que
+// vive en el banco (`seguridad_infantil`) y no en `config`. Mezclarlos habría metido un techo de
+// mes en una banda de semana, que es justo la clase de conversión que este proyecto ya paga dos
+// veces. Mismo motivo por el que tampoco hereda el `TOMA_MIN_FRACCION`: aquí cuenta todo gramo,
+// como en los techos de salud (fila 4.5).
+//
+// ── LO QUE ESTE TECHO MIDE, Y LO QUE NO
+// Cuenta los gramos de la PLANTILLA (receta × escala × fracción del servicio), que es la vara
+// con la que T2 decide. Los `ajustes_linea` finos de T3 —que llegan después— pueden mover esos
+// gramos por energía, así que un servicio justo en el borde puede acabar servido por encima.
+// Es la misma frontera T2-prevé / T3-sirve que 5.4 resolvió en las cuotas con `peorCaso`, y aquí
+// NO se ha replicado: hacerlo pide saber cuánto puede moverla T3 en cada línea, que hoy solo
+// está declarado para las categorías contables. Queda dicho, no escondido.
+//
+// ── LA APROXIMACIÓN, DECLARADA
+// Los gramos del pasado se RE-DERIVAN del banco (`banco_generacion`) sobre receta × escala ×
+// fracción, que es exactamente lo que el diario está diseñado para permitir (D3 §2: «ni macros
+// ni kcal; se recalculan del banco»). Lo que el diario no guarda son los `ajustes_linea` finos
+// de T3, así que un ajuste energético sobre una línea de atún no se refleja en el pasado. Se
+// declara aquí en vez de esconderlo: la desviación es la de un ajuste de energía sobre una
+// línea, no la de una ración entera, y el diario no puede dar más sin duplicar la verdad.
+'use strict';
+
+// reglas con techo por ventana, indexadas por alimento. `edad_max_anos` es EXCLUYENTE (mismo
+// criterio que la batería E: con esa edad cumplida la regla ya no aplica).
+function reglasDeVentana(datos) {
+  const out = {};
+  for (const f of datos.seguridad_infantil || []) {
+    if (f.limite_g_dia == null || f.condicion != null) continue;
+    (out[f.alimento_id] = out[f.alimento_id] || []).push(f);
+  }
+  return out;
+}
+
+// ¿cuántos gramos de los alimentos vigilados lleva ya cada miembro dentro de la ventana?
+// `diario` = D3 · `hasta` = Date del primer día de la semana que se está generando.
+// Devuelve { mid: { alimento_id: gramos } }. Los servicios `servido: false` NO cuentan (D3 §3)
+// y los ausentes tampoco (no existe para cuotas quien no estaba).
+function acumuladoPrevio(diario, datos, config, edades, hasta, fechaDia) {
+  const reglas = reglasDeVentana(datos);
+  const vigilados = new Set(Object.keys(reglas));
+  const acc = {};
+  if (!vigilados.size || !diario || !Array.isArray(diario.servicios)) return acc;
+  // cada regla trae SU ventana (`ventana_dias`): el atún es de mes y los nitratos de día. Se
+  // resuelve por alimento y no con una ventana global, porque una ventana global es justo la
+  // conversión que este fichero existe para no volver a hacer.
+  const ventanaDe = aid => Math.max(...(reglas[aid] || [{}]).map(r => r.ventana_dias || 1));
+  const desdeDe = aid => new Date(hasta.getTime() - ventanaDe(aid) * 86400000);
+  const lineasDe = {};
+  for (const l of datos.lineas) (lineasDe[l.padre] = lineasDe[l.padre] || []).push(l);
+  const planas = {};
+  const lineasPlanas = id => {
+    if (planas[id]) return planas[id];
+    const out = [];
+    const rec = (padre, escala, visto) => {
+      if (visto.has(padre)) return;
+      visto.add(padre);
+      for (const l of lineasDe[padre] || []) {
+        if (l.componente_id) { rec(l.componente_id, escala * (l.escala_adulto || 1), visto); continue; }
+        out.push({ ...l, escala });
+      }
+    };
+    rec(id, 1, new Set());
+    return planas[id] = out;
+  };
+
+  for (const s of diario.servicios) {
+    if (s.servido === false || !s.fecha) continue;
+    const f = new Date(s.fecha + 'T00:00:00Z');
+    if (!(f < hasta)) continue;
+    const notas = s.notas || [];
+    for (const mid of s.presentes || []) {
+      const edad = edades[mid];
+      if (edad == null) continue;
+      const esNino = edad < config.EDAD_RACION_ADULTO;
+      const fr = (s.fracciones && s.fracciones[mid] != null) ? s.fracciones[mid] : 1;
+      // composición REAL del comensal, con las mismas reglas que el juez (`t4_auditoria.js`
+      // §composicion): su sustituto manda sobre el plato de mesa, el `solo-para` que no le nombra
+      // lo deja fuera, y `eliminar` le quita la línea. Un diario ANTERIOR a este campo no trae
+      // `notas` y entonces se cuenta el plato entero: sesgo hacia contar de más, que en un techo
+      // de seguridad es el único lado aceptable.
+      const sust = {};
+      for (const n of notas) if (n.tipo === 'sustituto' && n.miembro === mid) sust[n.ambito] = n;
+      const fuera = new Set();
+      for (const n of notas) if (n.tipo === 'solo-para' && !n.miembros.includes(mid)) fuera.add(n.elaboracion_id);
+      const quitar = new Set();
+      for (const n of notas) if (n.tipo === 'eliminar' && (n.miembro === mid || n.miembro === '*')) quitar.add(n.alimento_id);
+      const plato = sust.plato ? sust.plato.plato : (s.plato || []).filter(p => !fuera.has(p.elaboracion_id));
+      const postre = sust.postre ? sust.postre.postre : s.postre;
+      const piezas = postre ? plato.concat([postre]) : plato;
+      for (const pe of piezas) {
+        for (const l of lineasPlanas(pe.elaboracion_id)) {
+          const aid = Array.isArray(l.alternativas)
+            ? (pe.opciones_eje && (pe.opciones_eje[mid] || pe.opciones_eje['*'])) : l.alimento_id;
+          if (!aid || !vigilados.has(aid) || quitar.has(aid)) continue;
+          if (f < desdeDe(aid)) continue;                       // fuera de LA ventana de ESE alimento
+          if (!reglas[aid].some(r => r.edad_max_anos == null || edad < r.edad_max_anos)) continue;
+          const g = ((esNino ? l.gramos_nino : l.gramos_adulto) || 0) * (l.escala || 1) * fr;
+          (acc[mid] = acc[mid] || {})[aid] = (acc[mid][aid] || 0) + g;
+        }
+      }
+    }
+  }
+  return acc;
+}
+
+// El techo de la ventana para (alimento × edad): el más restrictivo de las reglas que le aplican.
+// null = ninguna regla vigente para ese comensal (ya tiene la edad, o el alimento no se vigila).
+function techoVentana(reglas, alimentoId, edad) {
+  const fs = (reglas[alimentoId] || []).filter(r => r.edad_max_anos == null || edad < r.edad_max_anos);
+  if (!fs.length) return null;
+  return Math.min(...fs.map(r => r.limite_g_dia * (r.ventana_dias || 1)));
+}
+
+module.exports = { reglasDeVentana, acumuladoPrevio, techoVentana };
+
+  };
+
   /* ---- hash_banco (precalculado en build; sin crypto en el navegador) ---- */
   REG['hash_banco'] = function (module) {
     module.exports = {
-      hashCompleto: function () { return '86a9b6e04190611087ad262abbbc86bd3681272cf3b3472fa8bf6f03fbbbd5e6'; },
+      hashCompleto: function () { return '5de402483830e1888d1523ee01f7bb147bfa8f6d503566137de0e55b2e61770b'; },
       hashGeneracion: function () { return '63c075ea3480a364b2d7a065087c2f918e7cb957782e3c31a286b7702200f9d7'; }
     };
   };

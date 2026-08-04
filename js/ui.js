@@ -505,14 +505,19 @@
 
   // Marcas reales de Google/Apple (handoff 5, §3 — "elegir vía: email, Google,
   // Apple. Marcas reales"): logomarcas oficiales, no un icono lucide genérico.
-  var ICONO_GOOGLE = '<svg class="onb-marca-ico" viewBox="0 0 256 262" aria-hidden="true">' +
+  // Handoff 6 (02-signin.md): tamaños EXACTOS del handoff horneados en el propio
+  // SVG (15×15 Google dentro del chip de 25×25; Apple 13×16 — NO cuadrado, la
+  // manzana es más alta que ancha) y el path de Apple sustituido por el trazado
+  // oficial viewBox 0 0 814 1000 literal de reference/Onboarding.dc.html — el
+  // anterior (viewBox 384 512, silueta genérica) no es el de este handoff.
+  var ICONO_GOOGLE = '<svg viewBox="0 0 256 262" style="width:15px;height:15px;display:block" aria-hidden="true">' +
     '<path fill="#4285F4" d="M255.878 133.451c0-10.734-.871-18.567-2.756-26.687H130.55v48.448h71.947c-1.45 12.04-9.283 30.172-26.687 42.356l-.244 1.622 38.755 30.023 2.685.268c24.659-22.774 38.872-56.28 38.872-96.03"/>' +
     '<path fill="#34A853" d="M130.55 261.1c35.248 0 64.839-11.605 86.453-31.622l-41.196-31.913c-11.024 7.688-25.82 13.055-45.257 13.055-34.523 0-63.824-22.773-74.269-54.25l-1.531.13-39.9 30.89-.527 1.462C35.393 231.798 79.49 261.1 130.55 261.1"/>' +
     '<path fill="#FBBC05" d="M56.281 156.37c-2.756-8.123-4.351-16.827-4.351-25.82 0-8.994 1.595-17.697 4.206-25.82l-.073-1.73L15.66 71.7l-1.335.635C5.077 90.539 0 111.14 0 132.55s5.077 42.011 14.325 60.216z"/>' +
     '<path fill="#EB4335" d="M130.55 50.479c24.514 0 41.05 10.589 50.479 19.438l36.844-35.974C195.245 12.91 165.798 0 130.55 0 79.49 0 35.393 29.301 14.325 71.7l41.956 32.549c10.445-31.477 39.746-54.25 74.269-54.25"/>' +
     '</svg>';
-  var ICONO_APPLE = '<svg class="onb-marca-ico" viewBox="0 0 384 512" aria-hidden="true">' +
-    '<path fill="currentColor" d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-36.8-2.8-77 21.3-91.7 21.3-15.5 0-51.1-20.3-79.1-20.3C61.2 141.6 8 184.1 8 271.2c0 25.7 4.7 52.2 14.1 79.5 12.6 35.9 44.7 105.3 78.2 104.3 17.5-.4 29.9-12.4 52.7-12.4 22.1 0 33.6 12.4 53.1 12.4 33.8-.5 63-63.2 75-99.2-45.3-21.4-62.4-56.5-62.4-87.1zM255.2 105.2c17.3-20.5 26.4-42.3 24.1-69.2-25.9 1.6-49.8 15.3-66.5 34.5-15.9 18.1-25.3 40.4-23.2 65.3 27.4 2.1 51.5-11.9 65.6-30.6z"/>' +
+  var ICONO_APPLE = '<svg viewBox="0 0 814 1000" style="width:13px;height:16px;display:block" aria-hidden="true">' +
+    '<path fill="#1A1712" d="M788.1 340.9c-5.8 4.5-108.2 62.2-108.2 190.5 0 148.4 130.3 200.9 134.2 202.2-.6 3.2-20.7 71.9-68.7 141.9-42.8 61.6-87.5 123.1-155.5 123.1-68 0-85.5-39.5-164-39.5-76.5 0-103.7 40.8-165.9 40.8-62.2 0-105.6-57-155.5-127C46.7 790.7 0 663 0 541.8c0-194.4 126.4-297.5 250.8-297.5 66.1 0 121.2 43.4 162.7 43.4 39.5 0 101.1-46 176.3-46 28.5 0 130.9 2.6 198.3 99.2zM554.1 159.4c31.1-36.9 53.1-88.1 53.1-139.3 0-7.1-.6-14.3-1.9-20.1-50.6 1.9-110.8 33.7-147.1 75.8-28.5 32.4-55.1 83.6-55.1 135.5 0 6.5 1.3 13 1.9 15.1 3.2.6 8.4 1.3 13.6 1.3 45.4 0 102.5-30.4 135.5-68.3z"/>' +
     '</svg>';
 
   // soporte de reconocimiento de voz del navegador (nevera) — si no existe, el
@@ -950,7 +955,20 @@
   function renderIngredientesServicio(estado, banco, sup, plan, diaIndex, tipoComida) {
     if (!sup || !plan) return pendienteV6(t('v6_pend_ingredientes'), t('v6_pendiente_sub'));
     var slot = (diaIndex + 1) + '-' + tipoComida;
-    var c = sup.cantidadesServicio(plan, slot);
+    // LA MESA REAL manda sobre la cantidad. Las ausencias PUNTUALES («hoy Enzo no come») son
+    // estado de UI, no de la semana: sin esto la ficha enseñaba comida para cuatro con tres
+    // avatares marcados. Es exactamente para lo que existe `reescalarServicio` (§15.4) — mismo
+    // plato, mesa real, T3 recalcula. Solo se paga cuando la mesa DIFIERE de la semana.
+    var mesa = comensalesDeSlot(estado, plan, diaIndex, tipoComida);
+    var presentes = mesa.presentes.map(function (m) { return m.id; });
+    var deLaSemana = (estado.familia || []).map(function (m) { return m.id; })
+      .filter(function (id) { return plan.presencia && plan.presencia[id] && plan.presencia[id][slot] === true; });
+    var planReal = plan;
+    if (presentes.length !== deLaSemana.length) {
+      var r = sup.reescalarServicio(plan, slot, presentes);
+      if (r.ok) planReal = r.semana;
+    }
+    var c = sup.cantidadesServicio(planReal, slot);
     if (!c.ingredientes.length) return '<p class="card-msg">' + t('sin_comensales_hoy') + '</p>';
     // se reutilizan las clases que ya existen (`rv-ingrediente*`, `detalle-subtitulo`,
     // `rv-variantes`): CSS nuevo solo cuando no hay nada que sirva — UI_MOBILE §1.
@@ -1750,6 +1768,11 @@
   // de la familia (dónde vive), no un mando del motor: el sesgo regional del
   // scoring es interno. cantabria está en el selector aunque el banco todavía
   // no tenga platos suyos (una familia cántabra tiene que poder elegirse).
+  // Orden y desglose ALINEADOS con el handoff 6 (04-familia.md — "20 opciones
+  // en el orden exacto"): Castilla se separa en La Mancha/León, Navarra y La
+  // Rioja dejan de ir combinadas, se añaden Ceuta y Melilla. 'euskadi' conserva
+  // su id de siempre (dato interno, soft-signal del motor) — solo cambia la
+  // ETIQUETA visible a "País Vasco", que es la que pide el handoff.
   var REGIONES = [
     { id: 'andalucia', nombre: 'Andalucía' },
     { id: 'aragon', nombre: 'Aragón' },
@@ -1757,15 +1780,19 @@
     { id: 'baleares', nombre: 'Baleares' },
     { id: 'canarias', nombre: 'Canarias' },
     { id: 'cantabria', nombre: 'Cantabria' },
-    { id: 'castilla', nombre: 'Castilla' },
+    { id: 'castilla-la-mancha', nombre: 'Castilla-La Mancha' },
+    { id: 'castilla-y-leon', nombre: 'Castilla y León' },
     { id: 'cataluna', nombre: 'Cataluña' },
     { id: 'comunidad-valenciana', nombre: 'Comunidad Valenciana' },
-    { id: 'euskadi', nombre: 'Euskadi' },
     { id: 'extremadura', nombre: 'Extremadura' },
     { id: 'galicia', nombre: 'Galicia' },
+    { id: 'rioja', nombre: 'La Rioja' },
     { id: 'madrid', nombre: 'Madrid' },
     { id: 'murcia', nombre: 'Murcia' },
-    { id: 'navarra-rioja', nombre: 'Navarra / La Rioja' }
+    { id: 'navarra', nombre: 'Navarra' },
+    { id: 'euskadi', nombre: 'País Vasco' },
+    { id: 'ceuta', nombre: 'Ceuta' },
+    { id: 'melilla', nombre: 'Melilla' }
   ];
 
   function opcionesRegion(seleccionada) {
@@ -1775,20 +1802,27 @@
       }).join('');
   }
 
-  // PASO 1 — nombre de familia. Una sola pregunta, una sola respuesta.
-  function renderOnbNombreFamilia(nombreFamilia, familiaRegion) {
-    var listo = !!(nombreFamilia || '').trim();
-    return '<div class="onb-scroll"><div class="onb-nombre">' +
-      '<p class="onb-saludo">' + escapeHtml(t('onb_bienvenidos')) + '</p>' +
-      '<h1 class="onb-titular">' + t('onb_titular') + '</h1>' +
-      '<label class="onb-campo-linea"><span class="onb-eyebrow">' + escapeHtml(t('onb_nombre_familia')) + '</span>' +
-        '<input type="text" id="onb-nombre-familia" class="onb-input-serif" maxlength="40" placeholder="' + escapeHtml(t('onb_ph_familia')) + '" value="' + escapeHtml(nombreFamilia || '') + '" autocomplete="off"></label>' +
-      '<label class="onb-campo-linea"><span class="onb-eyebrow">' + escapeHtml(t('onb_de_donde')) + '</span>' +
-        '<span class="onb-select-wrap"><select id="onb-region" class="onb-input-select">' + opcionesRegion(familiaRegion) + '</select>' +
-        '<i data-lucide="chevron-down" aria-hidden="true"></i></span></label>' +
-      '<button type="button" class="onb-cta onb-cta-oro' + (listo ? '' : ' onb-cta-off') + '" id="onb-cta-familia" data-action="onb-familia-siguiente"' + (listo ? '' : ' aria-disabled="true"') + '>' + escapeHtml(t('onb_siguiente')) + '</button>' +
-      '<button type="button" class="onb-enlace" data-action="landing-unirse">' + escapeHtml(t('onb_codigo')) + '</button>' +
-      '<button type="button" class="onb-enlace" data-action="ver-demo">' + escapeHtml(t('onb_ejemplo')) + '</button>' +
+  // PASO 1 — nombre de familia ("Ayúdame a conoceros", handoff 6, 04-familia.md).
+  // RÉPLICA EXACTA: valores literales del handoff (28px, oklch, radio 15px) — ver
+  // el bloque .h6-* de styles.css. CTA habilitado solo con nombre Y consentimiento
+  // de salud (nuevo en este handoff): ambos se leen aquí, la validez la decide
+  // onbFamiliaSiguiente() en app.js, este render solo refleja el estado ya calculado.
+  function renderOnbNombreFamilia(nombreFamilia, familiaRegion, saludConsent) {
+    var listo = !!(nombreFamilia || '').trim() && !!saludConsent;
+    return '<div class="onb-scroll" style="animation:e3fade .3s ease both"><div class="h6-familia-body">' +
+      '<div class="h6-familia-kicker">' + escapeHtml(t('onb_bienvenidos')) + '</div>' +
+      '<div class="h6-familia-titulo"><span class="h6-familia-titulo-dorado">' + escapeHtml(t('onb_titular_1')) + '</span><br>' + escapeHtml(t('onb_titular_2')) + '</div>' +
+      '<div class="h6-familia-campo-nombre"><label style="display:block"><span class="h6-eyebrow">' + escapeHtml(t('onb_nombre_familia')) + '</span>' +
+        '<input type="text" id="onb-nombre-familia" class="h6-familia-input" maxlength="40" placeholder="' + escapeHtml(t('onb_ph_familia')) + '" value="' + escapeHtml(nombreFamilia || '') + '" autocomplete="off"></label></div>' +
+      '<div class="h6-familia-campo-region"><label style="display:block"><span class="h6-eyebrow">' + escapeHtml(t('onb_de_donde')) + '</span>' +
+        '<span class="h6-familia-select-wrap"><select id="onb-region" class="h6-familia-select">' + opcionesRegion(familiaRegion) + '</select>' +
+        '<i data-lucide="chevron-down" class="h6-familia-chevron" aria-hidden="true"></i></span></label></div>' +
+      '<label class="h6-check h6-familia-consent"><input type="checkbox" id="onb-salud" class="h6-check-input"' + (saludConsent ? ' checked' : '') + '>' +
+        '<span class="h6-check-box" aria-hidden="true"><i data-lucide="check" style="width:13px;height:13px;stroke-width:3.5"></i></span>' +
+        '<span class="h6-check-txt">' + escapeHtml(t('onb_salud_consent')) + '</span></label>' +
+      '<button type="button" class="h6-cta h6-cta-r15 h6-familia-cta ' + (listo ? 'h6-cta-oro12' : 'h6-cta-gris') + '" id="onb-cta-familia" data-action="onb-familia-siguiente"' + (listo ? '' : ' aria-disabled="true"') + '>' +
+        '<span class="h6-cta-txt' + (listo ? '' : ' h6-cta-txt-gris') + '">' + escapeHtml(t('onb_siguiente')) + '</span></button>' +
+      '<div class="h6-familia-pie"><button type="button" class="h6-familia-pie-link" data-action="landing-unirse">' + escapeHtml(t('onb_codigo')) + '</button></div>' +
       '</div></div>';
   }
 
@@ -2169,8 +2203,11 @@
   //    SIEMPRE visibles en Acerca de, y cada deploy suma un patch (6.0.0 → 6.0.1 → 6.0.2…).
   //    Se sube A MANO en el mismo commit que despliega: si se automatizara con la fecha del
   //    build, dejaría de decir «qué versión estoy usando» y pasaría a decir «cuándo se compiló».
-  var VERSION_APP = '6.0.1';
-  var VERSION_FECHA = '03/08/2026';
+  //    6.1.0 y no 6.0.3: el handoff 6 no es un parche, cambia la superficie que ve el usuario el
+  //    primer día — LAUNCH sustituye a la portada rotatoria, y Sign in / Email y contraseña /
+  //    Revisa tu correo / Familia se repintan enteras (4-ago-2026).
+  var VERSION_APP = '6.1.0';
+  var VERSION_FECHA = '04/08/2026';
 
   function renderAcercaDe() {
     return '<section class="pantalla pantalla-acerca">' +
@@ -2222,77 +2259,112 @@
   // se repite aquí en modo crear: mismo id `ac-politica`, nunca las dos pantallas a la vez
   // en el DOM, así que 'acceso-google' (que la busca por id) sigue funcionando sin tocarlo.
   // ---------------------------------------------------------------
+  // Checkbox 22×22 "idéntico" en política (03-email-password.md) y salud (04-familia.md):
+  // <input> real (mantiene el id y `.checked` que leen los handlers de app.js — el handoff
+  // dibuja un <button> propio, pero eso rompería 'ac-politica'/`getElementById(...).checked`)
+  // con appearance ocultada y la caja dorada pintada encima vía :checked ~ .h6-check-box.
   function politicaCheckbox() {
-    return '<label class="veto-chip" style="display:flex;gap:8px;align-items:flex-start;margin-top:14px"><input type="checkbox" id="ac-politica" style="margin-top:3px">' +
-      '<span>' + t('ac_politica_acepto') + ' · <a href="privacy.html" target="_blank" rel="noopener" class="ingrediente-link">' + t('politica_enlace') + '</a></span></label>';
+    return '<label class="h6-check" style="margin-top:22px">' +
+      '<input type="checkbox" id="ac-politica" class="h6-check-input">' +
+      '<span class="h6-check-box" aria-hidden="true"><i data-lucide="check" style="width:13px;height:13px;stroke-width:3.5"></i></span>' +
+      '<span class="h6-check-txt">' + escapeHtml(t('ac_politica_acepto')) + ' <a href="privacy.html" target="_blank" rel="noopener">' + escapeHtml(t('politica_enlace_min')) + '</a></span>' +
+      '</label>';
   }
 
-  // cabecera compartida: círculo "atrás" + título centrado (mismo .onb-atras que la
-  // cabecera del asistente de persona, sin la barra de avance — aquí no hay pasos).
+  // cabecera compartida de las dos pantallas de acceso (handoff 6, 02-signin.md /
+  // 03-email-password.md §3.1): círculo 38×38 + título centrado, margin-right:38px
+  // compensa el círculo — no quitarlo o el título deja de estar centrado de verdad.
   function cabeceraAcceso(accionAtras, dataModo, titulo) {
-    return '<div class="onb-cab-fila" style="padding-top:6px">' +
-      '<button type="button" class="onb-atras" data-action="' + accionAtras + '"' + (dataModo ? ' data-modo="' + dataModo + '"' : '') +
+    return '<div class="h6-acceso-cab">' +
+      '<button type="button" class="h6-acceso-atras" data-action="' + accionAtras + '"' + (dataModo ? ' data-modo="' + dataModo + '"' : '') +
       ' aria-label="' + escapeHtml(t('onb_volver')) + '"><i data-lucide="arrow-left"></i></button>' +
-      '<span style="flex:1;text-align:center;margin-right:45px;font-size:15px;font-weight:800;color:var(--ink)">' + escapeHtml(titulo) + '</span>' +
+      '<span class="h6-acceso-titulo">' + escapeHtml(titulo) + '</span>' +
       '</div>';
   }
 
-  // ===== Pantalla 1 · elegir vía (email / Google / Apple) =====
+  // ===== Pantalla 1 · Sign in / Crear cuenta — elegir vía (handoff 6, 02-signin.md) =====
   function renderAccesoElegir(pantalla, error, aviso) {
     var esCrear = pantalla === 'crear';
     var titulo = t(esCrear ? 'ac_crear_cuenta' : 'ac_entrar');
-    return '<div class="onb-scroll"><div class="onb-cuerpo" style="max-width:420px;margin:0 auto">' +
+    // Sin .onb-scroll envolvente: el div raíz YA es position:absolute;inset:0 (spec) y trae
+    // su propio overflow — un .onb-scroll fuera quedaría inerte (el hijo absolute no aporta
+    // altura a su flujo normal). Distinto de renderOnbNombreFamilia, que sí lo necesita.
+    return '<div class="h6-acceso">' +
       cabeceraAcceso('acceso-portada', null, titulo) +
-      '<div style="display:flex;flex-direction:column;align-items:center;text-align:center;padding:30px 8px 6px">' +
-      '<p class="onb-eyebrow">e3foods</p>' +
-      '<p class="onb-sub" style="margin-top:10px">' + t('claim_menus') + '</p>' +
+      '<div class="h6-acceso-centro">' +
+      '<div class="h6-acceso-logo-wrap">' +
+      '<img src="assets/logo-noleaves.png" alt="e3foods" class="h6-acceso-logo-base">' +
+      '<img src="assets/leaf-navy.png" alt="" class="h6-acceso-hoja" style="left:90px;top:2.4px;width:13.9px;height:auto;animation:e3sf0 1.5s linear .15s both">' +
+      '<img src="assets/leaf-gold.png" alt="" class="h6-acceso-hoja" style="left:101.3px;top:17.2px;width:21.8px;height:auto;animation:e3sf1 1.5s linear .35s both">' +
+      '<img src="assets/leaf-gold2.png" alt="" class="h6-acceso-hoja" style="left:96.3px;top:33.6px;width:17.5px;height:auto;animation:e3sf2 1.5s linear .55s both">' +
       '</div>' +
-      '<button type="button" class="onb-cta onb-cta-oro" data-action="acceso-ir-mail" data-modo="' + (esCrear ? 'crear' : 'entrar') + '" style="margin-top:6px"><i data-lucide="mail"></i>' + t(esCrear ? 'ac_crear_con_email' : 'ac_entrar_con_email') + '</button>' +
-      // Marcas reales (handoff 5, §3): antes un icono lucide genérico ("chrome") sin
-      // relación con la marca real de Google. Apple se añade deshabilitado con su
-      // marca real + "pronto" — la vía existe visualmente, no funcionalmente todavía
-      // (no hay proveedor Apple dado de alta en Firebase Auth).
-      '<button type="button" class="onb-cta onb-cta-midnight" data-action="acceso-google">' + ICONO_GOOGLE + t('ac_continuar_google') + '</button>' +
-      '<button type="button" class="onb-cta onb-cta-apple" disabled aria-disabled="true">' + ICONO_APPLE + t('ac_continuar_apple') + '</button>' +
-      '<p class="onb-apple-pronto">' + t('ac_apple_pronto') + '</p>' +
+      '<div class="h6-acceso-sub">' + t('ac_subtitulo') + '</div>' +
+      '</div>' +
+      '<div class="h6-acceso-pie">' +
+      '<button type="button" class="h6-btn h6-btn-oro" data-action="acceso-ir-mail" data-modo="' + (esCrear ? 'crear' : 'entrar') + '">' +
+        '<span class="h6-btn-chip h6-btn-chip-oro"><i data-lucide="mail" style="width:15px;height:15px"></i></span>' +
+        '<span class="h6-btn-label h6-btn-label-oro">' + escapeHtml(t(esCrear ? 'ac_crear_con_email' : 'ac_entrar_con_email')) + '</span>' +
+        '</button>' +
+      // Marcas reales (handoff 5 §3, conservado en handoff 6): Google navega de verdad;
+      // Apple queda deshabilitado con su marca real + "pronto" (sin proveedor en Firebase Auth).
+      '<button type="button" class="h6-btn h6-btn-midnight" data-action="acceso-google">' +
+        '<span class="h6-btn-chip h6-btn-chip-blanco">' + ICONO_GOOGLE + '</span>' +
+        '<span class="h6-btn-label h6-btn-label-midnight">' + escapeHtml(t('ac_continuar_google')) + '</span>' +
+        '</button>' +
+      '<button type="button" class="h6-btn-apple" disabled aria-disabled="true">' +
+        '<span class="h6-btn-apple-fila">' + ICONO_APPLE + '<span class="h6-btn-apple-txt">' + escapeHtml(t('ac_continuar_apple')) + '</span></span>' +
+        '<span class="h6-btn-apple-pronto">' + escapeHtml(t('ac_apple_pronto')) + '</span>' +
+        '</button>' +
+      // La casilla de política NO está en el mock de esta pantalla (02-signin.md), pero
+      // Google se dispara DESDE aquí sin pantalla intermedia — en modo crear el consentimiento
+      // RGPD (AUTH_PUSH_SPEC §1.5) tiene que poder darse antes de ese tap. Mismo id `ac-politica`
+      // que en la pantalla de email: nunca coinciden las dos en el DOM a la vez.
       (esCrear ? politicaCheckbox() : '') +
-      (error ? '<p class="card-msg" style="color:var(--danger);margin-top:10px">' + escapeHtml(error) + '</p>' : '') +
-      (aviso ? '<p class="card-msg" style="margin-top:10px">' + escapeHtml(aviso) + '</p>' : '') +
-      '<button type="button" class="onb-enlace onb-enlace-pie" data-action="acceso-toggle" data-modo="' + (esCrear ? 'entrar' : 'crear') + '">' + t(esCrear ? 'ac_ya_tienes' : 'ac_no_tienes') + '</button>' +
-      '<button type="button" class="onb-enlace onb-enlace-pie" data-action="ver-demo">' + t('onb_ejemplo') + '</button>' +
+      (error ? '<p class="h6-error">' + escapeHtml(error) + '</p>' : '') +
+      (aviso ? '<p class="h6-aviso">' + escapeHtml(aviso) + '</p>' : '') +
+      '<button type="button" class="h6-link-gold" style="margin-top:4px" data-action="acceso-toggle" data-modo="' + (esCrear ? 'entrar' : 'crear') + '">' + escapeHtml(t(esCrear ? 'ac_ya_tienes' : 'ac_no_tienes')) + '</button>' +
+      '<button type="button" class="h6-link-muted" style="padding:2px" data-action="ver-demo">' + escapeHtml(t('onb_ejemplo')) + '</button>' +
       '</div></div>';
   }
 
-  // ===== Pantalla 2 · email y contraseña =====
+  // ===== Pantalla 2 · Email y contraseña (handoff 6, 03-email-password.md §3.1) =====
   function renderAccesoMail(pantalla, error, aviso) {
     var esCrear = pantalla === 'crear-mail';
     var titulo = t(esCrear ? 'ac_crear_cuenta' : 'ac_entrar');
-    return '<div class="onb-scroll"><div class="onb-cuerpo" style="max-width:420px;margin:0 auto">' +
+    return '<div class="h6-mailpass"><div class="h6-mailpass-inner">' +
       cabeceraAcceso('acceso-volver-elegir', esCrear ? 'crear' : 'entrar', titulo) +
-      '<div style="padding-top:22px">' +
-      '<label class="per-campo"><span class="onb-eyebrow">' + t('ac_email') + '</span>' +
-        '<input type="email" class="per-input" id="ac-email" autocomplete="email" inputmode="email"></label>' +
-      '<label class="per-campo" style="margin-top:10px"><span class="onb-eyebrow">' + t('ac_password') + '</span>' +
-        '<input type="password" class="per-input" id="ac-pass" autocomplete="' + (esCrear ? 'new-password' : 'current-password') + '"></label>' +
-      (esCrear ? '<p class="per-nota">' + t('pass_min') + '</p>' : '') +
+      '<div class="h6-mailpass-body">' +
+      '<label style="display:block"><span class="h6-eyebrow">' + escapeHtml(t('ac_email')) + '</span>' +
+        '<input type="email" class="h6-input-line" id="ac-email" placeholder="tu@email.com" autocomplete="email" inputmode="email"></label>' +
+      '<div style="height:20px"></div>' +
+      '<label style="display:block"><span class="h6-eyebrow">' + escapeHtml(t('ac_password')) + '</span>' +
+        '<input type="password" class="h6-input-line" id="ac-pass" placeholder="' + (esCrear ? escapeHtml(t('pass_min')) : '') + '" autocomplete="' + (esCrear ? 'new-password' : 'current-password') + '"></label>' +
       (esCrear ? politicaCheckbox() : '') +
-      (error ? '<p class="card-msg" style="color:var(--danger);margin-top:10px">' + escapeHtml(error) + '</p>' : '') +
-      (aviso ? '<p class="card-msg" style="margin-top:10px">' + escapeHtml(aviso) + '</p>' : '') +
-      '<button type="button" class="onb-cta onb-cta-oro" data-action="acceso-enviar" data-modo="' + (esCrear ? 'crear' : 'entrar') + '" style="margin-top:14px">' + titulo + '<i data-lucide="arrow-right"></i></button>' +
-      '<button type="button" class="onb-enlace onb-enlace-pie" data-action="acceso-toggle" data-modo="' + (esCrear ? 'entrar-mail' : 'crear-mail') + '">' + t(esCrear ? 'ac_ya_tienes' : 'ac_no_tienes') + '</button>' +
-      (esCrear ? '' : '<button type="button" class="onb-enlace onb-enlace-pie" data-action="acceso-olvide">' + t('ac_olvide') + '</button>') +
+      (error ? '<p class="h6-error">' + escapeHtml(error) + '</p>' : '') +
+      (aviso ? '<p class="h6-aviso">' + escapeHtml(aviso) + '</p>' : '') +
+      '<button type="button" class="h6-cta h6-cta-r100 h6-cta-oro14" style="margin-top:26px" data-action="acceso-enviar" data-modo="' + (esCrear ? 'crear' : 'entrar') + '">' +
+        '<span class="h6-cta-txt">' + escapeHtml(titulo) + '</span><i data-lucide="arrow-right"></i></button>' +
+      '<div style="flex:1;min-height:16px"></div>' +
+      '<button type="button" class="h6-link-gold" data-action="acceso-toggle" data-modo="' + (esCrear ? 'entrar-mail' : 'crear-mail') + '">' + escapeHtml(t(esCrear ? 'ac_ya_tienes' : 'ac_no_tienes')) + '</button>' +
+      (esCrear ? '' : '<button type="button" class="h6-link-muted" style="padding:4px" data-action="acceso-olvide">' + escapeHtml(t('ac_olvide')) + '</button>') +
       '</div></div></div>';
   }
 
+  // ===== Revisa tu correo (handoff 6, 03-email-password.md §3.2) =====
   function renderRevisaCorreo(email, aviso) {
-    return '<div class="onb-scroll"><div class="onb-cuerpo" style="max-width:420px;margin:0 auto;padding-top:48px">' +
-      '<span class="onb-chip-seguridad"><i data-lucide="mail-check"></i>' + t('ver_titulo') + '</span>' +
-      '<h1 class="onb-h2">' + t('ver_titulo') + '</h1>' +
-      '<p class="onb-sub">' + escapeHtml(t('ver_texto').replace('{email}', email || '')) + '</p>' +
-      (aviso ? '<p class="card-msg">' + escapeHtml(aviso) + '</p>' : '') +
-      '<button type="button" class="onb-cta onb-cta-oro" data-action="verificar-recargar" style="margin-top:14px">' + t('ver_ya') + '<i data-lucide="arrow-right"></i></button>' +
-      '<button type="button" class="onb-enlace onb-enlace-pie" data-action="verificar-reenviar">' + t('ver_reenviar') + '</button>' +
-      '<button type="button" class="onb-enlace onb-enlace-pie" data-action="acceso-logout">' + t('cta_cerrar_sesion') + '</button>' +
+    return '<div class="h6-verify"><div class="h6-verify-body">' +
+      '<span class="h6-verify-badge"><i data-lucide="mail-check"></i>' + escapeHtml(t('ver_badge')) + '</span>' +
+      '<div class="h6-verify-titulo">' + escapeHtml(t('ver_titulo')) + '</div>' +
+      // "{email}" en <strong> (color por CSS, .h6-verify-texto strong); sin email, ver_sin_email
+      // ("tu correo") — el prototipo del handoff no cubre este caso, la app real sí puede darlo
+      // (recarga tras perder la sesión, por ejemplo).
+      '<div class="h6-verify-texto">' + t('ver_texto').replace('{email}', '<strong>' + escapeHtml(email || t('ver_sin_email')) + '</strong>') + '</div>' +
+      (aviso ? '<p class="h6-aviso">' + escapeHtml(aviso) + '</p>' : '') +
+      '<button type="button" class="h6-cta h6-cta-r15 h6-cta-oro12" style="margin-top:26px" data-action="verificar-recargar">' +
+        '<span class="h6-cta-txt">' + escapeHtml(t('ver_ya')) + '</span><i data-lucide="arrow-right"></i></button>' +
+      '<div style="flex:1;min-height:20px"></div>' +
+      '<button type="button" class="h6-link-gold" data-action="verificar-reenviar">' + escapeHtml(t('ver_reenviar')) + '</button>' +
+      '<button type="button" class="h6-link-muted" style="padding:6px" data-action="acceso-logout">' + escapeHtml(t('cta_cerrar_sesion')) + '</button>' +
       '</div></div>';
   }
 
@@ -2485,12 +2557,24 @@
   // fijas delante, rotación determinista por día, SIN RNG) sobre el catálogo del HOGAR. La fecha
   // viaja en `data-fecha` (audit 2026-07-20): el handler reabre la MISMA rotación aunque la
   // medianoche cruce entre pintar y tocar.
+  // Foto propia de las tres categorías FIJAS de Descubrir (§15.5 · FIJAS_DESCUBRIR). Vive aquí y
+  // no en `superficie.js` a propósito: una ruta de asset es presentación, y la superficie son
+  // funciones PURAS sobre semana + banco + diario — no conocen el `assets/` del frontend.
+  // Solo hay estas tres en el repo; el resto de categorías siguen tomando la foto de su primera
+  // candidata con foto, que es lo que ya hace el motor. Nada inventado, nada reciclado.
+  var FOTO_CATEGORIA_DESCUBRIR = {
+    ensaladas: 'assets/descubrir/frescas.jpg',
+    rapidas: 'assets/descubrir/rapidas.jpg',
+    guisos: 'assets/descubrir/potajes.jpg'
+  };
+
   function renderDescubrirVista(estado, banco, sup) {
     var fecha = hoyISO();
     var categorias = sup ? sup.categoriasDescubrir(fecha, estado.ocultas || []) : [];
     var fichasHtml = categorias.map(function (d, idx) {
+      var foto = FOTO_CATEGORIA_DESCUBRIR[d.id] || d.foto;
       return '<button type="button" class="desc-ficha" data-action="descubrir-abrir-categoria" data-idx="' + idx + '" data-fecha="' + fecha + '">' +
-        (d.foto ? '<img src="' + escapeHtml(d.foto) + '" alt="" loading="lazy" decoding="async">' : '') +
+        (foto ? '<img src="' + escapeHtml(foto) + '" alt="" loading="lazy" decoding="async">' : '') +
         '<div class="desc-ficha-degradado"></div>' +
         '<div class="desc-ficha-texto">' +
         '<span class="desc-kicker">' + escapeHtml(d.kicker) + '</span>' +

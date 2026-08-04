@@ -941,6 +941,21 @@
     aterrizarConSesion();
   }
 
+  // LAUNCH (handoff 6, 01-launch.md): estática, no tappable, navega sola. 700ms es el SUELO
+  // no el techo — espera lo que haga falta al arranque real (aquí: fuentes listas) antes de
+  // encadenar con cerrarLanding()->aterrizarConSesion() (sesión válida -> Hoy | sin sesión
+  // -> Sign in). document.fonts.ready no existe en todos los motores (Promise.resolve() de
+  // fallback no bloquea nada).
+  // Es una FUNCIÓN, no código suelto de bootApp, porque el "atrás" de Sign in vuelve a
+  // LAUNCH (§Flujo exacto del handoff) y, sin re-armar el temporizador, esa pantalla se
+  // queda para siempre: ya no tiene botón «Empezar» ni es tappable. Era un cuelgue real
+  // que sólo se salía recargando — cazado el 4-ago al verificar el handoff 6.
+  function armarLaunch() {
+    var suelo = new Promise(function (resolve) { setTimeout(resolve, 700); });
+    var bootstrap = (document.fonts && document.fonts.ready) || Promise.resolve();
+    Promise.all([suelo, bootstrap]).then(cerrarLanding);
+  }
+
   // ---------------------------------------------------------------
   // GATE DE CUENTA (obra auth+push, AUTH_PUSH_SPEC — ejecutada 31-jul por orden de Roger).
   // Cuenta obligatoria para USAR la app (dictado §12.2); miembro = ficha sin cuenta. El
@@ -1109,6 +1124,10 @@
   var onbPaso = ONB_PASO_NOMBRE;
   var onbNombreFamilia = '';
   var onbRegion = '';
+  // Consentimiento de datos de salud del paso "nombre de familia" (handoff 6, 04-familia.md —
+  // NUEVO en esta pantalla). Solo vive en memoria hasta onbTerminar(); no hay campo de estado
+  // persistido para esto todavía — igual que onbNombreFamilia/onbRegion antes de guardarEstado().
+  var onbSaludConsent = false;
   var onbMiembros = [];
 
   var personaDraft = null;
@@ -1157,7 +1176,7 @@
     pantalla.hidden = false;
     document.body.classList.add('wizard-open');
     pantalla.classList.toggle('wizard-screen-paso', onbPaso >= 2 && onbPaso <= 6);
-    if (onbPaso === ONB_PASO_NOMBRE) pantalla.innerHTML = UI.renderOnbNombreFamilia(onbNombreFamilia, onbRegion);
+    if (onbPaso === ONB_PASO_NOMBRE) pantalla.innerHTML = UI.renderOnbNombreFamilia(onbNombreFamilia, onbRegion, onbSaludConsent);
     else if (onbPaso === ONB_PASO_FICHA) pantalla.innerHTML = UI.renderOnbFicha(personaDraft, onbMiembros);
     else if (onbPaso === ONB_PASO_FIN) pantalla.innerHTML = UI.renderOnbFin(onbNombreFamilia, onbMiembros);
     else pantalla.innerHTML = UI.renderOnbPersona(onbPaso - 1, personaDraft, onbMiembros.length + 1);
@@ -1175,16 +1194,34 @@
     onbPaso = ONB_PASO_NOMBRE;
     onbNombreFamilia = estado.nombreFamilia || '';
     onbRegion = estado.familiaRegion || '';
+    onbSaludConsent = false; // handoff 6: consentimiento nuevo por familia, nunca se hereda
     onbMiembros = [];
     personaDraft = personaVacia();
     personaSuperficie = 'onboarding';
     mostrarOnboarding();
   }
 
+  // Refleja nombre+consentimiento en el CTA sin repintar la pantalla entera (perdería el
+  // foco del input a media palabra) — mismas clases h6-cta-* que pinta UI.renderOnbNombreFamilia,
+  // ver css/styles.css §HANDOFF 6. Se llama al teclear el nombre y al marcar la casilla de salud.
+  function sincronizarCtaFamilia() {
+    var cta = document.getElementById('onb-cta-familia');
+    if (!cta) return;
+    var valido = !!(onbNombreFamilia || '').trim() && !!onbSaludConsent;
+    cta.classList.toggle('h6-cta-oro12', valido);
+    cta.classList.toggle('h6-cta-gris', !valido);
+    if (valido) cta.removeAttribute('aria-disabled'); else cta.setAttribute('aria-disabled', 'true');
+    var txt = cta.querySelector('.h6-cta-txt');
+    if (txt) txt.classList.toggle('h6-cta-txt-gris', !valido);
+  }
+
   function onbFamiliaSiguiente() {
     var el = document.getElementById('onb-nombre-familia');
     onbNombreFamilia = el ? el.value.trim() : '';
-    if (!onbNombreFamilia) return; // CTA en gris, sin mensaje de error (handoff)
+    var salud = document.getElementById('onb-salud');
+    onbSaludConsent = !!(salud && salud.checked);
+    // CTA en gris, sin mensaje de error (handoff): habilitado solo con nombre Y consentimiento.
+    if (!onbNombreFamilia || !onbSaludConsent) return;
     onbPaso = 2;
     mostrarOnboarding();
   }
@@ -1529,8 +1566,13 @@
   // ---------------------------------------------------------------
   function togglePresente(dia, tipoComida, miembroId) {
     var plan = planActivo();
-    if (!plan || !plan.dias[dia]) return; // defensa: snapshot antiguo sin planSiguiente con diaGlobal 7-13
-    var fecha = plan.dias[dia].fecha;
+    // ⚠️ RASTRO DE v5 QUE SOBREVIVIÓ AL BLOQUE 2 (cazado el 3-ago tocando el avatar en el
+    // navegador): esto leía `plan.dias[dia].fecha`. La semana `/2` no tiene `dias` — tiene
+    // `semana_iso` y `servicios`—, así que la guardia salía SIEMPRE por la puerta de atrás y
+    // «hoy no come» no hacía absolutamente nada. Un mando muerto, en silencio, en producción.
+    // La fecha se DERIVA de `semana_iso`, como en el resto de la app.
+    if (!plan || !plan.semana_iso || dia < 0 || dia > 6) return;
+    var fecha = fechaDeDia(plan.semana_iso, dia + 1);
     // Menor excluido por menú del cole: su ausencia vive en estado.cole, no en
     // ausenciasPuntuales — el toggle no podía cambiar el resultado y solo dejaba
     // una "ausencia fantasma" que reaparecía al quitar el menú (audit 2026-07-20).
@@ -1543,9 +1585,9 @@
     var idx = lista.indexOf(miembroId);
     if (idx === -1) lista.push(miembroId); else lista.splice(idx, 1);
     estado.ausenciasPuntuales[fecha][tipoComida] = lista;
-    // La presencia se CAPTURA aquí y la card la lee al pintar (`comensalesDeSlot`). Re-escalar
-    // la ración con la mesa real —mismo plato, mesa distinta— es `reescalarServicio` (§15.4),
-    // bloque 3: hoy la card no enseña cantidades, así que no hay número que quede mal.
+    // La presencia se CAPTURA aquí y la card la lee al pintar (`comensalesDeSlot`). La CANTIDAD
+    // la re-escala `reescalarServicio` (§15.4) cuando la ficha del día la pide: mismo plato,
+    // mesa real. Sin eso, la ficha enseñaba comida para cuatro con tres avatares marcados.
     guardarEstado();
     render();
   }
@@ -1727,7 +1769,6 @@
   // Delegación de eventos
   // ---------------------------------------------------------------
   var ACCIONES = {
-    'empezar': function () { cerrarLanding(); },
     'ver-demo': function () { ocultarAcceso(); mostrarDemo(); },
     'salir-demo': function () { salirDemo(); },
 
@@ -1740,7 +1781,10 @@
     'acceso-portada': function () {
       ocultarAcceso();
       var landing = document.getElementById('landing-screen');
-      if (landing) { landing.hidden = false; document.body.classList.add('landing-open'); }
+      if (!landing) return;
+      landing.hidden = false;
+      document.body.classList.add('landing-open');
+      armarLaunch(); // sin esto LAUNCH no vuelve a salir sola: es estática y no tappable
     },
     'acceso-olvide': function () { mostrarAcceso('olvide'); },
     // vuelve al formulario de email (no a "elegir vía"): quien pidió recuperar
@@ -2113,6 +2157,10 @@
     // región de la familia en el onboarding (select dispara 'change', no 'input')
     if (t.id === 'onb-region') { onbRegion = t.value; return; }
 
+    // consentimiento de salud del paso "nombre de familia" (handoff 6, 04-familia.md) — el
+    // CTA depende de este Y del nombre; mismo patrón ligero que onb-nombre-familia abajo.
+    if (t.id === 'onb-salud') { onbSaludConsent = t.checked; sincronizarCtaFamilia(); return; }
+
     // idioma de la app (ficha de miembro, backlog-v3 #19) — ajuste global, no dato
     // de familia: no pasa por actualizarCampoMiembro ni necesita guardarEstado().
     if (t.id === 'mf-idioma-app') { if (I18N.setLang(t.value)) { render(); actualizarNavLabels(); } return; }
@@ -2130,13 +2178,7 @@
     if (!t) return;
     if (t.id === 'onb-nombre-familia') {
       onbNombreFamilia = t.value;
-      // el CTA se enciende con el primer carácter, sin repintar el campo
-      var ctaFam = document.getElementById('onb-cta-familia');
-      if (ctaFam) {
-        var hayNombre = !!t.value.trim();
-        ctaFam.classList.toggle('onb-cta-off', !hayNombre);
-        if (hayNombre) ctaFam.removeAttribute('aria-disabled'); else ctaFam.setAttribute('aria-disabled', 'true');
-      }
+      sincronizarCtaFamilia(); // sin repintar el campo — perdería el foco a media palabra
     } else if (t.dataset && t.dataset.personaCampo) {
       // campos de texto/número de la persona en curso: se escriben en el
       // borrador sin repintar (perdería el foco), solo se refresca lo derivado
@@ -2217,7 +2259,14 @@
     // Gate de cuenta: la escucha remota solo arranca con SESIÓN válida (sin ella el
     // listener moriría contra las reglas con permission-denied en consola). El warm-up
     // corre con la landing en pantalla; el gate real vive en cerrarLanding.
-    if (V5_DEV || !window.E3Sync || !window.E3Sync.esperarSesion) {
+    // La rama `V5_DEV` que había aquí murió con v5 (bloque 2.6) y se me quedó suelta: la
+    // variable ya no se declaraba en ninguna parte, así que esto era un ReferenceError en CADA
+    // carga — se comía el resto de bootApp (nav-shrink, cierre del sheet por el fondo,
+    // etiquetas del nav, escucha remota) sin que se notara, porque los handlers de click
+    // viven a nivel de módulo y la app SEGUÍA respondiendo. Cazado el 4-ago al verificar el
+    // handoff 6. Lección: «consola limpia» hay que comprobarlo en la carga, no solo tras
+    // interactuar — el error salta antes de que empiece tu prueba.
+    if (!window.E3Sync || !window.E3Sync.esperarSesion) {
       iniciarEscuchaRemota(); // sandbox/flujo antiguo: no-op sin familyId cacheado
     } else {
       window.E3Sync.esperarSesion().then(function (user) {
@@ -2228,6 +2277,8 @@
     render();
     actualizarNavLabels();
     document.body.classList.add('landing-open');
+
+    armarLaunch();
 
     // nav se encoge a solo-iconos al bajar y recupera al subir — puerto directo de
     // e3foods.html (setupNavShrink), mismo throttle por tiempo (rAF no siempre dispara

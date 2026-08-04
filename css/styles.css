@@ -114,6 +114,11 @@ html { -webkit-text-size-adjust: 100%; }
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+    /* el delay TAMBIÉN, o `animation-fill-mode:both` deja el elemento en su fotograma 0%
+       (opacidad 0) durante toda la espera: con reduced-motion el subtítulo de Sign in
+       tardaba 1,3 s en existir y las 3 hojas .15/.35/.55 s. Lo que pide reduced-motion es
+       verlo YA en su estado final, no escalonado (00-fundamentos.md §Accesibilidad). */
+    animation-delay: 0s !important;
   }
 }
 
@@ -143,35 +148,19 @@ input, select { font-family: inherit; font-size: 16px; }
 :focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 
 /* ============================================================
-   Landing — cantera de e3foods.html (.landing-screen/.landing-hero),
-   con la geometría v1 del CTA validada en el móvil real. No tocar.
+   LAUNCH — handoff 6 (01-launch.md), RÉPLICA EXACTA. Sustituye la portada
+   con foto+CTA anterior: estática a propósito, sin interacción, sin texto —
+   navega sola a los ≥700ms (ver cerrarLanding()/bootApp() en app.js).
+   Valores literales del handoff, no tocar sin el mismo handoff en la mano.
    ============================================================ */
 .landing-screen {
   position: fixed; inset: 0; z-index: 300;
-  background: #F7F3EC; /* crema de la portada — sin flash oscuro ni franja superior */
+  background: #F1EBE0;
   height: 100vh; height: 100dvh;
+  display: flex; align-items: center; justify-content: center;
 }
 body.landing-open { overflow: hidden; }
-.landing-hero {
-  position: absolute; inset: 0; width: 100%; height: 100%;
-  object-fit: cover; object-position: center top;
-}
-/* top:93.5% = centro del hueco blanco de la portada (87%→100% de la imagen) — con
-   object-fit:cover en retrato el recorte cae en los lados, así que el % coincide con
-   el hueco real y el CTA respira bajo el claim en vez de pegarse a él. */
-/* especificidad 0,2,0 a propósito: .btn-primary (0,1,0, definida más abajo en el
-   archivo) fija width:100% y gana por orden de cascada a un simple ".landing-cta"
-   — con left+right+width los tres a la vez, el navegador ignora "right" y el botón
-   se sale por el borde derecho. Selector compuesto para que esto no vuelva a pasar
-   pase lo que pase el orden de las reglas. */
-.btn-primary.landing-cta {
-  position: absolute; left: 24px; right: 24px;
-  top: 93.5%; transform: translateY(-50%);
-  width: auto;
-  box-shadow: 0 10px 32px rgba(8, 18, 34, .4);
-  animation: fadeIn var(--dur-slow) var(--ease-out);
-}
-@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.landing-logo { display: block; width: 206px; height: auto; animation: e3fade .25s ease both; }
 
 /* Banner de la vista de ejemplo (onboarding con familia demo, P1 2026-07-16) —
    sticky arriba de todo mientras modoDemo=true en app.js, por encima incluso
@@ -246,24 +235,15 @@ body.wizard-open { overflow: hidden; }
 .onb-scroll::-webkit-scrollbar { width: 0; height: 0; }
 .onb-scroll { scrollbar-width: none; }
 
-.onb-nombre, .onb-ficha { max-width: 480px; margin: 0 auto; }
-.onb-nombre { padding: calc(var(--space-5) + var(--safe-t)) 26px calc(var(--space-4) + var(--safe-b)); }
-.onb-ficha { padding: calc(var(--space-4) + var(--safe-t)) 22px calc(var(--space-4) + var(--safe-b)); }
+.onb-ficha { max-width: 480px; margin: 0 auto; padding: calc(var(--space-4) + var(--safe-t)) 22px calc(var(--space-4) + var(--safe-b)); }
 .onb-cuerpo { max-width: 480px; margin: 0 auto; padding: 18px 22px 26px; animation: e3fade var(--dur-base) ease both; }
 @keyframes e3fade { from { opacity: 0; } to { opacity: 1; } }
 
-/* --- Paso 1 · nombre de familia ------------------------------------------ */
-.onb-saludo { font-size: 13px; font-weight: 800; color: var(--muted); }
-.onb-titular { font-family: var(--font-display); font-size: 31px; font-weight: 800; line-height: 1.1; letter-spacing: -.5px; color: var(--ink); margin-top: 12px; }
-.onb-campo-linea { display: block; margin-top: 26px; }
+/* .onb-saludo/.onb-titular/.onb-campo-linea/.onb-input-serif/.onb-input-select (Paso 1 ·
+   nombre de familia) murieron con el handoff 6 — sustituidos por .h6-familia-* más abajo
+   en este fichero (RÉPLICA EXACTA, 04-familia.md). .onb-eyebrow y .onb-select-wrap SIGUEN
+   vivos: los usa el resto del asistente de persona (fuera de alcance de este handoff). */
 .onb-eyebrow { display: block; font-size: 11px; font-weight: 800; letter-spacing: 1.1px; text-transform: uppercase; color: var(--muted); }
-.onb-input-serif, .onb-input-select {
-  width: 100%; border: none; border-bottom: 1.5px solid rgba(26, 23, 18, .18);
-  background: none; color: var(--ink); font-family: inherit; padding: 9px 0; margin-top: 6px;
-}
-.onb-input-serif { font-family: var(--font-display); font-size: 22px; font-weight: 600; }
-.onb-input-serif:focus, .onb-input-select:focus { outline: none; border-bottom-color: var(--gold); border-bottom-width: 2px; }
-.onb-input-select { font-size: 16px; font-weight: 600; appearance: none; -webkit-appearance: none; }
 .onb-select-wrap { position: relative; display: block; }
 .onb-select-wrap > .lucide, .onb-select-wrap > svg { position: absolute; right: 2px; bottom: 14px; width: 18px; height: 18px; color: var(--muted); pointer-events: none; }
 .onb-enlace {
@@ -285,11 +265,11 @@ body.wizard-open { overflow: hidden; }
    hay mensaje de error en el handoff, el gris ES el mensaje) — aria-disabled lo
    anuncia y el handler corta. */
 .onb-cta-off { background: rgba(26, 23, 18, .1); color: rgba(26, 23, 18, .4); box-shadow: none; }
-/* Apple "pronto" (handoff 5, §3): marca real, sin acción — visible, no funcional
-   (sin proveedor Apple dado de alta en Firebase Auth todavía). */
-.onb-cta-apple { background: var(--panel); color: var(--ink); border: 1px solid rgba(26, 23, 18, .12); opacity: .55; margin-top: 10px; cursor: default; }
-.onb-marca-ico { display: block; }
-.onb-apple-pronto { text-align: center; font-size: 11px; font-weight: 800; letter-spacing: .6px; text-transform: uppercase; color: var(--muted); margin-top: -4px; }
+/* .onb-cta-apple/.onb-marca-ico/.onb-apple-pronto y todo el bloque "Pantalla de acceso" /
+   "Alta de cuenta" (.acceso-cuerpo/.acceso-cab/.acceso-vias/.acceso-via-apple/.acceso-form/
+   .acceso-politica/.acceso-error/.acceso-aviso y compañía) murieron aquí: el handoff 6
+   sustituyó Sign in y Email+contraseña enteros por el bloque .h6-* de más abajo en este
+   fichero (RÉPLICA EXACTA — ver 02-signin.md/03-email-password.md). Sin usos ya en ui.js. */
 
 /* --- Pasos de persona: cabecera y pie ------------------------------------ */
 .onb-cab { flex: none; padding: calc(var(--space-4) + var(--safe-t)) 22px 12px; background: var(--bg); box-shadow: 0 12px 22px -20px rgba(30, 26, 20, .8); z-index: 2; }
@@ -416,6 +396,125 @@ body.wizard-open { overflow: hidden; }
 .onb-fin-check .lucide, .onb-fin-check svg { width: 42px; height: 42px; stroke-width: 2.5; }
 .onb-fin-tit { font-family: var(--font-display); font-size: 30px; font-weight: 800; line-height: 1.08; letter-spacing: -.5px; color: var(--ink); margin-top: 26px; }
 .onb-fin-sub { font-size: 15.5px; font-weight: 500; color: var(--soft); line-height: 1.5; margin-top: 12px; }
+
+/* ============================================================
+   HANDOFF 6 — Sign in / Email y contraseña / Revisa tu correo / Familia
+   (02-signin.md, 03-email-password.md, 04-familia.md — LAUNCH está arriba,
+   junto a .landing-screen). RÉPLICA EXACTA: cada valor es literal, copiado
+   del handoff — fuera de la escala de 8px y de --gold/--space-*, a propósito.
+   Prefijo .h6- reservado para ESTAS 4 pantallas: no lo reutilices en ningún
+   otro sitio, y no reutilices aquí .onb-cta/.per-input/.onb-atras (llevan
+   valores DISTINTOS y los comparte el asistente de persona, fuera de alcance).
+   ============================================================ */
+@keyframes e3rise { 0% { opacity: 0; transform: translateY(22px); } 100% { opacity: 1; transform: none; } }
+@keyframes e3sf0 { 0%{opacity:0;transform:translate(-26px,-132px) rotate(-34deg) scale(.94)} 14%{opacity:1} 38%{transform:translate(13px,-92px) rotate(15deg)} 60%{transform:translate(-11px,-58px) rotate(-10deg)} 80%{transform:translate(9px,-28px) rotate(7deg)} 92%{transform:translate(-4px,-10px) rotate(-3deg)} 100%{opacity:1;transform:translate(0,0) rotate(0deg) scale(1)} }
+@keyframes e3sf1 { 0%{opacity:0;transform:translate(24px,-142px) rotate(32deg) scale(.94)} 14%{opacity:1} 38%{transform:translate(-15px,-98px) rotate(-15deg)} 60%{transform:translate(12px,-62px) rotate(11deg)} 80%{transform:translate(-9px,-30px) rotate(-7deg)} 92%{transform:translate(4px,-11px) rotate(3deg)} 100%{opacity:1;transform:translate(0,0) rotate(0deg) scale(1)} }
+@keyframes e3sf2 { 0%{opacity:0;transform:translate(-18px,-138px) rotate(26deg) scale(.94)} 16%{opacity:1} 40%{transform:translate(16px,-94px) rotate(-18deg)} 62%{transform:translate(-12px,-58px) rotate(12deg)} 82%{transform:translate(10px,-28px) rotate(-8deg)} 93%{transform:translate(-4px,-10px) rotate(4deg)} 100%{opacity:1;transform:translate(0,0) rotate(0deg) scale(1)} }
+
+/* --- Sign in / Crear cuenta (02-signin.md) --- */
+/* overflow-y:auto añadido (el mock no scrollea esta pantalla): la casilla de política que
+   se inyecta aquí en modo crear (ver politicaCheckbox() en ui.js, fuera del mock de esta
+   pantalla concreta) puede empujar el pie fuera de los 844px en viewports más bajos — sin
+   esto quedaría recortado e inalcanzable, no solo "sin scrollbar". A 392×844 sin política
+   no se activa: mismo resultado visual que el literal position:absolute;inset:0. */
+/* Fondo #F1EBE0 EXPLÍCITO en las 4 pantallas del handoff (00-fundamentos.md: "fondo de
+   pantalla base de la app"). Sin él heredan --bg (#F5F0E8) y además --bg SE MUEVE con la
+   franja horaria (:root[data-momento]), así que el fondo del onboarding cambiaba según la
+   hora y dejaba escalón con LAUNCH a los 700 ms. No se toca --bg: eso repintaría la app
+   entera, que está fuera de este handoff. */
+.h6-acceso, .h6-mailpass, .h6-verify, .h6-familia-body { background: #F1EBE0; }
+.h6-acceso { position: absolute; inset: 0; overflow-y: auto; display: flex; flex-direction: column; animation: e3fade .3s ease both; }
+.h6-acceso-cab { flex: none; display: flex; align-items: center; padding: 54px 20px 0; }
+.h6-acceso-atras { flex: none; width: 38px; height: 38px; border-radius: 50%; border: none; cursor: pointer; background: rgba(26, 23, 18, .06); color: #1A1712; display: flex; align-items: center; justify-content: center; }
+.h6-acceso-atras .lucide, .h6-acceso-atras svg { width: 18px; height: 18px; }
+.h6-acceso-titulo { flex: 1; text-align: center; font-size: 15px; font-weight: 800; color: #1A1712; margin-right: 38px; }
+.h6-acceso-centro { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0 30px; }
+.h6-acceso-logo-wrap { position: relative; width: 200px; flex: none; }
+.h6-acceso-logo-base { display: block; width: 200px; height: auto; position: relative; z-index: 1; }
+.h6-acceso-hoja { position: absolute; z-index: 2; transform-origin: center; }
+.h6-acceso-sub { font-size: 16px; font-weight: 600; color: rgba(26, 23, 18, .55); margin-top: 26px; text-align: center; line-height: 1.45; animation: e3rise .7s cubic-bezier(.2, .7, .2, 1) both; animation-delay: 1.3s; }
+.h6-acceso-pie { flex: none; display: flex; flex-direction: column; gap: 10px; padding: 0 26px 34px; }
+.h6-btn { width: 100%; border: none; cursor: pointer; border-radius: 100px; padding: 12px 16px; display: flex; align-items: center; gap: 12px; font-family: inherit; }
+.h6-btn .lucide, .h6-btn svg { display: block; }
+.h6-btn-oro { background: oklch(0.82 0.14 82); box-shadow: 0 14px 30px -14px rgba(150, 120, 60, .75); }
+.h6-btn-midnight { background: #2E3138; box-shadow: 0 14px 30px -16px rgba(30, 32, 40, .9); }
+.h6-btn-chip { flex: none; width: 25px; height: 25px; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #2E3138; }
+.h6-btn-chip-oro { background: rgba(255, 255, 255, .5); }
+.h6-btn-chip-blanco { background: #fff; box-shadow: 0 1px 3px rgba(30, 26, 20, .18); }
+.h6-btn-label { flex: 1; text-align: center; font-weight: 800; font-size: 15px; margin-left: -37px; }
+.h6-btn-label-oro { color: #2E3138; }
+.h6-btn-label-midnight { color: #F7F3EC; }
+.h6-btn-apple { width: 100%; border: 1px dashed rgba(26, 23, 18, .16); cursor: default; border-radius: 100px; padding: 9px 16px; background: rgba(255, 255, 255, .42); display: flex; flex-direction: column; align-items: center; gap: 2px; font-family: inherit; }
+.h6-btn-apple-fila { display: flex; align-items: center; gap: 9px; opacity: .34; }
+.h6-btn-apple-txt { font-weight: 800; font-size: 15px; color: #1A1712; }
+.h6-btn-apple-pronto { font-size: 9.5px; font-weight: 800; letter-spacing: .7px; text-transform: uppercase; color: rgba(26, 23, 18, .3); }
+.h6-link-gold { background: none; border: none; cursor: pointer; font-family: inherit; padding: 10px; font-size: 13.5px; font-weight: 700; color: oklch(0.72 0.13 75); }
+.h6-link-muted { background: none; border: none; cursor: pointer; font-family: inherit; font-size: 13px; font-weight: 700; color: rgba(26, 23, 18, .45); }
+
+/* --- Checkbox 22×22 compartido política (03-email-password.md) / salud (04-familia.md) --- */
+.h6-check { position: relative; display: flex; gap: 10px; align-items: flex-start; cursor: pointer; }
+.h6-check-input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
+.h6-check-box { flex: none; width: 22px; height: 22px; border-radius: 7px; margin-top: 1px; display: flex; align-items: center; justify-content: center; background: rgba(26, 23, 18, .07); color: transparent; box-shadow: inset 0 0 0 1.5px rgba(26, 23, 18, .16); }
+.h6-check-input:checked ~ .h6-check-box { background: oklch(0.82 0.14 82); color: #2E3138; box-shadow: none; }
+.h6-check-txt { font-size: 13px; font-weight: 600; color: rgba(26, 23, 18, .65); line-height: 1.45; }
+/* position/z-index NO son decoración: .h6-check-input es absolute;inset:0 y, por estar
+   posicionado, pinta ENCIMA del texto en flujo — sin esto el enlace de la política queda
+   debajo y pulsarlo marca la casilla en vez de abrirla (RGPD: tiene que ser alcanzable).
+   Cazado el 4-ago verificando el handoff 6. */
+.h6-check-txt a { position: relative; z-index: 1; color: oklch(0.42 0.06 250); text-decoration: underline; }
+
+/* --- CTA dorado, dos radios A PROPÓSITO (03-email-password.md): 100px aquí, 15px en
+   verificación/familia — no unificar, es del diseño. --- */
+.h6-cta { width: 100%; border: none; cursor: pointer; padding: 17px; display: flex; align-items: center; justify-content: center; gap: 9px; font-family: inherit; }
+.h6-cta .lucide, .h6-cta svg { width: 18px; height: 18px; }
+.h6-cta-r100 { border-radius: 100px; }
+.h6-cta-r15 { border-radius: 15px; }
+.h6-cta-oro14 { background: oklch(0.82 0.14 82); box-shadow: 0 14px 30px -14px rgba(150, 120, 60, .75); }
+.h6-cta-oro12 { background: oklch(0.82 0.14 82); box-shadow: 0 12px 26px -12px rgba(150, 120, 60, .7); }
+.h6-cta-gris { background: rgba(26, 23, 18, .1); box-shadow: none; }
+.h6-cta-txt { font-weight: 800; font-size: 16px; color: #2E3138; }
+.h6-cta-txt-gris { color: rgba(26, 23, 18, .4); }
+.h6-error { font-size: 13.5px; font-weight: 600; line-height: 1.45; color: #C0392B; margin-top: 10px; }
+.h6-aviso { font-size: 13.5px; font-weight: 500; line-height: 1.45; color: rgba(26, 23, 18, .55); margin-top: 10px; }
+
+/* --- Email y contraseña (03-email-password.md §3.1) --- */
+.h6-mailpass { position: absolute; inset: 0; overflow-y: auto; animation: e3fade .3s ease both; }
+.h6-mailpass-inner { min-height: 100%; display: flex; flex-direction: column; }
+.h6-mailpass-body { flex: 1; display: flex; flex-direction: column; padding: 34px 26px 30px; }
+.h6-eyebrow { display: block; font-size: 11.5px; font-weight: 800; letter-spacing: .8px; text-transform: uppercase; color: rgba(26, 23, 18, .45); }
+.h6-input-line { width: 100%; border: none; border-bottom: 1.5px solid rgba(26, 23, 18, .18); outline: none; background: none; font-family: inherit; font-size: 16.5px; font-weight: 600; color: #1A1712; padding: 11px 0; margin-top: 6px; }
+
+/* --- Revisa tu correo (03-email-password.md §3.2) --- */
+.h6-verify { position: absolute; inset: 0; overflow-y: auto; animation: e3fade .3s ease both; }
+.h6-verify-body { min-height: 100%; padding: 60px 26px 32px; display: flex; flex-direction: column; }
+.h6-verify-badge { align-self: flex-start; display: inline-flex; align-items: center; gap: 7px; background: rgba(30, 49, 56, .07); border-radius: 999px; padding: 6px 13px; font-size: 11px; font-weight: 800; letter-spacing: .7px; text-transform: uppercase; color: #2E3138; }
+.h6-verify-badge .lucide, .h6-verify-badge svg { width: 14px; height: 14px; }
+.h6-verify-titulo { font-family: 'Playfair Display', serif; font-size: 29px; font-weight: 800; color: #1A1712; line-height: 1.1; letter-spacing: -.5px; margin-top: 18px; }
+.h6-verify-texto { font-size: 14.5px; font-weight: 600; color: rgba(26, 23, 18, .6); margin-top: 10px; line-height: 1.5; }
+.h6-verify-texto strong { color: #1A1712; }
+
+/* --- Familia ("Ayúdame a conoceros", 04-familia.md) --- */
+.h6-familia-body { min-height: 100%; padding: 64px 26px 36px; display: flex; flex-direction: column; }
+.h6-familia-kicker { font-size: 13px; font-weight: 800; color: rgba(26, 23, 18, .45); }
+.h6-familia-titulo { font-family: 'Playfair Display', serif; font-size: 28px; font-weight: 500; color: #1A1712; line-height: 1.14; letter-spacing: -.4px; margin-top: 12px; }
+.h6-familia-titulo-dorado { font-style: italic; font-weight: 500; color: oklch(0.72 0.13 75); }
+.h6-familia-campo-nombre { margin-top: 30px; }
+.h6-familia-campo-region { margin-top: 26px; }
+.h6-familia-input { width: 100%; border: none; border-bottom: 1.5px solid rgba(26, 23, 18, .18); outline: none; background: none; font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 600; color: #1A1712; padding: 9px 0; margin-top: 6px; }
+.h6-familia-select-wrap { position: relative; }
+.h6-familia-select { width: 100%; border: none; border-bottom: 1.5px solid rgba(26, 23, 18, .18); outline: none; background: none; font-family: inherit; font-size: 16px; font-weight: 600; color: #1A1712; padding: 11px 0; margin-top: 6px; appearance: none; -webkit-appearance: none; }
+.h6-familia-chevron { position: absolute; right: 2px; bottom: 15px; width: 18px; height: 18px; color: rgba(26, 23, 18, .4); pointer-events: none; }
+.h6-familia-consent { margin-top: 26px; }
+/* margin-top:22px literal del handoff (04-familia.md y reference/Onboarding.dc.html):
+   se había perdido al pasar el <button> inline del mock a clases. Sin él, el CTA queda
+   pegado al consentimiento. */
+.h6-familia-cta { margin-top: 22px; }
+.h6-familia-pie { text-align: center; margin-top: 26px; }
+/* spec: <a href="#">, "estilo de enlace por defecto del sistema" (color + subrayado del
+   `a{}` global del mock, tamaño heredado del body ahí = 16px/400). Aquí es un <button
+   data-action> — no un <a href> real — para no disparar la navegación por defecto del
+   href="#" (salto de scroll) a través de la delegación de clicks de app.js; mismo look. */
+.h6-familia-pie-link { background: none; border: none; cursor: pointer; padding: 0; font-family: inherit; font-size: 16px; font-weight: 400; color: oklch(0.42 0.06 250); text-decoration: underline; }
 
 /* ============================================================
    Persona — controles compartidos (asistente + ficha en acordeón)
@@ -1100,7 +1199,11 @@ body.sheet-open { overflow: hidden; }
    para que la tira de días no cambie de altura ni desalinee el número (Roger 21-jul) */
 .ph-dia-cole-vacio { display: block; width: 1em; height: 1em; }
 .ph-dia-hoy { border-color: var(--gold); }
-.ph-dia-activo { border: none; background: linear-gradient(180deg, var(--gold-grad-a), var(--gold-grad-b)); color: var(--ink); box-shadow: 0 6px 14px -8px var(--gold-grad-b); }
+/* El día activo comparte degradado con el CTA «me apetece otra cosa» (Roger, 4-ago): eran dos
+   naranjas distintos en la misma pantalla — este salía del dorado corporativo (--gold-grad-*,
+   más amarillo) y el del CTA es el degradado propio y hardcodeado de esa card. Ahora es el
+   MISMO, literal. Si se toca el del CTA (.ph-cta), hay que tocar este. */
+.ph-dia-activo { border: none; background: linear-gradient(180deg, oklch(0.85 0.15 82), oklch(0.76 0.17 62)); color: var(--ink); box-shadow: 0 6px 14px -8px oklch(0.72 0.17 62 / .8); }
 .ph-dia-activo .ph-dia-cole { color: var(--ink); opacity: .7; }
 
 /* Aviso de despensa a midnight (sistema-color.md, "aplicado en este pase"): antes

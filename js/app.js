@@ -2027,7 +2027,12 @@
     'ficha-guardar-volver': function () { fichaGuardarYVolver(); },
     'ir-compra-hoy': function () { rangoCompra = 'hoy'; irAVista('compra'); },
 
-    'toggle-presente': function (btn) { togglePresente(Number(btn.dataset.dia), btn.dataset.tipo, btn.dataset.miembro); },
+    // handoff 7, §2.5: la fila del desplegable también dispara este mismo toggle (no solo
+    // el avatar de la card) — stopPropagation por si en el futuro esta fila queda anidada
+    // bajo algo con su propio handler; hoy no hace falta para el cierre por toque fuera
+    // (el listener de captura de más abajo ya perdona todo lo que esté dentro de
+    // [data-whopop], y la fila vive dentro de .ph-estado-pop).
+    'toggle-presente': function (btn, e) { if (e && e.stopPropagation) e.stopPropagation(); togglePresente(Number(btn.dataset.dia), btn.dataset.tipo, btn.dataset.miembro); },
     'toggle-compra-item': function (btn) { toggleCompraItem(btn.dataset.id); },
     'vaciar-compra': function () { vaciarCompra(); },
     'segmento-compra': function (btn) { rangoCompra = btn.dataset.rango; render(); },
@@ -2085,6 +2090,9 @@
     'abrir-miembro-ficha': function (btn) { abrirMiembroFicha(btn.dataset.id); },
     'miembro-volver': function () { cerrarMiembroFicha(); },
     'abrir-resumen-semana': function () { abrirResumenSemana(); },
+    // handoff 7, §03: sin coste real que cablear (ver cabecera de renderSheetGastoSemanal
+    // en ui.js) — la hoja pinta su propio pendienteV6, no hace falta pasarle nada más.
+    'abrir-gasto-semanal': function () { abrirSheet(UI.renderSheetGastoSemanal()); },
     'valorar-plato': function (btn) { var plan = planActivo(); if (!plan) return; valorarPlato(diaIndexEnSemana(plan, btn.dataset.fecha), btn.dataset.tipo, btn.dataset.valor); },
     'abrir-cambiar': function (btn) { estadoBadgeAbierto = null; abrirCambiar(Number(btn.dataset.dia), btn.dataset.tipo); },
     'cerrar-sheet': function () { cerrarSheet(); },
@@ -2108,6 +2116,22 @@
     // cualquier ítem del dropdown del hamburguesa cierra el dropdown al elegirlo
     if (btn.closest('#menu-dropdown')) cerrarMenuHamburguesa();
   });
+
+  // handoff 7, §2.6 NO NEGOCIABLE — cierre del desplegable de estado al tocar fuera.
+  // Tres detalles que no se pueden cambiar (copiados literales del handoff):
+  //  · pointerdown, no click: cierra al EMPEZAR el gesto, no al soltar.
+  //  · fase de CAPTURA (tercer argumento `true`): sin ella, los stopPropagation de los
+  //    botones internos de la otra card (p.ej. su propio badge o sus avatares) impedirían
+  //    que el evento llegue aquí, y el desplegable se quedaría abierto al tocar la foto
+  //    de la otra tarjeta del pager.
+  //  · [data-whopop] está en los dos badges y en el propio desplegable — closest() cubre
+  //    también las filas de persona sin que necesiten su propia marca.
+  document.addEventListener('pointerdown', function (e) {
+    if (!estadoBadgeAbierto) return;
+    if (e.target && e.target.closest && e.target.closest('[data-whopop]')) return;
+    estadoBadgeAbierto = null;
+    render();
+  }, true);
 
   // Enter/espacio activan [role="button"] (p.ej. .card-comida-fila, un <div>
   // porque contiene botones anidados de avatares — un <button> real no puede

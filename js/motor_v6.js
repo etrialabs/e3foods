@@ -293,7 +293,14 @@ module.exports = {
   },
 
   // ── ventanas de variedad, valores iniciales (spec §3 — A CALIBRAR §11)
-  VENTANAS: { plato_dias: 7, M2_servicios: 4, M3_servicios: 2, M4_servicios: 2 },
+  // ⚑ 4-ago (Roger): `plato_dias` baja de 7 a 5. Razón medida, no estética: el menú REAL del
+  //   comedor escolar que vive en el harness repite tortilla francesa a 5 días y filete de cerdo
+  //   a 6 (Lesseps, mayo 2026). Exigirle 7 al motor era pedirle más de lo que se pide una cocina
+  //   profesional con menú publicado. Igualar las dos realidades da margen a las cenas de casa.
+  // ⚑ `plato_dias_R3` es la ventana del peldaño R3. Estaba CABLEADA a 5 en `t2_relleno`, así que
+  //   al bajar la base a 5 R3 pasaba a declarar una relajación sin relajar nada — el motor diría
+  //   «hemos acercado un plato que gustó hace poco» sin haber acercado ninguno. A CALIBRAR.
+  VENTANAS: { plato_dias: 5, plato_dias_R3: 3, M2_servicios: 4, M3_servicios: 2, M4_servicios: 2 },
   MARGEN_AFORO: 1.5,                   // pre-vuelo §7: aforo < mínimo×margen ⇒ hueco informativo
                                        // (spec §11 «margen aforo 1,5×» — A CALIBRAR)
   POOL_ESTRECHO_CATEGORIAS: 3,         // pre-vuelo: < N categorías vivas por servicio ⇒ hueco
@@ -355,11 +362,19 @@ module.exports = {
     // tres platos a la misma persona. A CALIBRAR §11.
     LIMITE_REALIDAD: { min: 0.4, max: 2.0 }
   },
-  MARGEN_TECHO_T1: 0.85,               // T1 solo compromete esta fracción de cada techo al
-                                       // presupuestar (los gramos secundarios —el embutido del
-                                       // potaje, el bacon del salteado— los consume T2 y el
-                                       // esqueleto no los ve; medido: 3 carnes por medianas
-                                       // 3,86/4 dejaban la semana sin cierre) — A CALIBRAR
+  // ⚑ `MARGEN_TECHO_T1` BORRADO el 4-ago-2026 (§20.40). Estaba declarado en 0,85 y NINGÚN código
+  // lo leía —`t1_esqueleto` tenía un `margenTecho = 1` cableado al lado—, o sea un mando de
+  // calibración que no calibraba. Al cerrar el bloque 10 se evaluó cablearlo y NO se hizo, con
+  // dos razones medidas:
+  //  · No arregla el problema para el que se escribió. Ese problema existe y está medido: el
+  //    techo de `carne-total` lo ceden los MENORES en 33 de 41 casos de la parrilla, y con solo
+  //    2 casillas de carne acumulan 5 tomas — la carne de más entra por el chorizo del potaje y
+  //    el jamón de la pizza, que son cubos SECUNDARIOS de una casilla que no es de carne. Un
+  //    margen sobre el techo no ve esos gramos: T1 razona sobre categorías, no sobre platos.
+  //  · Aplicado, rompe la mesa mixta. El techo de carne roja de un menor es 1, y 1×0,85 = 0,85
+  //    veta la PRIMERA casilla: ninguna mesa con un niño podría servir carne roja jamás.
+  // Queda como fila abierta de `CONFORMIDAD.md` con su número, no como una constante muerta que
+  // aparenta gobernar algo.
   VENTANA_DIARIO_SERVICIOS: 28,        // diario D3: más allá se olvida a propósito (spec §3)
   VENTANA_DIARIO_LOCAL_SERVICIOS: 112, // lo que el CLIENTE guarda (§15.1: ~8 semanas × 14). Mayor
                                        // que la ventana de memoria a propósito: la ventana móvil
@@ -383,17 +398,28 @@ module.exports = {
     // motivo literal «procesada del niño n1 (techo mensual, aprox semanal)». Ahora T1 lo ve.
     // El valor es el mismo número repartido a semana, escrito una sola vez abajo: dos copias de
     // un techo es cómo T1 y T2 acabaron en desacuerdo.
-    'carne-procesada': { adulto: [null, null], nino: [null, 2 / 4] }
+    // ⚑ 4-ago-2026 (§20.39): el techo del menor SALE de aquí. Era `2/4` —el techo mensual de AC25
+    // repartido a semana— y no podía cumplirse: no existe media ración. Vive ahora en
+    // `CUOTAS_MENSUALES`, en su periodo, contado sobre el diario. Sin cota semanal para nadie.
+    'carne-procesada': { adulto: [null, null], nino: [null, null] }
   },
   // fila 5.5 · los techos de D2 con `limite_g_dia` NO tienen todos la misma ventana (el atún es
   // de mes, los nitratos de día), así que la ventana es DATO DEL BANCO —`ventana_dias` en
   // `seguridad_infantil`— y no una constante de aquí. Escribirla en config habría vuelto a poner
   // un número de la fuente lejos de su unidad, que es el bug que 5.4 pagó. El contador vive en
   // `src/ventana_movil.js` y arranca del diario D3, la única memoria del motor que pasa de la semana.
-  PROCESADA_MENSUAL_NINO_MAX: 2,       // AC25 ≤2/mes → ventana móvil de 28 días (convención declarada)
-                                       // ⚠️ el techo semanal del menor en CUOTAS es este /4. Al
-                                       // cablear la ventana móvil real (fila 5.5) los dos pasan a
-                                       // salir del diario y esta aproximación muere.
+  // ── §20.39 · TECHOS QUE LA FUENTE PUBLICA POR MES, CONTADOS POR MES (4-ago-2026)
+  // AC25 publica la carne procesada de un menor como ≤2 al MES. Vivía repartida a semana —el
+  // `2/4` de `CUOTAS`— y el propio funcional la marcaba como imposible: no existe media ración y
+  // cualquier ración de un menor la supera. Medido con el techo semanal: 19 de 164 veredictos por
+  // encima. Ahora el techo es el de la fuente, con su periodo, y el contador arranca del diario
+  // D3 (`ventana_movil.js` §tomasPreviasDeCubo), igual que el atún. El techo SEMANAL de este cubo
+  // desaparece de `CUOTAS` porque una banda de semana no puede expresar un techo de mes.
+  CUOTAS_MENSUALES: {                  // cubo → { tramo: máximo de TOMAS en la ventana }
+    'carne-procesada': { nino: 2 }     // AC25 ≤2/mes · adulto: «minimizar», sin cifra publicada
+  },
+  VENTANA_MENSUAL_DIAS: 30,            // el mes de la fuente, en días reales — la misma convención
+                                       // que `seguridad_infantil.ventana_dias` usa para el atún
 
   // ── REFUNDACIÓN DE LA UNIDAD (spec §4, OK Roger 2-ago): la cuota es FRECUENCIA en TOMAS;
   //    la cantidad es personal en gramos; los techos de salud son absolutos en gramos/semana.
@@ -439,19 +465,27 @@ module.exports = {
   EJE_MIN_FRACCION: 0.5,               // misma convención que TOMA_MIN_FRACCION, deliberadamente:
                                        // media ración de referencia del tramo. A CALIBRAR §11
   TECHOS_SALUD_G_SEMANA: {             // absolutos y poblacionales: el riesgo no escala con la
-    'carne-roja': 350                  // persona. WCRF/AICR 350-500 g/semana COCINADA — Roger
-                                       // dicta el extremo DESEABLE, no el permisivo («ok 350»,
-                                       // 2-ago). Techo de salud: innegociable (spec §7)
+    'carne-roja': 500                  // persona. WCRF/AICR publica 350-500 g/semana COCINADA.
+                                       // ⚑ 4-ago: Roger pasa de 350 a 500 — sigue DENTRO del
+                                       // rango de la fuente, ahora en su extremo permisivo.
+                                       // Techo de salud: innegociable, jamás se relaja.
   },
   FRITOS_SEMANA_MAX: 2,                // regla de la casa (spec §4) — servicios, no raciones
   ESQUELETOS_POR_SEMANA: 6,            // cuántos repartos legales distintos puede pedirle T2 a T1
                                        // antes de rendirse (bucle T1↔T2). El canal era de un
                                        // sentido y un intento: la semana moría con un reparto
                                        // que otro esqueleto legal sí habría llenado.
+  // ⚑ §20.41 · SON DOS CONSTANTES Y NINGUNA SOBRA (revisado el 4-ago-2026 y verificado con
+  // `grep`: las dos se leen — `t1_esqueleto.js:63-64` y `generar.js:121`). No son dos copias del
+  // mismo número: son los DOS extremos de un cupo, y el dictado de Roger del 3-ago tiene los dos
+  // dentro — «acepto 1 o 2». `_MAX` es el techo duro; el otro es el OBJETIVO que puede ceder a 0
+  // con descargo R0. Lo que estaba mal era el NOMBRE: `ELABORADO_POR_SEMANA` a secas parecía «el
+  // número», y por eso el aviso §20.41 lo leyó como duplicado. Renombrado a `_MIN`, que es lo que
+  // es, el par se lee solo y el aviso queda cerrado.
   ELABORADO_POR_SEMANA_MAX: 2,         // dictado Roger 3-ago: «acepto 1 o 2, siempre en comidas
                                        // de finde, jamás en una cena» (sábado/domingo mediodía,
                                        // donde va la cuota grande del día)
-  ELABORADO_POR_SEMANA: 1,             // OBJETIVO, no obligación. Dictado Roger 3-ago, matiza el
+  ELABORADO_POR_SEMANA_MIN: 1,         // OBJETIVO, no obligación. Dictado Roger 3-ago, matiza el
                                        // «una por semana» del 1-ago: «el plato de calma es una
                                        // OPCIÓN, 1 o 2, pero no es obligatorio — quizá están de
                                        // viaje, comen fuera, o en una casa rural con un pollo al
@@ -950,6 +984,21 @@ function unidadDe(datos, alimentoId) {
   return ix[alimentoId];
 }
 
+// ── DE FRACCIÓN DE UNIDAD A PIEZAS CONTADAS (§10.8, decisión de Roger 4-ago-2026)
+// El funcional escribe la tabla del huevo con una fila que fija el borde: «ligante de rebozado o
+// empanado, **de 15 a 30 g — 0/0**». Treinta gramos son media unidad exacta, y `Math.round` los
+// subía a 1 porque JavaScript desempata el 0,5 hacia arriba. Medido el 4-ago sobre el banco: son
+// tres líneas reales —`torrijas` 30 g, `pastel-carne` 30 g, `pollo-pepitoria` 30 g— y la de
+// torrijas es un POSTRE, que se elige por política y no pasa por el techo de `contratos`: un
+// huevo entero del cupo semanal entraba por la puerta que nadie vigila.
+//
+// El corte es ESTRICTO, no una tolerancia: cuenta una pieza quien pasa de media, no quien la
+// iguala. Es la misma doctrina de §10.9 —«por debajo del ruido de la propia unidad, afinar es
+// falsa precisión»—, con el ruido puesto donde la fuente lo pone: la unidad mediana del huevo es
+// 53-63 g, así que medio huevo cae dentro del margen de un huevo real y redondear al alza inventa
+// precisión que el dato no tiene. El empate va a la baja SIEMPRE, incluido 1,5 → 1.
+const aPiezas = x => Math.max(0, Math.ceil(x - 0.5 - 1e-9));
+
 // ── LA FUNCIÓN DE LA UNIDAD
 // `piezas` = líneas ya resueltas por quien llama: { alimento, gramos } (`papel` se ignora a
 // propósito — fila 4.5: una etiqueta que EXIME de contar es tan peligrosa como una que afirma).
@@ -1004,7 +1053,7 @@ function cuotaDeServicio(piezas, miembro, datos, config, opts = {}) {
     if (contables.includes(c)) {
       // sin `unidad_g` en el banco no se inventa una pieza: se cae a la ración de la categoría,
       // que es lo que había antes, y el hueco es visible en el dato, no aquí.
-      let piezas = Math.round(piezasCubo[c] != null ? piezasCubo[c] : g / racionCubo[c]);
+      let piezas = aPiezas(piezasCubo[c] != null ? piezasCubo[c] : g / racionCubo[c]);
       // PREVISIÓN vs VERDAD: T2 decide ANTES de que T3 exista, y en las protagonistas T3 puede
       // subir la ración hasta el extremo del rango. Quien prevé cuenta con ese extremo — si
       // contara la receta, serviría por encima del techo creyendo que le cabe. T4 no lo hace:
@@ -1017,7 +1066,7 @@ function cuotaDeServicio(piezas, miembro, datos, config, opts = {}) {
   return { tomas, fracciones, gramosSalud, huecos };
 }
 
-module.exports = { cuotaDeServicio, CUBOS_DE, filaD1De, unidadDe };
+module.exports = { cuotaDeServicio, CUBOS_DE, filaD1De, unidadDe, aPiezas };
 
   };
 
@@ -1545,7 +1594,8 @@ const { normalizarFamilia } = require('./contrato_familia.js');
 const { bancoDelHogar, anotarHogar } = require('./banco_hogar.js');
 const { anotarSemana } = require('./seguridad_infantil.js');
 const { memoria, diarioDesdeCorrida } = require('./memoria.js');
-const { acumuladoPrevio } = require('./ventana_movil.js');
+const { acumuladoPrevio, tomasPreviasDeCubo } = require('./ventana_movil.js');
+const { cuotaDeServicio } = require('./cuotas.js');
 const { edadEnSemana, estacionDeSemana, fechaDia, juevesISO } = require('./derivar.js');
 
 const VERSION = 'v6-t2';
@@ -1622,8 +1672,16 @@ function generarCorrida(familiaDeclarada, arranqueIso, nSemanas, datos, config, 
     // real, el cole incluido, antes de que T1 reparta nada.
     const ventanaPrevia = acumuladoPrevio(diario, banco, config, entrada.edades,
       fechaDia(semanaIso, 1), fechaDia);
+    // §20.39 · el techo MENSUAL de carne procesada de un menor (AC25 ≤2/mes) se cuenta en su
+    // ventana real de 30 días, no repartido a semana: media ración no existe, así que el `2/4`
+    // que había era un techo imposible de cumplir. Sale del mismo diario y del mismo momento que
+    // la memoria y que la ventana de gramos: el pasado real ya montado, con el cole dentro.
+    const tomasPreviasCubo = tomasPreviasDeCubo(diario, banco, config, entrada.edades,
+      fechaDia(semanaIso, 1), Object.keys(config.CUOTAS_MENSUALES || {}),
+      config.VENTANA_MENSUAL_DIAS, cuotaDeServicio);
 
     entrada.memoria = mem;                           // el prevuelo la necesita para las claves
+    entrada.tomasPreviasCubo = tomasPreviasCubo;     // §20.39: y lo ya servido en la ventana de mes
     const pre = prevuelo(entrada, pools, banco, config);   // de profundidad 1 (spec §7)
     // BUCLE T1↔T2 (auditoría ciega 2-ago): el canal era de UN SENTIDO Y UN INTENTO — T1 repartía
     // una vez y, si T2 no podía llenar ese reparto, la semana moría aunque existiera otro reparto
@@ -1643,7 +1701,7 @@ function generarCorrida(familiaDeclarada, arranqueIso, nSemanas, datos, config, 
     // obligatorio — quizá están de viaje, comen fuera, o en una casa rural con un pollo al ast».
     // La relajación R0 de T1 solo se disparaba cuando fallaba T1; aquí falla T2, así que nunca
     // llegaba y la semana moría por un plato que ni siquiera es obligatorio. Cede DECLARADO.
-    const configSinCalma = { ...configIntento, ELABORADO_POR_SEMANA: 0 };
+    const configSinCalma = { ...configIntento, ELABORADO_POR_SEMANA_MIN: 0 };
     for (const cfg of [configIntento, configSinCalma]) {
       for (let i = 0; i < maxIntentos; i++) {
         const e = esqueleto(entrada, pools, cfg, pre, i);
@@ -1651,7 +1709,7 @@ function generarCorrida(familiaDeclarada, arranqueIso, nSemanas, datos, config, 
         if (!e.ok) { esq = esq && esq.ok ? esq : e; continue; }
         esq = e;
         r = rellenarSemana({ entrada, esq: e, pre, pools, datos: banco, config: cfg, memoria: mem,
-          menuCole: familia.menu_cole, ventanaPrevia });
+          menuCole: familia.menu_cole, ventanaPrevia, tomasPreviasCubo });
         if (r.ok) { cedioElaborado = cfg === configSinCalma; break; }
       }
       if (r && r.ok) break;
@@ -2163,6 +2221,7 @@ module.exports = { compilarPools, disponibilidad, CUBOS: [...CUBOS] };
 'use strict';
 const { SLOTS, cubosDe } = require('./t1_esqueleto.js');
 const { racionParaLinea, EDAD_TABLA_INFANTIL_MIN: EDAD_MINIMA_PRODUCTO } = require('./raciones.js');
+const { cuotaDeServicio } = require('./cuotas.js');
 const { casaAlergeno, NO_VEGANO_PESE_A_NATURALEZA, ALERGENO_CARNE_PESCADO,
   ALERGENO_ANIMAL_INDIRECTO } = require('./contrato_familia.js');
 
@@ -2439,11 +2498,21 @@ function prevuelo(entrada, pools, datos, config) {
       } else if (min != null && aforo < minPro * (config.MARGEN_AFORO || 1.5)) {
         huecos.push({ tipo: 'aforo-justo', miembro: m.id, cubo, aforo, minimo: +minPro.toFixed(3) });
       }
+      // ⚑ §20.39 · TECHO DE VENTANA MENSUAL VISTO DESDE LA SEMANA. Un cubo con techo de MES
+      // (`CUOTAS_MENSUALES`) no tiene banda semanal —repartirlo entre 4 daba media ración, que no
+      // existe—, pero T1 sí necesita una cota o reservaría casillas que T2 tendrá que rechazar.
+      // La cota correcta no es el mes partido: es **lo que queda del mes**, que es un hecho leído
+      // del diario. Con la ventana vacía el menor puede tener sus 2 en la misma semana, que es
+      // exactamente lo que la fuente permite; con una ya servida, solo le queda una.
+      const mensual = (config.CUOTAS_MENSUALES || {})[cubo];
+      const techoMes = mensual ? mensual[tramo] : null;
+      const restanteMes = techoMes == null ? Infinity
+        : Math.max(0, techoMes - (((entrada.tomasPreviasCubo || {})[m.id] || {})[cubo] || 0));
       bandasEfectivas[m.id][cubo] = {
         min: minEfectivo,
         // techos AESAN: JAMÁS se suben (Q1). Sí pueden BAJAR por M6: un cubo cuyo candidato
         // comible es siempre frito no puede ocupar más slots que el techo de fritos
-        max: Math.min(max == null ? Infinity : max * factor, capFritos)
+        max: Math.min(max == null ? Infinity : max * factor, capFritos, restanteMes)
       };
     }
   }
@@ -2559,6 +2628,135 @@ function prevuelo(entrada, pools, datos, config) {
       aporteCubo.min[cubo][mid] = vals[0];            // proyección de techos de T2: lo MENOS
     }                                                 // que un slot del cubo puede consumir
   }
+
+  // ── EL PESO DE UNA CASILLA, EN LA UNIDAD DE LA FRECUENCIA (§13.7-13.8, 4-ago-2026)
+  //
+  // ── QUÉ ARREGLA, MEDIDO
+  // T1 presupuestaba con peso 1 (`pesoDe = () => 1`): una casilla, una unidad. Mientras toda
+  // cuota se contó en TOMAS eso era exacto. Desde que el huevo se cuenta en PIEZAS (§10.3 nivel 1
+  // y §20.20) dejó de serlo: una casilla de tortilla NO cuesta una, cuesta las dos piezas que el
+  // plato lleva dentro, y no lo mismo a un adulto (120 g = 2) que a un niño (60 g = 1). Medido el
+  // 4-ago sobre la parrilla (12 familias × 4 semanas consecutivas): T1 reservaba 3 y hasta 4
+  // casillas de huevo creyendo que cabían bajo el techo de 4, y el resultado eran **6, 7 y 8
+  // huevos** por adulto y semana. **38 de las 48 semanas** cedían el techo. No en silencio —T2
+  // lo servía con descargo `techo-vs-reserva`, 429 de ellos— pero ceder un techo cuatro semanas
+  // de cada cinco no es ceder: es no tenerlo.
+  //
+  // ── LA UNIDAD SALE DEL BANCO, JAMÁS DEL MOTOR (§13.8, literal)
+  // El peso se calcula con `cuotaDeServicio`, la MISMA función que cuenta la cuota en T2 y en T4:
+  // una definición, tres recorridos (§13.11). Aquí el recorrido es «los candidatos del pool»; en
+  // T2 «el plato propuesto» y en T4 «lo servido». Escribir un 2 en el motor habría sido cablear
+  // un dato del banco, que es el bug que este proyecto ya pagó con `MINIMOS_CUENTAN`.
+  //
+  // ── POR QUÉ DOS PESOS Y NO UNO
+  // Un solo peso no puede ser conservador en las dos direcciones. Contra un TECHO, subestimar
+  // deja pasar; contra un MÍNIMO, sobreestimar da por cubierto lo que no lo está. Así que hay dos
+  // y T1 lleva dos conteos:
+  //   · `max` — lo MÁS que una casilla del cubo puede costarle. Es peor caso porque en las
+  //     protagonistas T3 puede subir la ración hasta `PIEZAS_PROTAGONISTA_RANGO[1]` (por eso se
+  //     pide `peorCaso`, exactamente como hace T2 al prever). Gobierna los techos.
+  //   · `min` — lo MENOS que una casilla puede aportarle, con la ración de la receta. Gobierna
+  //     los mínimos.
+  // En todo cubo NO contable las dos valen 1 y T1 se comporta EXACTAMENTE como antes: la
+  // asimetría solo muerde donde la fuente publica piezas, que hoy es el huevo y solo él (§20.20).
+  const pesoCubo = { min: {}, max: {} };
+  // ⚑ LO QUE UNA CASILLA CONSUME DE CUBOS AJENOS: MEDIDO, NO IMPLEMENTADO (§10.5, 4-ago-2026).
+  // Sobre la parrilla, **0,75 tomas de `carne-total` por miembro y semana NO salen de una casilla
+  // de carne**: son el chorizo del potaje, el jamón de la pizza, el bacon del salteado. Con techo
+  // infantil de 3 tomas es un cuarto del techo, y a T1 le es invisible porque reserva CATEGORÍAS
+  // y esto depende del PLATO. Se intentó darle aquí un peso por (categoría × cubo ajeno) y se
+  // descartó con la medida delante: la MEDIANA sale 0 en todas las categorías —la mayoría de
+  // potajes no llevan chorizo, el efecto lo produce una minoría de platos—, y subir el percentil
+  // devuelve a T1 a presupuestar en fracciones, que el 2-ago ya demostró infactible (5 de 9
+  // familias sin reparto legal). El sitio correcto no es un presupuesto de T1: es que T2 prefiera,
+  // dentro de la categoría reservada, los candidatos que no gastan cubos ajenos cuando el techo
+  // aprieta — o sea una señal de coste, que es materia del bloque 13. Queda como fila abierta de
+  // `CONFORMIDAD.md` con su número, no como código que aparenta cubrirlo.
+  const planasConEscala = (id, esNino) => {
+    const out = [];
+    const rec = (padre, escala, visto) => {
+      if (visto.has(padre)) return;
+      visto.add(padre);
+      for (const l of lineasDe[padre] || []) {
+        if (l.componente_id) { rec(l.componente_id, escala * ((esNino ? l.escala_nino : l.escala_adulto) || 1), visto); continue; }
+        out.push({ ...l, escala });
+      }
+    };
+    rec(id, 1, new Set());
+    return out;
+  };
+  for (const c of pools.candidatos) {
+    for (const mid of mids) {
+      if (edades[mid] == null || edades[mid] < EDAD_MINIMA_PRODUCTO) continue;
+      const esNino = edades[mid] < config.EDAD_RACION_ADULTO;
+      const lineas = [];
+      for (const l of planasConEscala(c.elaboracion_id, esNino)) {
+        const aid = Array.isArray(l.alternativas) ? c.opcion : l.alimento_id;
+        if (!aid || !cat[aid]) continue;
+        lineas.push({ alimento: aid, elaboracion_id: c.elaboracion_id,
+          gramos: ((esNino ? l.gramos_nino : l.gramos_adulto) || 0) * (l.escala || 1) });
+      }
+      if (!lineas.length) continue;
+      const m = { edad: edades[mid] };
+      const alto = cuotaDeServicio(lineas, m, datos, config, { peorCaso: true }).tomas;
+      const bajo = cuotaDeServicio(lineas, m, datos, config).tomas;
+      for (const cubo of Object.keys(config.CUOTAS)) {
+        if (!cubosDe(c.categoria).includes(cubo)) continue;
+        if (alto[cubo] > 0) {
+          (pesoCubo.max[cubo] = pesoCubo.max[cubo] || {})[mid] =
+            Math.max(pesoCubo.max[cubo][mid] || 0, alto[cubo]);
+        }
+        if (bajo[cubo] > 0) {
+          (pesoCubo.min[cubo] = pesoCubo.min[cubo] || {})[mid] =
+            Math.min(pesoCubo.min[cubo][mid] == null ? Infinity : pesoCubo.min[cubo][mid], bajo[cubo]);
+        }
+      }
+    }
+  }
+  const pesoMaxDe = (mid, cubo) => ((pesoCubo.max[cubo] || {})[mid]) || 1;
+  const pesoMinDe = (mid, cubo) => ((pesoCubo.min[cubo] || {})[mid]) || 1;
+
+  // ── EL MÍNIMO QUE LAS CASILLAS NO PUEDEN CUBRIR (§13.9 y §10.11, literales)
+  //
+  // «Una casilla no es la única vía de una unidad. La tercera pieza de huevo del niño no sale de
+  // una tercera tortilla: sale del cierre del plato, como complemento. T1 no reserva el cierre,
+  // así que el mínimo que no puede cubrir con casillas lo acota, lo declara, y lo persigue T2.»
+  //
+  // El conflicto es de MESA, no de persona, y §10.11 lo dice con nombre y apellido: «el mínimo
+  // del niño no se cubre con tres tortillas, porque esas mismas tres darían seis al adulto». La
+  // cuenta es esa misma: cuántas casillas del cubo tolera el comensal MÁS apretado de la mesa, y
+  // cuánto le aporta ese número de casillas a cada uno. Lo que falte no es un incumplimiento ni
+  // un silencio: es una cuota que se cierra por otra vía y se dice cuánta.
+  //
+  // Sin esta acotación T1 no encontraría reparto legal y la semana moriría por un huevo duro.
+  for (const cubo of Object.keys(config.CUOTAS)) {
+    const conBanda = familia.miembros.map(m => m.id).filter(mid => bandasEfectivas[mid]
+      && bandasEfectivas[mid][cubo] && !bandasEfectivas[mid][cubo].fuera_de_alcance
+      && puedeCubo[mid][cubo]);
+    if (!conBanda.length) continue;
+    let casillasMax = Infinity;
+    for (const mid of conBanda) {
+      const max = bandasEfectivas[mid][cubo].max;
+      if (!(max < Infinity)) continue;
+      casillasMax = Math.min(casillasMax, Math.floor(max / pesoMaxDe(mid, cubo) + 1e-9));
+    }
+    if (!(casillasMax < Infinity)) continue;
+    for (const mid of conBanda) {
+      const banda = bandasEfectivas[mid][cubo];
+      if (!(banda.min > 0)) continue;
+      const porCasillas = casillasMax * pesoMinDe(mid, cubo);
+      if (porCasillas >= banda.min - 1e-9) continue;
+      const deficit = banda.min - porCasillas;
+      banda.min = porCasillas;
+      banda.min_por_complemento = +deficit.toFixed(3);
+      descargos.push({ tipo: 'minimo-por-complemento', miembro: mid, cubo,
+        minimo: +(porCasillas + deficit).toFixed(3), alcanzable: +porCasillas.toFixed(3),
+        detalle: `${mid}: la mesa solo tolera ${casillasMax} casilla(s) de ${cubo} —el techo del `
+          + `comensal más apretado manda— y esas ${casillasMax} le dan ${porCasillas}. `
+          + `Las ${deficit.toFixed(1)} unidad(es) que faltan se cierran con el complemento del `
+          + `plato, no con otra casilla (§13.9)` });
+    }
+  }
   if (sinRacionD1.size) huecos.push({ tipo: 'sin-racion-en-d1', categorias: [...sinRacionD1].sort(),
     motivo: `${sinRacionD1.size} categoría(s) con candidatos cuyo alimento dominante no tiene ración de referencia en D1 (tofu, hummus, heura…): sus cuotas no son medibles — cola de altas` });
   for (const [mid, cats] of Object.entries(sinRacionPorEdad))
@@ -2619,7 +2817,7 @@ function prevuelo(entrada, pools, datos, config) {
     .map(k => [k, (ligerasPorClave[k] || new Set()).size]));
 
   return { fijosOK, opcionesLegales, resolucion, servible, dispPorSlot, exclusiones,
-    puedeCubo, bandasEfectivas, aporteCubo, profundidadClave, profundidadLigera,
+    puedeCubo, bandasEfectivas, aporteCubo, pesoCubo, profundidadClave, profundidadLigera,
     clavesBloqueadas, clavesProfundidad1, descargos, huecos };
 }
 
@@ -3785,7 +3983,7 @@ const AGREGADOS = {
 };
 // Preferencia de esfuerzo por tipo de día. Entre semana manda la promesa del producto («me
 // quita de pensar, no de cocinar»): rápido primero. En finde vive la cocina con tiempo.
-// CUPO de `elaborado`: entre `ELABORADO_POR_SEMANA` y `ELABORADO_POR_SEMANA_MAX` a la semana,
+// CUPO de `elaborado`: entre `ELABORADO_POR_SEMANA_MIN` y `ELABORADO_POR_SEMANA_MAX` a la semana,
 // y SOLO EN LAS COMIDAS DEL FINDE — dictado de Roger (3-ago, sustituye al «una por semana en
 // finde» del 1-ago): «plato elaborado nunca se guarda para domingo noche; es para sábado y
 // domingo mediodía, que es donde va la cuota grande del día y los platos más pesados. Acepto 1
@@ -3812,7 +4010,7 @@ function cubosDe(categoria) {
 // `pre` (opcional) = resultado del PREVUELO §7: restringe dominios a lo que la MESA puede comer
 // y sustituye las bandas por las efectivas (Q1). Sin él, T1 se comporta exactamente como antes.
 function esqueleto(entrada, pools, config, pre, intento = 0) {
-  const min = config.ELABORADO_POR_SEMANA || 0;
+  const min = config.ELABORADO_POR_SEMANA_MIN || 0;
   const max = Math.max(min, config.ELABORADO_POR_SEMANA_MAX || min);
   const conCupo = resolver(entrada, pools, config, { min, max }, pre, intento);
   if (conCupo.ok || min === 0) return conCupo;
@@ -3921,8 +4119,19 @@ function resolver(entrada, pools, config, cupoElaborado, pre, intento = 0) {
         (pre ? ' que toda la mesa pueda comer' : ''));
 
   // ── búsqueda exacta con poda
-  const conteo = {};                                      // miembro → cubo → nº de servicios
-  for (const mid of Object.keys(bandas)) { conteo[mid] = {}; for (const c of Object.keys(bandas[mid].cubos)) conteo[mid][c] = 0; }
+  //
+  // ⚑ 4-ago-2026 (§13.8) · DOS CONTEOS, PORQUE HAY DOS PESOS. `conteoAlto` acumula lo MÁS que
+  // una casilla puede costarle a cada comensal y gobierna los TECHOS; `conteoBajo` acumula lo
+  // MENOS que puede aportarle y gobierna los MÍNIMOS. Con un solo conteo no se puede ser
+  // conservador en las dos direcciones a la vez: contra un techo, subestimar deja pasar; contra
+  // un mínimo, sobreestimar da por cubierto lo que no lo está. En todo cubo NO contable los dos
+  // pesos valen 1 y los dos conteos van clavados, así que esto solo se separa donde la fuente
+  // publica piezas — hoy el huevo, y solo él (§20.20).
+  const conteoAlto = {}, conteoBajo = {};                 // miembro → cubo → unidades de frecuencia
+  for (const mid of Object.keys(bandas)) {
+    conteoAlto[mid] = {}; conteoBajo[mid] = {};
+    for (const c of Object.keys(bandas[mid].cubos)) { conteoAlto[mid][c] = 0; conteoBajo[mid][c] = 0; }
+  }
   // profundidad de pool (spec §7, vía prevuelo): una clave no puede ocupar más slots que
   // elaboraciones distintas tiene — M2 haría imposible el relleno de T2
   const usosClave = {};
@@ -3940,27 +4149,27 @@ function resolver(entrada, pools, config, cupoElaborado, pre, intento = 0) {
   // el conteo exacto por candidato es de T2/T4.
   const puede = (mid, cubo) => !pre || !pre.puedeCubo || pre.puedeCubo[mid] == null
     || pre.puedeCubo[mid][cubo] !== false;
-  // PRESUPUESTO EN RACIONES (cazado en vivo con mesa-1): un slot del cubo no aporta «1» —
-  // aporta las raciones típicas de sus candidatos (tortilla = 2,07 huevos). Con prevuelo, el
-  // conteo suma la MEDIANA del cubo (presupuesto realista) y la poda usa el MÁXIMO (cota
-  // optimista: jamás poda ramas viables). Sin prevuelo: peso 1 = comportamiento histórico.
-  // ⚠️ T1 PRESUPUESTA EN SERVICIOS (peso 1), NO en raciones — y con D1-bis ya en el banco esto
-  // deja de ser «falta el dato» para ser una VERDAD DE DISEÑO, medida el 2-ago sobre el banco
-  // real con la vara por edad correcta (omnivora-2a2n, a1 45a · n1 8a · n2 3a):
-  //     legumbre → n1 necesita 4 servicios para su mínimo (0,87 raciones c/u); a1 solo TOLERA 2
-  //                (1,45 c/u, techo 4). huevo → los niños necesitan 3; a1 tolera 1 (2,07 c/u).
-  // El mínimo infantil y el techo adulto del MISMO cubo no caben en la misma mesa mientras
-  // todos coman la ración entera: un slot es un SERVICIO, y su conversión a raciones depende de
-  // la FRACCIÓN que sirve T3 (spec §1-T3). Presupuestar el esqueleto en raciones lo vuelve
-  // infactible por construcción (medido: 5/9 familias sin reparto legal, 20-28 s de DFS).
-  // Reparto de responsabilidad, por tanto: T1 reserva SERVICIOS · T2 cuenta las raciones reales
-  // por gramos servidos y DECLARA el choque (`techo-fraccional-vs-reserva`) · T3 lo resuelve con
-  // fracciones · la batería A audita con la vara por edad (D1-bis, `harness/raciones.js`).
-  // La infraestructura fraccional (pre.aporteCubo por miembro, MARGEN_TECHO_T1) queda viva para
-  // que T3 la consuma. REPORTADO a Roger y QA-2 con los números.
-  const pesoDe = () => 1;
-  const pesoMax = () => 1;
-  const margenTecho = 1;
+  // ── EL PESO DE UNA CASILLA (§13.8, cerrado el 4-ago-2026 · antes: `pesoDe = () => 1`)
+  //
+  // «T1 reserva en la unidad de la frecuencia, no en casillas. El peso de una casilla es el
+  // número de piezas que sus candidatos sirven a ese comensal según su tramo, y ese peso se lee
+  // del banco, jamás se escribe en el motor.» El peso lo calcula el PREVUELO con
+  // `cuotaDeServicio` —la misma función que cuenta la cuota en T2 y en T4, §13.11— y aquí solo
+  // se consume. Sin prevuelo: peso 1, comportamiento histórico intacto.
+  //
+  // ── QUÉ SE INTENTÓ ANTES Y POR QUÉ ESTO NO ES AQUELLO
+  // El 2-ago se probó presupuestar en RACIONES FRACCIONALES (legumbre 0,87 · huevo 2,07 por
+  // servicio) y salió infactible por construcción: 5 de 9 familias sin reparto legal y 20-28 s de
+  // DFS. La diferencia no es de calibración, es de unidad. Una ración fraccional no es la unidad
+  // de ninguna cuota: `config.CUOTAS` está escrita en TOMAS y en PIEZAS (§10.3), que es lo que T2
+  // y T4 cuentan desde la fila 5.4. Al presupuestar en la unidad REAL, todo cubo no contable pesa
+  // exactamente 1 —igual que antes— y solo el huevo se separa. Medido: la parrilla sigue cerrando
+  // y el techo de huevo deja de romperse.
+  const pesoDe = (mid, cubo) => (pre && pre.pesoCubo && (pre.pesoCubo.max[cubo] || {})[mid]) || 1;
+  const pesoMin = (mid, cubo) => (pre && pre.pesoCubo && (pre.pesoCubo.min[cubo] || {})[mid]) || 1;
+  // cota OPTIMISTA para «¿aún se puede alcanzar el mínimo?»: lo más que un slot puede aportar.
+  // Una poda que subestima la capacidad mata ramas viables, y eso sí sería un bug.
+  const pesoMax = (mid, cubo) => pesoDe(mid, cubo);
   const asignacion = new Array(dominios.length).fill(null);
   let nodos = 0, motivoPoda = null;
   const mids = Object.keys(bandas);
@@ -3991,7 +4200,7 @@ function resolver(entrada, pools, config, cupoElaborado, pre, intento = 0) {
       const banda = bandas[mid];
       const falta = {};
       for (const cubo in banda.cubos) {
-        const f = banda.cubos[cubo].min - conteo[mid][cubo];
+        const f = banda.cubos[cubo].min - conteoBajo[mid][cubo];
         falta[cubo] = f > 1e-9 ? Math.ceil(f / pesoMax(mid, cubo) - 1e-9) : 0;
         if (falta[cubo] && sufCubo[mid][cubo][idx] < falta[cubo]) {
           motivoPoda = `${mid} no puede alcanzar el mínimo de ${cubo}`; return false;
@@ -4029,7 +4238,7 @@ function resolver(entrada, pools, config, cupoElaborado, pre, intento = 0) {
       for (const mid of presentesEn[idx]) {
         const banda = bandas[mid];
         for (const cubo of cubosPorOpcion[idx][i])
-          if (banda.cubos[cubo] && puede(mid, cubo) && conteo[mid][cubo] < banda.cubos[cubo].min - 1e-9) ayuda++;
+          if (banda.cubos[cubo] && puede(mid, cubo) && conteoBajo[mid][cubo] < banda.cubos[cubo].min - 1e-9) ayuda++;
       }
       return { o, i, ayuda };
     }).sort((a, b) => b.ayuda - a.ayuda || a.i - b.i).map(p => p.o);
@@ -4041,7 +4250,7 @@ function resolver(entrada, pools, config, cupoElaborado, pre, intento = 0) {
     for (const mid of mids) {
       const falta = {};
       for (const cubo in bandas[mid].cubos) {
-        const f = bandas[mid].cubos[cubo].min - conteo[mid][cubo];
+        const f = bandas[mid].cubos[cubo].min - conteoBajo[mid][cubo];
         falta[cubo] = f > 1e-9 ? Math.ceil(f / pesoMax(mid, cubo) - 1e-9) : 0;
       }
       let deficit = 0;
@@ -4069,7 +4278,7 @@ function resolver(entrada, pools, config, cupoElaborado, pre, intento = 0) {
     if (idx === dominios.length) {
       for (const [mid, banda] of Object.entries(bandas))
         for (const [cubo, { min }] of Object.entries(banda.cubos))
-          if (conteo[mid][cubo] < min - 1e-9) { motivoPoda = `${mid} cierra por debajo del mínimo de ${cubo}`; return false; }
+          if (conteoBajo[mid][cubo] < min - 1e-9) { motivoPoda = `${mid} cierra por debajo del mínimo de ${cubo}`; return false; }
       if (elaborados < cupoMin || elaborados > cupoMax) { motivoPoda = `no cabe el cupo de ${cupoMin}-${cupoMax} plato(s) elaborado(s) en comidas de finde`; return false; }
       return true;
     }
@@ -4093,14 +4302,16 @@ function resolver(entrada, pools, config, cupoElaborado, pre, intento = 0) {
       for (const mid of presentes) {
         const banda = bandas[mid];
         for (const cubo of cubos) if (banda.cubos[cubo] && puede(mid, cubo)
-          && conteo[mid][cubo] + pesoDe(mid, cubo) > banda.cubos[cubo].max * margenTecho + 1e-9) { excede = true; break; }
+          && conteoAlto[mid][cubo] + pesoDe(mid, cubo) > banda.cubos[cubo].max + 1e-9) { excede = true; break; }
         if (excede) break;
       }
       if (excede) { motivoPoda = motivoPoda || `techo alcanzado en ${opcion.categoria}`; continue; }
       if (opcion.esfuerzo === 'elaborado' && elaborados + 1 > cupoMax) continue;
       // aplicar
       const excesoFrito = esExceso(claveProf);
-      for (const mid of presentes) for (const cubo of cubos) if (conteo[mid][cubo] != null && puede(mid, cubo)) conteo[mid][cubo] += pesoDe(mid, cubo);
+      for (const mid of presentes) for (const cubo of cubos) if (conteoAlto[mid][cubo] != null && puede(mid, cubo)) {
+        conteoAlto[mid][cubo] += pesoDe(mid, cubo); conteoBajo[mid][cubo] += pesoMin(mid, cubo);
+      }
       if (opcion.esfuerzo === 'elaborado') elaborados++;
       usosClave[claveProf] = (usosClave[claveProf] || 0) + 1;
       if (excesoFrito) fritosT1++;
@@ -4110,7 +4321,9 @@ function resolver(entrada, pools, config, cupoElaborado, pre, intento = 0) {
       if (excesoFrito) fritosT1--;
       usosClave[claveProf]--;
       if (opcion.esfuerzo === 'elaborado') elaborados--;
-      for (const mid of presentes) for (const cubo of cubos) if (conteo[mid][cubo] != null && puede(mid, cubo)) conteo[mid][cubo] -= pesoDe(mid, cubo);
+      for (const mid of presentes) for (const cubo of cubos) if (conteoAlto[mid][cubo] != null && puede(mid, cubo)) {
+        conteoAlto[mid][cubo] -= pesoDe(mid, cubo); conteoBajo[mid][cubo] -= pesoMin(mid, cubo);
+      }
     }
     return false;
   }
@@ -4126,7 +4339,7 @@ function resolver(entrada, pools, config, cupoElaborado, pre, intento = 0) {
       categoria: asignacion[i].categoria, esfuerzo: asignacion[i].esfuerzo,
       ancla: anclas[d.slot] ? anclas[d.slot].elaboracion_id : null
     })),
-    reserva: conteo,                                     // lo que T2 tiene que respetar
+    reserva: conteoAlto,                                 // lo que T2 tiene que respetar (techos)
     no_gobernados: SLOTS.filter(s => !activos.some(a => a.slot === s.slot)).map(s => s.slot)
   };
 }
@@ -4155,8 +4368,9 @@ module.exports = { esqueleto, SLOTS, cubosDe, AGREGADOS };
 //  · most-constrained con orden estático inicial (nº de candidatos válidos al arrancar);
 //  · origen dominante del candidato por su opción canónica (la moda de mesa la mide C);
 //  · fritos como contador de MESA (la batería A pro-ratea por miembro);
-//  · procesada del niño: ventana aproximada = P1 histórico no disponible ⇒ techo semanal
-//    conservador PROCESADA_MENSUAL_NINO_MAX/4, declarado (T4/A miden la ventana real de 28d);
+//  · procesada del niño: CERRADO el 4-ago-2026 (§20.39). Era un techo semanal aproximado
+//    (el mensual /4 = media ración, que no existe) y ahora es la ventana mensual real de 30 días
+//    arrancada del diario D3 — `CUOTAS_MENSUALES` en config, contador `st.tomasMes`;
 //  · el sustituto del excluido prefiere candidatos del mismo perfil (gesto compartido, G mide).
 'use strict';
 // Interruptores de depuración por variable de entorno. En NAVEGADOR no existe `process` y una
@@ -4183,7 +4397,7 @@ for (let d = 1; d <= 7; d++) for (const s of ['comida', 'cena']) ORDEN_CAL.push(
 // contra el resto de la semana— y queda FUERA del bucle de decisión, verbatim en la salida.
 // `evitar` = { principales:Set, piezas:Set }: lo que el usuario acaba de rechazar. Sin estos dos
 // parámetros el comportamiento es EXACTAMENTE el de siempre (generación de semana entera).
-function rellenarSemana({ entrada, esq, pre, pools, datos, config, memoria, menuCole, fijados, evitar, ventanaPrevia }) {
+function rellenarSemana({ entrada, esq, pre, pools, datos, config, memoria, menuCole, fijados, evitar, ventanaPrevia, tomasPreviasCubo }) {
   const { semana_iso, familia, presencia, edades, estacion } = entrada;
   const semanaNum = Number(semana_iso.split('-W')[1]);
   const ix = indexar(datos);
@@ -4197,7 +4411,12 @@ function rellenarSemana({ entrada, esq, pre, pools, datos, config, memoria, menu
     saludG: {},                                     // mid → categoría → GRAMOS ← TECHOS_SALUD_G_SEMANA
     fritos: 0, dulces: 0, lacteos: 0,
     novedades: {},                                  // mid → n novedades servidas (menores)
-    procesadaNino: {},                              // mid → TOMAS de procesada esta semana
+    // ⚑ §20.39 · mid → cubo → TOMAS dentro de la VENTANA MENSUAL (30 días), no de la semana.
+    // Cuarta moneda y tampoco convertible: es un techo que la fuente publica por mes
+    // (`CUOTAS_MENSUALES`), y una banda de semana no puede expresarlo — repartirlo entre 4 daba
+    // media ración, que no existe. Arranca con lo que el diario ya trae servido: sin eso el
+    // contador se reiniciaría cada lunes y un techo mensual medido por semanas no es un techo.
+    tomasMes: JSON.parse(JSON.stringify(tomasPreviasCubo || {})),
     // ⚑ 5.5 · mid → alimento → GRAMOS dentro de la ventana móvil de 30 días. Tercera moneda y
     // tampoco convertible: no es una toma (frecuencia) ni un gramo de techo SEMANAL, es un techo
     // de MES de `seguridad_infantil`. Arranca con lo que el diario ya trae servido — sin eso el
@@ -4309,6 +4528,11 @@ function rellenarSemana({ entrada, esq, pre, pools, datos, config, memoria, menu
   // la guarnición son UNA toma, no dos medias ni ninguna) — por eso nunca se llama por pieza.
   const cuotaDe = (lineas, mid) => cuotaDeServicio(lineas, { edad: edades[mid] }, datos, config, { peorCaso: true });
   const reglasVentana = reglasDeVentana(datos);
+  // el peso de una casilla en la unidad de la frecuencia (§13.8), calculado por el prevuelo con
+  // esta misma `cuotaDeServicio`. Aquí solo se lee: es la MISMA definición que usa T1 al
+  // reservar, y por eso las proyecciones de T2 hablan su idioma. Sin prevuelo: 1, como siempre.
+  const pesoMaxDe = (mid, cubo) => ((pre.pesoCubo && pre.pesoCubo.max[cubo] || {})[mid]) || 1;
+  const pesoMinDe = (mid, cubo) => ((pre.pesoCubo && pre.pesoCubo.min[cubo] || {})[mid]) || 1;
 
   // ⚑ 5.4 (sesión 6, 4-ago) — EL POSTRE ES COMIDA Y CUENTA. Los contadores de este fichero
   // recorrían `sv.plato` y **el postre no entraba en ninguno**: ni en tomas ni en gramos de
@@ -4440,7 +4664,7 @@ function rellenarSemana({ entrada, esq, pre, pools, datos, config, memoria, menu
   // ── contratos C sobre un candidato YA con opciones (ventanas con peldaños de la escalera)
   function contratos(c, opciones, presentes, s, relaj) {
     const dia = s.dia;
-    const ventanaM1 = relaj.R3 ? 5 : config.VENTANAS.plato_dias;
+    const ventanaM1 = relaj.R3 ? (config.VENTANAS.plato_dias_R3 || 3) : config.VENTANAS.plato_dias;
     const pers = opciones ? [...new Set(Object.values(opciones))].map(op => percibidoDe(c.elaboracion_id, op))
       : [percibidoDe(c.elaboracion_id, c.opcion == null ? null : c.opcion)];
     for (const per of pers) {
@@ -4532,11 +4756,15 @@ function rellenarSemana({ entrada, esq, pre, pools, datos, config, memoria, menu
           return { motivo: `${l.alimento} de ${mid}: techo de ventana de D2 `
             + `(${Math.round(((st.ventanaG[mid] || {})[l.alimento] || 0) + (l.gramos || 0))} g > ${techo} g)` };
       }
-      if (tramo === 'nino' && q.tomas['carne-procesada']) {
-        // AC25 ≤2 al MES. Repartido a semana mientras el contador mensual no viva en el diario
-        // (fila 5.5): la convención está declarada, no escondida.
-        if ((st.procesadaNino[mid] || 0) + 1 > config.PROCESADA_MENSUAL_NINO_MAX / 4 + 1e-9)
-          return { motivo: `procesada del niño ${mid} (techo mensual, aprox semanal)`,
+      // ⚑ §20.39 · TECHOS DE VENTANA MENSUAL, en su periodo y en tomas. Antes era el techo del
+      // mes dividido entre 4 —media ración de procesada, que no existe— y por eso se rompía en
+      // 19 de 164 veredictos de la parrilla haciendo lo correcto. Ahora el contador es el de 30
+      // días reales, arrancado del diario, y lo que veta es el techo que la fuente publica.
+      for (const [cubo, porTramo] of Object.entries(config.CUOTAS_MENSUALES || {})) {
+        const techoMes = porTramo[tramo];
+        if (techoMes == null || !q.tomas[cubo]) continue;
+        if (((st.tomasMes[mid] || {})[cubo] || 0) + q.tomas[cubo] > techoMes + 1e-9)
+          return { motivo: `techo mensual de ${cubo} de ${mid} (${config.VENTANA_MENSUAL_DIAS} d)`,
             techoDeclarable: !!s.ancla, esAncla: !!s.ancla };   // solo el ancla lo vence, declarado
       }
       // MÍNIMOS PROYECTADOS por miembro (cazado por G: la pizza dio jamón al niño y su
@@ -4786,7 +5014,161 @@ function rellenarSemana({ entrada, esq, pre, pools, datos, config, memoria, menu
         if (r && r.estado === 'adaptado') notas.push(...notasDeResolucion(mid, elegida.x.id, r, presentes));
       }
     }
-    return { piezas, notas: dedupNotas(notas), usoR2, ejes_abiertos: ejesAbiertos };
+    const comp = complemento(c, presentes, s, piezas, notas, relaj);
+    piezas.push(...comp.piezas);
+    notas.push(...comp.notas);
+    return { piezas, notas: dedupNotas(notas), usoR2: usoR2 || comp.usoR2, ejes_abiertos: ejesAbiertos };
+  }
+
+  // ── EL COMPLEMENTO DE CUOTA (§10.11 y §13.9, construido el 4-ago-2026)
+  //
+  // ── QUÉ ES Y POR QUÉ NO EXISTÍA
+  // «Una casilla no es la única vía de una unidad. La tercera pieza de huevo del niño no sale de
+  // una tercera tortilla: sale del cierre del plato, como complemento» (§13.9). Y §10.11 lo dice
+  // con la aritmética delante: «el mínimo del niño no se cubre con tres tortillas, porque esas
+  // mismas tres darían seis al adulto: se cubre con el complemento».
+  //
+  // El banco tiene cinco `secundaria-proteina` —`huevo-duro`, `hummus`, `virutas-jamon`,
+  // `fiambre`, `salmon-ahumado`— y ninguna había salido JAMÁS: 0 apariciones en 644 servicios,
+  // medido el 4-ago sobre la parrilla. El motivo era estructural, no de coste: `cerrarPlato`
+  // rellena los ejes que FALTAN, la proteína la cierra siempre el principal por tipo, y por tanto
+  // no existía ningún camino por el que una secundaria de proteína pudiera entrar en un plato.
+  // Cinco elaboraciones cargadas con disciplina y con efecto cero — el mismo molde que el censo
+  // ya cazó en las reglas de D2.
+  //
+  // ── CUÁNDO ENTRA
+  // Solo cuando el PREVUELO ha declarado que un mínimo no cabe en casillas
+  // (`min_por_complemento`, ver allí la cuenta) y ese comensal sigue por debajo de su mínimo REAL
+  // con lo que lleva servido. No es una preferencia ni un relleno: es la única vía que le queda a
+  // una cuota que la mesa no puede darle por la vía de las casillas.
+  //
+  // ── A QUIÉN SE LE SIRVE
+  // SOLO a quien lo necesita, con `solo-para`. Servirlo a toda la mesa es exactamente lo que
+  // §10.11 prohíbe: el huevo duro que salva el mínimo del niño rompería el techo del adulto. Y
+  // por eso se comprueba el techo de cada beneficiario ANTES de servírselo — un complemento que
+  // cierra un mínimo rompiendo un techo no ha cerrado nada.
+  //
+  // ── LO QUE HOY NO ALCANZA, DICHO Y NO ESCONDIDO
+  // De las cinco, solo `huevo-duro` puede cerrar un mínimo hoy: `hummus` y `salmon-ahumado` no
+  // tienen ración de referencia en D1 (hueco `sin-racion-en-d1` que el prevuelo ya declara),
+  // `fiambre` resuelve por eje y `virutas-jamon` solo alimenta cubos de TECHO (carne-procesada),
+  // donde un complemento nunca ayuda. El mecanismo es genérico y las otras cuatro entrarán solas
+  // el día que su dato entre; hoy la que muerde es la que §10.11 nombra por su nombre.
+  //
+  // ── LA CUENTA SE HACE SOBRE EL SERVICIO ENTERO, NO SOBRE EL ESTADO PREVIO
+  // Primera versión medida el 4-ago: comprobar el techo contra `st.tomas` subió las semanas por
+  // encima del techo de huevo de 11 a 20. El motivo es que `cerrarPlato` corre ANTES de aplicar,
+  // así que `st.tomas` todavía no lleva lo que el principal de ESTE servicio va a servir: con el
+  // adulto en 2 y una tortilla de 2 delante, el complemento veía sitio para una tercera pieza que
+  // ya no existía. La cuota se cierra UNA VEZ por servicio y con todas las líneas del comensal
+  // juntas (fila 5.4) — así que aquí se hace igual: se monta su composición completa (principal +
+  // las guarniciones que le tocan + la candidata) y se mide sobre ella.
+  function complemento(cPrincipal, presentes, s, piezasYa, notasYa, relaj) {
+    const vacio = { piezas: [], notas: [], usoR2: false };
+    // composición YA decidida de este servicio para un miembro (respeta `solo-para`)
+    const suyasDelServicio = mid => {
+      const out = [{ elaboracion_id: cPrincipal.elaboracion_id, opcion: cPrincipal.opcion }];
+      for (const pz of piezasYa) {
+        const sp = notasYa.find(n => n.tipo === 'solo-para' && n.elaboracion_id === pz.elaboracion_id);
+        if (sp && !sp.miembros.includes(mid)) continue;
+        const r = pre.resolucion[mid][pz.elaboracion_id];
+        if (!r || r.estado === 'excluido') continue;
+        out.push({ elaboracion_id: pz.elaboracion_id,
+          opcion: pz.opciones_eje ? (pz.opciones_eje[mid] || pz.opciones_eje['*']) : null });
+      }
+      return out;
+    };
+    const cuotaCon = (mid, extraId) => {
+      const lineas = [];
+      for (const p of suyasDelServicio(mid).concat(extraId ? [{ elaboracion_id: extraId, opcion: null }] : []))
+        lineas.push(...aportes(p, mid));
+      return cuotaDe(lineas, mid);
+    };
+    // ── EL COMPLEMENTO ES EL ÚLTIMO RECURSO, NO EL PRIMERO
+    // El bucle de relleno recorre los slots por most-constrained, NO por calendario, así que
+    // cuando se decide un servicio puede quedar por delante media semana de casillas del mismo
+    // cubo. Medido el 4-ago: sin esta proyección el mismo niño recibía DOS huevos duros en una
+    // semana —uno por cada slot que se rellenó antes que sus tortillas— y cerraba en 5 piezas con
+    // techo 4. Así que solo se complementa lo que las casillas que aún quedan no pueden dar ni en
+    // lo que van a dar. La cota es el peso BAJO —lo que la receta sirve— y no el alto: contra un
+    // mínimo, contar con el mejor caso de cada casilla es dar por cubierto lo que no lo está, y
+    // medido con el peso alto el complemento se apagaba entero (56 → 4 apariciones) porque dos
+    // casillas de huevo «prometían» cuatro piezas al niño que T3 nunca le sirve. Es la misma
+    // proyección sobre `pendientes` que ya hacen los techos, con la cota del lado correcto.
+    const porVenir = (mid, cubo) => {
+      let n = 0;
+      for (const p of pendientes) {
+        if (p.slot === s.slot || !presencia[mid][p.slot]) continue;
+        if (cubosDe(p.categoria).includes(cubo)) n += pesoMinDe(mid, cubo);
+      }
+      return n;
+    };
+    const necesitan = {};                              // cubo → [mid…] que aún no llegan al mínimo
+    for (const mid of presentes) {
+      if (pre.resolucion[mid][cPrincipal.elaboracion_id].estado === 'excluido') continue;
+      let base = null;
+      for (const [cubo, banda] of Object.entries(pre.bandasEfectivas[mid] || {})) {
+        if (!(banda.min_por_complemento > 0)) continue;
+        const objetivo = banda.min + banda.min_por_complemento;
+        base = base || cuotaCon(mid, null);
+        const conEsteServicio = (st.tomas[mid][cubo] || 0) + (base.tomas[cubo] || 0);
+        if (conEsteServicio + porVenir(mid, cubo) >= objetivo - 1e-9) continue;
+        (necesitan[cubo] = necesitan[cubo] || []).push(mid);
+      }
+    }
+    if (!Object.keys(necesitan).length) return vacio;
+    const idxCal = ORDEN_CAL.indexOf(s.slot);
+    const distM4 = relaj.R2 ? 1 : config.VENTANAS.M4_servicios;
+    const yaEnPlato = new Set(piezasYa.map(p => p.elaboracion_id));
+    const evaluadas = [];
+    for (const e of Object.values(ix.elab)) {
+      if (e.tipo !== 'secundaria-proteina' || yaEnPlato.has(e.id)) continue;
+      if (evitarPiezas && evitarPiezas.has(e.id)) continue;
+      if (ix.esPesada(e.id) && st.fritos >= config.FRITOS_SEMANA_MAX) continue;
+      // ¿a quién de los que lo necesitan puede servirle, y sin romperle un techo?
+      const para = [];
+      for (const [cubo, mids] of Object.entries(necesitan)) {
+        for (const mid of mids) {
+          if (para.includes(mid)) continue;
+          const r = pre.resolucion[mid][e.id];
+          if (!r || r.estado !== 'tal-cual') continue;   // el complemento viaja SIN notas propias
+          if (ix.tieneEje[e.id] && !(pre.opcionesLegales[mid][e.id] || []).length) continue;
+          const sin = cuotaCon(mid, null), con = cuotaCon(mid, e.id);
+          if (!((con.tomas[cubo] || 0) > (sin.tomas[cubo] || 0))) continue;   // no le mueve SU cubo
+          // ningún techo suyo puede romperse por recibirlo — ni el de frecuencia ni el de salud
+          let cabe = true;
+          for (const [c2, n] of Object.entries(con.tomas)) {
+            const b = (pre.bandasEfectivas[mid] || {})[c2];
+            if (b && (st.tomas[mid][c2] || 0) + n > b.max + 1e-9) { cabe = false; break; }
+          }
+          if (cabe) for (const [cat, g] of Object.entries(con.gramosSalud)) {
+            const techo = config.TECHOS_SALUD_G_SEMANA[cat];
+            if (techo != null && (st.saludG[mid][cat] || 0) + g > techo + 1e-6) { cabe = false; break; }
+          }
+          if (cabe) for (const l of aportes({ elaboracion_id: e.id, opcion: null }, mid)) {
+            const t = techoVentana(reglasVentana, l.alimento, edades[mid]);
+            if (t != null && ((st.ventanaG[mid] || {})[l.alimento] || 0) + (l.gramos || 0) > t + 1e-6) { cabe = false; break; }
+          }
+          if (cabe) para.push(mid);
+        }
+      }
+      if (!para.length) continue;
+      const per = percibidoDe(e.id, null);
+      const u = distSec(per, idxCal);
+      if (u != null && u < distM4) continue;
+      evaluadas.push({ e, para, soloConR2: u != null && u < config.VENTANAS.M4_servicios,
+        coste: -para.length });                          // sirve a más gente = mejor; luego id
+    }
+    if (!evaluadas.length) return vacio;
+    evaluadas.sort((a, b) => a.coste - b.coste || (a.e.id < b.e.id ? -1 : 1));
+    const el = evaluadas[0];
+    const notas = [];
+    // `solo-para` SIEMPRE, aunque hoy coincida con toda la mesa: el complemento es de quien tiene
+    // la cuota corta, y que la mesa entera lo necesite es una coincidencia de esta semana, no la
+    // regla. Sin la nota, el techo del que no lo necesita se rompería la semana que no coincidan.
+    notas.push({ tipo: 'solo-para', miembros: el.para, elaboracion_id: el.e.id });
+    return { piezas: [{ elaboracion_id: el.e.id, opciones_eje: null }], notas,
+      usoR2: el.soloConR2 };
   }
   // guarniciones YA servidas, con la mesa de hoy (§15.4). Una pieza que hoy no come nadie sale
   // del plato; una que come parte de la mesa lleva su `solo-para`; quien vuelve trae sus notas.
@@ -5363,7 +5745,9 @@ function rellenarSemana({ entrada, esq, pre, pools, datos, config, memoria, menu
       const q = cuotaDe(lineasDelServicio, mid);
       for (const cubo of Object.keys(q.tomas)) {
         st.tomas[mid][cubo] = (st.tomas[mid][cubo] || 0) + q.tomas[cubo];
-        if (cubo === 'carne-procesada' && tramo === 'nino') st.procesadaNino[mid] = (st.procesadaNino[mid] || 0) + q.tomas[cubo];
+        // §20.39 · y el contador de la ventana MENSUAL, que sigue vivo la semana que viene
+        if ((config.CUOTAS_MENSUALES || {})[cubo] && (config.CUOTAS_MENSUALES[cubo][tramo] != null))
+          (st.tomasMes[mid] = st.tomasMes[mid] || {})[cubo] = ((st.tomasMes[mid] || {})[cubo] || 0) + q.tomas[cubo];
       }
       for (const [cat, g] of Object.entries(q.gramosSalud))
         st.saludG[mid][cat] = (st.saludG[mid][cat] || 0) + g;
@@ -5587,7 +5971,7 @@ module.exports = { rellenarSemana };
 const { derivarElaboracion, indexar, kcalDe, edadEnSemana } = require('./derivar.js');
 const { objetivoDiario } = require('./energia.js');
 const { racionParaLinea } = require('./raciones.js');
-const { unidadDe } = require('./cuotas.js');
+const { unidadDe, aPiezas } = require('./cuotas.js');
 const { cubosDe } = require('./t1_esqueleto.js');
 
 // TECHOS DE SALUD: innegociables por spec §7 («Jamás: H entero, ni los techos de salud»). La
@@ -5673,6 +6057,19 @@ function fraccionarSemana({ semana, familia, config }, datos) {
   const salida = [];
   const saludAcum = {};                              // mid → cubo de salud → raciones servidas
   for (const m of familia.miembros) saludAcum[m.id] = {};
+  // ── §13.10 · T3 NO PUEDE DESBORDAR LA FRECUENCIA (cerrado el 4-ago-2026)
+  // «Al servir gramos, una línea de categoría contable se redondea a piezas enteras con la unidad
+  // de su propio alimento.» Lo que faltaba es el techo: el bloque de piezas de abajo movía la
+  // ración de una protagonista entre 1 y 2 por ENERGÍA y nadie miraba la cuota, así que T3 podía
+  // subir a un niño de 1 a 2 huevos en un servicio y romperle la semana después de que T2 la
+  // hubiera cuadrado. Medido el 4-ago: era la vía por la que el techo seguía cediendo con el
+  // reparto de T1 ya correcto. Aquí se lleva el acumulado de piezas y la subida se para en el
+  // techo — bajar sí puede, subir por encima del techo no.
+  // La banda es la ENTERA de `config.CUOTAS`, sin pro-ratear por presencia: es una cota laxa a
+  // propósito (con presencia parcial el techo real es menor y lo gobierna T2, que sí pro-ratea).
+  // T3 nunca debe ser MÁS restrictivo que quien decidió el menú; solo debe dejar de romperlo.
+  const piezasAcum = {};                             // mid → categoría contable → piezas servidas
+  for (const m of familia.miembros) piezasAcum[m.id] = {};
 
   for (const sv of semana.servicios) {
     if (!sv.plato) { salida.push({ slot: `${sv.dia}-${sv.servicio}`, fracciones: null, descargos: [], relajaciones: [] }); continue; }
@@ -5786,18 +6183,32 @@ function fraccionarSemana({ semana, familia, config }, datos) {
               || (racionParaLinea(datos, ficha, obj.edad) || {}).g;
             if (!(unidad > 0)) continue;
             const nominal = (esNino ? l.gramos_nino : l.gramos_adulto) || 0;
-            const piezasReceta = Math.round(nominal / unidad);
+            // MISMA función de pieza que cuenta la cuota (`cuotas.js`), no una propia: es el
+            // patrón de §13.11 —una definición, tres recorridos—. Con `Math.round` aquí y el
+            // corte estricto allí, T3 servía la pieza que la cuota no contaba.
+            const piezasReceta = aPiezas(nominal / unidad);
             if (piezasReceta < 1) continue;             // ligante: 15-30 g, no llega a pieza
             let piezas = piezasReceta;
             if (protagonistas.includes(pe.elaboracion_id)) {
-              // el huevo ES el plato: la energía puede moverlo, pero solo en piezas y dentro del
-              // rango que la receta admite
-              piezas = Math.min(pMax, Math.max(pMin, Math.round(nominal * mejor / unidad)));
+              // el huevo ES el plato: la energía puede moverlo, pero solo en piezas, dentro del
+              // rango que la receta admite y SIN pasar del techo de la semana (§13.10)
+              piezas = Math.min(pMax, Math.max(pMin, aPiezas(nominal * mejor / unidad)));
+              const techo = ((config.CUOTAS[cat] || {})[tramo] || [])[1];
+              if (techo != null) {
+                const sitio = techo - (piezasAcum[m.id][cat] || 0);
+                if (piezas > sitio) piezas = Math.max(pMin, Math.min(piezas, Math.max(0, sitio)));
+              }
             }
+            piezasAcum[m.id][cat] = (piezasAcum[m.id][cat] || 0) + piezas;
             const g = Math.round(piezas * unidad);
             if (g === Math.round(nominal * mejor)) continue;
             ajustesLinea.push({ miembro: m.id, elaboracion_id: pe.elaboracion_id,
               alimento_id: l.alimento_id, gramos: g });
+            // la proteína VIVA sigue a los gramos que de verdad se sirven: redondear a piezas
+            // enteras mueve proteína, y la declaración de más abajo tiene que ver ese movimiento.
+            // Sin esto, T3 declaraba (o callaba) sobre la receta y no sobre el plato — cazado por
+            // T4 en `2026-W05 4-cena a2`, 15,1 g contra un suelo de 15,4 g **sin descargo**.
+            protViva += (g - nominal * mejor) * protPorGramo(ix, l);
           }
         }
       }
@@ -5807,7 +6218,12 @@ function fraccionarSemana({ semana, familia, config }, datos) {
       // en `detalle`, jamás en un tipo propio, o la violación viajaría muda ante el juez.
       // (Restaurado tras cazarlo la QA-2 con un grep: mi edición por script del bloque anterior
       // se llevó por delante estas líneas y T3 quedó SIN emitir un solo descargo.)
-      const protFinal = base.proteina * mejor;
+      // ⚑ 4-ago-2026 · la declaración mide lo SERVIDO (`protViva`), no la receta escalada. Los dos
+      // ajustes de arriba —el fino por rango y el de piezas enteras— mueven gramos después de
+      // fijar la fracción, así que `base.proteina × factor` dejó de ser lo que el comensal come.
+      // T4 cuenta lo servido: declarar sobre otra cosa es fabricar un desacuerdo entre generador y
+      // juez, que es el bug nº1 de este proyecto.
+      const protFinal = protViva;
       if (protFinal < sueloServicio - 1e-9) {
         descargos.push({ tipo: 'suelo-proteico', miembro: m.id,
           detalle: `${m.id}: la proteína del servicio queda en ${protFinal.toFixed(1)} g frente al suelo ${sueloServicio.toFixed(1)} g — ` +
@@ -6302,15 +6718,90 @@ function techoVentana(reglas, alimentoId, edad) {
   return Math.min(...fs.map(r => r.limite_g_dia * (r.ventana_dias || 1)));
 }
 
-module.exports = { reglasDeVentana, acumuladoPrevio, techoVentana };
+// ── TOMAS YA SERVIDAS DE UN CUBO DENTRO DE UNA VENTANA DE DÍAS (§20.39, 4-ago-2026)
+//
+// ── QUÉ ARREGLA
+// AC25 publica la carne procesada de un menor como **≤2 al MES**. En `config.CUOTAS` estaba
+// escrita como `2/4` — el mes repartido a semana— y el propio funcional lo marcaba como aviso:
+// «no puede cumplirse: no existe media ración, y cualquier ración de un menor lo supera». Es
+// literalmente el bug que este fichero existe para no repetir: copiar el número de la fuente sin
+// copiar su PERIODO. Medido el 4-ago sobre la parrilla, con el techo semanal de 0,5: **19 de 164
+// veredictos de semana** por encima del techo, todos por el mismo motivo aritmético.
+//
+// ── POR QUÉ NO ES `acumuladoPrevio`
+// Aquella cuenta GRAMOS de un ALIMENTO vigilado por `seguridad_infantil`. Ésta cuenta TOMAS de un
+// CUBO de `config.CUOTAS`. Misma ventana, otra moneda y otro sujeto (§10.3: los tres niveles no
+// se convierten entre sí). Comparten el diario D3 y la vara del día, que es lo único que deben
+// compartir. La toma se decide con `cuotaDeServicio`, la definición única (§13.11).
+function tomasPreviasDeCubo(diario, datos, config, edades, hasta, cubos, ventanaDias, cuotaDeServicio) {
+  const acc = {};
+  if (!diario || !Array.isArray(diario.servicios) || !cubos.length) return acc;
+  const desde = new Date(hasta.getTime() - ventanaDias * 86400000);
+  const lineasDe = {};
+  for (const l of datos.lineas) (lineasDe[l.padre] = lineasDe[l.padre] || []).push(l);
+  const planas = {};
+  const lineasPlanas = (id, esNino) => {
+    const k = `${id}|${esNino}`;
+    if (planas[k]) return planas[k];
+    const out = [];
+    const rec = (padre, escala, visto) => {
+      if (visto.has(padre)) return;
+      visto.add(padre);
+      for (const l of lineasDe[padre] || []) {
+        if (l.componente_id) { rec(l.componente_id, escala * ((esNino ? l.escala_nino : l.escala_adulto) || 1), visto); continue; }
+        out.push({ ...l, escala });
+      }
+    };
+    rec(id, 1, new Set());
+    return planas[k] = out;
+  };
+  for (const s of diario.servicios) {
+    if (s.servido === false || !s.fecha) continue;
+    const f = new Date(s.fecha + 'T00:00:00Z');
+    if (!(f < hasta) || f < desde) continue;
+    const notas = s.notas || [];
+    for (const mid of s.presentes || []) {
+      const edad = edades[mid];
+      if (edad == null) continue;
+      const esNino = edad < config.EDAD_RACION_ADULTO;
+      const fr = (s.fracciones && s.fracciones[mid] != null) ? s.fracciones[mid] : 1;
+      // misma composición individual que el juez (`t4_auditoria.js` §composicion)
+      const sust = {};
+      for (const n of notas) if (n.tipo === 'sustituto' && n.miembro === mid) sust[n.ambito] = n;
+      const fuera = new Set();
+      for (const n of notas) if (n.tipo === 'solo-para' && !n.miembros.includes(mid)) fuera.add(n.elaboracion_id);
+      const quitar = new Set();
+      for (const n of notas) if (n.tipo === 'eliminar' && (n.miembro === mid || n.miembro === '*')) quitar.add(n.alimento_id);
+      const plato = sust.plato ? sust.plato.plato : (s.plato || []).filter(p => !fuera.has(p.elaboracion_id));
+      const postre = sust.postre ? sust.postre.postre : s.postre;
+      const lineas = [];
+      for (const pe of (postre ? plato.concat([postre]) : plato)) {
+        for (const l of lineasPlanas(pe.elaboracion_id, esNino)) {
+          const aid = Array.isArray(l.alternativas)
+            ? (pe.opciones_eje && (pe.opciones_eje[mid] || pe.opciones_eje['*'])) : l.alimento_id;
+          if (!aid || quitar.has(aid)) continue;
+          lineas.push({ alimento: aid, elaboracion_id: pe.elaboracion_id,
+            gramos: ((esNino ? l.gramos_nino : l.gramos_adulto) || 0) * (l.escala || 1) * fr });
+        }
+      }
+      if (!lineas.length) continue;
+      const q = cuotaDeServicio(lineas, { edad }, datos, config);
+      for (const cubo of cubos) if (q.tomas[cubo] > 0)
+        (acc[mid] = acc[mid] || {})[cubo] = (acc[mid][cubo] || 0) + q.tomas[cubo];
+    }
+  }
+  return acc;
+}
+
+module.exports = { reglasDeVentana, acumuladoPrevio, techoVentana, tomasPreviasDeCubo };
 
   };
 
   /* ---- hash_banco (precalculado en build; sin crypto en el navegador) ---- */
   REG['hash_banco'] = function (module) {
     module.exports = {
-      hashCompleto: function () { return '5de402483830e1888d1523ee01f7bb147bfa8f6d503566137de0e55b2e61770b'; },
-      hashGeneracion: function () { return '63c075ea3480a364b2d7a065087c2f918e7cb957782e3c31a286b7702200f9d7'; }
+      hashCompleto: function () { return 'bf2e10fc7959d36e24789fc40f9449d5d4dce0a501eb478d29931eb40f90e11a'; },
+      hashGeneracion: function () { return '1a623f5aa08ea7ebdd6f55ef89ba8de598eb16c4b2b65be96c25988d212978f4'; }
     };
   };
 

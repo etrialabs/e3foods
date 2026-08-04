@@ -502,6 +502,9 @@
   // iconos de sol/luna — mismo estilo de línea que el nav (24x24, stroke)
   var ICONO_SOL = '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.6M12 18.9v2.6M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M2.5 12h2.6M18.9 12h2.6M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8"/></svg>';
   var ICONO_LUNA = '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 14.8A8.5 8.5 0 1 1 9.2 3.5a6.8 6.8 0 0 0 11.3 11.3z"/></svg>';
+  // handoff 7, §2.2: el chevron del badge de estado NO es Lucide — SVG en línea de 10x10,
+  // stroke-width 3. La rotación al abrir la pinta la clase .ph-estado-flecha-abierta.
+  var ICONO_CHEVRON_ESTADO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>';
 
   // Marcas reales de Google/Apple (handoff 5, §3 — "elegir vía: email, Google,
   // Apple. Marcas reales"): logomarcas oficiales, no un icono lucide genérico.
@@ -708,8 +711,8 @@
     var familia = estado.familia || [];
     // «come otra cosa» = nota `sustituto` (exclusión estructural, §9.2). Es el TERCER estado del
     // handoff 5, que hasta ahora no rellenaba ningún motor: V6 sí lo emite.
-    var otraSet = {}, ajusteDe = {};
-    notasDe(servicio, 'sustituto').forEach(function (n) { otraSet[n.miembro] = true; });
+    var otraSet = {}, otraNotaDe = {}, ajusteDe = {};
+    notasDe(servicio, 'sustituto').forEach(function (n) { otraSet[n.miembro] = true; otraNotaDe[n.miembro] = n; });
     // «ajuste» = cualquier nota individual que cambie SU composición sin sacarlo de la mesa
     notasDe(servicio, 'vehiculo-persona').forEach(function (n) {
       ajusteDe[n.miembro] = notaSustituto(banco, n.alimento_id, n.sustituto_id);
@@ -731,6 +734,9 @@
       return mesa.presentes.some(function (p) { return p.id === id; });
     });
 
+    // handoff 7, §2.2/§2.4: avatar/nombre/nota de la fila del desplegable, con el estado
+    // "fuera" completo (opacidad de avatar, tachado de nombre, color de nota propio —
+    // antes reusaba --muted, que no es el rgba(26,23,18,.38) literal del handoff).
     var personas = familia.map(function (m) {
       var idx = familia.indexOf(m);
       var presente = mesa.presentes.some(function (p) { return p.id === m.id; });
@@ -741,24 +747,37 @@
         : adapt ? t('estado_ajuste_con').replace('{ingrediente}', String(adapt).toLowerCase())
         : t('estado_come_todo');
       return {
+        id: m.id, fuera: !presente,
         avatarEstilo: avatarEstiloColor(m, colorMiembro(idx)), avatarTxt: avatarInner(m), nombre: m.nombre,
         dotEstilo: !presente ? 'background:rgba(26,23,18,.22)' : distinto ? 'background:' + ESTADO_BLOQUEO : 'background:' + (adapt ? ESTADO_TERRACOTA : ESTADO_OLIVA),
-        notaEstilo: distinto ? 'color:oklch(0.5 0.14 35)' : adapt ? 'color:oklch(0.48 0.14 45)' : 'color:var(--muted)',
+        notaEstilo: !presente ? 'color:rgba(26,23,18,.38)' : distinto ? 'color:oklch(0.5 0.14 35)' : adapt ? 'color:oklch(0.48 0.14 45)' : 'color:rgba(26,23,18,.45)',
         nota: nota
       };
     });
     var adaptaciones = Object.keys(ajusteDe).filter(function (id) {
       return mesa.presentes.some(function (p) { return p.id === id; }) && otraIds.indexOf(id) === -1;
     });
+    // §2.3: nMain = comen el principal, nAlt = comen el alternativo — en TODAS las ramas,
+    // el chip "para {n}" de cabecera del pop (§2.4) los necesita siempre.
+    var nAlt = otraIds.length;
+    var nMain = mesa.presentes.length - nAlt;
 
     if (otraIds.length) {
       var nombresOtra = familia.filter(function (m) { return otraSet[m.id]; })
         .map(function (m) { return m.nombre; }).join(t('conj_y'));
+      // "se toma el de otra[0]" (04-datos.md): el plato mostrado es el de la primera
+      // persona que come otra cosa, aunque el copy nombre a todos.
+      var altNota = otraNotaDe[otraIds[0]];
+      var altNombre = '';
+      if (altNota) {
+        var altPiezas = altNota.ambito === 'postre' ? [altNota.postre] : (altNota.plato || []);
+        altNombre = altPiezas.filter(Boolean).map(function (p) { return nombrePercibido(banco, p, altNota.miembro); }).join(' · ');
+      }
       return {
         clase: 'otra',
         label: (otraIds.length === 1 ? t('estado_otra_1') : t('estado_otra_n')).replace(/\{nombre(s)?\}/, nombresOtra),
         popTitulo: (otraIds.length === 1 ? t('estado_pop_otra_1') : t('estado_pop_otra_n')).replace(/\{nombre(s)?\}/, nombresOtra),
-        popSub: t('estado_pop_otra_sub'), personas: personas
+        popSub: t('estado_pop_otra_sub'), personas: personas, nMain: nMain, nAlt: nAlt, altNombre: altNombre
       };
     }
 
@@ -768,16 +787,26 @@
         clase: 'terracota',
         label: nAjustes === 1 ? t('estado_1_ajuste') : t('estado_n_ajustes').replace('{n}', nAjustes),
         popTitulo: nAjustes === 1 ? t('estado_pop_1_ajuste') : t('estado_pop_n_ajustes').replace('{n}', nAjustes),
-        popSub: t('estado_pop_ajuste_sub'), personas: personas
+        popSub: t('estado_pop_ajuste_sub'), personas: personas, nMain: nMain, nAlt: 0
       };
     }
-    var nMain = mesa.presentes.length;
+    // gris · nadie en casa (§2.3) — fuera del código semáforo a propósito: no es una
+    // advertencia, es una ausencia. Antes el badge se ocultaba entero en este caso
+    // (renderEstadoBadgeYPop cortaba con `!mesa.presentes.length`); el handoff exige
+    // que se vea siempre, como cuarto estado.
+    if (!mesa.presentes.length) {
+      return {
+        clase: 'gris', label: t('estado_nadie_casa'), popTitulo: t('estado_pop_nadie_casa'),
+        popSub: t('estado_pop_nadie_sub'), personas: personas, nMain: 0, nAlt: 0
+      };
+    }
     var todos = familia.length > 0 && nMain === familia.length;
     return {
       clase: 'oliva',
       label: todos ? t('estado_comen_todos') : t('estado_comen_n').replace('{n}', nMain),
-      popTitulo: todos ? t('estado_pop_todos') : t('estado_pop_n').replace('{n}', nMain),
-      popSub: t('estado_pop_todos_sub'), personas: personas
+      // §2.7: "Comen los 3 sin cambios" — el 3 es el tamaño real de la familia, no un literal.
+      popTitulo: todos ? t('estado_pop_todos').replace('{n}', familia.length) : t('estado_pop_n').replace('{n}', nMain),
+      popSub: t('estado_pop_todos_sub'), personas: personas, nMain: nMain, nAlt: 0
     };
   }
 
@@ -796,11 +825,11 @@
     var claseCard = esCena ? 'ph-card ph-card-cena' : 'ph-card ph-card-comida';
     var icono = esCena ? ICONO_LUNA : ICONO_SOL;
     var etiqueta = t(esCena ? 'badge_cena' : 'badge_comida');
+    // handoff 7, §02 (intro): el cluster de avatares sobre la foto queda sustituido por
+    // el badge de estado — sigue vivo SOLO para el estado vacío (.ph-cab), que no tiene
+    // badge de estado porque no hay servicio que resolver.
     var avataresHtml = avataresPager(estado, mesa, diaIndex, meal, esCena);
     var avataresSpan = avataresHtml ? '<span class="ph-avatares">' + avataresHtml + '</span>' : '';
-    // Handoff (e3Foods.dc.html líneas 85-93): badge y avatares van ENCIMA de
-    // la foto (position:absolute), no en una fila aparte. Solo en el estado
-    // vacío (sin foto que enseñar) cae al .ph-cab de siempre.
     var badge = '<span class="ph-badge ph-badge-' + (esCena ? 'cena' : 'comida') + '"><span class="ph-badge-icono">' + icono + '</span><span class="ph-badge-texto">' + etiqueta + '</span></span>';
     var cabeceraVacia = '<div class="ph-cab"><span class="ph-tipo ph-tipo-' + (esCena ? 'cena' : 'comida') + '">' + icono + etiqueta + '</span>' + avataresSpan + '</div>';
 
@@ -829,6 +858,13 @@
 
     var subtitulo = secundariasDe(banco, servicio).map(function (x) { return nombrePercibido(banco, x, '*'); }).join(' · ');
     var tag = ETIQUETA_ESFUERZO[principal.esfuerzo] || '';
+    // El hueco vacío es TRANSITORIO y honesto, no un fallo de diseño: hoy solo 4 de las 140
+    // elaboraciones traen `foto` (medido, no leído de un comentario: cargar el bundle y contar
+    // `elaboraciones.filter(e => e.foto)`), así que ~97% de las cards enseñan el hueco. Roger
+    // (4-ago-2026): «en breves días todas las fotos estarán disponibles» — cuando el banco las
+    // traiga, esto se llena solo, sin tocar una línea. NO lo tapes con un placeholder ilustrado
+    // ni escondas el hueco: el layout de la card está calibrado con la foto puesta y encogerlo
+    // ahora obliga a recalibrarlo dos veces.
     var fotoHtml = principal.foto ? '<img class="ph-foto" src="' + escapeHtml(principal.foto) + '" alt="">' : '<div class="ph-foto ph-foto-vacia"></div>';
 
     // sin kcal en la card: la energía por comensal sale del derivador del motor, que llega con
@@ -838,56 +874,84 @@
       (tag ? '<span class="ph-meta-punto"></span><span class="ph-meta-item"><i data-lucide="leaf"></i>' + tag + '</span>' : '') +
       '</div>';
 
+    // handoff 7, §2.3: se calcula el estado UNA vez y se reparte a la tira de plato
+    // alternativo (§1.6, dentro del botón) y al badge+desplegable (§2), en vez de
+    // recomputarlo dos veces con datos que podrían desincronizarse entre sí.
+    var estadoBadge = estadoMesaBadge(estado, banco, mesa, servicio);
+    var altTiraHtml = estadoBadge.nAlt
+      ? '<div class="ph-alt-tira"><div class="ph-alt-foto"></div><span class="ph-alt-info">' +
+        '<span class="ph-alt-cab">' + escapeHtml(estadoBadge.label) + ' <span class="ph-alt-cuenta">· ' + escapeHtml(t('estado_pop_count').replace('{n}', estadoBadge.nAlt)) + '</span></span>' +
+        '<span class="ph-alt-plato">' + escapeHtml(estadoBadge.altNombre || '') + '</span>' +
+        '</span></div>'
+      : '';
+
     // role="button" en un <div>, no un <button>: dentro va el avatar de cada
     // comensal, que SÍ es un <button> real (toggle-presente) — un <button> no
     // puede envolver a otro <button> (HTML inválido, el navegador lo rompe).
     // Mismo patrón que ya usa el dispatcher de teclado (ver app.js, keydown).
     return '<div class="' + claseCard + '" data-dia="' + diaIndex + '" data-tipo="' + meal + '">' +
       '<div role="button" tabindex="0" class="ph-abrir" data-action="abrir-receta" data-dia="' + diaIndex + '" data-tipo="' + meal + '" aria-label="Ver receta completa">' +
-      '<div class="ph-foto-wrap">' + fotoHtml + badge + avataresSpan + '</div>' +
+      '<div class="ph-foto-wrap">' + fotoHtml + badge + '</div>' +
       '<div class="ph-info">' +
       '<p class="ph-titulo">' + escapeHtml(nombrePercibido(banco, itemPrincipal, '*')) + '</p>' +
       (subtitulo ? '<p class="ph-subtitulo">' + escapeHtml(subtitulo) + '</p>' : '') +
       metaHtml +
       (postreTexto ? '<p class="ph-postre">' + t('de_postre') + ' ' + escapeHtml(postreTexto) + '</p>' : '') +
+      altTiraHtml +
       '</div>' +
       '</div>' +
       renderNotasCard(estado, banco, servicio, esCena) +
-      renderEstadoBadgeYPop(estado, banco, mesa, servicio, meal, popupAbierto) +
+      renderEstadoBadgeYPop(banco, diaIndex, meal, popupAbierto, estadoBadge) +
       '<button type="button" class="ph-cta" data-action="abrir-cambiar" data-dia="' + diaIndex + '" data-tipo="' + meal + '"><i data-lucide="sparkles"></i>' + t('me_apetece_otra_cosa') + '<i data-lucide="arrow-right" class="ph-cta-flecha"></i></button>' +
       '</div>';
   }
 
-  // Badge de estado ("Comen todos" / "N ajustes") + su tarjeta secundaria — botón
-  // HERMANO de .ph-abrir, no anidado dentro (handoff: "no hereda el clic que abre
-  // la receta"). data-tipo identifica el pager (comida/cena); no lleva data-dia
-  // porque el pager solo existe para el día activo (mismo criterio que el resto
-  // de acciones de esta card).
-  function renderEstadoBadgeYPop(estado, banco, mesa, servicio, meal, popupAbierto) {
-    if (!mesa.presentes.length) return '';
-    var e = estadoMesaBadge(estado, banco, mesa, servicio);
-    var badge = '<button type="button" class="ph-estado-badge ph-estado-badge-' + e.clase + '" ' +
-      'data-action="estado-toggle" data-tipo="' + meal + '" aria-expanded="' + (popupAbierto ? 'true' : 'false') + '" ' +
+  // Badge de estado ("Comen todos" / "N ajustes") + su desplegable — botón HERMANO de
+  // .ph-abrir, no anidado dentro (handoff: "no hereda el clic que abre la receta").
+  // handoff 7, §2.4/regla 4 del README: el desplegable NUNCA se monta/desmonta —
+  // siempre está en el DOM, solo cambia de clase (.ph-estado-pop-abierto). Montarlo
+  // condicionalmente (como hacía esta función antes) rompe la animación de entrada.
+  // §2.6: badge y pop llevan data-whopop="1" para el cierre por toque fuera (app.js).
+  function renderEstadoBadgeYPop(banco, diaIndex, meal, popupAbierto, e) {
+    var abierta = !!popupAbierto;
+    var badge = '<button type="button" class="ph-estado-badge ph-estado-badge-' + e.clase + '" data-whopop="1" ' +
+      'data-action="estado-toggle" data-tipo="' + meal + '" aria-expanded="' + abierta + '" ' +
       'aria-label="' + escapeHtml(e.label) + '. ' + escapeHtml(t('estado_aria_detalle')) + '">' +
       '<span class="ph-estado-dot"></span>' +
       '<span class="ph-estado-texto">' + escapeHtml(e.label) + '</span>' +
-      '<i data-lucide="chevron-down" class="ph-estado-flecha' + (popupAbierto ? ' ph-estado-flecha-abierta' : '') + '"></i>' +
+      '<span class="ph-estado-flecha' + (abierta ? ' ph-estado-flecha-abierta' : '') + '">' + ICONO_CHEVRON_ESTADO + '</span>' +
       '</button>';
-    if (!popupAbierto) return badge;
+    // §2.5 NO NEGOCIABLE: cada fila es un botón que quita/retoma a esa persona de ESTA
+    // comida de ESTE día — reutiliza togglePresente/ausenciasPuntuales, el mismo estado
+    // de sesión por comida que ya usaba el avatar (ahora retirado de la foto, §02 intro).
     var filas = e.personas.map(function (p) {
-      return '<div class="ph-estado-fila">' +
-        '<span class="ph-avatar ph-estado-fila-av" ' + p.avatarEstilo + '>' + p.avatarTxt + '</span>' +
-        '<span class="ph-estado-fila-info"><span class="ph-estado-fila-nombre">' + escapeHtml(p.nombre) + '</span>' +
+      return '<button type="button" class="ph-estado-fila" data-action="toggle-presente" data-dia="' + diaIndex + '" data-tipo="' + meal + '" data-miembro="' + escapeHtml(p.id) + '">' +
+        '<span class="ph-avatar ph-estado-fila-av' + (p.fuera ? ' ph-estado-fila-av-fuera' : '') + '" ' + p.avatarEstilo + '>' + p.avatarTxt + '</span>' +
+        '<span class="ph-estado-fila-info"><span class="ph-estado-fila-nombre' + (p.fuera ? ' ph-estado-fila-nombre-fuera' : '') + '">' + escapeHtml(p.nombre) + '</span>' +
         '<span class="ph-estado-fila-nota" style="' + p.notaEstilo + '">' + escapeHtml(p.nota) + '</span></span>' +
         '<span class="ph-estado-fila-dot" style="' + p.dotEstilo + '"></span>' +
-        '</div>';
+        '</button>';
     }).join('');
-    var pop = '<div class="ph-estado-pop">' +
+    // tira de plato alternativo del pop (§2.4): misma info que la de la card (§1.6) pero
+    // miniatura de 40px y con el chip de recuento a la derecha, no en línea con el título.
+    var altPopHtml = e.nAlt
+      ? '<div class="ph-alt-tira ph-alt-tira-pop"><div class="ph-alt-foto"></div><span class="ph-alt-info">' +
+        '<span class="ph-alt-cab">' + escapeHtml(e.label) + '</span>' +
+        '<span class="ph-alt-plato">' + escapeHtml(e.altNombre || '') + '</span>' +
+        '</span><span class="ph-estado-pop-count">' + escapeHtml(t('estado_pop_count').replace('{n}', e.nAlt)) + '</span></div>'
+      : '';
+    var pop = '<div class="ph-estado-pop' + (abierta ? ' ph-estado-pop-abierto' : '') + '" data-whopop="1">' +
       '<div class="ph-estado-pop-cab">' +
+      '<span class="ph-estado-pop-titsub">' +
       '<span class="ph-estado-pop-tit ph-estado-pop-tit-' + e.clase + '">' + escapeHtml(e.popTitulo) + '</span>' +
       '<span class="ph-estado-pop-sub">' + escapeHtml(e.popSub) + '</span>' +
+      '</span>' +
+      '<span class="ph-estado-pop-count">' + escapeHtml(t('estado_pop_count').replace('{n}', e.nMain)) + '</span>' +
       '</div>' +
       '<div class="ph-estado-pop-lista">' + filas + '</div>' +
+      '<div class="ph-estado-pop-ayuda">' + escapeHtml(t('estado_pop_ayuda')) + '</div>' +
+      altPopHtml +
+      '<span class="ph-estado-pop-flecha" aria-hidden="true"></span>' +
       '</div>';
     return badge + pop;
   }
@@ -1280,6 +1344,7 @@
       '<div class="vista-body ph-body">' +
       saludoHtml + tiraHtml + pantryHtml + pagerHtml + segHtml + coleCardHtml + proximosHtml +
       renderAvisoEquilibrio(estado.plan, banco, estado) +
+      renderLinkGastoSemanal() +
       '</div>';
   }
 
@@ -1328,6 +1393,108 @@
       pendienteV6(t('v6_pend_equilibrio'), t('v6_pendiente_sub')) +
       frasesHtml +
       '<div class="resumen-semana-lista">' + dias + '</div>' +
+      '</div>';
+  }
+
+  // ---------------------------------------------------------------
+  // HANDOFF 7 · §03 — Gasto semanal. Pieza NUEVA (no existía antes de este handoff).
+  //
+  // SIN FUENTE DE COSTE REAL — comprobado 2026-08-04:
+  //   grep -n "coste\|precio\|euro" motor_v6/src/superficie.js   ->  0 resultados
+  //   costes.js del motor es costeS(señales, config): el SCORING interno de blandas
+  //     (§13.4), no dinero — nunca produce un precio para mostrar.
+  //   El banco solo trae `coste_banda` (barato/medio/caro) en alimentos.js, jamás un
+  //     precio en euros.
+  // El funcional ya lo declara pendiente (§16.6: "La pantalla existe en el frontend y
+  // está pendiente de dato") y fija cómo tratarlo (§16.7: precio de mercado, por
+  // barrido semanal en lote — nunca inventado ni calculado a mano). Regla del método:
+  // "datos: fuente verificable o no se mete" + condición 7 ("nada pendiente se oculta,
+  // se deja visible y marcado pendiente"). Por eso esta hoja se pinta ENTERA y
+  // pixel-exacta al handoff, con cada cifra sustituida por un guion en vez de omitirse.
+  //
+  // gastoSemanalMecanica() es la mecánica NO NEGOCIABLE del §3.4 (altura de barra
+  // relativa al MÁXIMO de la semana, nunca a un techo fijo) ya escrita y probada con el
+  // fixture del propio handoff (04-datos.md) en tests/cargar_app.js — lista para
+  // conectarse el día que exista una fuente de precio real, sin tocar esta función.
+  //
+  // ⚠️ NO LA BORRES: hoy NO TIENE INVOCADOR y eso es DELIBERADO — dictado de Roger
+  // (4-ago-2026): «el gasto existirá y se conectará donde lo dejó preparado».
+  // **Esto NO es una excepción a la regla: ES la regla vigente.** Roger la cambió ese
+  // mismo día — «función sin invocador → mensaje en el front de "aún no disponible"»,
+  // en sustitución de la antigua «función sin invocador = función que no existe», que
+  // llevaba a borrar trabajo ya pagado. Lo que valida este enchufe es que la hoja de
+  // Gasto semanal se pinta ENTERA y marcada pendiente (funcional 4.12 y 16.6): lo
+  // prohibido es el enchufe MUDO, sin pantalla que lo anuncie.
+  // Quien conecte el coste: llamar a esta función con los días reales y quitar el
+  // estado «pendiente» de renderSheetGastoSemanal().
+  // ---------------------------------------------------------------
+  function gastoSemanalMecanica(dias, media, mediaAnterior) {
+    var valores = dias.map(function (d) { return d.price; });
+    var max = Math.max.apply(null, valores);
+    var min = Math.min.apply(null, valores);
+    var barras = dias.map(function (d) {
+      return {
+        dow: d.dow, dish: d.dish, price: d.price,
+        pct: Math.round(d.price / max * 100),
+        esMax: d.price === max, esMin: d.price === min
+      };
+    });
+    return {
+      barras: barras, max: max, min: min,
+      mediaPct: Math.round(media / max * 100),
+      mediaPrevPct: Math.round(mediaAnterior / max * 100)
+    };
+  }
+
+  // Enlace de home (§03: "se abre desde el enlace ... botón con icono wallet"). Mismo
+  // patrón visual que .ph-equilibrio-link (icono + texto + chevron, badge "aún no
+  // disponible"), pero con clase .h7-gasto-link propia: la geometría de ESTA pieza es
+  // literal del handoff 7 y no debe heredar cambios futuros de la clase de equilibrio,
+  // que es una pieza distinta (índice de cuotas, no coste).
+  function renderLinkGastoSemanal() {
+    return '<button type="button" class="h7-gasto-link" data-action="abrir-gasto-semanal">' +
+      '<i data-lucide="wallet"></i>' +
+      '<span>' + escapeHtml(t('gasto_semanal') + ' · ' + t('v6_pendiente_badge')) + '</span>' +
+      '<i data-lucide="chevron-right"></i>' +
+      '</button>';
+  }
+
+  function renderSheetGastoSemanal() {
+    var dias = I18N.diasCorto().map(function (d) { return d.toUpperCase(); });
+    var preciosHtml = dias.map(function () { return '<span class="h7-gasto-precio-celda">—</span>'; }).join('');
+    var barrasHtml = dias.map(function () {
+      return '<div class="h7-gasto-barra-btn"><div class="h7-gasto-barra h7-gasto-barra-pendiente"></div></div>';
+    }).join('');
+    var diasHtml = dias.map(function (d) { return '<span class="h7-gasto-dia-celda">' + escapeHtml(d) + '</span>'; }).join('');
+    var tarjetaVacia = function (etiquetaKey) {
+      return '<div class="h7-gasto-card"><div class="h7-gasto-card-foto"><span class="h7-gasto-card-tag">' + escapeHtml(t(etiquetaKey)) + '</span></div>' +
+        '<div class="h7-gasto-card-body"><div class="h7-gasto-card-precio">—</div><div class="h7-gasto-card-plato">' + escapeHtml(t('gasto_sin_dato')) + '</div></div></div>';
+    };
+
+    return sheetHead(t('gasto_semanal')) +
+      '<div class="sheet-body">' +
+      pendienteV6(t('v6_pend_gasto'), t('v6_pendiente_sub')) +
+
+      '<div class="h7-gasto-hero"><div class="h7-gasto-halo"></div><div class="h7-gasto-hero-in">' +
+      '<div class="h7-gasto-cab"><span class="h7-gasto-label">' + escapeHtml(t('gasto_semanal')) + '</span><span class="h7-gasto-meta">' + escapeHtml(t('gasto_por_adulto')) + '</span></div>' +
+      '<div class="h7-gasto-cifra-fila"><span class="h7-gasto-cifra">—</span><span class="h7-gasto-unidad">' + escapeHtml(t('gasto_por_semana')) + '</span></div>' +
+      '<div class="h7-gasto-pie">' + escapeHtml(t('gasto_sin_dato')) + '</div>' +
+      '</div></div>' +
+
+      '<div class="h7-gasto-cards">' + tarjetaVacia('gasto_mas_caro') + tarjetaVacia('gasto_mas_barato') + '</div>' +
+
+      '<div class="h7-gasto-chart">' +
+      '<div class="h7-gasto-chart-tit">' + escapeHtml(t('gasto_coste_racion')) + '</div>' +
+      '<div class="h7-gasto-precios">' + preciosHtml + '</div>' +
+      '<div class="h7-gasto-barras-zona"><div class="h7-gasto-barras">' + barrasHtml + '</div></div>' +
+      '<div class="h7-gasto-dias">' + diasHtml + '</div>' +
+      '<div class="h7-gasto-leyenda">' +
+      '<span class="h7-gasto-leyenda-item"><span class="h7-gasto-leyenda-linea h7-gasto-leyenda-linea-media"></span><span class="h7-gasto-leyenda-txt h7-gasto-leyenda-txt-media">' + escapeHtml(t('gasto_media')) + '</span></span>' +
+      '<span class="h7-gasto-leyenda-item"><span class="h7-gasto-leyenda-linea h7-gasto-leyenda-linea-prev"></span><span class="h7-gasto-leyenda-txt h7-gasto-leyenda-txt-prev">' + escapeHtml(t('gasto_semana_anterior')) + '</span></span>' +
+      '</div>' +
+      '</div>' +
+
+      '<button type="button" class="h7-gasto-cta" data-action="cerrar-sheet">' + escapeHtml(t('entendido')) + '</button>' +
       '</div>';
   }
 
@@ -2649,6 +2816,8 @@
     renderCompraVista: renderCompraVista,
     renderVistaReceta: renderVistaReceta,
     renderSheetResumenSemana: renderSheetResumenSemana,
+    renderSheetGastoSemanal: renderSheetGastoSemanal,
+    gastoSemanalMecanica: gastoSemanalMecanica,
     renderSheetCambiarInicio: renderSheetCambiarInicio,
     renderSheetCambioHecho: renderSheetCambioHecho,
     renderSheetCambioSinSalida: renderSheetCambioSinSalida,

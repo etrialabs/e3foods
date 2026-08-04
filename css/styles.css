@@ -238,6 +238,9 @@ body.wizard-open { overflow: hidden; }
 .onb-ficha { max-width: 480px; margin: 0 auto; padding: calc(var(--space-4) + var(--safe-t)) 22px calc(var(--space-4) + var(--safe-b)); }
 .onb-cuerpo { max-width: 480px; margin: 0 auto; padding: 18px 22px 26px; animation: e3fade var(--dur-base) ease both; }
 @keyframes e3fade { from { opacity: 0; } to { opacity: 1; } }
+/* handoff 7, §00-fundamentos: entrada de las cards comida/cena — .45s comida, .55s cena
+   (el desfase de 100ms es intencional, no un descuido). */
+@keyframes e3pop { from { opacity: 0; transform: translateY(10px) scale(.98); } to { opacity: 1; transform: none; } }
 
 /* .onb-saludo/.onb-titular/.onb-campo-linea/.onb-input-serif/.onb-input-select (Paso 1 ·
    nombre de familia) murieron con el handoff 6 — sustituidos por .h6-familia-* más abajo
@@ -1220,9 +1223,11 @@ body.sheet-open { overflow: hidden; }
 .ph-pager-scroll { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; margin: 0 calc(-1 * var(--space-3)); }
 .ph-pager-slide { flex: 0 0 100%; scroll-snap-align: start; padding: 0 var(--space-3); }
 
+/* handoff 7, §01.2: sombra/animación literales del mock (no las aproximaciones que traía
+   la card antes de esta réplica) — comida .45s, cena .55s, e3pop definido junto a e3fade. */
 .ph-card { position: relative; border-radius: 24px; padding: 14px; display: flex; flex-direction: column; gap: 4px; }
-.ph-card-comida { background: var(--panel); box-shadow: 0 1px 2px rgba(26,23,18,.05), 0 14px 30px -20px rgba(26,23,18,.2); }
-.ph-card-cena { background: linear-gradient(165deg, var(--cena-a), var(--cena-b)); box-shadow: 0 20px 40px -22px rgba(20,18,15,.5); }
+.ph-card-comida { background: #fff; box-shadow: 0 2px 6px -2px rgba(0,0,0,.06); animation: e3pop .45s ease both; }
+.ph-card-cena { background: linear-gradient(165deg,#3E434C 0%,#2E3138 100%); box-shadow: 0 22px 46px -22px rgba(20,18,15,.5); animation: e3pop .55s ease both; }
 .ph-card-vacia { min-height: 120px; justify-content: center; align-items: flex-start; }
 .ph-card-vacia .card-msg { color: inherit; opacity: .8; }
 .ph-card-cena.ph-card-vacia { color: var(--cena-ink); }
@@ -1247,18 +1252,31 @@ body.sheet-open { overflow: hidden; }
 .ph-foto-vacia { background: var(--elev2); }
 .ph-card-cena .ph-foto { opacity: .94; }
 
-.ph-badge { position: absolute; top: 12px; left: 12px; display: flex; align-items: center; gap: 7px; padding: 5px 11px 5px 6px; border-radius: 999px; }
+/* handoff 7, §01.4: pill COMIDA/CENA — 28,4px de alto (padding 6/11/6/5 + borde 1px),
+   texto 11px/800/.2px IDÉNTICO al badge de estado (§02). El borde transparente en
+   comida no es decorativo: sin él la pill de comida mide 2px menos que la de cena
+   (regla 3 del README del handoff) y las dos pills dejan de alinear entre cards. */
+/* height:28.4px explícito (regla 3 del README): medido en navegador real, .ph-badge (un
+   <span>, hereda line-height:1.5 del body) y .ph-estado-badge (un <button>, con
+   line-height:normal por el reset de botones) NO daban la misma altura de contenido —
+   30.5px vs 29px — aunque compartan el mismo padding/borde. Fijar el alto es más robusto
+   que perseguir el line-height por dos cascadas distintas. */
+.ph-badge { position: absolute; top: 12px; left: 12px; height: 28.4px; display: flex; align-items: center; gap: 7px; padding: 6px 11px 6px 5px; border-radius: 999px; border: 1px solid transparent; box-sizing: border-box; }
 .ph-badge-comida { background: rgba(255,255,255,.92); backdrop-filter: blur(6px); box-shadow: 0 4px 12px -4px rgba(0,0,0,.25); }
-.ph-badge-cena { background: rgba(30,32,36,.5); backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,.12); }
-.ph-badge-icono { width: 21px; height: 21px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; }
+.ph-badge-cena { background: rgba(30,32,36,.5); backdrop-filter: blur(8px); border-color: rgba(255,255,255,.12); }
+.ph-badge-icono { width: 15px; height: 15px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; }
 /* mismo bug que .ph-tipo (arriba): SVG a mano sin stroke:currentColor = invisible. */
-.ph-badge-icono svg { width: 13px; height: 13px; stroke: currentColor; display: block; }
-.ph-badge-comida .ph-badge-icono { background: var(--gold-soft); color: var(--gold); }
-.ph-badge-cena .ph-badge-icono { background: rgba(255,255,255,.1); color: oklch(0.82 0.13 82); }
-.ph-badge-texto { font-size: 10.5px; font-weight: 800; letter-spacing: 1px; }
-.ph-badge-comida .ph-badge-texto { color: var(--ink); }
-.ph-badge-cena .ph-badge-texto { color: oklch(0.86 0.1 82); }
+.ph-badge-icono svg { width: 10px; height: 10px; stroke: currentColor; display: block; }
+.ph-badge-comida .ph-badge-icono { background: oklch(0.94 0.05 80); color: oklch(0.68 0.16 55); }
+.ph-badge-cena .ph-badge-icono { background: rgba(255,255,255,.1); color: rgba(247,243,236,.85); }
+.ph-badge-texto { font-size: 11px; font-weight: 800; letter-spacing: .2px; }
+.ph-badge-comida .ph-badge-texto { color: oklch(0.6 0.16 55); }
+.ph-badge-cena .ph-badge-texto { color: #F7F3EC; }
 
+/* Handoff 7, §02 (intro): el cluster de avatares sobre la foto queda SUSTITUIDO por el
+   badge de estado (.ph-estado-badge, más abajo) en la card con plato — "no se leían y
+   no admitían acción". La clase se conserva solo para el estado vacío (.ph-cab, sin
+   foto que enseñar), su único uso restante — ver renderCardPager. */
 .ph-avatares { position: absolute; top: 12px; right: 12px; display: flex; }
 .ph-avatar-wrap { position: relative; margin-left: -7px; }
 .ph-avatar-wrap:first-child { margin-left: 0; }
@@ -1275,17 +1293,36 @@ body.sheet-open { overflow: hidden; }
 .ph-subtitulo { font-size: 14.5px; font-weight: 500; margin-top: 4px; }
 .ph-card-comida .ph-subtitulo { color: var(--soft); }
 .ph-card-cena .ph-subtitulo { color: rgba(247,243,236,.55); }
-.ph-meta { display: flex; align-items: center; gap: 9px; margin-top: 13px; white-space: nowrap; }
+/* handoff 7, §01.5: margin-top 10px (no 13 — el 00-fundamentos.md/tabla y el mock del
+   handoff coinciden en 700 para el número de meta, la prosa de 01-card decía 800: gana
+   el mock, regla del método "cuando discrepan, gana la medida del mock"). Iconos en
+   dorado del handoff (oklch), no el --gold corporativo — colores literales del handoff. */
+.ph-meta { display: flex; align-items: center; gap: 9px; margin-top: 10px; white-space: nowrap; }
 .ph-meta-item { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 700; }
 .ph-meta-sub { font-weight: 600; opacity: .6; }
-.ph-meta-punto { width: 4px; height: 4px; border-radius: 50%; background: currentColor; opacity: .2; flex: none; }
-.ph-card-comida .ph-meta-item { color: var(--ink); }
-.ph-card-comida .ph-meta-item i { color: var(--gold); }
-.ph-card-cena .ph-meta-item { color: var(--cena-ink); }
+.ph-meta-punto { width: 4px; height: 4px; border-radius: 50%; flex: none; background: rgba(26,23,18,.2); }
+.ph-card-comida .ph-meta-item { color: #1A1712; }
+.ph-card-comida .ph-meta-item i { color: oklch(0.6 0.16 55); }
+.ph-card-cena .ph-meta-item { color: #F7F3EC; }
 .ph-card-cena .ph-meta-item i { color: oklch(0.82 0.13 82); }
+.ph-card-cena .ph-meta-punto { background: rgba(255,255,255,.25); }
 .ph-postre { font-size: 12.5px; font-weight: 500; margin-top: 12px; }
-.ph-card-comida .ph-postre { color: var(--soft); }
+.ph-card-comida .ph-postre { color: rgba(26,23,18,.5); }
 .ph-card-cena .ph-postre { color: rgba(247,243,236,.55); }
+
+/* handoff 7, §01.6: tira de plato alternativo — solo si nAlt>0. Sin fuente de fotos de
+   elaboración en V6 (comentario ya existente en ph-proximo-foto: "0 de 140"), la
+   miniatura es un relleno neutro, nunca una foto de maqueta puesta a dedo. */
+.ph-alt-tira { display: flex; align-items: center; gap: 11px; margin-top: 13px; padding-top: 12px; border-top: 1px solid rgba(26,23,18,.08); }
+.ph-card-cena .ph-alt-tira { border-top-color: rgba(255,255,255,.12); }
+.ph-alt-foto { flex: none; width: 42px; height: 42px; border-radius: 12px; background: var(--elev2); }
+.ph-alt-tira-pop .ph-alt-foto { width: 40px; height: 40px; }
+.ph-alt-info { flex: 1; min-width: 0; }
+.ph-alt-cab { display: flex; align-items: center; gap: 6px; font-size: 10.5px; font-weight: 800; letter-spacing: .4px; text-transform: uppercase; color: rgba(26,23,18,.45); }
+.ph-card-cena .ph-alt-cab { color: rgba(247,243,236,.5); }
+.ph-alt-cuenta { opacity: .7; }
+.ph-alt-plato { display: block; font-size: 13.5px; font-weight: 800; color: #1A1712; margin-top: 2px; line-height: 1.2; }
+.ph-card-cena .ph-alt-plato { color: #F7F3EC; }
 
 /* "Me apetece otra cosa" (card principal): excepción explícita de Roger
    2026-07-20 al dorado corporativo — degradado ORIGINAL hardcodeado (no
@@ -1300,59 +1337,94 @@ body.sheet-open { overflow: hidden; }
 .ph-card-cena .ph-cta { background: linear-gradient(180deg, oklch(0.79 0.13 82), oklch(0.71 0.14 62)); box-shadow: none; }
 
 /* ============================================================
-   Estados de plato por persona (handoff 5, §2 — e3Foods.dc.html /
-   sistema-color.md, 3-ago 2026). Tres estados, DOS colores: oliva = comen
-   todos, terracota en píldora clara = N ajustes, terracota en relleno
-   sólido = alguien come otra cosa (preparado, sin disparador real hoy —
-   ver comentario en ui.js/estadoMesaBadge). El badge es HERMANO del área
+   Estados de plato por persona — RÉPLICA LITERAL handoff 7, §02 (sustituye
+   la aproximación del handoff 5/6: posición, relleno de semáforo por estado
+   y tema, y el desplegable siempre-en-el-DOM). El badge es HERMANO del área
    que abre la receta (.ph-abrir), nunca anidado — botón propio, clic propio.
+   §2.3 NO NEGOCIABLE: los tres estados de color comparten opacidad de
+   relleno (46% claro/62% oscuro) menos el rojo (82%/86%, texto casi blanco)
+   — no es decoración, es el código de color que dice cuánto hay que leer.
    ============================================================ */
 .ph-estado-badge {
-  position: absolute; top: 136px; left: 26px; z-index: 4;
+  position: absolute; top: 26px; right: 26px; z-index: 4; height: 28.4px; box-sizing: border-box;
   display: flex; align-items: center; gap: 7px; padding: 6px 11px; border-radius: 999px;
-  border: none; cursor: pointer; font-family: inherit;
+  border: 1px solid transparent; cursor: pointer; font-family: inherit;
   box-shadow: 0 3px 10px -4px rgba(30, 26, 20, .4);
+  backdrop-filter: blur(8px);
 }
-.ph-card-comida .ph-estado-badge { background: rgba(255, 255, 255, .94); }
-.ph-card-cena .ph-estado-badge { background: rgba(30, 32, 36, .72); }
-.ph-card-comida .ph-estado-badge-oliva { color: oklch(0.42 0.07 140); }
-.ph-card-cena .ph-estado-badge-oliva { color: oklch(0.86 0.06 140); }
-.ph-card-comida .ph-estado-badge-terracota { color: oklch(0.48 0.14 45); }
-.ph-card-cena .ph-estado-badge-terracota { color: oklch(0.84 0.09 45); }
-/* "X come otra cosa" (handoff 6, 2026-08-03 — campo `otra`, construido sobre el
-   preparado del handoff 5): relleno sólido, SIN variante clara/oscura — "el
-   bloqueo va en relleno, una alergia no puede depender de distinguir dos tonos
-   de terracota con prisa y la pantalla al sol" (sistema-color.md). Misma
-   especificidad que las reglas de arriba para ganarles el fondo translúcido. */
-.ph-card-comida .ph-estado-badge-otra, .ph-card-cena .ph-estado-badge-otra { background: oklch(0.5 0.16 35); color: #fff; }
-.ph-estado-badge-otra .ph-estado-dot { background: #fff; }
-.ph-estado-pop-tit-otra { color: oklch(0.42 0.14 35); }
+/* verde · comen todos/parte */
+.ph-card-comida .ph-estado-badge-oliva { background: oklch(0.75 0.13 148 / .46); border-color: oklch(0.6 0.11 145 / .32); }
+.ph-card-cena .ph-estado-badge-oliva { background: oklch(0.5 0.11 145 / .62); border-color: oklch(0.75 0.11 148 / .38); }
+.ph-estado-badge-oliva .ph-estado-dot { background: oklch(0.55 0.09 140); }
+.ph-card-cena .ph-estado-badge-oliva .ph-estado-dot { background: oklch(0.8 0.14 150); }
+.ph-card-comida .ph-estado-badge-oliva .ph-estado-texto, .ph-card-comida .ph-estado-badge-oliva .ph-estado-flecha { color: oklch(0.36 0.09 145); }
+.ph-card-cena .ph-estado-badge-oliva .ph-estado-texto, .ph-card-cena .ph-estado-badge-oliva .ph-estado-flecha { color: oklch(0.92 0.07 150); }
+/* naranja · N ajustes */
+.ph-card-comida .ph-estado-badge-terracota { background: oklch(0.78 0.16 65 / .46); border-color: oklch(0.7 0.15 62 / .35); }
+.ph-card-cena .ph-estado-badge-terracota { background: oklch(0.55 0.14 62 / .62); border-color: oklch(0.78 0.13 65 / .4); }
+.ph-card-comida .ph-estado-badge-terracota .ph-estado-dot { background: oklch(0.68 0.17 55); }
+.ph-card-cena .ph-estado-badge-terracota .ph-estado-dot { background: oklch(0.82 0.15 70); }
+.ph-card-comida .ph-estado-badge-terracota .ph-estado-texto, .ph-card-comida .ph-estado-badge-terracota .ph-estado-flecha { color: oklch(0.42 0.13 50); }
+.ph-card-cena .ph-estado-badge-terracota .ph-estado-texto, .ph-card-cena .ph-estado-badge-terracota .ph-estado-flecha { color: oklch(0.93 0.07 75); }
+/* rojo · alguien come otra cosa — único estado con relleno mayoritariamente opaco y
+   texto casi blanco: es el que exige leer la tarjeta (handoff, §2.3). */
+.ph-card-comida .ph-estado-badge-otra, .ph-card-cena .ph-estado-badge-otra { background: oklch(0.56 0.19 32 / .82); border-color: oklch(0.55 0.17 32 / .38); }
+.ph-card-cena .ph-estado-badge-otra { background: oklch(0.5 0.17 32 / .86); border-color: oklch(0.72 0.14 32 / .42); }
+.ph-estado-badge-otra .ph-estado-dot { background: oklch(0.93 0.06 35); }
+.ph-estado-badge-otra .ph-estado-texto, .ph-estado-badge-otra .ph-estado-flecha { color: oklch(0.96 0.035 32); }
+/* gris · nadie en casa — fuera del código semáforo a propósito: no es una advertencia,
+   es una ausencia (handoff, §2.3). */
+.ph-card-comida .ph-estado-badge-gris { background: rgba(255,255,255,.82); border-color: rgba(26,23,18,.1); }
+.ph-card-cena .ph-estado-badge-gris { background: rgba(30,32,36,.66); border-color: rgba(255,255,255,.14); }
+.ph-estado-badge-gris .ph-estado-dot { background: rgba(26,23,18,.22); }
+.ph-card-comida .ph-estado-badge-gris .ph-estado-texto, .ph-card-comida .ph-estado-badge-gris .ph-estado-flecha { color: rgba(26,23,18,.45); }
+.ph-card-cena .ph-estado-badge-gris .ph-estado-texto, .ph-card-cena .ph-estado-badge-gris .ph-estado-flecha { color: rgba(247,243,236,.6); }
+
 .ph-estado-dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
 .ph-estado-texto { color: inherit; font-size: 11px; font-weight: 800; letter-spacing: .2px; }
-.ph-estado-flecha { color: inherit; display: flex; opacity: .7; transition: transform var(--dur-fast) var(--ease-out); }
-.ph-estado-flecha svg, .ph-estado-flecha .lucide { width: 10px; height: 10px; }
+/* chevron: SVG a mano de 10x10 (ver ICONO_CHEVRON_ESTADO en ui.js), NO Lucide — el
+   handoff lo pide explícito en §2.2. .18s ease literal, no --dur-fast/--ease-out. */
+.ph-estado-flecha { color: inherit; display: flex; opacity: .7; transition: transform .18s ease; }
+.ph-estado-flecha svg { width: 10px; height: 10px; display: block; }
 .ph-estado-flecha-abierta { transform: rotate(180deg); }
 
-/* Tarjeta secundaria: SOBRE la card, no la sustituye (handoff). Se alinea con
-   el padding de 14px de .ph-card (left/right:14px sobre la caja completa
-   coincide con el borde interior, ya que position:absolute ignora el padding
-   del ancestro relativo). */
+/* Desplegable — §2.4/regla 4 del README: NUNCA se monta/desmonta, solo cambia
+   opacity/pointer-events/transform (.ph-estado-pop-abierto). Se alinea con el padding
+   de 14px de .ph-card (left/right:14px coincide con el borde interior porque
+   position:absolute ignora el padding del ancestro relativo). */
 .ph-estado-pop {
-  position: absolute; left: 14px; right: 14px; top: 128px; z-index: 20;
-  border-radius: 20px; padding: 15px 16px; background: var(--panel);
+  position: absolute; left: 14px; right: 14px; top: 60px; z-index: 20;
+  border-radius: 20px; padding: 15px 16px; background: #fff;
   box-shadow: 0 26px 60px -18px rgba(20, 18, 15, .5), 0 4px 14px -6px rgba(20, 18, 15, .22);
+  transition: opacity .18s ease, transform .18s ease;
+  opacity: 0; pointer-events: none; transform: translateY(-8px) scale(.97);
 }
+.ph-estado-pop-abierto { opacity: 1; pointer-events: auto; transform: scale(1); }
+/* flecha de 16x16 alineada con el badge, que también está a 26px del borde derecho */
+.ph-estado-pop-flecha { position: absolute; right: 26px; top: -7px; width: 16px; height: 16px; background: #fff; transform: rotate(45deg); border-top-left-radius: 3px; }
+.ph-estado-pop-cab { display: flex; align-items: flex-start; gap: 10px; }
+.ph-estado-pop-titsub { flex: 1; min-width: 0; }
 .ph-estado-pop-tit { display: block; font-size: 13.5px; font-weight: 800; line-height: 1.3; }
 .ph-estado-pop-tit-oliva { color: oklch(0.42 0.07 140); }
 .ph-estado-pop-tit-terracota { color: oklch(0.48 0.14 45); }
+.ph-estado-pop-tit-otra { color: oklch(0.42 0.14 35); }
+.ph-estado-pop-tit-gris { color: rgba(26,23,18,.55); }
 .ph-estado-pop-sub { display: block; font-size: 12px; font-weight: 600; color: rgba(26, 23, 18, .5); margin-top: 2px; line-height: 1.4; }
+/* chip "para {n}" — reutilizado también en la tira de plato alternativo del pop */
+.ph-estado-pop-count { flex: none; font-size: 10.5px; font-weight: 800; letter-spacing: .3px; text-transform: uppercase; color: rgba(26,23,18,.45); background: rgba(26,23,18,.05); border-radius: 8px; padding: 4px 8px; }
 .ph-estado-pop-lista { display: flex; flex-direction: column; gap: 10px; margin-top: 13px; }
-.ph-estado-fila { display: flex; align-items: center; gap: 10px; }
+/* §2.5 NO NEGOCIABLE: cada fila es un <button> — 1 toque tacha, 2º toque retoma
+   (reutiliza togglePresente/ausenciasPuntuales, mismo mecanismo que el avatar). */
+.ph-estado-fila { display: flex; align-items: center; gap: 10px; width: 100%; padding: 2px 0; border-radius: 10px; background: none; border: none; cursor: pointer; font: inherit; text-align: left; }
+.ph-estado-fila:hover { background: rgba(26,23,18,.04); }
 .ph-estado-fila-av { width: 26px; height: 26px; font-size: 11.5px; border: none; cursor: default; }
+.ph-estado-fila-av-fuera { opacity: .32; }
 .ph-estado-fila-info { flex: 1; min-width: 0; }
-.ph-estado-fila-nombre { display: block; font-size: 13.5px; font-weight: 700; color: var(--ink); }
+.ph-estado-fila-nombre { display: block; font-size: 13.5px; font-weight: 700; color: #1A1712; }
+.ph-estado-fila-nombre-fuera { color: rgba(26,23,18,.34); text-decoration: line-through; text-decoration-thickness: 1.5px; }
 .ph-estado-fila-nota { display: block; font-size: 12px; font-weight: 700; margin-top: 1px; }
 .ph-estado-fila-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.ph-estado-pop-ayuda { margin-top: 12px; padding-top: 11px; border-top: 1px solid rgba(26,23,18,.08); font-size: 11.5px; font-weight: 600; color: rgba(26,23,18,.4); line-height: 1.35; }
 
 .ph-seg { display: flex; gap: 6px; background: rgba(26,23,18,.06); border-radius: 13px; padding: 4px; margin-top: 13px; }
 /* color del inactivo: llevaba rgba(26,23,18,.5) hardcodeado fuera de token
@@ -1390,6 +1462,78 @@ body.sheet-open { overflow: hidden; }
 .ph-equilibrio-link i:first-child { color: var(--gold); font-size: 15px; }
 .ph-equilibrio-link span { flex: 1; text-align: left; font-size: 12.5px; font-weight: 600; color: var(--soft); }
 .ph-equilibrio-link i:last-child { color: var(--muted); font-size: 15px; }
+
+/* ============================================================
+   HANDOFF 7 · §03 Gasto semanal — pieza NUEVA (no existía). Prefijo .h7-,
+   mismo criterio que .h6-* del handoff 6: valores crudos del handoff (px con
+   decimales, oklch sin convertir), sin pasar por --space-*/--gold — así no
+   colisiona con la escala de 8px del resto de la app ni con un cambio futuro
+   del dorado corporativo.
+   SIN FUENTE DE COSTE REAL — comprobado 2026-08-04: `grep -n
+   "coste\|precio\|euro" motor_v6/src/superficie.js` -> 0 resultados;
+   `costes.js` es costeS(señales,config), el SCORING del motor (13.4), no
+   dinero; el banco solo trae coste_banda (barato/medio/caro) en
+   alimentos.js, nunca un precio. El bloque 16.6 del funcional ya declara
+   esta pantalla "pendiente de dato". Por eso la hoja se pinta ENTERA y
+   pixel-exacta (regla 7 del método / §4.12: nada pendiente se oculta) pero
+   cada cifra real queda sustituida por un guion — nunca una cifra inventada.
+   ============================================================ */
+.h7-gasto-link { display: flex; align-items: center; gap: 10px; width: 100%; background: none; border: none; cursor: pointer; text-align: left; border-top: 1px solid rgba(26,23,18,.08); padding: 16px 2px 0; margin-top: 20px; font-family: inherit; }
+.h7-gasto-link i:first-child { flex: none; color: oklch(0.62 0.16 55); }
+.h7-gasto-link i:first-child svg { width: 16px; height: 16px; stroke: currentColor; display: block; }
+.h7-gasto-link span { flex: 1; font-size: 13px; font-weight: 600; color: rgba(26,23,18,.55); line-height: 1.4; }
+.h7-gasto-link i:last-child { flex: none; color: rgba(26,23,18,.3); }
+.h7-gasto-link i:last-child svg { width: 16px; height: 16px; stroke: currentColor; display: block; }
+
+.h7-gasto-hero { position: relative; overflow: hidden; border-radius: 20px; padding: 14px 15px 13px; box-shadow: 0 14px 30px -20px rgba(30,24,14,.7); background: linear-gradient(150deg,#3E434C 0%,#1E2126 100%); }
+.h7-gasto-halo { position: absolute; top: -70px; right: -50px; width: 180px; height: 180px; border-radius: 50%; background: radial-gradient(circle, rgba(201,169,110,.3) 0%, transparent 70%); }
+.h7-gasto-hero-in { position: relative; }
+.h7-gasto-cab { display: flex; align-items: baseline; justify-content: space-between; }
+.h7-gasto-label { font-size: 10.5px; font-weight: 800; letter-spacing: 1.1px; text-transform: uppercase; color: oklch(0.82 0.14 82); }
+.h7-gasto-meta { font-size: 11px; font-weight: 700; color: rgba(255,255,255,.42); }
+.h7-gasto-cifra-fila { display: flex; align-items: flex-end; gap: 8px; margin-top: 6px; }
+.h7-gasto-cifra { font-size: 34px; font-weight: 800; line-height: .95; letter-spacing: -1.2px; font-variant-numeric: tabular-nums; font-feature-settings: 'tnum' 1; color: #F7F3EC; }
+.h7-gasto-unidad { font-size: 12px; font-weight: 700; padding-bottom: 6px; color: rgba(255,255,255,.42); }
+.h7-gasto-pie { font-size: 11.5px; font-weight: 600; margin-top: 9px; color: rgba(255,255,255,.42); }
+
+.h7-gasto-cards { display: flex; gap: 9px; margin-top: 10px; }
+.h7-gasto-card { flex: 1; min-width: 0; background: #fff; border-radius: 18px; overflow: hidden; box-shadow: 0 8px 20px -14px rgba(60,45,20,.5); }
+.h7-gasto-card-foto { position: relative; height: 96px; overflow: hidden; background: var(--elev2); }
+.h7-gasto-card-tag { position: absolute; left: 9px; bottom: 8px; color: #fff; border-radius: 999px; padding: 3px 8px; font-size: 9.5px; font-weight: 800; letter-spacing: .5px; text-transform: uppercase; background: rgba(30,33,38,.78); }
+.h7-gasto-card-body { padding: 10px 11px 11px; }
+.h7-gasto-card-precio { font-size: 20px; font-weight: 800; line-height: 1; letter-spacing: -.6px; font-variant-numeric: tabular-nums; color: #1A1712; }
+.h7-gasto-card-plato { font-size: 12.5px; font-weight: 700; color: rgba(26,23,18,.6); margin-top: 5px; line-height: 1.3; }
+
+.h7-gasto-chart { background: #fff; border-radius: 18px; padding: 13px 13px 11px; margin-top: 10px; box-shadow: 0 8px 20px -14px rgba(60,45,20,.5); }
+.h7-gasto-chart-tit { font-size: 11px; font-weight: 800; letter-spacing: .7px; text-transform: uppercase; color: rgba(26,23,18,.38); margin-bottom: 12px; }
+/* §3.4 NO NEGOCIABLE: las tres filas comparten el MISMO display:flex;gap:8px — es lo que
+   mantiene alineadas las columnas de precio/barra/día. Nunca grid en una y flex en otra. */
+.h7-gasto-precios { display: flex; gap: 8px; margin-bottom: 6px; }
+.h7-gasto-precio-celda { flex: 1; text-align: center; font-size: 11.5px; font-weight: 800; letter-spacing: -.2px; font-variant-numeric: tabular-nums; color: rgba(26,23,18,.6); }
+.h7-gasto-precio-celda-extremo { color: #1A1712; }
+.h7-gasto-barras-zona { position: relative; height: 96px; }
+.h7-gasto-linea { position: absolute; left: 0; right: 0; height: 0; }
+.h7-gasto-linea-prev { border-top: 1.5px dashed rgba(26,23,18,.22); }
+.h7-gasto-linea-media { border-top: 1.5px solid rgba(26,23,18,.45); }
+.h7-gasto-barras { display: flex; align-items: flex-end; gap: 8px; height: 100%; position: relative; }
+.h7-gasto-barra-btn { flex: 1; display: flex; align-items: flex-end; height: 100%; background: none; border: none; padding: 0; }
+/* altura = round(v/max*100)% — SIEMPRE relativa al máximo de la semana, nunca a un techo
+   fijo (§3.4 NO NEGOCIABLE); ver gastoSemanalMecanica() en ui.js. Sin precio real hoy, la
+   barra se pinta plana y neutra — nunca con una altura inventada. */
+.h7-gasto-barra { width: 100%; flex: none; border-radius: 9px 9px 3px 3px; transition: opacity .18s ease, height .25s ease; }
+.h7-gasto-barra-pendiente { height: 12%; background: rgba(26,23,18,.12); }
+.h7-gasto-dias { display: flex; gap: 8px; border-top: 1px solid rgba(26,23,18,.08); margin-top: 9px; padding-top: 8px; }
+.h7-gasto-dia-celda { flex: 1; text-align: center; font-size: 10.5px; font-weight: 800; letter-spacing: .4px; color: rgba(26,23,18,.4); }
+.h7-gasto-leyenda { display: flex; gap: 16px; align-items: center; margin-top: 11px; }
+.h7-gasto-leyenda-item { display: flex; align-items: center; gap: 6px; }
+.h7-gasto-leyenda-linea { width: 16px; height: 0; }
+.h7-gasto-leyenda-linea-media { border-top: 1.5px solid rgba(26,23,18,.45); }
+.h7-gasto-leyenda-linea-prev { border-top: 1.5px dashed rgba(26,23,18,.28); }
+.h7-gasto-leyenda-txt { font-size: 11px; font-weight: 700; }
+.h7-gasto-leyenda-txt-media { color: rgba(26,23,18,.5); }
+.h7-gasto-leyenda-txt-prev { color: rgba(26,23,18,.4); }
+
+.h7-gasto-cta { width: 100%; margin-top: 14px; border: none; cursor: pointer; border-radius: 15px; padding: 13px; background: linear-gradient(180deg, oklch(0.85 0.15 82) 0%, oklch(0.76 0.17 62) 100%); color: #fff; font-size: 15px; font-weight: 800; font-family: inherit; }
 
 /* ---------------------------------------------------------------
    Vista de receta — pantalla completa (Roger 2026-07-19, handoff

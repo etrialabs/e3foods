@@ -310,11 +310,20 @@ module.exports = {
   //    los afinará la calibración por máquina sobre el harness (§11). Términos SIEMPRE en [0,1]
   //    (0 = ideal), saturados con las cotas de abajo. `favoritos` está a 0 — Q4 (OK Roger
   //    1-ago): la señal no existe en la entrada; saldrá de la UI de favoritas (dato explícito,
-  //    jamás inferido). Su rango natural al activarse: 32 (entre progreso_cuotas y temporada).
+  //    jamás inferido). Su rango natural al activarse: 32 (entre estado_cuotas y temporada).
   PESOS_S: {
     frescura_plato: 256,               // S1 distancia de plato percibido más allá de la ventana
     distancia_origen: 128,             // S2 origen dominante
-    progreso_cuotas: 64,               // S3 avance de mínimos pendientes de los presentes
+    estado_cuotas: 64,                 // S3 estado de la banda de cuota de los presentes: lo que
+                                       // AVANZA de mínimos pendientes y lo que GASTA de techos ya
+                                       // cubiertos. ⚑ 4-ago-2026 (§13.4): se llamaba
+                                       // `progreso_cuotas` y solo veía el mínimo. Medido sobre la
+                                       // parrilla: 78 de las 214 tomas de `carne-total` de los
+                                       // veredictos que se pasan del techo NO salen de la casilla
+                                       // que T1 reservó sino de la OPCIÓN del comensal, y con el
+                                       // avance empatado a 0 decidía la rotación a ciegas. NO es
+                                       // un peso nuevo: un segundo 64 habría roto la escala
+                                       // lexicográfica (128 debe dominar a todo lo de abajo junto).
     favoritos: 0,                      // S4 — RESERVADO (sin señal; ver nota de cabecera)
     temporada: 16,                     // S5 estación de la elaboración / mes del alimento
     esfuerzo_slot: 8,                  // S6 tiempo del slot (L-V corto mejor; finde invertido)
@@ -322,11 +331,43 @@ module.exports = {
     equilibrio_coste: 2,               // S8 desvío de coste_banda vs media semanal
     solapamiento_compra: 1             // S9 BONUS de compra compartida (nunca malus)
   },
+  // ── LOS OTROS CUATRO COSTES BLANDOS, que vivían SUELTOS en `t2_relleno` (§20.0, 4-ago-2026).
+  //    `20.0` dice que ninguna vara numérica se escribe suelta en el código, y estos cuatro lo
+  //    estaban: `+ excluidos.length * 128`, `+ novedadExcedida ? 512`, `+ descargoTecho ? 4096` y
+  //    `+ st.bigramas[bg] * 64` escritos a mano en dos expresiones. No son deuda ni sobras: cada
+  //    uno codifica una regla de producto que el funcional ya tiene escrita, solo que §13.4 no los
+  //    enumeraba entre las blandas y por eso nadie los veía. Se suman al coste S; sus valores son
+  //    los mismos que estaban cableados, así que sacarlos aquí NO mueve un solo menú (verificado
+  //    con la huella) — lo que mueve es que ahora se pueden calibrar y leer.
+  PESOS_S_EXTRA: {
+    comer_aparte: 128,                 // §7.6: comer aparte es normal pero se MINIMIZA. Por cada
+                                       // presente que queda excluido del plato de mesa. Domina a
+                                       // todo lo que hay por debajo de la frescura: partir la mesa
+                                       // es peor que cualquier consideración de temporada o coste.
+    comer_aparte_secundaria: 32,       // el mismo criterio al elegir la GUARNICIÓN, donde pesa
+                                       // menos: partir la mesa en el acompañamiento (§7.4) no es
+                                       // lo mismo que partirla en el principal.
+    novedad_sobre_cupo: 512,           // §11.3-P4 · sirve una novedad a un menor por encima del
+                                       // cupo de la semana. Por encima de partir la mesa: los
+                                       // niños rechazan lo nuevo, y un rechazo tira el servicio.
+    techo_cedido: 4096,                // §13.4 CONTRATOS · el candidato solo entra cediendo un
+                                       // techo declarado. Es el coste más alto del motor a
+                                       // propósito: por encima de la suma de todo lo demás, de
+                                       // modo que un candidato que cede un techo pierde SIEMPRE
+                                       // contra cualquiera que no lo ceda. No es un veto —eso lo
+                                       // hace `contratos`—: es el último recurso, ordenado último.
+    bigrama_repetido: 64               // §11.2-M5 · el par principal+guarnición ya visto. Laxa a
+                                       // propósito: distingue un ancla elegida de la monotonía.
+  },
   SATURACIONES_S: {
     frescura_dias: 28,                 // S1: a ≥28 días el plato es «nuevo del todo» (ventana D3)
     origen_servicios: 8,               // S2: a ≥8 servicios el origen ya no pesa
-    progreso_tomas: 2,                 // S3: ≥2 TOMAS de avance saturan el término (5.4: la
+    progreso_tomas: 2,                 // S3-mínimos: ≥2 TOMAS de avance saturan esa mitad (5.4: la
                                        // cuota es frecuencia; era `progreso_raciones`)
+    gasto_tomas: 2,                    // S3-techos: ≥2 TOMAS de techo ya cubierto saturan la otra
+                                       // mitad. Mismo número que su espejo A PROPÓSITO: las dos
+                                       // mitades son la misma moneda y saturarlas distinto sería
+                                       // convertir una en la otra por la puerta de atrás (§13.5)
     tiempo_min: 90                     // S6: minutos de cocina que saturan la escala
   },
 
@@ -341,6 +382,11 @@ module.exports = {
 
   // ── relleno T2 (consumidor: t2_relleno, sub-paso 3 — declarados ya para cerrar la §11)
   LOOKAHEAD_T2: 1,                     // forward-checking a profundidad 1 tras cada commit — A CALIBRAR
+  T1_MAX_NODOS: 2e6,                   // §20.0 · backstop del DFS de T1, que estaba cableado a mano
+                                       // en `t1_esqueleto`. NO es el presupuesto de búsqueda de
+                                       // §20.36 —ése es de T2—: T1 resuelve exacto y esto solo
+                                       // impide que una patología cuelgue la app. Medido en la
+                                       // parrilla: el máximo real está cinco órdenes por debajo.
   BACKTRACK_MAX_NODOS: 2000,           // backstop del backtracking de T2. BAJADO de 20.000 el
                                        // 3-ago con el bucle T1↔T2 ya en pie: el presupuesto
                                        // grande estaba COMPENSANDO la falta de bucle. Medido
@@ -798,6 +844,11 @@ module.exports = {
 //                             Era `avance_raciones` y contaba fracciones de ración contra una
 //                             banda escrita en tomas — fila 5.4, 4-ago: lo que hace progresar
 //                             «legumbre 3 veces» es comerla una vez más, no comer más de una vez.
+//   gasto_techo               su ESPEJO (§13.4, 4-ago-2026): cubos que el candidato DESBORDA a
+//                             algún presente contando la proyección —lo que hay + lo que aporta +
+//                             lo que las casillas pendientes consumirán—. Σ sobre miembro×cubo,
+//                             saturado en config. El borde es «desborda», no «gasta»: las tres
+//                             alternativas están medidas en `t2_relleno` §aporta.
 //   es_favorito               true/false — SIN SEÑAL HOY (Q4: peso 0; vendrá de la UI, explícito)
 //   temporada                 0 = elaboración en estación (u opción en mes) · 0.5 = sin declarar
 //   tiempo_min                minutos de la elaboración · finde: bool del slot
@@ -815,8 +866,20 @@ const TERMINOS = {
     : clamp01((sat.frescura_dias - s.dias_desde_percibido) / sat.frescura_dias),
   distancia_origen: (s, sat) => s.servicios_desde_origen == null ? 0
     : clamp01((sat.origen_servicios - s.servicios_desde_origen) / sat.origen_servicios),
-  progreso_cuotas: (s, sat) =>
-    1 - clamp01((s.avance_tomas || 0) / sat.progreso_tomas),
+  // ── S3 · EL ESTADO DE LA CUOTA, LOS DOS EXTREMOS DE LA BANDA (§13.4, reescrito el 4-ago-2026)
+  // Se llamaba `progreso_cuotas` y era `1 − avance`: solo veía el MÍNIMO. Una banda tiene dos
+  // extremos, y el que faltaba es el que la parrilla estaba pagando (§13.4 en el funcional, con
+  // la medida). No es un término NUEVO —eso habría roto la escala lexicográfica de `PESOS_S`, en
+  // la que 256 > 128+64+16+8+4+2+1 y cada peso domina a todos los de abajo juntos—: es el mismo
+  // término midiendo la banda entera. Su rango sigue siendo [0,1] y su peso sigue siendo 64.
+  //   0   = avanza mínimos a saturación y no gasta ningún techo → ideal
+  //   0,5 = ni avanza ni gasta → neutro (antes ESTE caso valía 1, el peor)
+  //   1   = no avanza nada y gasta techo a saturación → peor
+  // Las dos mitades pesan igual a propósito: cubrir un mínimo y no quemar un techo son la misma
+  // moneda (TOMAS de `config.CUOTAS`, §10.3), y ninguna se convierte en la otra.
+  estado_cuotas: (s, sat) => clamp01((
+    (1 - clamp01((s.avance_tomas || 0) / sat.progreso_tomas))
+    + clamp01((s.gasto_techo || 0) / sat.gasto_tomas)) / 2),
   favoritos: s => s.es_favorito === true ? 0 : 1,
   temporada: s => s.temporada == null ? 0.5 : clamp01(s.temporada),
   // L-V manda la promesa (rápido primero): menos minutos = mejor. En finde vive la cocina con
@@ -1663,7 +1726,18 @@ function generarCorrida(familiaDeclarada, arranqueIso, nSemanas, datos, config, 
     // hueco en la memoria de mesa (M1/M3) para que la cena no repita lo del mediodía, y sus
     // tomas cuentan en la semana del menor. La CANTIDAD no se declara ni se mide (se asume el
     // 35% del día, §5): por eso el servicio va marcado `origen: 'cole'` y sin fracciones.
-    for (const s of semanasDelCole(familia, arranqueIso, i, semanaIso)) diario.servicios.push(s);
+    //
+    // ⚑ 5-ago-2026 · EN SU POSICIÓN REAL, Y SOLO LO YA SERVIDO. Antes se inyectaba el cole de la
+    // semana QUE SE ESTÁ GENERANDO —días 1 a 5, todos en el futuro— y el de las semanas pasadas
+    // no entraba nunca. Las dos mitades del error se sumaban en `memoria()`, que ordena por fecha
+    // y mide M2 como distancia DESDE EL FINAL: cinco servicios futuros al final del array alejan
+    // artificialmente lo que sí se sirvió, y además la ventana rodante de 28 puede desalojar
+    // pasado real para hacerles sitio. Medido: `curso-escolar` W05 1-cena repetía `asado-horno` a
+    // 2 servicios con M2=4 y T2 no lo veía, mientras T4 —que no ve el cole— sí. La memoria es una
+    // ventana de servicios SERVIDOS (§11.1, §17.5); lo que aún no ha ocurrido no es memoria. El
+    // futuro del cole tiene su regla propia, la D+1 de §9.6, y esa la aplica `rellenarSemana`
+    // desde `menuCole` — no desde aquí.
+    for (const sv of semanas) for (const c of serviciosDelCole(familia, sv.semana_iso)) diario.servicios.push(c);
     const hoy = fechaDia(semanaIso, 1).toISOString().slice(0, 10);   // lunes de la semana a generar
     const mem = memoria(diario, banco, config, hoy);
     // fila 5.5 · los techos de D2 que son de MES viven fuera de la semana: lo ya servido en la
@@ -1798,10 +1872,9 @@ function auditoriaDeCorrida(corrida, banco, config) {
     servicios_en_rojo: Object.values(servicios).filter(s => !s.ok).length };
 }
 
-// menú del cole → servicios de diario de la semana ANTERIOR y la EN CURSO (la memoria mira
-// hacia atrás; el cole de la semana que se genera también cuenta, porque su comida ya está
-// decidida cuando el motor elige la cena de ese mismo día)
-function semanasDelCole(familia, arranqueIso, iSemana, semanaIso) {
+// menú del cole de UNA semana → servicios de diario, con su fecha real. El llamador decide QUÉ
+// semanas pasa: solo las YA SERVIDAS, porque la memoria es una ventana de lo servido (§11.1).
+function serviciosDelCole(familia, semanaIso) {
   const cole = familia.menu_cole;
   if (!cole) return [];
   const out = [];
@@ -4171,7 +4244,7 @@ function resolver(entrada, pools, config, cupoElaborado, pre, intento = 0) {
   // Una poda que subestima la capacidad mata ramas viables, y eso sí sería un bug.
   const pesoMax = (mid, cubo) => pesoDe(mid, cubo);
   const asignacion = new Array(dominios.length).fill(null);
-  let nodos = 0, motivoPoda = null;
+  let nodos = 0, motivoPoda = null, agotado = false;
   const mids = Object.keys(bandas);
 
   // PRECÓMPUTO de cotas: sufijos de presencia y de slots que pueden alimentar cada cubo. Sin
@@ -4274,7 +4347,20 @@ function resolver(entrada, pools, config, cupoElaborado, pre, intento = 0) {
   let elaborados = 0;
 
   function dfs(idx) {
-    if (++nodos > 2e6) return false;                      // backstop; jamás alcanzado en la parrilla
+    // backstop del DFS de T1. ⚑ 4-ago-2026 (§20.0): estaba escrito `2e6` a mano, y §20.0 dice que
+    // ninguna vara numérica vive suelta en el código. Es un presupuesto distinto del de T2
+    // (`BACKTRACK_MAX_NODOS`, §20.36) y por eso tiene su propia constante: T1 resuelve un problema
+    // pequeño de forma EXACTA y esto solo existe para que una patología no cuelgue la app.
+    //
+    // ⚑ Y NO ESTÁ HOLGADO, medido sobre la parrilla el 4-ago: la mediana son **21 nodos** pero el
+    // MÁXIMO son **965.599** contra un backstop de 2.000.000 — margen ×2, no los órdenes de
+    // magnitud que el comentario anterior daba por supuestos («jamás alcanzado» era cierto y
+    // «holgado» no). Importa porque cuando este backstop muerde, T1 deja de ser exacto y §13.6
+    // deja de cumplirse en silencio: la rama de abajo devolvería «no existe reparto legal», que
+    // es una afirmación FALSA — lo cierto sería «me he rendido». Por eso el agotamiento se
+    // distingue y se nombra: una cota de tiempo puede acabar una búsqueda, pero no puede
+    // disfrazarse de imposibilidad (§13.2).
+    if (++nodos > (config.T1_MAX_NODOS || 2e6)) { agotado = true; return false; }
     if (idx === dominios.length) {
       for (const [mid, banda] of Object.entries(bandas))
         for (const [cubo, { min }] of Object.entries(banda.cubos))
@@ -4328,8 +4414,15 @@ function resolver(entrada, pools, config, cupoElaborado, pre, intento = 0) {
     return false;
   }
 
-  if (!dfs(0)) return fallo('no existe reparto legal para la semana',
-    motivoPoda || 'ninguna combinación satisface a la vez bandas, alternancia y pools', { nodos });
+  // AGOTARSE NO ES SER IMPOSIBLE (§13.2). Si el backstop mordió, la búsqueda dejó de ser
+  // exhaustiva y decir «no existe reparto legal» sería afirmar más de lo que se ha comprobado —
+  // el mismo pecado que la regla dura de este proyecto prohíbe. Se dice lo que pasó.
+  if (!dfs(0)) return agotado
+    ? fallo('búsqueda agotada antes de decidir si existe reparto legal',
+      `el DFS de T1 llegó al backstop de ${config.T1_MAX_NODOS || 2e6} nodos sin recorrer el espacio entero: `
+      + 'NO se ha demostrado que la semana sea imposible, solo que no se encontró a tiempo', { nodos, agotado: true })
+    : fallo('no existe reparto legal para la semana',
+      motivoPoda || 'ninguna combinación satisface a la vez bandas, alternancia y pools', { nodos });
 
   return {
     ok: true,
@@ -4400,6 +4493,12 @@ for (let d = 1; d <= 7; d++) for (const s of ['comida', 'cena']) ORDEN_CAL.push(
 function rellenarSemana({ entrada, esq, pre, pools, datos, config, memoria, menuCole, fijados, evitar, ventanaPrevia, tomasPreviasCubo }) {
   const { semana_iso, familia, presencia, edades, estacion } = entrada;
   const semanaNum = Number(semana_iso.split('-W')[1]);
+  // los cuatro costes blandos que no son términos de `costeS` (§20.0: ninguna vara suelta en el
+  // código). El respaldo son los MISMOS valores que estaban cableados aquí, para que un config
+  // viejo —el del frontend antes de re-empaquetar, o el de una suite que fabrica su config— siga
+  // dando exactamente el mismo menú en vez de fallar en silencio con ceros.
+  const EXTRA = Object.assign({ comer_aparte: 128, comer_aparte_secundaria: 32,
+    novedad_sobre_cupo: 512, techo_cedido: 4096, bigrama_repetido: 64 }, config.PESOS_S_EXTRA || {});
   const ix = indexar(datos);
   const mem = memoria || { mesa: { M1: {}, M2: {}, M3: null, M4: {}, M5: {}, M6: {}, M7: {}, M8: {} }, personas: {} };
 
@@ -4408,6 +4507,13 @@ function rellenarSemana({ entrada, esq, pre, pools, datos, config, memoria, menu
     porSlot: {},                                    // slot → servicio construido
     // ⚑ 5.4 · LA MONEDA DE CADA CONTADOR, y son DOS, inconvertibles (spec §4):
     tomas: {},                                      // mid → cubo → nº de TOMAS (entero) ← config.CUOTAS
+    // ⚑ §13.9.1 · EL LIBRO DE LA DEUDA. mid → cubo → TOMAS de complemento ya COBRADAS. La deuda
+    // la acuña el prevuelo con su cuantía exacta (`min_por_complemento` = el mínimo menos lo
+    // reservable en casillas) y T2 la cobra UNA sola vez, en el primer slot donde quepa. Esto es
+    // lo que impide el doble cobro; antes lo impedía ESPERAR al último slot, y esa espera dejaba
+    // el mínimo corto cuando el último slot no admitía complemento. Va en `st` a propósito: el
+    // backtracking clona `st`, así que deshacer un servicio deshace también su cobro.
+    deuda: {},
     saludG: {},                                     // mid → categoría → GRAMOS ← TECHOS_SALUD_G_SEMANA
     fritos: 0, dulces: 0, lacteos: 0,
     novedades: {},                                  // mid → n novedades servidas (menores)
@@ -4532,7 +4638,6 @@ function rellenarSemana({ entrada, esq, pre, pools, datos, config, memoria, menu
   // esta misma `cuotaDeServicio`. Aquí solo se lee: es la MISMA definición que usa T1 al
   // reservar, y por eso las proyecciones de T2 hablan su idioma. Sin prevuelo: 1, como siempre.
   const pesoMaxDe = (mid, cubo) => ((pre.pesoCubo && pre.pesoCubo.max[cubo] || {})[mid]) || 1;
-  const pesoMinDe = (mid, cubo) => ((pre.pesoCubo && pre.pesoCubo.min[cubo] || {})[mid]) || 1;
 
   // ⚑ 5.4 (sesión 6, 4-ago) — EL POSTRE ES COMIDA Y CUENTA. Los contadores de este fichero
   // recorrían `sv.plato` y **el postre no entraba en ninguno**: ni en tomas ni en gramos de
@@ -4606,6 +4711,73 @@ function rellenarSemana({ entrada, esq, pre, pools, datos, config, memoria, menu
     return mejor;                                     // M2 en servicios: el borde SÍ suma 1
   }
 
+  // ── EL ESTADO DE LA CUOTA DE UN COMENSAL ANTE UNA CATEGORÍA (§13.4 blandas · §20.32, 4-ago-2026)
+  //
+  // Una banda tiene DOS extremos y hasta hoy el motor solo miraba uno. `avance` —cuántos mínimos
+  // pendientes toca esta categoría— existía en los dos sitios donde T2 elige (la opción de cada
+  // comensal en `resolverEje` y el coste S del candidato en `señales`); su espejo, `gasto`, no
+  // existía en ninguno. La consecuencia está medida sobre la parrilla (12 familias × 4 semanas):
+  // de las 214 tomas de `carne-total` de los 50 veredictos que se pasan del techo, **78 (36%) no
+  // salen de la casilla que T1 reservó, sino de la OPCIÓN que recibe el comensal** — 38 de
+  // `risotto|pollo` en slots reservados `sin-cuota`, o sea una casilla que T1 presupuestó como
+  // «no consume techo» y que acaba sirviendo carne. Con `avance` empatado a 0 —el caso normal—
+  // decidía la rotación, a ciegas: entre dos opciones legales, la que gastaba techo y la que no
+  // valían lo mismo.
+  //
+  // `gasto` = cuántos cubos DESBORDA esta categoría para este comensal: los que quedarían por
+  // encima de su techo al servirle esto. Es el espejo exacto de `avance`, con su misma
+  // aproximación barata —cuenta CUBOS, no tomas— para que las dos señales sean comparables.
+  //
+  // ⚑ POR QUÉ EL BORDE ESTÁ EN «DESBORDA» Y NO EN «GASTA», con las dos alternativas medidas sobre
+  // la parrilla antes de elegir:
+  //  · «gasta un techo cuyo mínimo ya está cubierto» (ancho): se enciende desde la primera toma en
+  //    todo cubo que solo tiene techo —`carne-total` de un menor es [—,3], sin mínimo— y entonces
+  //    no ordena, empuja: `carne-total` 50→42 pero `legumbre` 0→6. Mueve el consumo, no lo reduce.
+  //  · «esta toma es la última que cabe» (estrecho): no mueve nada (50→50), porque en ese punto la
+  //    toma todavía es legal y no hay nada que prevenir.
+  //  · «desborda» (el elegido): coincide EXACTAMENTE con lo que `contratos` va a vetar, y ahí está
+  //    el problema real — `resolverEje` elige la opción de cada comensal UNA vez y a ciegas, y si
+  //    la elegida rompe el techo, `contratos` tumba el CANDIDATO ENTERO aunque otra opción legal
+  //    del mismo plato cupiese. Medido: 78 de las 214 tomas de `carne-total` de los veredictos que
+  //    se pasan entran por la opción del comensal y no por la casilla de T1 — 38 de ellas de
+  //    `risotto|pollo` en slots que T1 reservó `sin-cuota`, o sea presupuestados como «no consume
+  //    techo». La señal no relaja el techo: evita elegir la opción que lo rompe pudiendo no hacerlo.
+  //
+  // ⚑ ES BLANDA, NO CONTRATO: ordena entre candidatos LEGALES y jamás veta. El techo lo sigue
+  // vetando `contratos` en su moneda (§13.4), y quien no encuentra alternativa sigue cediendo CON
+  // descargo. Esto solo evita gastar el techo cuando había otra opción igual de buena.
+  function estadoDeCuota(categoria, mid) {
+    const cubos = categoria ? cubosDe(categoria).filter(x => config.CUOTAS[x]) : [];
+    let avance = 0, gasto = 0;
+    for (const cubo of cubos) {
+      const v = aporta(mid, cubo, 1);
+      avance += v.avance; gasto += v.gasto;
+    }
+    return { avance, gasto };
+  }
+  // el veredicto de UN cubo para UN comensal ante `t` tomas nuevas. Definición única de los dos
+  // extremos de la banda: la consumen `resolverEje` (por categoría nominal) y `señales` (por lo
+  // que el candidato aporta de verdad). Dos recorridos, una definición — §13.11.
+  //
+  // ⚑ EL TECHO SE MIRA PROYECTADO, con la misma cuenta que `contratos`: lo que hay + lo que esto
+  // aporta + UNA toma por cada slot PENDIENTE cuya categoría reservada alimenta el cubo. Sin la
+  // proyección la señal no ve nada y no mueve nada (medido: 50→50 veredictos cedidos), porque en
+  // el momento de elegir la opción el techo todavía no se ha roto — lo que se rompe es la reserva
+  // que viene después. La proyección es exactamente lo que `contratos` va a vetar, así que esto no
+  // adivina: anticipa el mismo veredicto para poder elegir OTRA opción antes de provocarlo.
+  function aporta(mid, cubo, t) {
+    const banda = (pre.bandasEfectivas[mid] || {})[cubo];
+    if (!banda) return { avance: 0, gasto: 0 };
+    const tiene = st.tomas[mid][cubo] || 0;
+    if (banda.max < Infinity) {
+      let pendienteMin = 0;
+      for (const p of pendientes) if (presencia[mid][p.slot] && cubosDe(p.categoria).includes(cubo)) pendienteMin++;
+      if (tiene + t + pendienteMin > banda.max + 1e-9) return { avance: 0, gasto: 1 };
+    }
+    if (tiene < banda.min - 1e-9) return { avance: 1, gasto: 0 };
+    return { avance: 0, gasto: 0 };
+  }
+
   // ── resolver el EJE comensal a comensal para un candidato (el foso)
   function resolverEje(c, presentes, relaj, s) {
     if (!ix.tieneEje[c.elaboracion_id]) return { opciones: null, divergencias: [] };
@@ -4614,12 +4786,27 @@ function rellenarSemana({ entrada, esq, pre, pools, datos, config, memoria, menu
     // siendo legal — que vuelva papá no puede cambiarle el plato a nadie más. Solo se resuelve
     // de nuevo al que llega. Sin `opciones_previas` (el caso normal) esto no existe.
     const previas = (s && s.opciones_previas) || null;
-    // ¿el cubo del candidato viene del EJE? (pizza×atún: sí; potaje×zanahoria: no — su cubo es
-    // la legumbre fija). Solo entonces la opción del omnívoro se ata a la CATEGORÍA EXACTA
-    // reservada — «algún cubo con banda» dejaba colar salmón (azul) en un slot de blanco y el
-    // techo de azul reventaba (cazado en vivo, 7-comida de mesa-1).
+    // ── LA OPCIÓN DEL OMNÍVORO RESPETA LO QUE T1 RESERVÓ. Son dos casos y hasta el 4-ago-2026
+    // solo estaba implementado uno:
+    //  · el cubo del candidato viene del EJE (pizza×atún) → la opción se ata a la CATEGORÍA EXACTA
+    //    reservada. «Algún cubo con banda» dejaba colar salmón (azul) en un slot de blanco y el
+    //    techo de azul reventaba (cazado en vivo, 7-comida de mesa-1).
+    //  · la reserva es `sin-cuota` → la opción se ata a NO ALIMENTAR NINGÚN CUBO. `sin-cuota`
+    //    significa, literalmente, que T1 presupuestó esa casilla como «no consume techo ni cumple
+    //    mínimo» (`pools.js` §categoriaDe). Sin esta rama la casilla no ataba nada y el eje elegía
+    //    por rotación: medido sobre la parrilla, **38 tomas de `carne-total` entraban por
+    //    `risotto|pollo` en slots `sin-cuota`**, y al taparlo por coste se iban a
+    //    `proteina-vegetal-plancha|tempeh`, que es legumbre — el mismo agujero por otro cubo.
+    //    Es el sitio correcto y no un parche sobre el otro: lo que estaba mal era que la promesa
+    //    de la reserva se cumplía para las casillas con cubo y no para las que prometían ninguno.
+    //  · el cubo viene de una línea FIJA (potaje×zanahoria) → la opción es libre, porque el cubo
+    //    ya está puesto y atar el eje forzaría a que la verdura fuese una legumbre.
+    // En los dos primeros casos, si no queda ninguna opción que cumpla, se sirve fuera de reserva
+    // y se DECLARA (H manda): la divergencia es la misma y se emite igual.
     const catCanonica = ix.cat[c.opcion] && ix.cat[c.opcion].categoria;
     const ejeProteico = catCanonica != null && catCanonica === c.categoria;
+    const reservaSinCuota = c.categoria === 'sin-cuota';
+    const sinCubo = op => { const f = ix.cat[op]; return !f || !cubosDe(f.categoria).some(x => config.CUOTAS[x]); };
     for (const mid of presentes) {
       if (pre.resolucion[mid][c.elaboracion_id].estado === 'excluido') continue;
       let legales = sinVariantesInnecesarias(pre.opcionesLegales[mid][c.elaboracion_id] || []);
@@ -4633,28 +4820,27 @@ function rellenarSemana({ entrada, esq, pre, pools, datos, config, memoria, menu
       // omnívoro en eje proteico: su opción DENTRO de la categoría reservada si existe (la
       // reserva se cumple por construcción); si no → legal de otra CON descargo (H manda)
       let pool = legales;
-      if (m.dieta === 'omnivora' && ejeProteico) {
-        const delCubo = legales.filter(op => ix.cat[op] && ix.cat[op].categoria === c.categoria);
-        if (delCubo.length) pool = delCubo;
+      if (m.dieta === 'omnivora' && (ejeProteico || reservaSinCuota)) {
+        const enReserva = reservaSinCuota ? legales.filter(sinCubo)
+          : legales.filter(op => ix.cat[op] && ix.cat[op].categoria === c.categoria);
+        if (enReserva.length) pool = enReserva;
         else divergencias.push({ tipo: 'divergencia-de-reserva', miembro: mid,
-          detalle: `${mid} sin opción legal de ${c.categoria} en ${c.elaboracion_id}: se sirve fuera de reserva (H manda)` });
+          detalle: reservaSinCuota
+            ? `${mid} sin opción legal sin cubo de cuota en ${c.elaboracion_id}: la casilla se reservó sin-cuota y se sirve fuera de reserva (H manda)`
+            : `${mid} sin opción legal de ${c.categoria} en ${c.elaboracion_id}: se sirve fuera de reserva (H manda)` });
       }
       const ultima = ((mem.personas[mid] || {}).P2 || {})[c.elaboracion_id];
       const frescas = pool.filter(op => !ultima || ultima.opcion !== op);
       const candidatas = frescas.length ? frescas : pool;
-      // avance de mínimos pendientes → temporada del alimento → rotación estable
+      // avance de mínimos pendientes → GASTO DE TECHO → rotación estable
       const rot = (semanaNum + st.idxServicio) % candidatas.length;
       const orden = candidatas.slice(rot).concat(candidatas.slice(0, rot));
-      let mejor = orden[0], mejorAvance = -1;
+      let mejor = orden[0], mejorAvance = -1, mejorGasto = Infinity;
       for (const op of orden) {
-        const fila = ix.cat[op];
-        const cubos = fila ? cubosDe(fila.categoria).filter(x => config.CUOTAS[x]) : [];
-        let avance = 0;
-        for (const cubo of cubos) {
-          const banda = (pre.bandasEfectivas[mid] || {})[cubo];
-          if (banda && (st.tomas[mid][cubo] || 0) < banda.min - 1e-9) avance++;
+        const { avance, gasto } = estadoDeCuota(ix.cat[op] && ix.cat[op].categoria, mid);
+        if (avance > mejorAvance || (avance === mejorAvance && gasto < mejorGasto)) {
+          mejorAvance = avance; mejorGasto = gasto; mejor = op;
         }
-        if (avance > mejorAvance) { mejorAvance = avance; mejor = op; }
       }
       porMiembro[mid] = mejor;
     }
@@ -4827,13 +5013,18 @@ function rellenarSemana({ entrada, esq, pre, pools, datos, config, memoria, menu
     const media = st.costeBandaAcum.length ? st.costeBandaAcum.reduce((s, x) => s + x, 0) / st.costeBandaAcum.length : 2;
     // ⚑ 5.4 · avance EN TOMAS, no en fracciones de ración: lo que hace progresar un mínimo de
     // «legumbre 3 veces» es comer legumbre una vez más, no comer más legumbre de una vez.
-    let avance = 0;
+    // ⚑ 13.4 (4-ago-2026) · y su ESPEJO, `gasto`: los cubos con techo finito que el candidato
+    // consume a este comensal con el mínimo ya cubierto. Aquí la cuenta se hace sobre lo que el
+    // candidato REALMENTE aporta a cada uno —`q.tomas`, con su opción— y no sobre una categoría
+    // nominal, que es lo que distingue este recorrido del de `resolverEje`: allí se elige la
+    // opción de UNA persona, aquí se puntúa el candidato para TODA la mesa.
+    let avance = 0, gasto = 0;
     for (const mid of Object.keys(pre.bandasEfectivas)) {
       const op = opciones && opciones[mid] != null ? opciones[mid] : c.opcion;
       const q = cuotaDe(aportes({ ...c, opcion: op }, mid), mid);
       for (const cubo of Object.keys(q.tomas)) {
-        const banda = pre.bandasEfectivas[mid][cubo];
-        if (banda && (st.tomas[mid][cubo] || 0) < banda.min - 1e-9) avance++;
+        const v = aporta(mid, cubo, q.tomas[cubo] || 1);
+        avance += v.avance; gasto += v.gasto;
       }
     }
     let rotRep = 0, rotTot = 0;
@@ -4845,6 +5036,7 @@ function rellenarSemana({ entrada, esq, pre, pools, datos, config, memoria, menu
       dias_desde_percibido: dmin.length ? Math.min(...dmin) : null,
       servicios_desde_origen: sOrg,
       avance_tomas: avance,
+      gasto_techo: gasto,
       temporada: c.temporada === estacion ? 0 : c.temporada == null ? 0.5 : 1,
       tiempo_min: e && e.tiempo_min != null ? e.tiempo_min : null,
       finde,
@@ -4972,7 +5164,9 @@ function rellenarSemana({ entrada, esq, pre, pools, datos, config, memoria, menu
         const bg = `${c.elaboracion_id}+${x.id}`;
         const sen = señales({ elaboracion_id: x.id, opcion: opMesa, temporada: typeof x.temporada === 'string' ? x.temporada : null },
           opMesa ? Object.fromEntries(presentes.map(p => [p, opMesa])) : null, s, dia >= 6);
-        const coste = costeS(sen, config).total + (st.bigramas[bg] || 0) * 64 + excluidos.length * 32;
+        const coste = costeS(sen, config).total
+          + (st.bigramas[bg] || 0) * EXTRA.bigrama_repetido
+          + excluidos.length * EXTRA.comer_aparte_secundaria;
         return { x, opMesa, excluidos, coste, soloConR2 };
       }).filter(Boolean).sort((a, b) => a.coste - b.coste
         || (a.x.id < b.x.id ? -1 : 1));
@@ -5095,24 +5289,24 @@ function rellenarSemana({ entrada, esq, pre, pools, datos, config, memoria, menu
     // medido con el peso alto el complemento se apagaba entero (56 → 4 apariciones) porque dos
     // casillas de huevo «prometían» cuatro piezas al niño que T3 nunca le sirve. Es la misma
     // proyección sobre `pendientes` que ya hacen los techos, con la cota del lado correcto.
-    const porVenir = (mid, cubo) => {
-      let n = 0;
-      for (const p of pendientes) {
-        if (p.slot === s.slot || !presencia[mid][p.slot]) continue;
-        if (cubosDe(p.categoria).includes(cubo)) n += pesoMinDe(mid, cubo);
-      }
-      return n;
-    };
-    const necesitan = {};                              // cubo → [mid…] que aún no llegan al mínimo
+    const necesitan = {};                              // cubo → [mid…] con deuda VIVA
     for (const mid of presentes) {
       if (pre.resolucion[mid][cPrincipal.elaboracion_id].estado === 'excluido') continue;
-      let base = null;
       for (const [cubo, banda] of Object.entries(pre.bandasEfectivas[mid] || {})) {
         if (!(banda.min_por_complemento > 0)) continue;
-        const objetivo = banda.min + banda.min_por_complemento;
-        base = base || cuotaCon(mid, null);
-        const conEsteServicio = (st.tomas[mid][cubo] || 0) + (base.tomas[cubo] || 0);
-        if (conEsteServicio + porVenir(mid, cubo) >= objetivo - 1e-9) continue;
+        // ⚑ §13.9.1 · LA DEUDA ES UN OBJETO DEL LIBRO, NO UNA ESPERA (5-ago-2026).
+        // Lo que decide si el complemento entra es si la deuda sigue viva, no cuántas casillas
+        // quedan por delante. La cuantía la acuñó el prevuelo (`min_por_complemento`) y el libro
+        // (`st.deuda`) dice cuánto se ha cobrado ya: mientras quede deuda, se cobra en el PRIMER
+        // slot donde quepa — y `cabe`, más abajo, es quien garantiza que quepa sin romper ningún
+        // techo del beneficiario.
+        // Lo que había antes era una proyección sobre `pendientes` que esperaba a que no quedara
+        // ninguna casilla del cubo por delante. Esa espera existía para no servirlo dos veces, y
+        // el libro lo impide mejor: cobrar dos veces es imposible si se anota lo cobrado. Su coste
+        // estaba medido y era el punto 2 de lo abierto del bloque 10: el mínimo de huevo del niño
+        // quedaba corto en 9 de 164 veredictos porque el ÚLTIMO slot no siempre admite complemento
+        // —o no lo puede comer quien lo necesita, o choca con M4, o no queda hueco en el plato.
+        if (((st.deuda[mid] || {})[cubo] || 0) >= banda.min_por_complemento - 1e-9) continue;
         (necesitan[cubo] = necesitan[cubo] || []).push(mid);
       }
     }
@@ -5408,8 +5602,10 @@ function rellenarSemana({ entrada, esq, pre, pools, datos, config, memoria, menu
           && esNovedadPara(mid, c, eje.opciones) && (st.novedades[mid] || 0) >= config.P4_NOVEDAD_SEMANA);
         vistos.add(k);
         evaluados.push({ c, eje, cierre, excluidos, novedadExcedida, nivel, descargoTecho,
-          coste: costeS(sen, config).total + excluidos.length * 128 + (novedadExcedida ? 512 : 0)
-            + (descargoTecho ? 4096 : 0) });
+          coste: costeS(sen, config).total
+            + excluidos.length * EXTRA.comer_aparte
+            + (novedadExcedida ? EXTRA.novedad_sobre_cupo : 0)
+            + (descargoTecho ? EXTRA.techo_cedido : 0) });
       }
       evaluados.sort((a, b) => a.coste - b.coste || (a.c.elaboracion_id < b.c.elaboracion_id ? -1 : 1)
         || ((a.c.opcion || '') < (b.c.opcion || '') ? -1 : 1));
@@ -5743,6 +5939,16 @@ function rellenarSemana({ entrada, esq, pre, pools, datos, config, memoria, menu
           st.novedades[mid] = (st.novedades[mid] || 0) + 1;
       }
       const q = cuotaDe(lineasDelServicio, mid);
+      // ⚑ §13.9.1 · EL LIBRO ANOTA LO COBRADO. Una `secundaria-proteina` que este comensal recibe
+      // es un cobro de deuda: se apunta lo que aporta a cada cubo, y a partir de ahí esa deuda
+      // deja de estar viva para él. `piezas` ya viene filtrada por `solo-para`, así que aquí solo
+      // están las que REALMENTE come — que es la condición de que el cobro exista.
+      for (const pe of piezas) {
+        if ((ix.elab[pe.elaboracion_id] || {}).tipo !== 'secundaria-proteina') continue;
+        const qc = cuotaDe(aportes({ elaboracion_id: pe.elaboracion_id, opcion: null }, mid), mid);
+        for (const cubo of Object.keys(qc.tomas))
+          (st.deuda[mid] = st.deuda[mid] || {})[cubo] = ((st.deuda[mid] || {})[cubo] || 0) + qc.tomas[cubo];
+      }
       for (const cubo of Object.keys(q.tomas)) {
         st.tomas[mid][cubo] = (st.tomas[mid][cubo] || 0) + q.tomas[cubo];
         // §20.39 · y el contador de la ventana MENSUAL, que sigue vivo la semana que viene
@@ -6118,6 +6324,24 @@ function fraccionarSemana({ semana, familia, config }, datos) {
       if (factor > fMaxSalud) factor = fMaxSalud;
       if (factor < fMinSuelo) factor = fMinSuelo;      // el suelo, el último y por encima de todo
       const mejor = +factor.toFixed(3);
+      // ── QUÉ COTA MANDÓ DE VERDAD (§13.6 «cero relajaciones silenciosas», 4-ago-2026)
+      // El límite de realidad de §20.9 —«fuera de 0,4-2 el plato deja de ser ese plato»— CEDE
+      // ante las dos cotas que están por encima de él: el suelo proteico (§1-T3, cota inferior
+      // innegociable) y el techo de salud (§14.4, jamás relajable). Que ceda es correcto y ya
+      // estaba escrito. Lo que faltaba es que se DIJERA: el único descargo que salía era el de
+      // energía, y su detalle listaba «suelo, techo de salud o límite de realidad» — un «o» que
+      // no se puede auditar. Un niño de 3 años recibiendo un 30% del plato para que el techo de
+      // carne roja aguante es una decisión defendible y una cesión de §20.9; enseñarla como una
+      // desviación de energía la esconde. Ahora la cota que mordió se nombra, y salir del límite
+      // lleva su propio descargo con su motivo.
+      // La cota se DERIVA de los valores, no de qué lado del límite cayó: por debajo solo puede
+      // bajar `fMaxSalud` y por encima solo puede subir `fMinSuelo`, pero escribirlo por posición
+      // sería una correlación que se rompe sola en cuanto alguien añada una tercera cota.
+      const cota = mejor < LIMITE.min - 1e-9 && Math.abs(mejor - fMaxSalud) < 1e-3 ? 'techo de salud'
+        : mejor > LIMITE.max + 1e-9 && Math.abs(mejor - fMinSuelo) < 1e-3 ? 'suelo proteico'
+          : (mejor < LIMITE.min - 1e-9 || mejor > LIMITE.max + 1e-9) ? 'una cota sin identificar' : null;
+      if (cota) descargos.push({ tipo: 'fuera-de-limite-de-realidad', miembro: m.id,
+        detalle: `${m.id}: se sirve ×${mejor} de la receta, fuera del límite de realidad ${LIMITE.min}-${LIMITE.max} (§20.9) — manda el ${cota}, que está por encima de ese límite y no se relaja` });
       fracciones[m.id] = mejor;
       // el acumulado de salud cuenta TOMAS (vara nueva): solo si la cantidad servida llega al umbral
       for (const c of CUBOS_SALUD) if (salud[c] * mejor >= config.TOMA_MIN_FRACCION)
@@ -6236,8 +6460,16 @@ function fraccionarSemana({ semana, familia, config }, datos) {
       }
       const desvio = (kcalBase * mejor - objetivoServicio) / objetivoServicio;
       if (Math.abs(desvio) > config.UMBRALES.B_desvio_servicio) {
+        // ⚑ 4-ago-2026 · el detalle NOMBRA la cota que mordió. Decía «acotada por suelo, techo de
+        // salud o límite de realidad», y un «o» no se audita: quien lee no sabe cuál de las tres
+        // fue, así que el descargo no permite comprobar nada. Se deriva de los valores.
+        const quien = Math.abs(mejor - fMinSuelo) < 1e-3 ? 'el suelo proteico'
+          : Math.abs(mejor - fMaxSalud) < 1e-3 ? 'el techo de salud'
+            : Math.abs(mejor - LIMITE.min) < 1e-3 ? `el límite de realidad (×${LIMITE.min})`
+              : Math.abs(mejor - LIMITE.max) < 1e-3 ? `el límite de realidad (×${LIMITE.max})`
+                : 'la composición del plato';
         descargos.push({ tipo: 'energia-fuera-de-banda', miembro: m.id,
-          detalle: `${m.id}: la cantidad queda en ${(100 * desvio).toFixed(0)}% del objetivo del servicio — acotada por suelo, techo de salud o límite de realidad` });
+          detalle: `${m.id}: la cantidad queda en ${(100 * desvio).toFixed(0)}% del objetivo del servicio — la acota ${quien}` });
         relajaciones.push({ peldano: 'R5',
           detalle: `banda de energía del servicio fuera para ${m.id} (${(100 * desvio).toFixed(0)}%): se DECLARA y ahí muere — nada compensa a nada (§5)`,
           frase: 'Hoy la ración queda un poco fuera de lo justo.' });

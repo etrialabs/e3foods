@@ -132,17 +132,25 @@
 
   // Genera UNA semana. Devuelve la semana `/2` verbatim, o null si la familia no es válida
   // para el contrato — que es un error DURO y visible, no un menú degradado en silencio.
+  // `estado.errorMotor` (TRAMO B, §14.5/§4.12) es la MISMA información que `errorMotor`,
+  // expuesta en `estado` porque ui.js pinta a partir de `estado`, no de este closure — se
+  // sincroniza aquí, en el ÚNICO sitio que decide éxito/fracaso, para que las 4 pantallas
+  // que dependen del plan (Home, Resumen semana, Recetas, Compra) lean siempre el motivo
+  // de la ÚLTIMA llamada, nunca uno viejo. `estado` es el closure de la familia real o el
+  // de la demo (`mostrarDemo` reasigna la referencia ANTES de llamar aquí, ver esa función).
   var errorMotor = null;
   function generarSemanaV6(lunesISO, semanasExtra) {
     var iso = semanaIsoDeLunes(lunesISO);
     try {
       var corrida = MOTOR.generarCorrida(familiaParaSemana(iso), iso, 1, BANCO, MOTOR.config, diarioCon(semanasExtra));
       errorMotor = null;
+      if (estado) estado.errorMotor = null;
       return corrida.semanas[0];
     } catch (e) {
       // el contrato de familia revienta a propósito ante un dato duro que no casa (§ severidad):
       // se enseña, no se traga. Sin esto la app arrancaría con la semana anterior y nadie sabría.
       errorMotor = e && e.message ? e.message : String(e);
+      if (estado) estado.errorMotor = errorMotor;
       return null;
     }
   }
@@ -1425,6 +1433,17 @@
     if (!personaDraft) return false;
     var nombre = (personaDraft.nombre || '').trim();
     if (!nombre) { alert('Ponle un nombre a esta persona antes de guardar.'); return false; }
+    // altura/peso por banda de edad (Roger 6-ago, ver UI.medidasRequeridas): adultos
+    // siempre los dos, menor 11-17 solo peso. El asistente ya bloquea el "Siguiente" con
+    // la misma regla (UI.pasoPersonaValido); aquí es el equivalente para editar un
+    // miembro ya existente, donde el botón "Guardar" no se repinta con cada tecla.
+    var reqMedidas = UI.medidasRequeridas(personaDraft.anioNacimiento);
+    var faltaAltura = reqMedidas.altura && !(Number(personaDraft.altura) > 0);
+    var faltaPeso = reqMedidas.peso && !(Number(personaDraft.peso) > 0);
+    if (faltaAltura || faltaPeso) {
+      alert(I18N.t(reqMedidas.altura ? 'ficha_faltan_medidas_adulto' : 'ficha_falta_peso_menor'));
+      return false;
+    }
     personaDraft.nombre = nombre;
     // el bloque Estilo de vida no es obligatorio en la ficha (sí en el asistente):
     // si no se ha tocado, se consolida el que ya implicaba su `dieta` — nunca ''
@@ -1482,8 +1501,18 @@
   // recalculan la semana en curso y la siguiente SIN preguntar — los platos cambiados a
   // mano se pierden, decisión explícita. Las señales blandas (favoritas, caritas) NO
   // regeneran: alimentan el scoring de la próxima generación.
+  // TRAMO E (bug real, controlador): el guard llevaba `|| !estado.plan` y por eso guardar
+  // el peso que faltaba NO reintentaba nada — `estado.plan` era null (motor había fallado
+  // antes) y la función se limitaba a `guardarEstado()` y salir. El plan solo volvía al
+  // cerrar y reabrir porque `asegurarPlanVigente()` (llamada en el arranque) SÍ reintenta
+  // con `estado.plan` null. Medido (no supuesto, ver `02_APP/tests/test_reintento_al_
+  // guardar.js`): alta, edición y baja comparten los mismos 4 puntos de llamada de esta
+  // función y los tres sufrían el MISMO guard roto — no hay un "camino del alta" distinto
+  // al de la edición, es el mismo. Quitar la condición basta, sin tocar el resto del
+  // contrato: sigue sin regenerar con familia vacía o en demo, y sigue forzando el
+  // recálculo completo cuando SÍ había plan (comportamiento ya vigente, no se toca).
   function regenerarPorCambioDeEstado() {
-    if (!estado.familia.length || modoDemo || !estado.plan) { guardarEstado(); return; }
+    if (!estado.familia.length || modoDemo) { guardarEstado(); return; }
     estado.plan = generarSemanaV6(lunesDeEstaSemana(fechaLocalISO(new Date())));
     generarPlanSiguiente();
     guardarEstado();

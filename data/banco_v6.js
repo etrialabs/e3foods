@@ -1,6 +1,6 @@
 /* ============================================================
    e3Foods — banco_v6.js (GENERADO por _build_banco_v6.js — NO editar a mano)
-   Las 12 tablas que consume el motor V6, sin trazabilidad ni huecos y sin las
+   Las 13 tablas que consume el motor V6, sin trazabilidad ni huecos y sin las
    elaboraciones bloqueadas (BD_ESQUEMA_V5.md §7). La verdad vive en bd_v6/datos/.
    Regenerar: node _build_banco_v6.js desde 02_APP/.
    ============================================================ */
@@ -2507,6 +2507,24 @@
 {"original":"tortilla-trigo","sustituto_id":"tortilla-maiz","funcion_aplicable":"hidrato-vehiculo","valido_para":["alergia"],"nota_card":"tortilla de maiz"},
 {"original":"harina","sustituto_id":"maicena","funcion_aplicable":"ligante","valido_para":["alergia"],"nota_card":"maicena"},
 {"original":"pan-rallado","sustituto_id":"maicena","funcion_aplicable":"ligante","valido_para":["alergia"],"nota_card":"maicena"}
+],
+"pesos_referencia": [
+{"edad":3,"sexo":"m","mediana_kg":14.3},
+{"edad":4,"sexo":"m","mediana_kg":16.3},
+{"edad":5,"sexo":"m","mediana_kg":18.3},
+{"edad":6,"sexo":"m","mediana_kg":20.5},
+{"edad":7,"sexo":"m","mediana_kg":22.9},
+{"edad":8,"sexo":"m","mediana_kg":25.4},
+{"edad":9,"sexo":"m","mediana_kg":28.1},
+{"edad":10,"sexo":"m","mediana_kg":31.2},
+{"edad":3,"sexo":"f","mediana_kg":13.9},
+{"edad":4,"sexo":"f","mediana_kg":16.1},
+{"edad":5,"sexo":"f","mediana_kg":18.2},
+{"edad":6,"sexo":"f","mediana_kg":20.2},
+{"edad":7,"sexo":"f","mediana_kg":22.4},
+{"edad":8,"sexo":"f","mediana_kg":25},
+{"edad":9,"sexo":"f","mediana_kg":28.2},
+{"edad":10,"sexo":"f","mediana_kg":31.9}
 ]
 };
   if (typeof module !== 'undefined' && module.exports) module.exports = global.E3_BANCO_V6;

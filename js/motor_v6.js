@@ -604,6 +604,7 @@ module.exports = {
 // del banco revienta: la política necesita un alérgeno, no un origen. Y la `despensa` del hogar
 // con el alérgeno dentro revienta también — si está en la despensa, está en casa.
 'use strict';
+const { edadEnSemana } = require('./derivar.js');   // para el supuesto del alta sin peso (3.4)
 
 // ── productos hechos PARA el intolerante: declaran alérgeno `leche` (Anexo II punto 7 cubre
 //    «leche y sus derivados, INCLUIDA la lactosa», y es correcto: conservan la proteína) y aun
@@ -666,7 +667,9 @@ function casaAlergeno(alergenosAlimento, tags) {
 
 // familia declarada → familia en vocabulario del banco. Lanza si algo duro no casa.
 // Devuelve { familia, avisos }; los avisos viajan en `familia.avisos_contrato` si los hay.
-function normalizarFamilia(familia, datos) {
+// `arranqueIso` (opcional, ley e27f4bd): la semana de referencia para el supuesto del alta sin
+// peso — sin ella el contrato valida como siempre y ningún peso se rellena.
+function normalizarFamilia(familia, datos, arranqueIso) {
   if (!familia || !Array.isArray(familia.miembros) || !familia.miembros.length)
     throw new Error('contrato de familia: sin miembros');
 
@@ -716,7 +719,31 @@ function normalizarFamilia(familia, datos) {
     if (!NACIMIENTO.test(String(m.nacimiento || ''))) err(`nacimiento inválido: ${JSON.stringify(m.nacimiento)} (AAAA-MM o AAAA-MM-DD)`);
     if (!SEXOS.includes(m.sexo)) err(`sexo desconocido: ${JSON.stringify(m.sexo)}`);
     if (!ACTIVIDADES.includes(m.actividad)) err(`actividad desconocida: ${JSON.stringify(m.actividad)}`);
-    if (!(Number(m.altura_cm) > 30 && Number(m.altura_cm) < 250)) err(`altura_cm fuera de rango: ${JSON.stringify(m.altura_cm)}`);
+    // ── EL SUPUESTO DEL ALTA SIN PESO (ley e27f4bd · funcional 3.4 con 1.13/1.14): un menor de
+    //    3-10 sin peso NO revienta el contrato — recibe el peso mediano OMS de su edad y sexo
+    //    (tabla `pesos_referencia` del banco) y el supuesto se DECLARA, jamás en silencio.
+    //    RELLENA, no exime: aguas abajo todo el motor ve un miembro con peso real y nadie más
+    //    tiene que saber de esto (propagar un `peso = null` sería un NaN esperando sitio).
+    //    Y NO es quitar la validación: sin fila de referencia —adulto, 11-17 (la OMS no publica
+    //    peso por edad ahí y 10.2 prohíbe extrapolar), o tabla ausente— el error de abajo sigue
+    //    siendo el de siempre. La ALTURA de un menor no se usa en ningún cálculo (energia.js
+    //    solo la lee en la fórmula adulta), así que aquí solo se exige donde se consume.
+    const edadRef = (arranqueIso && NACIMIENTO.test(String(m.nacimiento || '')))
+      ? edadEnSemana(m.nacimiento, arranqueIso) : null;
+    if (m.peso_kg == null && edadRef != null && SEXOS.includes(m.sexo)) {
+      const ref = (datos.pesos_referencia || []).find(p => p.edad === edadRef && p.sexo === m.sexo);
+      if (ref) {
+        m.peso_kg = ref.mediana_kg;
+        m.peso_estimado = true;
+        avisa(`peso estimado por edad: la ficha no trae peso y se usa la mediana OMS de ${edadRef} años (${ref.mediana_kg} kg) — funcional 3.4`);
+      }
+    }
+    // La ALTURA solo la consume la fórmula adulta (energia.js, rama edad >= 18; los menores van
+    //    por Schofield, que es a·peso + b): se exige donde se lee. En un menor es opcional por
+    //    ley (3.4) — si viene, se valida el rango; si no hay `arranqueIso` (llamadores viejos),
+    //    la exigencia queda como siempre.
+    if ((edadRef == null || edadRef >= 18 || m.altura_cm != null)
+        && !(Number(m.altura_cm) > 30 && Number(m.altura_cm) < 250)) err(`altura_cm fuera de rango: ${JSON.stringify(m.altura_cm)}`);
     if (!(Number(m.peso_kg) > 1 && Number(m.peso_kg) < 400)) err(`peso_kg fuera de rango: ${JSON.stringify(m.peso_kg)}`);
     const objetivo = m.objetivo == null ? 'mantenimiento' : m.objetivo;
     if (!OBJETIVOS.includes(objetivo)) err(`objetivo desconocido: ${JSON.stringify(m.objetivo)}`);
@@ -1649,7 +1676,7 @@ const { compilarPools } = require('./pools.js');
 const { prevuelo } = require('./prevuelo.js');
 const { esqueleto, SLOTS } = require('./t1_esqueleto.js');
 const { rellenarSemana } = require('./t2_relleno.js');
-const { fraccionarSemana } = require('./t3_fracciones.js');
+const { fraccionarSemana, sellarResumenSemana } = require('./t3_fracciones.js');
 const { serializarCorrida } = require('./serializar.js');
 const { auditar } = require('./t4_auditoria.js');
 const { objetivoDiario } = require('./energia.js');
@@ -1697,7 +1724,7 @@ function entradaDe(familia, semana_iso) {
 function generarCorrida(familiaDeclarada, arranqueIso, nSemanas, datos, config, diarioPrevio) {
   // CONTRATO primero: lo que entra al motor ya está en vocabulario del banco, validado y con
   // los miembros en orden canónico. Un token duro desconocido revienta AQUÍ, no en un menú.
-  const familia = normalizarFamilia(familiaDeclarada, datos).familia;
+  const familia = normalizarFamilia(familiaDeclarada, datos, arranqueIso).familia;
   // POLÍTICA DE HOGAR (spec §13): el banco EFECTIVO del hogar se compone UNA vez, aquí, antes de
   // los pools y del prevuelo. De este punto en adelante `banco` es el único banco que el motor
   // conoce: si el hogar tiene una alergia severa, su alérgeno no existe aguas abajo y nadie
@@ -1823,6 +1850,11 @@ function generarCorrida(familiaDeclarada, arranqueIso, nSemanas, datos, config, 
         sv.descargos = (sv.descargos || []).concat(f.descargos);
         sv.relajaciones = (sv.relajaciones || []).concat(f.relajaciones);
       }
+      // ── EL SELLO (ley 13.11.1): el resumen de semana —mínimos y techos fuera de banda— se
+      // escribe AQUÍ, al cerrar T3, desde la columna Servida y con las bandas del prevuelo.
+      // El número declarado es el que llegó al plato; la proyección de T2 queda como dato
+      // interno. Antes lo escribía T2 y el 71% de las cifras no eran las del juez.
+      sellarResumenSemana(r.semana, pre.bandasEfectivas, t3.tomas_servidas);
       // D2 · las 16 reglas de atragantamiento: nota en la card, jamás prohibición (§seguridad_infantil)
       // + §13: la card dice UNA vez lo que la política de hogar hizo con cada plato que lleva.
       semanas.push(anotarHogar(anotarSemana(r.semana, familia, entrada.edades, banco), politica));
@@ -5671,33 +5703,16 @@ function rellenarSemana({ entrada, esq, pre, pools, datos, config, memoria, menu
     const primero = ORDEN_CAL.map(sl => st.porSlot[sl]).find(Boolean);
     if (primero) primero.descargos.push(...descargosEstructurales);
   }
-  // RED FINAL: la cuota que quedó FUERA DE BANDA, por arriba o por abajo, declarada en el último
-  // servicio con el RECUENTO DE T2 (jamás en silencio; el detalle del mínimo usa «alcanzar
-  // <cubo>», el formato que la batería G exime).
-  //
-  // ⚑ 5.4 · el techo se declara AQUÍ y no en el servicio, por dos motivos medidos el 4-ago:
-  //  · `contratos` hace `return` en cuanto UN presente choca, así que el descargo del servicio
-  //    nombraba solo al primero — en `omnivora-2a2n` W04 los cinco servicios con legumbre
-  //    declaraban el techo de n1 y NINGUNO el de n2, que se pasaba igual;
-  //  · `contratos` solo ve el candidato PRINCIPAL, y lo que el cierre (guarnición, postre) añade
-  //    encima no lo comprobaba nadie.
-  // Y sobre todo: aquí el contador de T2 está CERRADO, así que el número que se declara es
-  // careable contra el recuento independiente de T4. Un descargo que dice «4 tomas» cuando el
-  // juez cuenta 5 delata que las dos varas volvieron a separarse — que es la única forma de que
-  // esta fila no se vuelva a abrir sola. El descargo del servicio (§7, «aquí cedí») sigue
-  // emitiéndose donde cede: éste es el resumen de semana, no lo sustituye.
-  const ultimoSv = [...ORDEN_CAL].reverse().map(sl => st.porSlot[sl]).find(Boolean);
-  if (ultimoSv) for (const [mid, bandas] of Object.entries(pre.bandasEfectivas)) {
-    for (const [cubo, banda] of Object.entries(bandas)) {
-      const recibido = st.tomas[mid][cubo] || 0;
-      if (banda.min > 0 && recibido < banda.min - 1e-9)
-        ultimoSv.descargos.push({ tipo: 'minimo-no-cubierto', miembro: mid, cubo,
-          detalle: `${mid} no puede alcanzar ${cubo} esta semana (${recibido}/${banda.min.toFixed(1)} tomas): divergencia de eje o pool — se compensa vía memoria` });
-      if (banda.max < Infinity && recibido > banda.max + 1e-9)
-        ultimoSv.descargos.push({ tipo: 'techo-vs-reserva', miembro: mid, cubo,
-          detalle: `${mid} se pasa de ${cubo} esta semana (${recibido}/${banda.max} tomas): la reserva del esqueleto choca con lo que el pool puede servir a esta mesa` });
-    }
-  }
+  // ⚑ EL RESUMEN DE SEMANA (mínimos y techos fuera de banda) YA NO SE ESCRIBE AQUÍ (7-ago-2026,
+  // ley 13.11.1: «la vara es LO SERVIDO»). Este bloque declaraba con el recuento de T2 —la
+  // PROYECCIÓN de la receta— y T3 movía los gramos después: medido, 97 de 136 descargos de
+  // techo (71%) con cifra distinta de la del juez y 21 mínimos MUDOS (receta al mínimo, servido
+  // corto, nadie lo decía). Ahora lo escribe `sellarResumenSemana` (t3_fracciones.js) desde la
+  // columna Servida, al cerrar T3 — con las MISMAS bandas (`pre.bandasEfectivas`, que generar
+  // le pasa). El recuento de T2 (`st.tomas`) sigue siendo su dato interno de decisión: lo que
+  // muere es que se DECLARE. Los descargos de servicio («aquí cedí») siguen emitiéndose donde
+  // se cede — el motivo de que el resumen no viva en `contratos` sigue siendo el medido el
+  // 4-ago: `contratos` retorna al primer choque y solo ve el principal.
 
   function esNovedadPara(mid, c, opciones) {
     const op = opciones ? opciones[mid] : c.opcion;
@@ -6177,7 +6192,7 @@ module.exports = { rellenarSemana };
 const { derivarElaboracion, indexar, kcalDe, edadEnSemana } = require('./derivar.js');
 const { objetivoDiario } = require('./energia.js');
 const { racionParaLinea } = require('./raciones.js');
-const { unidadDe, aPiezas } = require('./cuotas.js');
+const { unidadDe, aPiezas, cuotaDeServicio } = require('./cuotas.js');
 const { cubosDe } = require('./t1_esqueleto.js');
 
 // TECHOS DE SALUD: innegociables por spec §7 («Jamás: H entero, ni los techos de salud»). La
@@ -6276,6 +6291,13 @@ function fraccionarSemana({ semana, familia, config }, datos) {
   // T3 nunca debe ser MÁS restrictivo que quien decidió el menú; solo debe dejar de romperlo.
   const piezasAcum = {};                             // mid → categoría contable → piezas servidas
   for (const m of familia.miembros) piezasAcum[m.id] = {};
+  // ── LA COLUMNA SERVIDA DEL LIBRO (ley 13.11.1, 5-ago: «la vara es LO SERVIDO»). Las tomas
+  //    que cada miembro RECIBE de verdad, contadas con la definición única (`cuotaDeServicio`)
+  //    sobre los gramos finales de T3 — fracción, ajustes de rango y piezas enteras incluidos.
+  //    El recorrido es el del MOTOR (piezasDe + derivador), jamás el del juez: T4 conserva el
+  //    suyo y el careo entre ambos es lo que vigila que no se separen (§13.11).
+  const tomasServidas = {};                          // mid → cubo → tomas/piezas servidas
+  for (const m of familia.miembros) tomasServidas[m.id] = {};
 
   for (const sv of semana.servicios) {
     if (!sv.plato) { salida.push({ slot: `${sv.dia}-${sv.servicio}`, fracciones: null, descargos: [], relajaciones: [] }); continue; }
@@ -6474,13 +6496,61 @@ function fraccionarSemana({ semana, familia, config }, datos) {
           detalle: `banda de energía del servicio fuera para ${m.id} (${(100 * desvio).toFixed(0)}%): se DECLARA y ahí muere — nada compensa a nada (§5)`,
           frase: 'Hoy la ración queda un poco fuera de lo justo.' });
       }
+
+      // ── 4 · LA COLUMNA SERVIDA de este miembro en este servicio (ley 13.11.1). Los gramos
+      //    finales son los de arriba: fracción `mejor` + los `ajustes_linea` de ESTE miembro
+      //    (rango fino y piezas enteras), que el derivador aplica como absolutos (gAjuste).
+      {
+        const { piezas: piezasSello, ajustes: ajustesSello } = piezasDe(sv, m.id);
+        const lineasSello = [];
+        for (const pe of piezasSello) {
+          const ajG = {};
+          for (const a of ajustesLinea)
+            if (a.miembro === m.id && a.elaboracion_id === pe.elaboracion_id) ajG[a.alimento_id] = a.gramos;
+          const r = derivarElaboracion(ix, pe, m.id, esNino, mejor, [], [], { ...ajustesSello, gramos: ajG });
+          for (const l of r.lineas) lineasSello.push({ alimento: l.alimento, gramos: l.gramos_base, papel: l.papel });
+        }
+        const q = cuotaDeServicio(lineasSello, { edad: obj.edad }, datos, config);
+        for (const c of Object.keys(q.tomas))
+          tomasServidas[m.id][c] = (tomasServidas[m.id][c] || 0) + q.tomas[c];
+      }
     }
     salida.push({ slot: `${sv.dia}-${sv.servicio}`, fracciones, ajustes_linea: ajustesLinea, descargos, relajaciones });
   }
-  return { servicios: salida };
+  return { servicios: salida, tomas_servidas: tomasServidas };
 }
 
-module.exports = { fraccionarSemana, piezasDe };
+// ── EL SELLO DEL RESUMEN DE SEMANA (ley 13.11.1, 5-ago-2026: «la vara es LO SERVIDO»).
+// Hasta hoy el resumen de mínimos y techos lo escribía T2 al cerrar su contador — la PROYECCIÓN
+// de la receta — y T3 movía los gramos después: medido, 97 de 136 descargos de techo (71%)
+// decían una cifra distinta de la del juez, y 21 mínimos quedaban MUDOS (la receta llegaba al
+// mínimo, lo servido no, y nadie lo declaraba). Este sello borra el resumen proyectado y lo
+// reescribe desde la columna Servida al cerrar T3: el número declarado es el que llegó al
+// plato. La proyección de T2 sigue siendo su dato interno de decisión — lo que muere es que se
+// DECLARE. El filtro es quirúrgico: solo los dos tipos del resumen y solo con el formato
+// `(x/y tomas)` — los descargos de servicio («aquí cedí») no se tocan.
+function sellarResumenSemana(semana, bandasEfectivas, tomasServidas) {
+  const FORMATO = /\(\d+(?:\.\d+)?\/\d+(?:\.\d+)? tomas\)/;
+  for (const sv of semana.servicios) if (sv.descargos && sv.descargos.length)
+    sv.descargos = sv.descargos.filter(d =>
+      !(['minimo-no-cubierto', 'techo-vs-reserva'].includes(d.tipo) && FORMATO.test(d.detalle || '')));
+  const ultimo = [...semana.servicios].reverse().find(sv => sv.plato && !sv.no_servido);
+  if (!ultimo) return;
+  ultimo.descargos = ultimo.descargos || [];
+  for (const [mid, bandas] of Object.entries(bandasEfectivas || {})) {
+    for (const [cubo, banda] of Object.entries(bandas)) {
+      const recibido = (tomasServidas[mid] || {})[cubo] || 0;
+      if (banda.min > 0 && recibido < banda.min - 1e-9)
+        ultimo.descargos.push({ tipo: 'minimo-no-cubierto', miembro: mid, cubo,
+          detalle: `${mid} se queda corto de ${cubo} esta semana (${recibido}/${banda.min.toFixed(1)} tomas) — la vara es lo SERVIDO (13.11.1)` });
+      if (banda.max < Infinity && recibido > banda.max + 1e-9)
+        ultimo.descargos.push({ tipo: 'techo-vs-reserva', miembro: mid, cubo,
+          detalle: `${mid} se pasa de ${cubo} esta semana (${recibido}/${banda.max} tomas) — la vara es lo SERVIDO (13.11.1)` });
+    }
+  }
+}
+
+module.exports = { fraccionarSemana, piezasDe, sellarResumenSemana };
 
   };
 
@@ -7147,7 +7217,7 @@ module.exports = { reglasDeVentana, acumuladoPrevio, techoVentana, tomasPreviasD
   /* ---- hash_banco (precalculado en build; sin crypto en el navegador) ---- */
   REG['hash_banco'] = function (module) {
     module.exports = {
-      hashCompleto: function () { return 'bf2e10fc7959d36e24789fc40f9449d5d4dce0a501eb478d29931eb40f90e11a'; },
+      hashCompleto: function () { return 'ee8d2d756cf03d8e1068822c8addf52891e7dfc0a852357cfaf561d4ed969e6d'; },
       hashGeneracion: function () { return '1a623f5aa08ea7ebdd6f55ef89ba8de598eb16c4b2b65be96c25988d212978f4'; }
     };
   };

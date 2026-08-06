@@ -642,6 +642,17 @@ body.wizard-open { overflow: hidden; }
 
 .per-campo { display: block; }
 .per-campo + .per-campo, .per-campo-suelto { margin-top: 14px; }
+/* TRAMO C (ENCARGO 1, medido en navegador real, 2 viewports: 14px exactos en los dos) —
+   ".per-campo + .per-campo" de arriba está pensado para separar VERTICALMENTE campos
+   apilados (Nombre → Año → Sexo…) y es correcto ahí. Pero altura/peso viven en fila
+   horizontal (".onb-fila-2", flex row): el selector de hermano-adyacente solo ve DOM,
+   no layout, así que cae IGUAL sobre el 2º ".per-campo" (Peso) aunque esté al lado del
+   1º (Altura), no debajo — el 14px se convierte en un desnivel visual entre columnas.
+   El asistente de alta no lo sufre porque usa ".onb-campo" (margen simétrico, sin
+   selector de hermano) — misma fila, CSS distinto. Se anula aquí, junto a la regla que
+   lo causa, con más especificidad (3 clases > 2) — no se toca ".per-campo + .per-campo"
+   en su uso normal. */
+.onb-fila-2 > .per-campo + .per-campo { margin-top: 0; }
 .per-campo .onb-eyebrow, .per-sec-cuerpo .onb-eyebrow { margin-top: 14px; }
 .per-input {
   width: 100%; border: none; background: var(--elev2); border-radius: 12px;

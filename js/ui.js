@@ -79,6 +79,34 @@
   }
   var EDAD_MENOR = 12;
 
+  // ── Obligatoriedad de altura/peso por banda de edad (decisión de Roger, 6-ago —
+  //    anexo OMS en 01_Research/RESEARCH_ALIMENTACION_ESPANA.md, commit 8deadf1):
+  //    adultos SIEMPRE los dos · menor 11-17 solo peso (la OMS no publica peso-para-la-edad
+  //    por encima de los 10) · menor <11 ninguno (el motor usará la mediana OMS como
+  //    supuesto declarado — fallback pendiente de decisión, ver TRAMO D). Sin año de
+  //    nacimiento, `edadEnAnios` ya asume 30 (adulto), así que el criterio es coherente
+  //    incluso con el campo vacío.
+  var EDAD_ADULTO_MEDIDAS = 18;
+  var EDAD_MENOR_PESO_OBLIGATORIO = 11; // 11-17: peso obligatorio, altura sigue opcional
+  function bandaMedidas(anioNacimiento) {
+    var edad = edadEnAnios(anioNacimiento);
+    if (edad >= EDAD_ADULTO_MEDIDAS) return 'adulto';
+    if (edad >= EDAD_MENOR_PESO_OBLIGATORIO) return 'menor-11-17';
+    return 'menor-3-10';
+  }
+  function medidasRequeridas(anioNacimiento) {
+    var banda = bandaMedidas(anioNacimiento);
+    return { altura: banda === 'adulto', peso: banda === 'adulto' || banda === 'menor-11-17' };
+  }
+  // Copy del aviso sobre los campos altura/peso — MISMA clave en asistente y ficha
+  // (avisoInfo, comentario de más abajo): cambia con la banda, nunca con la pantalla.
+  function claveAvisoMedidas(anioNacimiento) {
+    var banda = bandaMedidas(anioNacimiento);
+    if (banda === 'adulto') return 'onb_aviso_medidas_adulto';
+    if (banda === 'menor-11-17') return 'onb_aviso_medidas_menor_mayor';
+    return 'onb_aviso_medidas_menor';
+  }
+
   // opciones de las píldoras de miembro — compartidas por el asistente de alta y
   // la ficha en acordeón (pildorasPersona las pinta en los dos sitios)
   // Catálogos i18n (sesión higiene 30-jul): guardan CLAVES de diccionario, no texto —
@@ -319,7 +347,59 @@
   function avisoInfo(texto) {
     return '<div class="per-aviso"><span class="per-aviso-ico"><i data-lucide="info"></i></span><span>' + escapeHtml(texto) + '</span></div>';
   }
-  // TEXTO_AVISO_MEDIDAS vive en i18n desde la sesion higiene 30-jul ('onb_aviso_medidas')
+  // Copy del aviso de medidas: 3 claves por banda de edad, ver claveAvisoMedidas() más arriba
+  // ('onb_aviso_medidas_adulto' / '..._menor_mayor' / '..._menor')
+
+  // ── CUANDO EL MOTOR NO PUEDE (§14.5 / §4.12) ──────────────────────────────────────────
+  // `estado.errorMotor` es el mensaje TÉCNICO de `contrato_familia.js` (una línea
+  // "· <id>: <detalle>" por miembro/problema, prefijo "contrato de familia:\n"). Nunca se
+  // pinta tal cual: se traduce a frase humana si el patrón es conocido (hoy: altura_cm/
+  // peso_kg fuera de rango, que es el bug real reproducido en TRAMO B del encargo), y si
+  // ALGUNA línea no se reconoce se cae al genérico + el crudo plegado — nunca a medias,
+  // nunca inventado (regla dura: no afirmar más de lo que la salida demuestra).
+  function interpretarErrorMotor(errorMotor, familia) {
+    if (!errorMotor) return null;
+    var porId = {};
+    (familia || []).forEach(function (m) { if (m && m.id != null) porId[m.id] = (m.nombre || m.id); });
+    var lineas = String(errorMotor).split('\n')
+      .map(function (l) { return l.replace(/^\s*·\s*/, '').trim(); })
+      .filter(function (l) { return /^[^:]+:\s*.+$/.test(l); });
+    if (!lineas.length) return null;
+    var faltantes = {}; // id -> { altura: bool, peso: bool }
+    var reconocidoTodo = true;
+    lineas.forEach(function (linea) {
+      var m = linea.match(/^([^:]+):\s*(.+)$/);
+      if (!m) { reconocidoTodo = false; return; }
+      var id = m[1], detalle = m[2];
+      if (/^altura_cm fuera de rango/.test(detalle)) (faltantes[id] = faltantes[id] || {}).altura = true;
+      else if (/^peso_kg fuera de rango/.test(detalle)) (faltantes[id] = faltantes[id] || {}).peso = true;
+      else reconocidoTodo = false;
+    });
+    if (!reconocidoTodo || !Object.keys(faltantes).length) return null;
+    return Object.keys(faltantes).map(function (id) {
+      var nombre = porId[id] || id;
+      var f = faltantes[id];
+      var clave = (f.altura && f.peso) ? 'error_motor_faltan_medidas' : (f.peso ? 'error_motor_falta_peso' : 'error_motor_falta_altura');
+      return t(clave).replace('{nombre}', nombre);
+    }).join(' · ');
+  }
+
+  // Bloque visible que sustituye al genérico "todavía no hay semana generada" en las 4
+  // vistas que dependen del plan (Home, Resumen semana, Recetas, Compra) cuando el motor
+  // reventó de verdad. `null` si no hay error que enseñar (deja el genérico de siempre).
+  function avisoErrorMotor(estado) {
+    if (!estado || !estado.errorMotor) return null;
+    var humano = interpretarErrorMotor(estado.errorMotor, estado.familia);
+    var cuerpo = humano
+      ? escapeHtml(humano)
+      : escapeHtml(t('error_motor_generico')) +
+        '<details class="error-motor-detalle"><summary>' + escapeHtml(t('error_motor_ver_detalle')) + '</summary>' +
+        '<pre>' + escapeHtml(estado.errorMotor) + '</pre></details>';
+    return '<div class="card-msg error-motor">' +
+      '<p>' + cuerpo + '</p>' +
+      '<button type="button" class="onb-btn-linea" data-action="ir-vista" data-vista="perfil">' + escapeHtml(t('error_motor_ir_familia')) + '</button>' +
+      '</div>';
+  }
 
   // alimentos del banco V6 ordenados por nombre — rejilla de vetos de la ficha
   function alimentosOrdenados(banco) {
@@ -1213,7 +1293,8 @@
   // ---------------------------------------------------------------
   function renderHome(estado, banco, diaGlobalSel, pagerIdx, miembroDispositivoId, estadoBadgeAbierto) {
     if (!estado.plan) {
-      return renderAppBar() + '<div class="vista-body"><p class="card-msg">Todavía no hay semana generada.</p></div>';
+      return renderAppBar() + '<div class="vista-body">' +
+        (avisoErrorMotor(estado) || '<p class="card-msg">' + t('todavia_no_hay_semana_generada') + '</p>') + '</div>';
     }
     // La tira de 14 días son las DOS semanas `/2` concatenadas. La semana no guarda fechas
     // (solo `semana_iso`): se derivan con `derivar.fechaDia`, la definición ejecutable.
@@ -1373,7 +1454,8 @@
   }
 
   function renderSheetResumenSemana(estado, banco, plan) {
-    if (!plan) return sheetHead('Resumen de la semana') + '<div class="sheet-body"><p class="card-msg">Todavía no hay semana generada.</p></div>';
+    if (!plan) return sheetHead('Resumen de la semana') + '<div class="sheet-body">' +
+      (avisoErrorMotor(estado) || '<p class="card-msg">' + t('todavia_no_hay_semana_generada') + '</p>') + '</div>';
     var hoyFecha = hoyISO();
     var dias = [0, 1, 2, 3, 4, 5, 6].map(function (i) { return renderResumenDia(banco, plan, i, hoyFecha); }).join('');
     // Relajaciones y descargos de la semana: el motor los DECLARA (`/2` §3) y hasta hoy no los
@@ -1547,7 +1629,8 @@
     busqueda = busqueda || '';
     vista = vista === 'list' ? 'list' : 'grid';
     if (!sup) return '<div class="rc-cabecera"><h1 class="rc-titulo">' + t('recetas') + '</h1></div>' +
-      '<div class="vista-body rc-body"><p class="card-msg">' + t('todavia_no_hay_semana_generada') + '</p></div>';
+      '<div class="vista-body rc-body">' +
+      (avisoErrorMotor(estado) || '<p class="card-msg">' + t('todavia_no_hay_semana_generada') + '</p>') + '</div>';
     var todas = sup.catalogoRecetas();
     var ocultas = estado.ocultas || [];
     var favoritas = estado.favoritas || [];
@@ -1745,8 +1828,9 @@
     categoriasAbiertas = categoriasAbiertas || {};
     rango = rango === 'hoy' ? 'hoy' : '7d';
     if (!plan || !sup) {
-      return '<div class="rc-cabecera"><h1 class="rc-titulo">Compra</h1></div>' +
-        '<div class="vista-body rc-body"><p class="card-msg">Todavía no hay semana generada.</p></div>';
+      return '<div class="rc-cabecera"><h1 class="rc-titulo">' + t('nav_compra') + '</h1></div>' +
+        '<div class="vista-body rc-body">' +
+        (avisoErrorMotor(estado) || '<p class="card-msg">' + t('todavia_no_hay_semana_generada') + '</p>') + '</div>';
     }
     // Pasadas las 16 h, «Compra hoy» ya no necesita el mediodía (Roger 2026-07-22) — mismo umbral
     // que `saludoHora`, real reloj del navegador. El filtro lo aplica el motor, no esta función.
@@ -1999,7 +2083,13 @@
   var PASOS_PERSONA = ['paso_basicos', 'paso_estilo', 'paso_alergias', 'paso_gustos', 'paso_comidas'];
 
   function pasoPersonaValido(paso, draft) {
-    if (paso === 1) return !!(draft.nombre || '').trim();
+    if (paso === 1) {
+      if (!(draft.nombre || '').trim()) return false;
+      var req = medidasRequeridas(draft.anioNacimiento);
+      if (req.altura && !(Number(draft.altura) > 0)) return false;
+      if (req.peso && !(Number(draft.peso) > 0)) return false;
+      return true;
+    }
     if (paso === 2) return !!draft.estilo;
     return true;
   }
@@ -2040,7 +2130,7 @@
           '<input type="text" class="onb-input" data-persona-campo="nombre" maxlength="30" placeholder="' + escapeHtml(t('onb_ph_nombre')) + '" value="' + escapeHtml(draft.nombre || '') + '" autocomplete="off"></label>' +
         '<label class="onb-campo"><span class="onb-eyebrow">' + t('ano_de_nacimiento') + '</span>' +
           '<input type="number" inputmode="numeric" class="onb-input" data-persona-campo="anioNacimiento" min="1920" max="' + new Date().getFullYear() + '" placeholder="' + escapeHtml(t('onb_ph_anio')) + '" value="' + (draft.anioNacimiento || '') + '"></label>' +
-        avisoInfo(t('onb_aviso_medidas')) +
+        avisoInfo(t(claveAvisoMedidas(draft.anioNacimiento))) +
         '<div class="onb-campo"><span class="onb-eyebrow">' + escapeHtml(t('onb_sexo')) + '</span>' + pildorasPersona('sexo', OPCIONES_SEXO, draft.sexo || 'mujer') + '</div>' +
         '<div class="onb-fila-2">' +
           '<label class="onb-campo"><span class="onb-eyebrow">' + escapeHtml(t('onb_altura')) + '</span>' +
@@ -2293,7 +2383,7 @@
            '<input type="text" class="per-input" data-persona-campo="nombre" maxlength="30" placeholder="Nombre" value="' + escapeHtml(draft.nombre || '') + '" autocomplete="off"></label>' +
          '<label class="per-campo"><span class="onb-eyebrow">' + t('ano_de_nacimiento') + '</span>' +
            '<input type="number" inputmode="numeric" class="per-input" data-persona-campo="anioNacimiento" min="1920" max="' + anioActual + '" placeholder="' + escapeHtml(t('onb_ph_anio')) + '" value="' + (draft.anioNacimiento || '') + '"></label>' +
-         avisoInfo(t('onb_aviso_medidas')) +
+         avisoInfo(t(claveAvisoMedidas(draft.anioNacimiento))) +
          '<div class="per-campo"><span class="onb-eyebrow">Sexo</span>' + pildorasPersona('sexo', OPCIONES_SEXO, draft.sexo || 'mujer') + '</div>' +
          '<div class="onb-fila-2">' +
            '<label class="per-campo"><span class="onb-eyebrow">Altura (cm)</span>' +
@@ -2373,7 +2463,7 @@
   //    6.1.0 y no 6.0.3: el handoff 6 no es un parche, cambia la superficie que ve el usuario el
   //    primer día — LAUNCH sustituye a la portada rotatoria, y Sign in / Email y contraseña /
   //    Revisa tu correo / Familia se repintan enteras (4-ago-2026).
-  var VERSION_APP = '6.4.1';
+  var VERSION_APP = '6.5.0';
   var VERSION_FECHA = '04/08/2026';
 
   function renderAcercaDe() {
@@ -2825,6 +2915,7 @@
     renderOpcionesNevera: renderOpcionesNevera,
     renderNevera: renderNevera,
     renderVistaMiembro: renderVistaMiembro,
+    avisoErrorMotor: avisoErrorMotor,
     renderMenuHamburguesa: renderMenuHamburguesa,
     renderAcercaDe: renderAcercaDe,
     VERSION_APP: VERSION_APP,
@@ -2863,6 +2954,9 @@
     fechaDeDia: fechaDeDia,
     edadEnAnios: edadEnAnios,
     EDAD_MENOR: EDAD_MENOR,
+    bandaMedidas: bandaMedidas,
+    medidasRequeridas: medidasRequeridas,
+    claveAvisoMedidas: claveAvisoMedidas,
     servicioDe: servicioDe,
     principalDe: principalDe,
     nombrePercibido: nombrePercibido

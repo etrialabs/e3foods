@@ -6546,12 +6546,19 @@ function composicion(sv, mid) {
   const postre = sust.postre ? sust.postre.postre : sv.postre;
   const gramos = {};
   for (const a of sv.ajustes_linea || []) if (a.miembro === mid) gramos[`${a.elaboracion_id}|${a.alimento_id}`] = a.gramos;
-  return { piezas: postre ? plato.concat([postre]) : plato, quitar, cambiar, gramos };
+  // el PLATO y el POSTRE viajan separados a propósito (§6.3, §6.9): son las dos partes del
+  // servicio y hay medidas que se hacen sobre el servicio entero (cuotas, techos, energía) y
+  // otras sobre el plato solo (los ejes). Fundirlos aquí era exactamente lo que hacía que la
+  // fruta del postre eximiera del eje de verdura del plato.
+  return { plato, postre, quitar, cambiar, gramos };
 }
 
-// líneas servidas a un miembro, con gramos finales (recorrido propio, componentes incluidos)
-function lineasServidas(ix, sv, mid, esNino, fraccion) {
-  const { piezas, quitar, cambiar, gramos } = composicion(sv, mid);
+// líneas servidas a un miembro, con gramos finales (recorrido propio, componentes incluidos).
+// `ambito`: 'servicio' = plato + postre (cuotas, techos de salud, suelo proteico, energía —
+// la fruta del postre SÍ cuenta ahí, dictado de Roger 6-ago) · 'plato' = sólo el plato (§6.9).
+function lineasServidas(ix, sv, mid, esNino, fraccion, ambito = 'servicio') {
+  const { plato, postre, quitar, cambiar, gramos } = composicion(sv, mid);
+  const piezas = ambito === 'plato' || !postre ? plato : plato.concat([postre]);
   const out = [];
   for (const pe of piezas) {
     const rec = (padre, escala, visto) => {
@@ -6602,6 +6609,7 @@ const protDeLinea = (ix, l) => {
 function auditar(corrida, datos, config, objetivos) {
   const ix = indice(datos);
   const divergencias = [], silenciosas = [], ejeCorto = [], huecosEje = [], minimoCorto = [], techoMudo = [];
+  let fvConPostre = 0;                              // §6.9 · el MISMO eje contando el postre
   const miembros = Object.fromEntries(corrida.familia.miembros.map(m => [m.id, m]));
   const anclas = new Set((corrida.familia.anclas || []).map(a => `${a.dia}-${a.servicio}:${a.elaboracion_id}`));
   const tomasPorSemana = {};
@@ -6683,13 +6691,41 @@ function auditar(corrida, datos, config, objetivos) {
         const lineas = lineasServidas(ix, sv, mid, esNino, fraccion);
         const reparto = (sv.dia >= 6 ? config.ENERGIA.reparto_finde : config.ENERGIA.reparto)[sv.servicio];
 
-        // ejes en gramos, sobre el plato en la ración BASE de su tramo (fracción 1).
+        // ejes en gramos, sobre el PLATO en la ración BASE de su tramo (fracción 1).
+        //
         // La fracción de T3 ajusta ENERGÍA, no composición: quien come al 45% por su gasto come
         // también menos verdura, y medir el eje después de la fracción convertiría este gate en
         // un gate de energía disfrazado. Son dos capas y la spec las mantiene separadas. Si se
         // decidiera lo contrario, basta pasar `fraccion` aquí en vez de 1.
-        const lineasBase = lineasServidas(ix, sv, mid, esNino, 1);
-        for (const eje of ['fruta-verdura', 'hidrato']) {
+        //
+        // ⚑ 6-ago · ÁMBITO 'plato', NO 'servicio' (§6.9: «la fruta del postre no exime del eje
+        // fruta-verdura del plato»). Hasta hoy `composicion()` devolvía `plato.concat([postre])`
+        // y el eje se medía sobre la bolsa entera, así que un plato flojo de verdura pasaba si
+        // de postre había macedonia. Medido antes de corregirlo, por dos vías independientes que
+        // dan lo mismo: 3 servicios-miembro cubrían el eje SÓLO gracias al postre
+        // (`asado-horno` + `postre-fruta`: el plato daba 0,23 raciones y el postre lo subía a
+        // 1,17). Sobre el eje hidrato el efecto era 0.
+        // ⚠️ El postre NO desaparece de la contabilidad: sigue contando en las cuotas, en los
+        // techos de salud y en la energía, que se miden sobre `lineas` (ámbito 'servicio', unas
+        // líneas más abajo). Es dictado explícito de Roger, 6-ago: «no cuentan como verdura del
+        // plato PERO sí suman en las calorías totales del menú».
+        const lineasBase = lineasServidas(ix, sv, mid, esNino, 1, 'plato');
+        // …y la MISMA medida con el postre dentro, publicada al lado. No es redundancia: es la
+        // única forma de que la diferencia entre las dos siga siendo visible sin volver a
+        // fabricar una vista. Mientras `eje_fv_corto` < `eje_fv_corto_con_postre`, hay platos que
+        // sólo llegan a la verdura por el postre — y ésos son los que §6.9 no perdona.
+        // (Pedido del controlador de la obra, 6-ago.)
+        const lineasConPostre = lineasServidas(ix, sv, mid, esNino, 1, 'servicio');
+        // ⚑ 6-ago · LOS TRES EJES, no dos (§6.4: «todo servicio debe cubrir tres ejes para cada
+        // presente: proteína, hidrato y fruta-verdura», medidos en gramos «nunca por etiqueta»).
+        // El de proteína no se auditaba y el motivo escrito en `ejes.js:39-41` era que su suelo
+        // real es el proteico de T3. ESA DEFENSA ESTÁ REFUTADA CON NÚMERO, medido sobre la
+        // parrilla (12 familias × 4 semanas, 2.240 servicios-miembro,
+        // `harness/herramientas/ejes_del_plato.js`): de los 309 cortos de eje de proteína, el
+        // suelo proteico sólo ve 20 — no ve 289 —, y en la otra dirección hay 56 servicios que
+        // cubren el eje y aun así caen bajo el suelo. Son dos medidas distintas y ninguna
+        // sustituye a la otra.
+        for (const eje of ['fruta-verdura', 'hidrato', 'proteina']) {
           const d = cubreEje(lineasBase, { edad: obj.edad }, eje, datos, config);
           if (d.huecos.length) for (const h of d.huecos)
             huecosEje.push({ semana: sem.semana_iso, slot: `${sv.dia}-${sv.servicio}`, miembro: mid,
@@ -6700,6 +6736,10 @@ function auditar(corrida, datos, config, objetivos) {
               detalle: `${d.fraccion.toFixed(2)} raciones < ${d.umbral} (media ración de su tramo)`
                 + (d.huecos.length ? ` · ${d.huecos.length} línea(s) sin ración en el banco` : '') });
         }
+        // la contramedida de §6.9, publicada al lado y NUNCA como gate: el mismo eje de
+        // fruta-verdura contando el postre. La distancia entre los dos números es cuántos platos
+        // sólo llegan a la verdura por el postre.
+        if (!cubreEje(lineasConPostre, { edad: obj.edad }, 'fruta-verdura', datos, config).cubre) fvConPostre++;
 
         const prot = lineas.reduce((s, l) => s + protDeLinea(ix, l), 0);
         const sueloSv = obj.suelo_proteina_dia * reparto;
@@ -6847,12 +6887,30 @@ function auditar(corrida, datos, config, objetivos) {
     // §14.6 es binario y el techo es cuota (§13.6): ceder está permitido, callarlo no. Va a
     // `gates` y no a informativos porque no depende de ninguna decisión pendiente — hoy es 0.
     techos_de_frecuencia_declarados: techoMudo.length === 0 };
+  //  · `eje_proteina_cubierto` es NUEVO (6-ago) y nace INFORMATIVO, no bloqueante, por la misma
+  //    razón que el hidrato y por una propia. La propia: de los 309 cortos medidos, **171 son
+  //    hueco de BANCO ya fichado** —tofu 85, tempeh 37, heura 34, soja-texturizada 15, los cinco
+  //    de proteína alternativa que tienen fila D1 y `racion_ref_g` null (§15.2)—, y un hueco de
+  //    banco no es una deficiencia: es la siguiente alta. Un gate bloqueante ahí pondría el árbol
+  //    a defender justo lo que hay que arreglar en el banco. Los otros **138 sí son del plato**:
+  //    la elaboración DECLARA el eje `proteina` en su campo `ejes` y la opción realmente servida
+  //    no aporta un gramo de categoría proteica — `risotto`→champiñones 123, `pizza-casera` 11,
+  //    `fajita-vegetal` 4. Eso es cobertura por ETIQUETA, que es lo que §6.4 prohíbe con todas
+  //    las letras. Se MIDE y se REPORTA a la vista; cerrarlo es alta de banco (los 171) más
+  //    revisión del campo `ejes` de tres elaboraciones (los 138), y ninguna de las dos cosas se
+  //    hace desde el juez.
   const gatesInformativos = { eje_hidrato_cubierto: cortos('hidrato') === 0,
+    eje_proteina_cubierto: cortos('proteina') === 0,
     minimos_de_frecuencia_cubiertos: minimoCorto.length === 0 };
   return { tiempo: 'T4', gates, gates_informativos: gatesInformativos,
     ok: Object.values(gates).every(Boolean),
     metricas: { silenciosas: silenciosas.length, divergencias: divergencias.length,
       eje_fv_corto: cortos('fruta-verdura'), eje_hidrato_corto: cortos('hidrato'),
+      eje_proteina_corto: cortos('proteina'),
+      // §6.9 · la contramedida: el eje de fruta-verdura contando el postre. `eje_fv_corto` es el
+      // que manda (la ley dice que el postre no exime); éste sólo existe para que la diferencia
+      // entre los dos —los platos que sólo llegan a la verdura por el postre— siga siendo visible.
+      eje_fv_corto_con_postre: fvConPostre,
       // huecos = líneas cuyo alimento no tiene ración en el banco (o la tiene en otra base): no
       // son incumplimientos, son dato que falta. Se cuentan aparte para que un gate verde nunca
       // pueda estarlo PORQUE no se midió (§«un gate puede estar verde POR el ruido»).

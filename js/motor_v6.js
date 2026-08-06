@@ -6601,10 +6601,30 @@ const protDeLinea = (ix, l) => {
 // ── AUDITORÍA de una corrida ya serializada
 function auditar(corrida, datos, config, objetivos) {
   const ix = indice(datos);
-  const divergencias = [], silenciosas = [], ejeCorto = [], huecosEje = [], minimoCorto = [];
+  const divergencias = [], silenciosas = [], ejeCorto = [], huecosEje = [], minimoCorto = [], techoMudo = [];
   const miembros = Object.fromEntries(corrida.familia.miembros.map(m => [m.id, m]));
   const anclas = new Set((corrida.familia.anclas || []).map(a => `${a.dia}-${a.servicio}:${a.elaboracion_id}`));
   const tomasPorSemana = {};
+
+  // ── EL DENOMINADOR DEL PRORRATEO (§10.7) · slots GOBERNADOS donde el miembro está presente.
+  //
+  // No es lo mismo «ausente» que «no gobernado», y confundirlos rompía el gate de §14.6. Una
+  // familia que solo gobierna las 7 cenas —come fuera el resto— tiene a todos sus miembros
+  // PRESENTES en los 14 slots: nadie falta, es la app la que no manda en 7 de ellos, y salen
+  // marcados `no_servido: 'no-gobernado'`. Prorratear por `sem.presencia` le exigía la cuota
+  // semanal entera a media semana de gobierno y llamaba «mínimo corto sin declarar» a lo que el
+  // motor había cumplido: medido sobre la parrilla, **28 de los 52 mudos eran esto, todos de
+  // `presencia-7-14`**. El prevuelo ya usa este denominador (`prevuelo.js` §bandasEfectivas,
+  // `factor = slotsPresente.length / 14` sobre los slots ACTIVOS), así que el juez estaba
+  // midiendo contra una banda que el motor nunca tuvo — dos varas para el mismo número.
+  //
+  // Se lee de `corrida.familia.gobierno`, que ya viaja en el formato serializado. Sin `gobierno`
+  // el denominador son los 14 slots, que es el caso de las otras once familias de la parrilla.
+  const SLOTS_SEMANA = [];
+  for (let d = 1; d <= 7; d++) for (const s of ['comida', 'cena']) SLOTS_SEMANA.push(`${d}-${s}`);
+  const gobernados = corrida.familia.gobierno ? new Set(corrida.familia.gobierno) : new Set(SLOTS_SEMANA);
+  const serviciosGobernados = (sem, mid) =>
+    SLOTS_SEMANA.filter(s => gobernados.has(s) && (sem.presencia[mid] || {})[s] === true).length;
 
   // La memoria de variedad CRUZA semanas (M1 se mide en días, M2 en servicios). Día absoluto por
   // índice de semana × 7: las corridas se generan en semanas consecutivas. Si alguna vez hubiera
@@ -6733,8 +6753,16 @@ function auditar(corrida, datos, config, objetivos) {
     //
     // POR QUÉ ES NUEVO Y POR QUÉ ES INFORMATIVO. Hasta hoy T4 no miraba los mínimos: no podía,
     // porque T2 los contaba en fracciones de ración y «corto» significaba cosas distintas a cada
-    // lado. Ahora los dos cuentan TOMAS y la comparación por fin significa algo — y lo primero
-    // que dice es que **71 mínimos de la parrilla quedan cortos sin que nadie lo declare**.
+    // lado. Ahora los dos cuentan TOMAS y la comparación por fin significa algo.
+    //
+    // ⚑ EL NÚMERO DE ESTE COMENTARIO ESTABA CADUCADO Y SE CORRIGE MIDIENDO (5-ago, sesión 3).
+    // Decía «71 mínimos cortos sin que nadie lo declare»; luego se heredó como 47. Los dos
+    // contaban de más: el denominador de arriba era la PRESENCIA y no los servicios GOBERNADOS,
+    // así que a `presencia-7-14` se le exigía la cuota semanal entera sobre media semana de
+    // gobierno. Con el denominador de §10.7 —el mismo que ya usaba el prevuelo— la parrilla da
+    // **21 mínimos mudos, y los 21 son de la vara**: T2 los contó cubiertos con la ración de la
+    // RECETA y T3 los dejó bajo el umbral. Cero sin causa conocida.
+    //   node tests/test_bloque14_no_puede.js  →  21 = 21, y el mutante del denominador da 52
     //
     // El motivo está medido y es de arquitectura, no un descuido de T2: la toma se mide sobre lo
     // SERVIDO (dictado de Roger, 4-ago: «manda T3»), y T2 decide ANTES de que T3 exista. T2
@@ -6754,22 +6782,48 @@ function auditar(corrida, datos, config, objetivos) {
       const edad = (objetivos[m.id] || {}).edad;
       if (edad == null || edad < 3) continue;
       const tramo = edad < config.EDAD_RACION_ADULTO ? 'nino' : 'adulto';
-      const presentes = Object.values(sem.presencia[m.id] || {}).filter(Boolean).length;
+      const presentes = serviciosGobernados(sem, m.id);
       if (!presentes) continue;
+      // ¿alguien de la semana nombró este cubo para este miembro, con un descargo de esta clase?
+      // Lo que la semana YA declara no es un silencio: es deuda dicha. Solo cuenta lo que nadie
+      // nombró. La clase la elige quien pregunta — mínimos y techos no se declaran igual.
+      const declarado = (cubo, clase) => sem.servicios.some(sv => (sv.descargos || []).some(d =>
+        d.miembro === m.id && (d.cubo === cubo || (d.detalle || '').includes(cubo)) && clase.test(d.tipo)));
+
       for (const [cubo, porEdad] of Object.entries(config.CUOTAS)) {
-        const [min] = porEdad[tramo];
-        if (min == null) continue;
-        const minPro = min * presentes / 14;
+        const [min, max] = porEdad[tramo];
         const real = ((tomas[m.id] || {})[cubo] || 0);
-        if (real >= minPro - 1e-9) continue;
-        // lo que la semana YA declara (el prevuelo lo marca inalcanzable, o T2 no-cubierto) no
-        // es un silencio: es deuda dicha. Solo se cuenta lo que nadie nombró.
-        const dicho = sem.servicios.some(sv => (sv.descargos || []).some(d => d.miembro === m.id
-          && (d.cubo === cubo || (d.detalle || '').includes(cubo))
-          && /minimo|inalcanzable/.test(d.tipo)));
-        if (!dicho) minimoCorto.push({ semana: sem.semana_iso, miembro: m.id, cubo,
-          tipo: 'minimo-corto-sin-declarar',
-          detalle: `${real} de ${minPro.toFixed(1)} tomas — T2 lo contó cubierto con la ración de la receta y T3 la dejó bajo el umbral` });
+
+        if (min != null) {
+          const minPro = min * presentes / 14;
+          if (real < minPro - 1e-9 && !declarado(cubo, /minimo|inalcanzable/))
+            minimoCorto.push({ semana: sem.semana_iso, miembro: m.id, cubo,
+              tipo: 'minimo-corto-sin-declarar',
+              detalle: `${real} de ${minPro.toFixed(1)} tomas — T2 lo contó cubierto con la ración de la receta y T3 la dejó bajo el umbral` });
+        }
+
+        // ── EL OTRO LADO DE LA BANDA · TECHOS DE FRECUENCIA (5-ago, sesión 3, bloque 14).
+        //
+        // Hasta hoy el juez solo miraba los mínimos, y §13.6 dice que T4 «recuenta CUOTAS»: un
+        // techo es una cuota. Un juez que mira media banda no es el juez que la ley describe, y
+        // §14.6 es binario sobre TODO lo que se cede. Ceder un techo es legal —§13.12: se sirve
+        // el menos malo y **se le dice a la familia**— y por eso lo que se audita no es la
+        // cesión, es el SILENCIO.
+        //
+        // El denominador es el mismo de §10.7 desde el primer día: sin él, a una familia de
+        // gobierno parcial se le concede el techo semanal entero sobre media semana, que es el
+        // error simétrico al de los mínimos y va hacia el lado PERMISIVO — el peligroso en un
+        // techo. Medido al construirlo: las cesiones pasan de 36 a 40 al corregir el
+        // denominador, y las 4 nuevas son `presencia-7-14`/`carne-total`, **las 4 ya declaradas
+        // por el motor**: T2 las vetaba con la banda prorrateada del prevuelo y el único que no
+        // las veía era el juez.
+        if (max != null) {
+          const maxPro = max * presentes / 14;
+          if (real > maxPro + 1e-9 && !declarado(cubo, /techo|ancla-vs/))
+            techoMudo.push({ semana: sem.semana_iso, miembro: m.id, cubo,
+              tipo: 'techo-cedido-sin-declarar',
+              detalle: `${real} de ${maxPro.toFixed(1)} tomas de techo y ningún descargo lo nombra (recuento independiente)` });
+        }
       }
     }
   }
@@ -6789,7 +6843,10 @@ function auditar(corrida, datos, config, objetivos) {
   //    Un gate rojo que se apaga solo no vale: por eso está en `gates`, a la vista, no escondido.
   const gates = { relajaciones_silenciosas_cero: silenciosas.length === 0,
     ejes_cubiertos_en_gramos: cortos('fruta-verdura') === 0,
-    techos_salud_respetados: divergencias.filter(d => d.tipo === 'techo-salud-superado').length === 0 };
+    techos_salud_respetados: divergencias.filter(d => d.tipo === 'techo-salud-superado').length === 0,
+    // §14.6 es binario y el techo es cuota (§13.6): ceder está permitido, callarlo no. Va a
+    // `gates` y no a informativos porque no depende de ninguna decisión pendiente — hoy es 0.
+    techos_de_frecuencia_declarados: techoMudo.length === 0 };
   const gatesInformativos = { eje_hidrato_cubierto: cortos('hidrato') === 0,
     minimos_de_frecuencia_cubiertos: minimoCorto.length === 0 };
   return { tiempo: 'T4', gates, gates_informativos: gatesInformativos,
@@ -6799,13 +6856,13 @@ function auditar(corrida, datos, config, objetivos) {
       // huecos = líneas cuyo alimento no tiene ración en el banco (o la tiene en otra base): no
       // son incumplimientos, son dato que falta. Se cuentan aparte para que un gate verde nunca
       // pueda estarlo PORQUE no se midió (§«un gate puede estar verde POR el ruido»).
-      eje_huecos: huecosEje.length, minimo_corto: minimoCorto.length },
+      eje_huecos: huecosEje.length, minimo_corto: minimoCorto.length, techo_mudo: techoMudo.length },
     // recuento propio de tomas, expuesto para contrastarlo contra el de la batería A: si las dos
     // implementaciones difieren, una de las dos tiene un bug — que es justo lo que T4 busca
     tomas: tomasPorSemana,
     silenciosas: silenciosas.slice(0, 50), divergencias: divergencias.slice(0, 50),
     eje_corto: ejeCorto.slice(0, 50), eje_huecos: huecosEje.slice(0, 50),
-    minimo_corto: minimoCorto.slice(0, 50) };
+    minimo_corto: minimoCorto.slice(0, 50), techo_mudo: techoMudo.slice(0, 50) };
 }
 
 module.exports = { auditar };

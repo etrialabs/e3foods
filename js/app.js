@@ -197,7 +197,7 @@
   var ESQUEMA_ESTADO = 3;
 
   function estadoVacio() {
-    return { nombreFamilia: '', familiaRegion: null, familia: [], ausenciasPuntuales: {}, plan: null, planSiguiente: null, ocultas: [], favoritas: [], compra: { marcados: [], marcadosSiguiente: [] }, valoraciones: {}, cambios: {}, cole: null, esquemaVersion: ESQUEMA_ESTADO };
+    return { nombreFamilia: '', familiaRegion: null, familia: [], ausenciasPuntuales: {}, presenciasForzadas: {}, plan: null, planSiguiente: null, ocultas: [], favoritas: [], compra: { marcados: [], marcadosSiguiente: [] }, valoraciones: {}, cambios: {}, cole: null, esquemaVersion: ESQUEMA_ESTADO };
   }
 
   // SIN MIGRACIONES (Roger, 30-jul — sesión de higiene): un estado con esquema anterior
@@ -305,9 +305,9 @@
   // diaGlobal: índice 0-13 en esa tira; null = "hoy" (auto). 0-6 = estado.plan,
   // 7-13 = estado.planSiguiente (ver diaGlobalActivo/planActivo más abajo).
   var diaGlobal = null;
-  // pagerIdx: 0 = comida, 1 = cena — qué card del pager está centrada.
-  // Por defecto según la hora (mismo criterio que antes en Foco), no fijo.
-  function comidaProximaPorHora() { return new Date().getHours() < 16 ? 'comida' : 'cena'; }
+  // pagerIdx es POSICIONAL, no semántico (handoff 8 §01.6): 0 = la primera página visible,
+  // que pasadas las 16 h es la CENA. Quién va primero lo decide `UI.cenaPrimero()`, una sola
+  // definición compartida — el orden lo aplica flex, el DOM no se reordena.
   // Luz de la app según la hora (Roger 2026-07-26) — deriva pura, nunca un ajuste de
   // usuario. Un solo token opaco por momento (nunca alfa sobre --bg: no da el mismo
   // color, ver nota en styles.css) para que el degradado de #bottom-nav-fade no
@@ -317,7 +317,7 @@
   // no por un fallo de cableado CSS. La madrugada sigue siendo noche.
   function momentoDelDia() { var h = new Date().getHours(); return h < 6 ? 'noche' : (h < 12 ? 'manana' : (h < 20 ? 'tarde' : 'noche')); }
   function aplicarMomentoDelDia() { document.documentElement.dataset.momento = momentoDelDia(); }
-  var pagerIdx = comidaProximaPorHora() === 'cena' ? 1 : 0;
+  var pagerIdx = 0; // la página 0 ES la comida que toca por hora: no hay que saltar a ninguna
   // Badge de estado de plato por persona (handoff 5, §2): 'comida' | 'cena' | null —
   // qué tarjeta secundaria está desplegada en la card del día activo. Estado de UI
   // puro, nunca persistido; se cierra al cambiar de día/pager/vista o al reabrirse
@@ -438,6 +438,9 @@
       // poda de datos fechados ya consumidos (audit 2026-07-20): fechas anteriores al lunes
       // vigente no alimentan nada y sin poda crecían para siempre, engordando cada push del
       // sync. valoraciones y cambios NO se tocan: son señal, no higiene.
+      Object.keys(estado.presenciasForzadas || {}).forEach(function (f) {
+        if (f < lunesActual) delete estado.presenciasForzadas[f];
+      });
       Object.keys(estado.ausenciasPuntuales || {}).forEach(function (f) {
         if (f < lunesActual) delete estado.ausenciasPuntuales[f];
       });
@@ -525,9 +528,9 @@
       var buscador = document.getElementById('recetas-buscador');
       if (buscador) { buscador.focus(); buscador.setSelectionRange(cursorBuscador, cursorBuscador); }
     }
-    // el scroll-snap nativo del pager se resetea a 0 en cada innerHTML nuevo —
-    // saltar (sin animación, esto es re-render, no navegación) a pagerIdx=1
-    // si tocaba estar en cena. Sin setTimeout: el layout ya existe tras innerHTML.
+    // el scroll-snap nativo del pager se resetea a 0 en cada innerHTML nuevo — se restaura la
+    // página POSICIONAL vigente. Salto seco, nunca animado: esto es re-render, no navegación
+    // (handoff 8 §01.6: «animar el estado inicial parece un glitch»).
     if (vistaActual === 'semana' && pagerIdx === 1) {
       var pagerEl = document.getElementById('home-pager');
       if (pagerEl) pagerEl.scrollLeft = pagerEl.clientWidth + 12;
@@ -588,7 +591,7 @@
     recetaAbierta = null;
     recetaPlantillaAbierta = null;   // navegar por el nav cierra la ficha de catálogo
     estadoBadgeAbierto = null;
-    if (nombre === 'semana') { diaGlobal = null; pagerIdx = comidaProximaPorHora() === 'cena' ? 1 : 0; }
+    if (nombre === 'semana') { diaGlobal = null; pagerIdx = 0; }
     if (nombre === 'perfil') { vistaPerfil = 'lista'; miembroAbierto = null; }
     render();
     // cada vista empieza arriba — sin esto heredaba el scroll de la anterior y
@@ -1653,11 +1656,20 @@
     var enElCole = tipoComida === 'comida' && !!(estado.cole && estado.cole.dias && estado.cole.dias[fecha]) &&
       m && UI.edadEnAnios(m.anioNacimiento, fecha) < UI.EDAD_MENOR;
     if (enElCole) return;
-    if (!estado.ausenciasPuntuales[fecha]) estado.ausenciasPuntuales[fecha] = { comida: [], cena: [] };
-    var lista = estado.ausenciasPuntuales[fecha][tipoComida] || [];
+    // LA ELECCION MANUAL MANDA SOBRE LA PAUTA (Roger, 7-ago-2026). Dos listas simetricas y las
+    // dos reversibles: si el PLAN lo deja fuera (patron semanal / ausencias fijas), el toggle
+    // trabaja sobre `presenciasForzadas` —lo mete hoy, y volver a tocar lo saca—; si el plan
+    // lo tiene dentro, trabaja sobre `ausenciasPuntuales` como siempre. Antes, a quien el plan
+    // excluia no habia forma de retomarlo desde la card: era un callejon sin salida.
+    var clave = (dia + 1) + '-' + tipoComida;
+    var fueraPorPlan = !!(plan.presencia && plan.presencia[miembroId] && plan.presencia[miembroId][clave] === false);
+    var campo = fueraPorPlan ? 'presenciasForzadas' : 'ausenciasPuntuales';
+    if (!estado[campo]) estado[campo] = {};
+    if (!estado[campo][fecha]) estado[campo][fecha] = { comida: [], cena: [] };
+    var lista = estado[campo][fecha][tipoComida] || [];
     var idx = lista.indexOf(miembroId);
     if (idx === -1) lista.push(miembroId); else lista.splice(idx, 1);
-    estado.ausenciasPuntuales[fecha][tipoComida] = lista;
+    estado[campo][fecha][tipoComida] = lista;
     // La presencia se CAPTURA aquí y la card la lee al pintar (`comensalesDeSlot`). La CANTIDAD
     // la re-escala `reescalarServicio` (§15.4) cuando la ficha del día la pide: mismo plato,
     // mesa real. Sin eso, la ficha enseñaba comida para cuatro con tres avatares marcados.
@@ -2340,10 +2352,14 @@
   // render a mitad de gesto de scroll reconstruiría el contenedor y cortaría
   // la animación nativa.
   function actualizarSegmentadoPager() {
-    var seg = document.getElementById('pager-seg-comida');
-    var sec = document.getElementById('pager-seg-cena');
-    if (seg) { seg.classList.toggle('pager-seg-activo', pagerIdx === 0); }
-    if (sec) { sec.classList.toggle('pager-seg-activo', pagerIdx === 1); }
+    // posicional: el botón activo es el de la página vigente, y cuál es cada una depende del
+    // orden del día (handoff 8 §01.6)
+    var primero = UI.cenaPrimero() ? 'cena' : 'comida';
+    var segundo = primero === 'cena' ? 'comida' : 'cena';
+    var a = document.getElementById('pager-seg-' + primero);
+    var b = document.getElementById('pager-seg-' + segundo);
+    if (a) { a.classList.toggle('pager-seg-activo', pagerIdx === 0); }
+    if (b) { b.classList.toggle('pager-seg-activo', pagerIdx === 1); }
   }
   document.addEventListener('scroll', function (e) {
     var el = e.target;

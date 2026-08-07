@@ -245,7 +245,7 @@ body.wizard-open { overflow: hidden; }
 @keyframes e3fade { from { opacity: 0; } to { opacity: 1; } }
 /* handoff 7, §00-fundamentos: entrada de las cards comida/cena — .45s comida, .55s cena
    (el desfase de 100ms es intencional, no un descuido). */
-@keyframes e3pop { from { opacity: 0; transform: translateY(10px) scale(.98); } to { opacity: 1; transform: none; } }
+@keyframes e3pop { from { opacity: 0; transform: translateY(8px) scale(.98); } to { opacity: 1; transform: none; } }
 
 /* .onb-saludo/.onb-titular/.onb-campo-linea/.onb-input-serif/.onb-input-select (Paso 1 ·
    nombre de familia) murieron con el handoff 6 — sustituidos por .h6-familia-* más abajo
@@ -1978,3 +1978,4 @@ html[data-motor-v5="1"] .app-bar-logo::after {
 /* título de grupo dentro de la lista de ingredientes: la fila deja de ser un ingrediente y
    pasa a ser el nombre de la cazuela, sin borde inferior que la ate a lo de abajo. */
 .rv-ingrediente .detalle-subtitulo { margin-top: 0; }
+

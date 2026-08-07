@@ -643,20 +643,40 @@
   // cole. `presentes` le resta las ausencias PUNTUALES que la familia marca a mano después de
   // generar (estado de UI, no del motor). Re-escalar la ración con la mesa real es
   // `reescalarServicio` (§15.4) — bloque 3.
+  // §01.6: quien va primero en el pager. UNA sola definicion, y la consume tambien app.js
+  // (`E3UI.cenaPrimero`) — dos copias de esta regla es como se desincroniza el segmentado.
+  function cenaPrimero() { return new Date().getHours() >= 16; }
+
   function slotKey(diaIndex, tipoComida) { return (diaIndex + 1) + '-' + tipoComida; }
 
+  // LA ELECCIÓN MANUAL MANDA SOBRE LA PAUTA (Roger, 7-ago-2026): «puedo comer siempre fuera
+  // pero hoy me tomo el día libre y me quedo en casa». La presencia del PLAN (patrón semanal /
+  // ausencias fijas) es el punto de partida, no una condena: `presenciasForzadas` la levanta
+  // para ESE día y ESE servicio, igual que `ausenciasPuntuales` la quita. Las dos son estado
+  // de UI, simétricas, y las dos se deshacen tocando otra vez.
+  // ⚠️ El único límite es factual, no de pauta: un menor con menú del cole ese mediodía NO
+  // está en casa — eso no es una preferencia que se pueda invertir desde la card.
   function comensalesDeSlot(estado, plan, diaIndex, tipoComida) {
     var clave = slotKey(diaIndex, tipoComida);
     var pres = (plan && plan.presencia) || {};
+    var fecha = fechaDelDia(plan, diaIndex);
+    var forzados = (estado.presenciasForzadas && estado.presenciasForzadas[fecha] && estado.presenciasForzadas[fecha][tipoComida]) || [];
+    var hayCole = !!(estado.cole && estado.cole.dias && estado.cole.dias[fecha]);
+    var porCole = {};
+    (estado.familia || []).forEach(function (m) {
+      if (tipoComida === 'comida' && hayCole && edadEnAnios(m.anioNacimiento, fecha) < EDAD_MENOR) porCole[m.id] = true;
+    });
     var miembrosDelSlot = (estado.familia || []).filter(function (m) {
+      if (porCole[m.id]) return false;
+      if (forzados.indexOf(m.id) !== -1) return true;
       return pres[m.id] ? pres[m.id][clave] === true : true;
     });
-    var fecha = fechaDelDia(plan, diaIndex);
     var fuera = (estado.ausenciasPuntuales && estado.ausenciasPuntuales[fecha] && estado.ausenciasPuntuales[fecha][tipoComida]) || [];
     var presentes = miembrosDelSlot.filter(function (m) { return fuera.indexOf(m.id) === -1; });
     return {
       miembrosDelSlot: miembrosDelSlot,
       presentes: presentes,
+      porCole: porCole,
       comensales: presentes.length ? presentes : miembrosDelSlot.slice(0, 1)
     };
   }
@@ -833,16 +853,18 @@
       // y `togglePresente` —que solo escribe `ausenciasPuntuales`— no la revierte. Tocar esa
       // fila sería un mando muerto, del mismo linaje que el «hoy no come» que estuvo sin hacer
       // nada en producción (app.js §togglePresente). Se distingue y se manda a su ficha.
-      var porPatron = !mesa.miembrosDelSlot.some(function (x) { return x.id === m.id; });
+      var porCole = !!(mesa.porCole && mesa.porCole[m.id]);
+      var porPatron = !porCole && !mesa.miembrosDelSlot.some(function (x) { return x.id === m.id; });
       var distinto = presente && otraIds.indexOf(m.id) !== -1;
       var adapt = presente && !distinto ? ajusteDe[m.id] : null;
-      var nota = porPatron ? t('estado_fila_por_patron')
+      var nota = porCole ? t('estado_fila_por_cole')
+        : porPatron ? t('estado_fila_por_patron')
         : !presente ? t('estado_fuera')
         : distinto ? t('estado_otra_nota')
         : adapt ? t('estado_ajuste_con').replace('{ingrediente}', String(adapt).toLowerCase())
         : t('estado_come_todo');
       return {
-        id: m.id, fuera: !presente, porPatron: porPatron,
+        id: m.id, fuera: !presente, porPatron: porPatron, porCole: porCole,
         avatarEstilo: avatarEstiloColor(m, colorMiembro(idx)), avatarTxt: avatarInner(m), nombre: m.nombre,
         dotEstilo: !presente ? 'background:rgba(26,23,18,.22)' : distinto ? 'background:' + ESTADO_BLOQUEO : 'background:' + (adapt ? ESTADO_TERRACOTA : ESTADO_OLIVA),
         notaEstilo: !presente ? 'color:rgba(26,23,18,.38)' : distinto ? 'color:oklch(0.5 0.14 35)' : adapt ? 'color:oklch(0.48 0.14 45)' : 'color:rgba(26,23,18,.45)',
@@ -944,7 +966,7 @@
       // el badge con su desplegable: se ve quién está fuera, con qué motivo, y cada fila
       // lleva a su ficha, que es donde vive el patrón semanal que lo causó.
       var badgeVacio = estadoMesaBadge(estado, banco, mesa, servicio);
-      badgeVacio.popSub = t('estado_pop_patron_sub'); // «tocando su nombre» aquí seria mentira
+      // ya no hace falta desviar el copy: tocar un nombre lo retoma de verdad
       return '<div class="' + claseCard + ' ph-card-vacia" data-dia="' + diaIndex + '" data-tipo="' + meal + '">' + cabeceraVacia +
         '<p class="card-msg">' + escapeHtml(t(esCena ? 'nadie_come_noche' : 'nadie_come_mediodia')) + '</p>' +
         renderEstadoBadge(meal, popupAbierto, badgeVacio) +
@@ -956,8 +978,12 @@
       var motivo = servicio && servicio.no_servido === 'no-gobernado' ? 'Este servicio no lo planificamos.'
         : (plan && plan.fallo && plan.fallo.motivo) ? 'Esta semana no ha salido menú: ' + plan.fallo.motivo
         : 'No encontramos un plato que encaje con los gustos y las alergias de esta mesa.';
+      // el badge tambien aqui: sin plato la mesa sigue existiendo, y quien quiera apuntarse o
+      // salirse de este servicio tiene que poder — si no, es el mismo callejon sin salida que
+      // el de «nadie come en casa», por otra puerta.
       return '<div class="' + claseCard + ' ph-card-vacia" data-dia="' + diaIndex + '" data-tipo="' + meal + '">' + cabeceraVacia +
         '<p class="card-msg">' + escapeHtml(motivo) + '</p>' +
+        renderEstadoBadge(meal, popupAbierto, estadoMesaBadge(estado, banco, mesa, servicio)) +
         '<button type="button" class="btn-secondary" data-action="abrir-cambiar" data-dia="' + diaIndex + '" data-tipo="' + meal + '">Elegir plato</button></div>';
     }
 
@@ -972,8 +998,6 @@
     // ahora obliga a recalibrarlo dos veces.
     var fotoHtml = principal.foto ? '<img class="ph-foto" src="' + escapeHtml(principal.foto) + '" alt="">' : '<div class="ph-foto ph-foto-vacia"></div>';
 
-    // sin kcal en la card: la energía por comensal sale del derivador del motor, que llega con
-    // la lista de la compra (§15.2, bloque 3). Se dice dónde falta, en la ficha de receta.
     var metaHtml = '<div class="ph-meta">' +
       '<span class="ph-meta-item"><i data-lucide="clock"></i>' + (principal.tiempo_min || '?') + ' min</span>' +
       (tag ? '<span class="ph-meta-punto"></span><span class="ph-meta-item"><i data-lucide="leaf"></i>' + tag + '</span>' : '') +
@@ -1047,10 +1071,11 @@
     // comida de ESTE día — reutiliza togglePresente/ausenciasPuntuales, el mismo estado
     // de sesión por comida que ya usaba el avatar (ahora retirado de la foto, §02 intro).
     var filas = e.personas.map(function (p) {
-      // quien está fuera por patrón no se retoma tocando: su fila lleva a la ficha, que es
-      // donde SÍ se cambia. Ver la nota de `porPatron` en estadoMesaBadge.
-      var accion = p.porPatron
-        ? 'data-action="abrir-miembro-ficha" data-id="' + escapeHtml(p.id) + '"'
+      // Todas las filas son toggle: la elección manual manda sobre la pauta y SIEMPRE se
+      // puede deshacer (Roger, 7-ago). La única excepción es el cole, que no es preferencia
+      // sino un hecho del día: esa fila lleva a la pantalla del cole, no finge ser un mando.
+      var accion = p.porCole
+        ? 'data-action="ir-cole"'
         : 'data-action="toggle-presente" data-dia="' + diaIndex + '" data-tipo="' + meal + '" data-miembro="' + escapeHtml(p.id) + '"';
       return '<button type="button" class="ph-estado-fila" ' + accion + '>' +
         '<span class="ph-avatar ph-estado-fila-av' + (p.fuera ? ' ph-estado-fila-av-fuera' : '') + '" ' + p.avatarEstilo + '>' + p.avatarTxt + '</span>' +
@@ -1076,7 +1101,7 @@
       '<span class="ph-estado-pop-count">' + escapeHtml(t('estado_pop_count').replace('{n}', e.nMain)) + '</span>' +
       '</div>' +
       '<div class="ph-estado-pop-lista">' + filas + '</div>' +
-      '<div class="ph-estado-pop-ayuda">' + escapeHtml(t(e.personas.every(function (p) { return p.porPatron; }) ? 'estado_pop_patron_ayuda' : 'estado_pop_ayuda')) + '</div>' +
+      '<div class="ph-estado-pop-ayuda">' + escapeHtml(t('estado_pop_ayuda')) + '</div>' +
       altPopHtml +
       '<span class="ph-estado-pop-flecha" aria-hidden="true"></span>' +
       '</div>';
@@ -1389,17 +1414,25 @@
     // (izquierda si hoy quedó antes que el día elegido, derecha si es al revés) —
     // columna propia FUERA del scroller, nunca overlay (tapa un día, ya descartado)
     var chipHtml = '';
+    var chipRotado = false;
     if (!esHoy && hoyIdxGlobal !== -1) {
       // el nombre del icono no puede depender del estado (lucide.createIcons() lo
       // congela en el primer pintado) — icono fijo chevron-left + rotate 180deg
       // cuando toca apuntar a la derecha, único sitio de la app con este patrón
-      var chipRotado = hoyIdxGlobal >= idx;
+      chipRotado = hoyIdxGlobal >= idx;
       chipHtml = '<button type="button" class="ph-hoy-chip" data-action="volver-a-hoy" aria-label="Volver a hoy">' +
         '<span class="ph-dia-letra">HOY</span>' +
         '<i data-lucide="chevron-left" class="ph-dia-num"' + (chipRotado ? ' style="transform: rotate(180deg)"' : '') + '></i>' +
         '</button>';
     }
-    var tiraHtml = '<div class="ph-tira-fila">' + chipHtml + '<div class="ph-tira-wrap scroll">' + diasHtml + '</div></div>';
+    // handoff 8 §01.8: el chip va DEL LADO donde está hoy — chevron izquierda si el día
+    // elegido va por delante de hoy, derecha si va por detrás. Solo uno, nunca los dos, y
+    // siempre FUERA del scroller (por eso el centrado de la tira mide contra el scroller).
+    var tiraHtml = '<div class="ph-tira-fila">' +
+      (chipHtml && !chipRotado ? chipHtml : '') +
+      '<div class="ph-tira-wrap scroll">' + diasHtml + '</div>' +
+      (chipHtml && chipRotado ? chipHtml : '') +
+      '</div>';
 
     // ---- banner del día: cole + compra, UNA sola caja (Roger 7-ago) ----
     // La línea del cole la aplica el motor vía `presencia`. La de la compra sale de la MISMA
@@ -1457,17 +1490,31 @@
       var mealPop = estadoBadgeAbierto;
       var mesaPop = comensalesDeSlot(estado, planDia, diaLocal, mealPop);
       var ePop = estadoMesaBadge(estado, banco, mesaPop, servicioDe(planDia, diaLocal, mealPop));
-      if (!mesaPop.miembrosDelSlot.length) ePop.popSub = t('estado_pop_patron_sub');
       popHtml = renderEstadoPop(banco, diaLocal, mealPop, ePop);
     }
+    // handoff 8 §01.6: el orden de las paginas es DINAMICO. Pasadas las 16 h la cena pasa a ser
+    // la pagina 0 y la comida la 1, y el DOM NO se reordena: cambia el `order` de flex. La
+    // consecuencia manda en todo lo demas: el indice del pager es POSICIONAL, no semantico —
+    // `pager === 0` es «la primera pagina visible», que por la tarde es la cena. El segmentado
+    // se etiqueta segun el orden vigente.
+    var cenaVa1a = cenaPrimero();
+    var ordenDe = function (meal) { return (meal === 'cena') === cenaVa1a ? 0 : 1; };
+    var slide = function (meal) {
+      return '<div class="ph-pager-slide" style="order:' + ordenDe(meal) + '">' +
+        renderCardPager(estado, banco, planDia, diaLocal, meal, estadoBadgeAbierto === meal) + '</div>';
+    };
     var pagerHtml = '<div class="ph-pager-wrap">' +
       '<div id="home-pager" class="ph-pager-scroll scroll">' +
-      '<div class="ph-pager-slide">' + renderCardPager(estado, banco, planDia, diaLocal, 'comida', estadoBadgeAbierto === 'comida') + '</div>' +
-      '<div class="ph-pager-slide">' + renderCardPager(estado, banco, planDia, diaLocal, 'cena', estadoBadgeAbierto === 'cena') + '</div>' +
+      slide('comida') + slide('cena') +
       '</div>' + popHtml + '</div>';
+    var segBtn = function (meal) {
+      var pos = ordenDe(meal);
+      return '<button type="button" id="pager-seg-' + meal + '" class="ph-seg-btn' + (pagerIdx === pos ? ' pager-seg-activo' : '') +
+        '" data-action="pager-ir" data-pager="' + pos + '"><i data-lucide="' + (meal === 'cena' ? 'moon' : 'sun') + '"></i>' +
+        t(meal === 'cena' ? 'boton_cena' : 'boton_comida') + '</button>';
+    };
     var segHtml = '<div class="ph-seg">' +
-      '<button type="button" id="pager-seg-comida" class="ph-seg-btn' + (pagerIdx === 0 ? ' pager-seg-activo' : '') + '" data-action="pager-ir" data-pager="0"><i data-lucide="sun"></i>' + t('boton_comida') + '</button>' +
-      '<button type="button" id="pager-seg-cena" class="ph-seg-btn' + (pagerIdx === 1 ? ' pager-seg-activo' : '') + '" data-action="pager-ir" data-pager="1"><i data-lucide="moon"></i>' + t('boton_cena') + '</button>' +
+      (cenaVa1a ? segBtn('cena') + segBtn('comida') : segBtn('comida') + segBtn('cena')) +
       '</div>';
 
     // ---- subir menú del cole ----
@@ -2554,7 +2601,7 @@
   //    6.1.0 y no 6.0.3: el handoff 6 no es un parche, cambia la superficie que ve el usuario el
   //    primer día — LAUNCH sustituye a la portada rotatoria, y Sign in / Email y contraseña /
   //    Revisa tu correo / Familia se repintan enteras (4-ago-2026).
-  var VERSION_APP = '6.9.2';
+  var VERSION_APP = '6.10.0';
   var VERSION_FECHA = '04/08/2026';
 
   function renderAcercaDe() {
@@ -3003,6 +3050,7 @@
 
   global.E3UI = {
     avisoReinicioHtml: avisoReinicioHtml,
+    cenaPrimero: cenaPrimero,
     renderHome: renderHome,
     renderDescubrirVista: renderDescubrirVista,
     renderPerfilVista: renderPerfilVista,

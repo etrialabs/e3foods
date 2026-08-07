@@ -102,7 +102,6 @@
       // Fuera por PATRON (patron semanal / ausencias fijas / cole) no se retoma tocando: lo
       // fija el motor en `semana.presencia` y `togglePresente` no lo revierte. Copy propio
       // para no prometer un mando que no existe (Roger 7-ago-2026).
-      'estado_fila_por_patron': 'Fuera por su pauta — toca si hoy come',
       'estado_fila_por_cole': 'Come en el cole',
       'nadie_come_noche': 'Nadie come en casa (noche).',
       'nadie_come_mediodia': 'Nadie come en casa (mediodía).',
@@ -490,7 +489,6 @@
       'estado_nadie_casa': 'Avui ningú a casa',
       'estado_pop_nadie_casa': 'Avui no menja ningú a casa',
       'estado_pop_nadie_sub': 'Pots recuperar qui torni tocant el seu nom.',
-      'estado_fila_por_patron': 'Fora per la seva pauta — toca si avui menja',
       'estado_fila_por_cole': 'Menja a l\'escola',
       'nadie_come_noche': 'Ningú menja a casa (nit).',
       'nadie_come_mediodia': 'Ningú menja a casa (migdia).',
@@ -860,7 +858,6 @@
       'estado_nadie_casa': 'Personne à la maison aujourd’hui',
       'estado_pop_nadie_casa': 'Personne ne mange à la maison aujourd’hui',
       'estado_pop_nadie_sub': 'Vous pouvez reprendre quelqu’un en touchant son nom.',
-      'estado_fila_por_patron': 'Absent selon son rythme — touchez s’il mange',
       'estado_fila_por_cole': 'Mange à l’école',
       'nadie_come_noche': 'Personne ne mange à la maison (soir).',
       'nadie_come_mediodia': 'Personne ne mange à la maison (midi).',
@@ -1230,7 +1227,6 @@
       'estado_nadie_casa': 'No one home today',
       'estado_pop_nadie_casa': 'No one is eating at home today',
       'estado_pop_nadie_sub': 'You can bring someone back by tapping their name.',
-      'estado_fila_por_patron': 'Away per their pattern — tap if eating',
       'estado_fila_por_cole': 'Eating at school',
       'nadie_come_noche': 'Nobody eats at home (evening).',
       'nadie_come_mediodia': 'Nobody eats at home (midday).',

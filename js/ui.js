@@ -854,17 +854,17 @@
       // fila sería un mando muerto, del mismo linaje que el «hoy no come» que estuvo sin hacer
       // nada en producción (app.js §togglePresente). Se distingue y se manda a su ficha.
       var porCole = !!(mesa.porCole && mesa.porCole[m.id]);
-      var porPatron = !porCole && !mesa.miembrosDelSlot.some(function (x) { return x.id === m.id; });
       var distinto = presente && otraIds.indexOf(m.id) !== -1;
       var adapt = presente && !distinto ? ajusteDe[m.id] : null;
+      // SOLO DOS ESTADOS (Roger): come en casa / no come en casa. De donde venga la exclusion
+      // —pauta, ausencia fija o un toque de ayer— no es asunto de quien mira la card.
       var nota = porCole ? t('estado_fila_por_cole')
-        : porPatron ? t('estado_fila_por_patron')
         : !presente ? t('estado_fuera')
         : distinto ? t('estado_otra_nota')
         : adapt ? t('estado_ajuste_con').replace('{ingrediente}', String(adapt).toLowerCase())
         : t('estado_come_todo');
       return {
-        id: m.id, fuera: !presente, porPatron: porPatron, porCole: porCole,
+        id: m.id, fuera: !presente, porCole: porCole,
         avatarEstilo: avatarEstiloColor(m, colorMiembro(idx)), avatarTxt: avatarInner(m), nombre: m.nombre,
         dotEstilo: !presente ? 'background:rgba(26,23,18,.22)' : distinto ? 'background:' + ESTADO_BLOQUEO : 'background:' + (adapt ? ESTADO_TERRACOTA : ESTADO_OLIVA),
         notaEstilo: !presente ? 'color:rgba(26,23,18,.38)' : distinto ? 'color:oklch(0.5 0.14 35)' : adapt ? 'color:oklch(0.48 0.14 45)' : 'color:rgba(26,23,18,.45)',
@@ -2601,7 +2601,7 @@
   //    6.1.0 y no 6.0.3: el handoff 6 no es un parche, cambia la superficie que ve el usuario el
   //    primer día — LAUNCH sustituye a la portada rotatoria, y Sign in / Email y contraseña /
   //    Revisa tu correo / Familia se repintan enteras (4-ago-2026).
-  var VERSION_APP = '6.10.0';
+  var VERSION_APP = '6.10.1';
   var VERSION_FECHA = '04/08/2026';
 
   function renderAcercaDe() {

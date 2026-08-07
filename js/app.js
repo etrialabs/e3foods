@@ -1656,20 +1656,27 @@
     var enElCole = tipoComida === 'comida' && !!(estado.cole && estado.cole.dias && estado.cole.dias[fecha]) &&
       m && UI.edadEnAnios(m.anioNacimiento, fecha) < UI.EDAD_MENOR;
     if (enElCole) return;
-    // LA ELECCION MANUAL MANDA SOBRE LA PAUTA (Roger, 7-ago-2026). Dos listas simetricas y las
-    // dos reversibles: si el PLAN lo deja fuera (patron semanal / ausencias fijas), el toggle
-    // trabaja sobre `presenciasForzadas` —lo mete hoy, y volver a tocar lo saca—; si el plan
-    // lo tiene dentro, trabaja sobre `ausenciasPuntuales` como siempre. Antes, a quien el plan
-    // excluia no habia forma de retomarlo desde la card: era un callejon sin salida.
+    // DOS ESTADOS Y UN GESTO (Roger, 7-ago-2026): «come en casa» o «no come en casa», y un
+    // toque los alterna. Se calcula el estado EFECTIVO y se invierte, LIMPIANDO SIEMPRE la
+    // lista contraria. La version anterior elegia lista segun de donde viniera la exclusion y
+    // no tocaba la otra: las dos podian afirmar cosas opuestas a la vez —forzado dentro y
+    // ausente puntual— y el nombre se quedaba tachado despues de tocarlo. Cazado por Roger
+    // sobre la app publicada.
     var clave = (dia + 1) + '-' + tipoComida;
-    var fueraPorPlan = !!(plan.presencia && plan.presencia[miembroId] && plan.presencia[miembroId][clave] === false);
-    var campo = fueraPorPlan ? 'presenciasForzadas' : 'ausenciasPuntuales';
-    if (!estado[campo]) estado[campo] = {};
-    if (!estado[campo][fecha]) estado[campo][fecha] = { comida: [], cena: [] };
-    var lista = estado[campo][fecha][tipoComida] || [];
-    var idx = lista.indexOf(miembroId);
-    if (idx === -1) lista.push(miembroId); else lista.splice(idx, 1);
-    estado[campo][fecha][tipoComida] = lista;
+    var planLoDejaDentro = !(plan.presencia && plan.presencia[miembroId] && plan.presencia[miembroId][clave] === false);
+    var listaDe = function (campo) {
+      if (!estado[campo]) estado[campo] = {};
+      if (!estado[campo][fecha]) estado[campo][fecha] = { comida: [], cena: [] };
+      if (!estado[campo][fecha][tipoComida]) estado[campo][fecha][tipoComida] = [];
+      return estado[campo][fecha][tipoComida];
+    };
+    var quitar = function (lista) { var i = lista.indexOf(miembroId); if (i !== -1) lista.splice(i, 1); };
+    var forzados = listaDe('presenciasForzadas');
+    var ausentes = listaDe('ausenciasPuntuales');
+    var comeAhora = (planLoDejaDentro || forzados.indexOf(miembroId) !== -1) && ausentes.indexOf(miembroId) === -1;
+    quitar(forzados); quitar(ausentes);
+    if (comeAhora) ausentes.push(miembroId);                       // pasa a NO comer en casa
+    else if (!planLoDejaDentro) forzados.push(miembroId);          // pasa a comer, contra la pauta
     // La presencia se CAPTURA aquí y la card la lee al pintar (`comensalesDeSlot`). La CANTIDAD
     // la re-escala `reescalarServicio` (§15.4) cuando la ficha del día la pide: mismo plato,
     // mesa real. Sin eso, la ficha enseñaba comida para cuatro con tres avatares marcados.

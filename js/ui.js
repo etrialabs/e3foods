@@ -703,20 +703,6 @@
   var PALETA_AVATAR = ['oklch(0.72 0.15 55)', 'oklch(0.6 0.09 200)', 'oklch(0.66 0.13 350)', 'oklch(0.62 0.12 150)', 'oklch(0.6 0.13 300)'];
   function colorMiembro(idx) { return PALETA_AVATAR[idx % PALETA_AVATAR.length]; }
 
-  function avataresPager(estado, mesa, diaIndex, meal, oscuro) {
-    var familia = estado.familia || [];
-    return mesa.miembrosDelSlot.map(function (m) {
-      var idx = familia.indexOf(m);
-      var estaPresente = mesa.presentes.some(function (p) { return p.id === m.id; });
-      return '<span class="ph-avatar-wrap' + (oscuro ? ' ph-avatar-wrap-oscuro' : '') + '">' +
-        '<button type="button" class="ph-avatar" ' + avatarEstiloColor(m, colorMiembro(idx)) + ' ' +
-        'data-action="toggle-presente" data-dia="' + diaIndex + '" data-tipo="' + meal + '" data-miembro="' + m.id + '" ' +
-        'aria-pressed="' + estaPresente + '" aria-label="' + escapeHtml(m.nombre) + (estaPresente ? ', en casa. Toca para marcar que hoy no come.' : ', fuera hoy. Toca para marcar que sí come.') + '">' +
-        avatarInner(m) + '</button>' +
-        (estaPresente ? '<span class="ph-avatar-check" aria-hidden="true"><i data-lucide="check"></i></span>' : '') +
-        '</span>';
-    }).join('');
-  }
 
   // ---------------------------------------------------------------
   // Estados de plato por persona (handoff 5, §2 — e3Foods.dc.html / sistema-color.md,
@@ -945,10 +931,9 @@
     // handoff 7, §02 (intro): el cluster de avatares sobre la foto queda sustituido por
     // el badge de estado — sigue vivo SOLO para el estado vacío (.ph-cab), que no tiene
     // badge de estado porque no hay servicio que resolver.
-    var avataresHtml = avataresPager(estado, mesa, diaIndex, meal, esCena);
-    var avataresSpan = avataresHtml ? '<span class="ph-avatares">' + avataresHtml + '</span>' : '';
+
     var badge = '<span class="ph-badge ph-badge-' + (esCena ? 'cena' : 'comida') + '"><span class="ph-badge-icono">' + icono + '</span><span class="ph-badge-texto">' + etiqueta + '</span></span>';
-    var cabeceraVacia = '<div class="ph-cab"><span class="ph-tipo ph-tipo-' + (esCena ? 'cena' : 'comida') + '">' + icono + etiqueta + '</span>' + avataresSpan + '</div>';
+    var cabeceraVacia = '<div class="ph-cab"><span class="ph-tipo ph-tipo-' + (esCena ? 'cena' : 'comida') + '">' + icono + etiqueta + '</span></div>';
 
     // V6: el servicio trae el plato de MESA (1-3 elaboraciones) + postre + notas tipadas. El
     // nombre que se enseña es el PERCIBIDO (`nombre_por_opcion`), no el nombre-plantilla del
@@ -1425,14 +1410,13 @@
         '<i data-lucide="chevron-left" class="ph-dia-num"' + (chipRotado ? ' style="transform: rotate(180deg)"' : '') + '></i>' +
         '</button>';
     }
-    // handoff 8 §01.8: el chip va DEL LADO donde está hoy — chevron izquierda si el día
-    // elegido va por delante de hoy, derecha si va por detrás. Solo uno, nunca los dos, y
-    // siempre FUERA del scroller (por eso el centrado de la tira mide contra el scroller).
-    var tiraHtml = '<div class="ph-tira-fila">' +
-      (chipHtml && !chipRotado ? chipHtml : '') +
-      '<div class="ph-tira-wrap scroll">' + diasHtml + '</div>' +
-      (chipHtml && chipRotado ? chipHtml : '') +
-      '</div>';
+    // El chip «Hoy» va SIEMPRE A LA IZQUIERDA (Roger, 7-ago-2026). El mock tiene las dos
+    // variantes —`showChipLeft` con chevron-left y `showChipRight` con chevron-right— pero
+    // Roger quiere una sola posición fija: el chip no baila de lado. Lo que sí cambia es el
+    // chevron, que sigue apuntando hacia donde está hoy. Fuera del scroller, como en el mock:
+    // por eso el centrado de la tira mide contra el scroller y no contra la fila.
+    var tiraHtml = '<div class="ph-tira-fila">' + chipHtml +
+      '<div class="ph-tira-wrap scroll">' + diasHtml + '</div></div>';
 
     // ---- banner del día: cole + compra, UNA sola caja (Roger 7-ago) ----
     // La línea del cole la aplica el motor vía `presencia`. La de la compra sale de la MISMA
@@ -2601,7 +2585,7 @@
   //    6.1.0 y no 6.0.3: el handoff 6 no es un parche, cambia la superficie que ve el usuario el
   //    primer día — LAUNCH sustituye a la portada rotatoria, y Sign in / Email y contraseña /
   //    Revisa tu correo / Familia se repintan enteras (4-ago-2026).
-  var VERSION_APP = '6.10.1';
+  var VERSION_APP = '6.10.2';
   var VERSION_FECHA = '04/08/2026';
 
   function renderAcercaDe() {

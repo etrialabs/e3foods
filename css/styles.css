@@ -1235,7 +1235,9 @@ body.sheet-open { overflow: hidden; }
 .ph-saludo-sub-link { text-decoration: underline; cursor: pointer; }
 
 /* fila: tira + chip "Hoy" en su propia columna fuera del scroller (Roger 2026-07-26) */
-.ph-tira-fila { display: flex; align-items: stretch; gap: 8px; margin: 0 calc(-1 * var(--space-3)) 16px; padding: 2px var(--space-3) 4px; }
+/* `align-items: flex-start` como el mock: con `stretch` el chip «Hoy» se estiraba a la altura
+   de la fila y quedaba mas alto y desalineado respecto a las pildoras de dia. */
+.ph-tira-fila { display: flex; align-items: flex-start; gap: 8px; margin: 0 calc(-1 * var(--space-3)) 16px; padding: 2px var(--space-3) 4px; }
 /* tira de 14 dias — copia literal del mock (`e3Foods.dc.html`, div#e3-strip):
    flex:1; min-width:0; display:flex; gap:8px; overflow-x:auto; padding-bottom:4px */
 .ph-tira-wrap { display: flex; gap: 8px; overflow-x: auto; flex: 1; min-width: 0; padding-bottom: 4px; margin: 0; }
@@ -1243,7 +1245,9 @@ body.sheet-open { overflow: hidden; }
    7 píldoras completas en vez de 6 — el ancho útil real del dispositivo es ~385-390px,
    bastante más que lo medido antes por el navegador (poco fiable esta sesión). 54+gap8=62px
    por día: 6 completas (364px) + la 7ª solo se asoma, nunca entera. */
-.ph-hoy-chip { flex: none; width: 54px; min-height: 56px; border-radius: 16px; border: 1px solid var(--line); background: var(--panel); cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; color: var(--ink); box-shadow: 0 4px 12px -6px rgba(26,23,18,.45); }
+/* MISMA caja que una pildora de dia, sin excepciones: misma anchura, misma altura minima,
+   mismo radio, mismo borde y SIN sombra propia — la sombra lo hacia parecer otro control. */
+.ph-hoy-chip { flex: none; width: 54px; min-height: 56px; border-radius: 16px; border: 1px solid var(--line); background: var(--panel); cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; color: var(--ink); }
 .ph-dia { flex: none; width: 54px; min-height: 56px; border-radius: 16px; border: 1px solid var(--line); background: var(--panel); cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; color: var(--ink); }
 .ph-dia-letra { font-size: 10.5px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; opacity: .7; }
 .ph-dia-num { font-size: 17px; font-weight: 800; line-height: 1; }

@@ -696,7 +696,6 @@ select.per-input { appearance: none; -webkit-appearance: none; padding-right: 38
      app-bar compartían la banda 0-64 px. Lo pone `ajustarCromoSuperior` en app.js. */
   position: absolute; inset: var(--chrome-t, 0px) 0 0 0; bottom: calc(var(--nav-h) + var(--safe-b));
   overflow-y: auto; overflow-x: hidden;
-  -webkit-overflow-scrolling: touch;
   scrollbar-width: none; -ms-overflow-style: none;
 }
 .vista::-webkit-scrollbar { width: 0; height: 0; display: none; }
@@ -1237,9 +1236,9 @@ body.sheet-open { overflow: hidden; }
 
 /* fila: tira + chip "Hoy" en su propia columna fuera del scroller (Roger 2026-07-26) */
 .ph-tira-fila { display: flex; align-items: stretch; gap: 8px; margin: 0 calc(-1 * var(--space-3)) 16px; padding: 2px var(--space-3) 4px; }
-/* handoff 8 §7: sin `overscroll-behavior-x: contain`, llegar al final de la tira arrastra la
-   pantalla o dispara el gesto de «atrás» del navegador. */
-.ph-tira-wrap { display: flex; gap: 8px; overflow-x: auto; overscroll-behavior-x: contain; flex: 1; min-width: 0; margin: 0; padding: 0; }
+/* tira de 14 dias — copia literal del mock (`e3Foods.dc.html`, div#e3-strip):
+   flex:1; min-width:0; display:flex; gap:8px; overflow-x:auto; padding-bottom:4px */
+.ph-tira-wrap { display: flex; gap: 8px; overflow-x: auto; flex: 1; min-width: 0; padding-bottom: 4px; margin: 0; }
 /* 54px, no los 48 del mockup (Roger 2026-07-26, captura real iPhone 16 Pro): a 48px cabían
    7 píldoras completas en vez de 6 — el ancho útil real del dispositivo es ~385-390px,
    bastante más que lo medido antes por el navegador (poco fiable esta sesión). 54+gap8=62px
@@ -1275,17 +1274,16 @@ body.sheet-open { overflow: hidden; }
 .ph-pantry-texto { font-size: 13.5px; font-weight: 700; color: var(--cena-ink); line-height: 1.35; margin: 0; }
 .ph-pantry-texto .ingrediente-link { color: inherit; }
 
-/* pager: scroll nativo con snap, SIN gesto simulado — handoff 8 §2, que manda sobre los dos
-   intentos anteriores del 7-ago (`pan-y` a secas, y el umbral de 8 px en JS). El navegador ya
-   resuelve bloqueo de eje, inercia, rebote y accesibilidad; rehacerlo a mano es lo que se
-   siente «no intuitivo». `touch-action: pan-x` deja el eje vertical al padre, que desde este
-   handoff es un scroller de verdad (`.vista`) y no el documento. */
-/* handoff 8 §3: `gap: 12px` NO es cosmético — el paso del pager es `clientWidth + 12` en
-   lectura y escritura (app.js §irPager y §listener de scroll), y sin el gap el paso real era
-   375 contra los 387 que pedía el código. Medido: `scrollWidth` daba 750 (2 x 375) y el
-   `scrollTo(387)` se quedaba clavado en 375 por el clamp del navegador. Con el gap, los dos
-   números coinciden. §2: `overscroll-behavior-x: contain` para no propagar al historial. */
-.ph-pager-scroll { display: flex; gap: 12px; overflow-x: auto; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; scroll-snap-type: x mandatory; touch-action: pan-x; padding-bottom: 2px; margin: 0 calc(-1 * var(--space-3)); }
+/* pager: COPIA LITERAL del mock de Claude Design (`e3Foods.dc.html`, div del HOY PAGER):
+     display:flex; overflow-x:auto; scroll-snap-type:x mandatory; gap:12px; padding-bottom:2px
+   y NADA MAS. Medido sobre el fichero de referencia: `touch-action` aparece CERO veces en todo
+   el mock, y `overscroll-behavior` tambien cero. El bloqueo de eje sale de la ESTRUCTURA —un
+   scroller vertical (`.vista`) y uno horizontal, sin solaparse—, no de declararlo.
+   ⚠️ Las tres propiedades que la PROSA del handoff 8 §2 manda anadir (`touch-action: pan-x`,
+   `overscroll-behavior-x: contain`, `-webkit-overflow-scrolling: touch`) NO estan en el codigo
+   de referencia del que salieron los siete handoffs anteriores. Se probaron el 7-ago y
+   rompieron la navegacion. Ante prosa que contradice al mock, manda el mock. */
+.ph-pager-scroll { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 12px; padding-bottom: 2px; margin: 0 calc(-1 * var(--space-3)); }
 .ph-pager-slide { flex: 0 0 100%; scroll-snap-align: start; padding: 0 var(--space-3); }
 
 /* handoff 7, §01.2: sombra/animación literales del mock (no las aproximaciones que traía

@@ -1410,13 +1410,16 @@
         '<i data-lucide="chevron-left" class="ph-dia-num"' + (chipRotado ? ' style="transform: rotate(180deg)"' : '') + '></i>' +
         '</button>';
     }
-    // El chip «Hoy» va SIEMPRE A LA IZQUIERDA (Roger, 7-ago-2026). El mock tiene las dos
-    // variantes —`showChipLeft` con chevron-left y `showChipRight` con chevron-right— pero
-    // Roger quiere una sola posición fija: el chip no baila de lado. Lo que sí cambia es el
-    // chevron, que sigue apuntando hacia donde está hoy. Fuera del scroller, como en el mock:
-    // por eso el centrado de la tira mide contra el scroller y no contra la fila.
-    var tiraHtml = '<div class="ph-tira-fila">' + chipHtml +
-      '<div class="ph-tira-wrap scroll">' + diasHtml + '</div></div>';
+    // El chip «Hoy» va DEL LADO donde está hoy, como el mock: `showChipLeft` (chevron-left)
+    // antes de la tira si hoy quedó a la izquierda, `showChipRight` (chevron-right) después si
+    // quedó a la derecha. Nunca los dos. Verificado en `e3Foods.dc.html`, no deducido de la
+    // prosa. Va FUERA del scroller —de ahí que el centrado de la tira mida contra el scroller
+    // y no contra la fila— y con la caja exacta de una píldora de día (ver styles.css).
+    var tiraHtml = '<div class="ph-tira-fila">' +
+      (chipRotado ? '' : chipHtml) +
+      '<div class="ph-tira-wrap scroll">' + diasHtml + '</div>' +
+      (chipRotado ? chipHtml : '') +
+      '</div>';
 
     // ---- banner del día: cole + compra, UNA sola caja (Roger 7-ago) ----
     // La línea del cole la aplica el motor vía `presencia`. La de la compra sale de la MISMA
@@ -2585,7 +2588,7 @@
   //    6.1.0 y no 6.0.3: el handoff 6 no es un parche, cambia la superficie que ve el usuario el
   //    primer día — LAUNCH sustituye a la portada rotatoria, y Sign in / Email y contraseña /
   //    Revisa tu correo / Familia se repintan enteras (4-ago-2026).
-  var VERSION_APP = '6.10.2';
+  var VERSION_APP = '6.10.3';
   var VERSION_FECHA = '04/08/2026';
 
   function renderAcercaDe() {

@@ -130,9 +130,14 @@ body {
   line-height: 1.5;
   font-size: var(--fs-cuerpo);
   -webkit-font-smoothing: antialiased;
-  padding-bottom: calc(var(--nav-h) + var(--safe-b));
-  min-height: 100vh;
-  min-height: 100dvh;
+  /* handoff 8 §00: el scroll vertical deja de ser del DOCUMENTO y pasa a cada `.vista`, que
+     es un contenedor `inset:0; bottom:<nav>` con `overflow-y:auto; overflow-x:hidden`. Ese
+     `overflow-x:hidden` es la mitad del arreglo del gesto: sin él, el pager horizontal empuja
+     el ancho de la página y aparece un scroll lateral fantasma. El body ya no scrollea, así
+     que pierde el `padding-bottom` de la nav (lo reserva el `bottom` de la vista). */
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
 }
 
 /* appearance:none (Roger 2026-07-14): sin esto, iOS Safari dibuja su propio
@@ -681,7 +686,21 @@ select.per-input { appearance: none; -webkit-appearance: none; padding-right: 38
 /* ============================================================
    Vistas
    ============================================================ */
-.vista { padding: 0; }
+/* handoff 8 §00: EL scroller vertical de la app. Uno por eje y sin anidar — el pager y la
+   tira son los dos únicos scrollers horizontales, y ninguno comparte eje con este. */
+.vista {
+  padding: 0;
+  /* `--chrome-t` = alto del cromo fijo de arriba (hoy solo el banner de la vista de ejemplo).
+     Con el body scrolleando, ese banner empujaba a las vistas hacia abajo; ahora las vistas
+     son absolutas y se les colaba DEBAJO, tapando el app-bar entero — medido: banner y
+     app-bar compartían la banda 0-64 px. Lo pone `ajustarCromoSuperior` en app.js. */
+  position: absolute; inset: var(--chrome-t, 0px) 0 0 0; bottom: calc(var(--nav-h) + var(--safe-b));
+  overflow-y: auto; overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none; -ms-overflow-style: none;
+}
+.vista::-webkit-scrollbar { width: 0; height: 0; display: none; }
+.vista[hidden] { display: none; }
 .vista-fecha { color: var(--soft); font-size: var(--fs-aux); text-transform: capitalize; font-weight: 600; }
 
 /* Sheet: resumen semanal — equilibrio de cuotas + semana de un vistazo (P1) */
@@ -1218,7 +1237,9 @@ body.sheet-open { overflow: hidden; }
 
 /* fila: tira + chip "Hoy" en su propia columna fuera del scroller (Roger 2026-07-26) */
 .ph-tira-fila { display: flex; align-items: stretch; gap: 8px; margin: 0 calc(-1 * var(--space-3)) 16px; padding: 2px var(--space-3) 4px; }
-.ph-tira-wrap { display: flex; gap: 8px; overflow-x: auto; flex: 1; min-width: 0; margin: 0; padding: 0; }
+/* handoff 8 §7: sin `overscroll-behavior-x: contain`, llegar al final de la tira arrastra la
+   pantalla o dispara el gesto de «atrás» del navegador. */
+.ph-tira-wrap { display: flex; gap: 8px; overflow-x: auto; overscroll-behavior-x: contain; flex: 1; min-width: 0; margin: 0; padding: 0; }
 /* 54px, no los 48 del mockup (Roger 2026-07-26, captura real iPhone 16 Pro): a 48px cabían
    7 píldoras completas en vez de 6 — el ancho útil real del dispositivo es ~385-390px,
    bastante más que lo medido antes por el navegador (poco fiable esta sesión). 54+gap8=62px
@@ -1254,14 +1275,17 @@ body.sheet-open { overflow: hidden; }
 .ph-pantry-texto { font-size: 13.5px; font-weight: 700; color: var(--cena-ink); line-height: 1.35; margin: 0; }
 .ph-pantry-texto .ingrediente-link { color: inherit; }
 
-/* pager: scroll-snap nativo para la posición, y el GESTO lo decide JS (app.js, §umbral del
-   pager). `touch-action: pan-y` aquí NO mata el swipe: le quita al navegador la elección de
-   eje —que es la que fallaba: este scroller mide 375x554 px, el 68,3% del alto del viewport
-   (medido), y con `auto` un scroll vertical con desvío lateral se enganchaba al eje X y
-   deslizaba la card— y deja el eje horizontal en manos del umbral de 8 px, que sí distingue
-   intención. Primer intento (7-ago) fue `pan-y` a secas: arreglaba el baile pero mataba el
-   swipe, y Roger lo rechazó con razón. Los dos ejes conviven; ninguno adivina. */
-.ph-pager-scroll { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; touch-action: pan-y; margin: 0 calc(-1 * var(--space-3)); }
+/* pager: scroll nativo con snap, SIN gesto simulado — handoff 8 §2, que manda sobre los dos
+   intentos anteriores del 7-ago (`pan-y` a secas, y el umbral de 8 px en JS). El navegador ya
+   resuelve bloqueo de eje, inercia, rebote y accesibilidad; rehacerlo a mano es lo que se
+   siente «no intuitivo». `touch-action: pan-x` deja el eje vertical al padre, que desde este
+   handoff es un scroller de verdad (`.vista`) y no el documento. */
+/* handoff 8 §3: `gap: 12px` NO es cosmético — el paso del pager es `clientWidth + 12` en
+   lectura y escritura (app.js §irPager y §listener de scroll), y sin el gap el paso real era
+   375 contra los 387 que pedía el código. Medido: `scrollWidth` daba 750 (2 x 375) y el
+   `scrollTo(387)` se quedaba clavado en 375 por el clamp del navegador. Con el gap, los dos
+   números coinciden. §2: `overscroll-behavior-x: contain` para no propagar al historial. */
+.ph-pager-scroll { display: flex; gap: 12px; overflow-x: auto; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; scroll-snap-type: x mandatory; touch-action: pan-x; padding-bottom: 2px; margin: 0 calc(-1 * var(--space-3)); }
 .ph-pager-slide { flex: 0 0 100%; scroll-snap-align: start; padding: 0 var(--space-3); }
 
 /* handoff 7, §01.2: sombra/animación literales del mock (no las aproximaciones que traía

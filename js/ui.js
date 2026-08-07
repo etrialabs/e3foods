@@ -2530,7 +2530,7 @@
   //    6.1.0 y no 6.0.3: el handoff 6 no es un parche, cambia la superficie que ve el usuario el
   //    primer día — LAUNCH sustituye a la portada rotatoria, y Sign in / Email y contraseña /
   //    Revisa tu correo / Familia se repintan enteras (4-ago-2026).
-  var VERSION_APP = '6.8.1';
+  var VERSION_APP = '6.9.0';
   var VERSION_FECHA = '04/08/2026';
 
   function renderAcercaDe() {

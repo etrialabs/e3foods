@@ -542,9 +542,19 @@
       if (tira && activa) {
         // offsetLeft no es relativo al scroller sino al ancestro posicionado — con el
         // chip "Hoy" visible el desfase cambia, así que se mide contra el propio scroller.
+        var paso = activa.offsetWidth + 8; // píldora + gap
         var destino = activa.getBoundingClientRect().left - tira.getBoundingClientRect().left + tira.scrollLeft
           - (tira.clientWidth - activa.offsetWidth) / 2;
-        tira.scrollLeft = Math.max(0, Math.min(destino, tira.scrollWidth - tira.clientWidth));
+        // handoff 8 §7: encajar a múltiplo de píldora, o el borde izquierdo de la tira corta
+        // píldoras por la mitad. Y el centrado es un SALTO, no una animación: se fuerza
+        // `scroll-behavior:auto` y se restaura lo que hubiera — si no, cuando el CSS pone
+        // scroll suave, el re-render se ve como un deslizamiento que nadie ha pedido.
+        destino = Math.round(destino / paso) * paso;
+        destino = Math.max(0, Math.min(destino, tira.scrollWidth - tira.clientWidth));
+        var behaviorPrevio = tira.style.scrollBehavior;
+        tira.style.scrollBehavior = 'auto';
+        tira.scrollLeft = destino;
+        tira.style.scrollBehavior = behaviorPrevio;
       }
     }
     refrescarIconos();
@@ -552,6 +562,27 @@
 
   // Ir a 'semana' siempre aterriza en HOY (Roger 2026-07-19) — vuelve al día
   // actual y a la comida que toque por hora, no deja pegada la última mirada.
+  // «Volver arriba» ya no es cosa de la ventana: desde el handoff 8 el scroller vertical es
+  // cada `.vista`, no el documento. Se sube la vista visible (y la ventana también, por si
+  // algún navegador conserva desplazamiento residual del documento).
+  function subirVista() {
+    var v = document.querySelector('.vista:not([hidden])');
+    if (v) v.scrollTop = 0;
+    window.scrollTo(0, 0);
+  }
+
+  // El cromo fijo de arriba (hoy solo el banner de «estás viendo un ejemplo») ya no empuja a
+  // las vistas: son absolutas. Se le reserva su alto REAL medido, no un número a ojo — el
+  // banner ocupa una o dos líneas según el ancho.
+  function ajustarCromoSuperior() {
+    var raiz = document.documentElement;
+    // el `window` falso de tests/cargar_app.js no implementa CSSStyleDeclaration
+    if (!raiz || !raiz.style || !raiz.style.setProperty) return;
+    var banner = document.getElementById('demo-banner');
+    var alto = banner && !banner.hidden ? banner.offsetHeight : 0;
+    raiz.style.setProperty('--chrome-t', alto + 'px');
+  }
+
   function irAVista(nombre) {
     vistaActual = nombre;
     recetaAbierta = null;
@@ -562,7 +593,7 @@
     render();
     // cada vista empieza arriba — sin esto heredaba el scroll de la anterior y
     // una receta abierta desde media Home aparecía "empezada" (audit 2026-07-20)
-    window.scrollTo(0, 0);
+    subirVista();
   }
 
   // ---------------------------------------------------------------
@@ -1108,6 +1139,7 @@
     document.getElementById('wizard-screen').hidden = true;
     document.body.classList.remove('wizard-open');
     document.getElementById('demo-banner').hidden = false;
+    ajustarCromoSuperior();
     vistaActual = 'semana';
     diaGlobal = null;
     render();
@@ -1125,6 +1157,7 @@
       try { localStorage.setItem(STORAGE_KEY, JSON.stringify(estado)); } catch (e) { /* sin caché local */ }
     }
     document.getElementById('demo-banner').hidden = true;
+    ajustarCromoSuperior();
     aterrizarSegunFamilia();
   }
 
@@ -1406,7 +1439,7 @@
     miembroAbierto = id;
     vistaPerfil = 'ficha';
     render();
-    window.scrollTo(0, 0); // ver irAVista
+    subirVista(); // ver irAVista
   }
 
   // Miembro nuevo desde Familia: se abre la ficha con Básicos ya desplegado
@@ -1420,7 +1453,7 @@
     miembroAbierto = null;
     vistaPerfil = 'ficha';
     render();
-    window.scrollTo(0, 0);
+    subirVista();
   }
 
   function cerrarMiembroFicha() {
@@ -1430,7 +1463,7 @@
     personaSuperficie = 'onboarding';
     fichaGuardado = false;
     render();
-    window.scrollTo(0, 0); // ver irAVista
+    subirVista(); // ver irAVista
   }
 
   function fichaToggleSeccion(n) {
@@ -1667,14 +1700,14 @@
     vistaAnterior = vistaActual;
     vistaActual = 'receta';
     render();
-    window.scrollTo(0, 0); // ver irAVista
+    subirVista(); // ver irAVista
   }
 
   function cerrarRecetaDetalle() {
     vistaActual = vistaAnterior;
     recetaAbierta = null;
     render();
-    window.scrollTo(0, 0); // ver irAVista
+    subirVista(); // ver irAVista
   }
 
   // Feedback loop (P1, 2026-07-16): toque post-comida por slot. Toggle — tocar la
@@ -2101,7 +2134,7 @@
       cerrarSheet();
       vistaActual = 'recetas';
       render();
-      window.scrollTo(0, 0);
+      subirVista();
     },
     'modo-otro-menu': function (btn) { cerrarSheet(); aplicarCambio(Number(btn.dataset.dia), btn.dataset.tipo, { modo: 'otro' }); },
     'modo-solo-complementaria': function (btn) { cerrarSheet(); aplicarCambio(Number(btn.dataset.dia), btn.dataset.tipo, { modo: 'guarnicion' }); },
@@ -2312,54 +2345,6 @@
     if (seg) { seg.classList.toggle('pager-seg-activo', pagerIdx === 0); }
     if (sec) { sec.classList.toggle('pager-seg-activo', pagerIdx === 1); }
   }
-  // ---------------------------------------------------------------
-  // UMBRAL DEL PAGER (Roger 7-ago-2026) — quién decide el eje del gesto
-  // ---------------------------------------------------------------
-  // El pager ocupa el 68,3% del alto del viewport (375x554 px, medido en navegador), así que
-  // casi todo scroll vertical empieza encima de él. Con `touch-action:auto` era el navegador
-  // quien elegía el eje por el ángulo inicial del dedo, y un vertical con algo de desvío
-  // lateral deslizaba la card dejando la página quieta. `touch-action: pan-y` (styles.css) le
-  // quita esa elección: el vertical lo sigue haciendo el navegador, y el horizontal lo decide
-  // este umbral — los mismos 8 px que ya se pagaron con el bottom-sheet (UI_MOBILE §5.1).
-  // Una vez decidido el eje, no se revisa: cambiar de opinión a mitad de gesto es justo lo
-  // que hacía que la card «bailara».
-  var UMBRAL_EJE = 8;
-  var gesto = null; // { el, x0, y0, base, eje: null|'x'|'y' }
-
-  document.addEventListener('touchstart', function (e) {
-    gesto = null;
-    if (e.touches.length !== 1) return;                    // pellizco: no es nuestro
-    var el = e.target.closest && e.target.closest('#home-pager');
-    if (!el) return;
-    gesto = { el: el, x0: e.touches[0].clientX, y0: e.touches[0].clientY, base: el.scrollLeft, eje: null };
-  }, { passive: true });
-
-  document.addEventListener('touchmove', function (e) {
-    if (!gesto || e.touches.length !== 1) return;
-    var dx = e.touches[0].clientX - gesto.x0;
-    var dy = e.touches[0].clientY - gesto.y0;
-    if (gesto.eje === null) {
-      if (Math.abs(dx) < UMBRAL_EJE && Math.abs(dy) < UMBRAL_EJE) return;  // todavía no se sabe
-      gesto.eje = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
-      // el snap obligatorio pelea con mover scrollLeft a mano: se suelta durante el arrastre
-      if (gesto.eje === 'x') gesto.el.style.scrollSnapType = 'none';
-    }
-    if (gesto.eje !== 'x') return;                          // vertical: lo scrollea el navegador
-    var max = gesto.el.scrollWidth - gesto.el.clientWidth;
-    gesto.el.scrollLeft = Math.max(0, Math.min(gesto.base - dx, max));
-  }, { passive: true });
-
-  document.addEventListener('touchend', function () {
-    if (!gesto) return;
-    if (gesto.eje === 'x') {
-      gesto.el.style.scrollSnapType = '';
-      // se suelta donde se suelta: manda la mitad recorrida, no la velocidad
-      var paso = gesto.el.clientWidth + 12;
-      irPager(gesto.el.scrollLeft > paso / 2 ? 1 : 0);
-    }
-    gesto = null;
-  }, { passive: true });
-
   document.addEventListener('scroll', function (e) {
     var el = e.target;
     if (!el || el.id !== 'home-pager') return;
@@ -2413,6 +2398,9 @@
     document.body.classList.add('landing-open');
 
     armarLaunch();
+    // el banner de ejemplo pasa de una a dos líneas según el ancho: se remide al girar
+    ajustarCromoSuperior();
+    window.addEventListener('resize', ajustarCromoSuperior);
 
     // nav se encoge a solo-iconos al bajar y recupera al subir — puerto directo de
     // e3foods.html (setupNavShrink), mismo throttle por tiempo (rAF no siempre dispara
@@ -2420,21 +2408,27 @@
     (function setupNavShrink() {
       var nav = document.querySelector('.bottom-nav');
       if (!nav) return;
-      var lastY = window.scrollY, lastRun = 0;
-      function onScroll() {
-        var y = Math.max(0, window.scrollY);
+      var lastY = 0, lastRun = 0;
+      function onScroll(y) {
+        y = Math.max(0, y);
         var dy = y - lastY;
         if (y < 40) nav.classList.remove('compact');
         else if (dy > 12) nav.classList.add('compact');
         else if (dy < -12) nav.classList.remove('compact');
         if (Math.abs(dy) > 12) lastY = y;
       }
-      window.addEventListener('scroll', function () {
+      // handoff 8 §00: el scroll vertical es de la `.vista`, no de la ventana — y `scroll` no
+      // burbujea, así que se escucha en CAPTURA sobre el documento (mismo patrón que ya usa el
+      // listener del pager). Se ignoran los scrollers horizontales: el pager y la tira emiten
+      // `scroll` también, y sin este filtro la nav se encogía al deslizar de lado.
+      document.addEventListener('scroll', function (e) {
+        var el = e.target;
+        if (!el || !el.classList || !el.classList.contains('vista')) return;
         var now = Date.now();
         if (now - lastRun < 32) return;
         lastRun = now;
-        onScroll();
-      }, { passive: true });
+        onScroll(el.scrollTop);
+      }, true);
     })();
 
   }

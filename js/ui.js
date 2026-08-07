@@ -828,14 +828,21 @@
     var personas = familia.map(function (m) {
       var idx = familia.indexOf(m);
       var presente = mesa.presentes.some(function (p) { return p.id === m.id; });
+      // Fuera por PATRÓN ≠ fuera por ausencia puntual, y la diferencia no es cosmética: la
+      // primera la fija el MOTOR en `semana.presencia` (patrón semanal, ausencias fijas, cole)
+      // y `togglePresente` —que solo escribe `ausenciasPuntuales`— no la revierte. Tocar esa
+      // fila sería un mando muerto, del mismo linaje que el «hoy no come» que estuvo sin hacer
+      // nada en producción (app.js §togglePresente). Se distingue y se manda a su ficha.
+      var porPatron = !mesa.miembrosDelSlot.some(function (x) { return x.id === m.id; });
       var distinto = presente && otraIds.indexOf(m.id) !== -1;
       var adapt = presente && !distinto ? ajusteDe[m.id] : null;
-      var nota = !presente ? t('estado_fuera')
+      var nota = porPatron ? t('estado_fila_por_patron')
+        : !presente ? t('estado_fuera')
         : distinto ? t('estado_otra_nota')
         : adapt ? t('estado_ajuste_con').replace('{ingrediente}', String(adapt).toLowerCase())
         : t('estado_come_todo');
       return {
-        id: m.id, fuera: !presente,
+        id: m.id, fuera: !presente, porPatron: porPatron,
         avatarEstilo: avatarEstiloColor(m, colorMiembro(idx)), avatarTxt: avatarInner(m), nombre: m.nombre,
         dotEstilo: !presente ? 'background:rgba(26,23,18,.22)' : distinto ? 'background:' + ESTADO_BLOQUEO : 'background:' + (adapt ? ESTADO_TERRACOTA : ESTADO_OLIVA),
         notaEstilo: !presente ? 'color:rgba(26,23,18,.38)' : distinto ? 'color:oklch(0.5 0.14 35)' : adapt ? 'color:oklch(0.48 0.14 45)' : 'color:rgba(26,23,18,.45)',
@@ -930,8 +937,18 @@
     var postreTexto = servicio && servicio.postre ? nombrePercibido(banco, servicio.postre, '*') : '';
 
     if (!mesa.miembrosDelSlot.length) {
+      // ⚠️ EL BADGE NO DESAPARECE (Roger 7-ago-2026). Esta rama era un callejón sin salida y
+      // está medido con un fixture (`presencia['3-cena'] = false` para todos): 0 badges,
+      // 0 filas, 0 controles `toggle-presente` — la card decía «nadie come en casa» y no
+      // había ni un solo mando para deshacerlo ni para saber de quién venía. Ahora se pinta
+      // el badge con su desplegable: se ve quién está fuera, con qué motivo, y cada fila
+      // lleva a su ficha, que es donde vive el patrón semanal que lo causó.
+      var badgeVacio = estadoMesaBadge(estado, banco, mesa, servicio);
+      badgeVacio.popSub = t('estado_pop_patron_sub'); // «tocando su nombre» aquí seria mentira
       return '<div class="' + claseCard + ' ph-card-vacia" data-dia="' + diaIndex + '" data-tipo="' + meal + '">' + cabeceraVacia +
-        '<p class="card-msg">Nadie come en casa (' + (esCena ? 'noche' : 'mediodía') + ').</p></div>';
+        '<p class="card-msg">' + escapeHtml(t(esCena ? 'nadie_come_noche' : 'nadie_come_mediodia')) + '</p>' +
+        renderEstadoBadgeYPop(banco, diaIndex, meal, popupAbierto, badgeVacio) +
+        '</div>';
     }
     if (!servicio || !principal) {
       // el hueco viene DECLARADO por el motor: `no_servido` o `fallo` de semana, nunca en
@@ -1018,7 +1035,12 @@
     // comida de ESTE día — reutiliza togglePresente/ausenciasPuntuales, el mismo estado
     // de sesión por comida que ya usaba el avatar (ahora retirado de la foto, §02 intro).
     var filas = e.personas.map(function (p) {
-      return '<button type="button" class="ph-estado-fila" data-action="toggle-presente" data-dia="' + diaIndex + '" data-tipo="' + meal + '" data-miembro="' + escapeHtml(p.id) + '">' +
+      // quien está fuera por patrón no se retoma tocando: su fila lleva a la ficha, que es
+      // donde SÍ se cambia. Ver la nota de `porPatron` en estadoMesaBadge.
+      var accion = p.porPatron
+        ? 'data-action="abrir-miembro-ficha" data-id="' + escapeHtml(p.id) + '"'
+        : 'data-action="toggle-presente" data-dia="' + diaIndex + '" data-tipo="' + meal + '" data-miembro="' + escapeHtml(p.id) + '"';
+      return '<button type="button" class="ph-estado-fila" ' + accion + '>' +
         '<span class="ph-avatar ph-estado-fila-av' + (p.fuera ? ' ph-estado-fila-av-fuera' : '') + '" ' + p.avatarEstilo + '>' + p.avatarTxt + '</span>' +
         '<span class="ph-estado-fila-info"><span class="ph-estado-fila-nombre' + (p.fuera ? ' ph-estado-fila-nombre-fuera' : '') + '">' + escapeHtml(p.nombre) + '</span>' +
         '<span class="ph-estado-fila-nota" style="' + p.notaEstilo + '">' + escapeHtml(p.nota) + '</span></span>' +
@@ -1042,7 +1064,7 @@
       '<span class="ph-estado-pop-count">' + escapeHtml(t('estado_pop_count').replace('{n}', e.nMain)) + '</span>' +
       '</div>' +
       '<div class="ph-estado-pop-lista">' + filas + '</div>' +
-      '<div class="ph-estado-pop-ayuda">' + escapeHtml(t('estado_pop_ayuda')) + '</div>' +
+      '<div class="ph-estado-pop-ayuda">' + escapeHtml(t(e.personas.every(function (p) { return p.porPatron; }) ? 'estado_pop_patron_ayuda' : 'estado_pop_ayuda')) + '</div>' +
       altPopHtml +
       '<span class="ph-estado-pop-flecha" aria-hidden="true"></span>' +
       '</div>';
@@ -2508,7 +2530,7 @@
   //    6.1.0 y no 6.0.3: el handoff 6 no es un parche, cambia la superficie que ve el usuario el
   //    primer día — LAUNCH sustituye a la portada rotatoria, y Sign in / Email y contraseña /
   //    Revisa tu correo / Familia se repintan enteras (4-ago-2026).
-  var VERSION_APP = '6.8.0';
+  var VERSION_APP = '6.8.1';
   var VERSION_FECHA = '04/08/2026';
 
   function renderAcercaDe() {

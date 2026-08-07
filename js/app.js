@@ -2291,13 +2291,12 @@
     var paso = el.clientWidth + 12;
     var destino = Math.min(i * paso, el.scrollWidth - el.clientWidth);
     el.scrollTo({ left: destino, behavior: 'smooth' });
-    // La animación suave es cosmética; LLEGAR no lo es. Desde que el pager lleva
-    // `touch-action: pan-y` (7-ago-2026) el swipe lateral ya no existe y este es el único
-    // camino a cena. Medido en navegador real, no supuesto: hay motores donde
-    // `behavior:'smooth'` deja el scroller a 0 — comprobado forzando ANTES y DESPUÉS el
-    // mismo `touch-action`, así que no lo causa el cambio de gesto. Mismo criterio que el
-    // golpe del rAF (UI_MOBILE §5.3): si algo tiene que FUNCIONAR y no solo verse fluido,
-    // no se cuelga de la animación. Red de seguridad: si no ha llegado, se asigna a pelo.
+    // La animación suave es cosmética; LLEGAR no lo es. Medido en navegador real el
+    // 7-ago-2026, no supuesto: hay motores donde `behavior:'smooth'` deja el scroller a 0 y
+    // el segmentado no lleva a cena. Mismo criterio que el golpe del rAF (UI_MOBILE §5.3):
+    // si algo tiene que FUNCIONAR y no solo verse fluido, no se cuelga de la animación.
+    // Red de seguridad: si no ha llegado, se asigna a pelo. El swipe lateral sigue vivo,
+    // pero es un segundo camino, no el respaldo de este.
     setTimeout(function () {
       if (Math.abs(el.scrollLeft - destino) > 1) el.scrollLeft = destino;
     }, 400);

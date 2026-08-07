@@ -1255,14 +1255,14 @@ body.sheet-open { overflow: hidden; }
 .ph-pantry-texto .ingrediente-link { color: inherit; }
 
 /* pager: scroll-snap nativo, sin JS de gesto — solo listener de posición.
-   `touch-action: pan-y` NO es decoración (Roger 7-ago-2026): sin él, este scroller mide
-   375x554 px, el 68,3% del alto del viewport (medido en navegador, no estimado), y con
-   `touch-action:auto` el navegador elige el eje por el ángulo inicial del dedo. Un gesto
-   vertical con algo de componente horizontal se enganchaba al eje X: la card se deslizaba
-   y la página no se movía. Con `pan-y` el dedo sobre la card SIEMPRE scrollea la pantalla.
-   Coste declarado: se pierde el swipe lateral para cambiar comida/cena — se cambia con el
-   segmentado, que sigue llamando a `irPager` (scrollTo, que pan-y no bloquea). */
-.ph-pager-scroll { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; touch-action: pan-y; margin: 0 calc(-1 * var(--space-3)); }
+   ⚠️ NO poner aquí `touch-action: pan-y`. Se probó el 7-ago-2026 y arreglaba el gesto (este
+   scroller mide 375x554 px, el 68,3% del alto del viewport, medido en navegador: con
+   `touch-action:auto` el navegador elige el eje por el ángulo inicial del dedo y un scroll
+   vertical con algo de desvío lateral se engancha al eje X). Pero `pan-y` mata el swipe
+   lateral de comida/cena, y Roger lo quiere. Revertido por decisión suya el mismo día.
+   Si se vuelve a atacar el baile de la card, la vía es el umbral de gesto en JS
+   (UI_MOBILE §5.1: 8 px antes de interpretar arrastre), no matar el eje entero. */
+.ph-pager-scroll { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; margin: 0 calc(-1 * var(--space-3)); }
 .ph-pager-slide { flex: 0 0 100%; scroll-snap-align: start; padding: 0 var(--space-3); }
 
 /* handoff 7, §01.2: sombra/animación literales del mock (no las aproximaciones que traía

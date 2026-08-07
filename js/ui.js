@@ -106,6 +106,14 @@
     if (banda === 'menor-11-17') return 'onb_aviso_medidas_menor_mayor';
     return 'onb_aviso_medidas_menor';
   }
+  // Nivel de actividad y objetivo de peso NO se preguntan a un menor (Roger 7-ago). El corte
+  // es el mismo 18 de `bandaMedidas`, que es donde el motor cambia de fórmula (Mifflin ↔
+  // Schofield). Se OCULTAN, no se desactivan: un mando que nunca se podrá tocar es ruido, y
+  // «señales del motor ≠ mandos del usuario». El valor guardado NO se toca — esto quita el
+  // control, no reescribe la ficha.
+  function pideActividadYObjetivo(anioNacimiento) {
+    return bandaMedidas(anioNacimiento) === 'adulto';
+  }
 
   // opciones de las píldoras de miembro — compartidas por el asistente de alta y
   // la ficha en acordeón (pildorasPersona las pinta en los dos sitios)
@@ -328,8 +336,9 @@
         m.anioNacimiento || t('res_anio_sin'),
         m.altura ? m.altura + ' cm' : null,
         m.peso ? m.peso + ' kg' : null,
-        t('res_actividad').replace('{a}', t('actividad_' + (m.actividad || 'media')).toLowerCase()),
-        t('objetivo_peso_' + (m.objetivo || 'mantenimiento'))
+        // el resumen no puede enseñar lo que la ficha ya no pregunta
+        pideActividadYObjetivo(m.anioNacimiento) ? t('res_actividad').replace('{a}', t('actividad_' + (m.actividad || 'media')).toLowerCase()) : null,
+        pideActividadYObjetivo(m.anioNacimiento) ? t('objetivo_peso_' + (m.objetivo || 'mantenimiento')) : null
       ].filter(Boolean).join(' · '),
       estilo: claveEstilo ? t(claveEstilo) : t('res_sin_elegir'),
       alergias: alergias.length
@@ -387,14 +396,18 @@
   // Bloque visible que sustituye al genérico "todavía no hay semana generada" en las 4
   // vistas que dependen del plan (Home, Resumen semana, Recetas, Compra) cuando el motor
   // reventó de verdad. `null` si no hay error que enseñar (deja el genérico de siempre).
+  // `errorMotor` = la semana no se pudo GENERAR · `errorSuperficie` = la semana existe pero el
+  // motor no pudo abrir la superficie de producto (catalogo, compra, descubrir). Los dos son
+  // «algo no cuadra en una ficha» y se cuentan igual; lo que no vale es callarse ninguno.
   function avisoErrorMotor(estado) {
-    if (!estado || !estado.errorMotor) return null;
-    var humano = interpretarErrorMotor(estado.errorMotor, estado.familia);
+    var error = estado && (estado.errorMotor || estado.errorSuperficie);
+    if (!error) return null;
+    var humano = interpretarErrorMotor(error, estado.familia);
     var cuerpo = humano
       ? escapeHtml(humano)
       : escapeHtml(t('error_motor_generico')) +
         '<details class="error-motor-detalle"><summary>' + escapeHtml(t('error_motor_ver_detalle')) + '</summary>' +
-        '<pre>' + escapeHtml(estado.errorMotor) + '</pre></details>';
+        '<pre>' + escapeHtml(error) + '</pre></details>';
     return '<div class="card-msg error-motor">' +
       '<p>' + cuerpo + '</p>' +
       '<button type="button" class="onb-btn-linea" data-action="ir-vista" data-vista="perfil">' + escapeHtml(t('error_motor_ir_familia')) + '</button>' +
@@ -714,7 +727,7 @@
   //      vehiculo-persona  el sustituto es solo de esa persona (pasta sin gluten)
   //      solo-para         esa elaboración del plato[] solo se sirve a esos miembros
   //      sustituto         exclusión estructural: esa persona come SU plato
-  //      seguridad-infantil  D2: sanitaria, se enseña siempre (2.5 de la lista)
+  //      seguridad-infantil  el motor la emite; la interfaz NO la pinta (Roger 7-ago-2026)
   function notasDe(servicio, tipo) {
     return ((servicio && servicio.notas) || []).filter(function (n) { return n.tipo === tipo; });
   }
@@ -752,18 +765,19 @@
       return t('nota_sustituto').replace('{nombre}', nombreMiembro(estado, n.miembro))
         .replace('{plato}', nombres.join(' · '));
     }
-    if (n.tipo === 'seguridad-infantil')
-      return t('nota_seguridad').replace('{nombre}', nombreMiembro(estado, n.miembro))
-        .replace('{alimento}', nombreAlimento(banco, n.alimento_id))
-        .replace('{forma}', n.forma_insegura || n.riesgo || '');
+    // `seguridad-infantil` cae aquí a propósito: el motor la sigue emitiendo y esta capa ya no
+    // la pinta (ver renderNotasCard). Devolver null la deja fuera de cualquier lista de notas.
     return null;
   }
 
-  // Bloque de notas bajo el plato. La SANITARIA va aparte y primero: es la única que no es
-  // una preferencia ni una restricción de dieta — hoy no la enseñaba nadie (2.5).
+  // Bloque de notas bajo el plato: SOLO las notas de mesa (quién come qué y con qué cambio).
+  // El aviso de seguridad infantil NO se pinta — decisión explícita de Roger (7-ago-2026,
+  // reafirmada): «no pondré que no se coman los lápices de dibujar». El motor sigue emitiendo
+  // las notas `seguridad-infantil`; es esta capa la que no las enseña. ⚠️ El funcional §2.5
+  // todavía dice «se enseña siempre»: esa línea de la biblia tiene que cambiar con esto, y la
+  // biblia no se toca desde aquí — reportado al jefe de obra en el cierre.
   var ORDEN_NOTAS = ['eliminar', 'variante-todos', 'vehiculo-persona', 'solo-para', 'sustituto'];
   function renderNotasCard(estado, banco, servicio, oscuro) {
-    var seguridad = notasDe(servicio, 'seguridad-infantil').map(function (n) { return fraseNota(estado, banco, n); }).filter(Boolean);
     var resto = [];
     ORDEN_NOTAS.forEach(function (tipo) {
       notasDe(servicio, tipo).forEach(function (n) {
@@ -771,20 +785,14 @@
         if (f) resto.push(f);
       });
     });
-    if (!seguridad.length && !resto.length) return '';
-    var linea = function (txt, clase) {
-      return '<li class="ph-nota' + (clase || '') + '"><i data-lucide="' + (clase ? 'shield-alert' : 'dot') + '"></i><span>' + escapeHtml(txt) + '</span></li>';
-    };
+    if (!resto.length) return '';
     return '<div class="ph-notas' + (oscuro ? ' ph-notas-oscuro' : '') + '">' +
-      (seguridad.length
-        ? '<p class="ph-notas-tit ph-notas-tit-sanitaria">' + t('notas_seguridad') + '</p>' +
-          '<ul class="ph-notas-lista">' + seguridad.map(function (x) { return linea(x, ' ph-nota-sanitaria'); }).join('') + '</ul>'
-        : '') +
-      (resto.length
-        ? '<p class="ph-notas-tit">' + t('notas_mesa') + '</p>' +
-          '<ul class="ph-notas-lista">' + resto.map(function (x) { return linea(x, ''); }).join('') + '</ul>'
-        : '') +
-      '</div>';
+      '<p class="ph-notas-tit">' + t('notas_mesa') + '</p>' +
+      '<ul class="ph-notas-lista">' +
+      resto.map(function (txt) {
+        return '<li class="ph-nota"><i data-lucide="dot"></i><span>' + escapeHtml(txt) + '</span></li>';
+      }).join('') +
+      '</ul></div>';
   }
 
   function estadoMesaBadge(estado, banco, mesa, servicio) {
@@ -1291,7 +1299,7 @@
   // informe después). Todo dato real: la semana `/2` que devuelve `generarCorrida` — nada
   // de la maqueta de Claude Design (esa usaba 3 platos fijos de mentira).
   // ---------------------------------------------------------------
-  function renderHome(estado, banco, diaGlobalSel, pagerIdx, miembroDispositivoId, estadoBadgeAbierto) {
+  function renderHome(estado, banco, diaGlobalSel, pagerIdx, miembroDispositivoId, estadoBadgeAbierto, sup) {
     if (!estado.plan) {
       return renderAppBar() + '<div class="vista-body">' +
         (avisoErrorMotor(estado) || '<p class="card-msg">' + t('todavia_no_hay_semana_generada') + '</p>') + '</div>';
@@ -1355,10 +1363,10 @@
     }
     var tiraHtml = '<div class="ph-tira-fila">' + chipHtml + '<div class="ph-tira-wrap scroll">' + diasHtml + '</div></div>';
 
-    // ---- banner del cole (día que se está mirando) ----
-    // El contador de "te faltan N cosas de hoy" salía de la lista de la compra: llega con
-    // §15.2 (bloque 3). La línea del cole SÍ es real — la ausencia del menor a mediodía la
-    // aplica el motor vía `presencia`.
+    // ---- banner del día: cole + compra, UNA sola caja (Roger 7-ago) ----
+    // La línea del cole la aplica el motor vía `presencia`. La de la compra sale de la MISMA
+    // `listaCompra` (§15.2) que pinta la pantalla de Compra y de los MISMOS `compra.marcados`:
+    // el banner y la lista no pueden decir números distintos (§4.6.3).
     var minors = familia.filter(function (m) { return edadEnAnios(m.anioNacimiento) < EDAD_MENOR; });
     var coleDiaObj = estado.cole && estado.cole.dias && estado.cole.dias[diaObj.fecha];
     var coleTextoHtml = '';
@@ -1371,10 +1379,35 @@
         .replace('{hoy}', esHoy ? t('cole_hoy') : '')
         .replace('{cole}', '<button type="button" class="ingrediente-link" data-action="ir-cole">' + t('cole') + '</button>');
     }
-    var pantryHtml = coleTextoHtml
-      ? '<div class="ph-pantry"><span class="ph-pantry-icono"><i data-lucide="graduation-cap"></i></span>' +
-        '<p class="ph-pantry-texto">' + coleTextoHtml + '</p></div>'
-      : '';
+    // Solo para días de la semana VIGENTE: la pantalla de Compra pinta `estado.plan` y los
+    // checks viven en `compra.marcados`. Para la semana siguiente no hay número que no sea
+    // inventado, así que no se dice nada — antes que una cifra que el motor no usó (§4.6.3).
+    var compraTextoHtml = '';
+    var compraTodoListo = false;
+    if (sup && planDia === estado.plan) {
+      var lista = sup.listaCompra(planDia, { dia: diaLocal + 1, soloCena: esHoy && new Date().getHours() >= 16 }) || [];
+      var marcadosCompra = {};
+      ((estado.compra && estado.compra.marcados) || []).forEach(function (id) { marcadosCompra[id] = 1; });
+      // la despensa («¿lo tengo en casa?») es recordatorio, no compra — igual que en el aviso
+      // del barrido (app.js, `pendientesDeLista`): las dos cuentas tienen que coincidir
+      var pendientes = lista.filter(function (it) { return !it.despensa && !marcadosCompra[it.id]; }).length;
+      compraTodoListo = pendientes === 0;
+      compraTextoHtml = pendientes
+        ? escapeHtml(String(pendientes)) + escapeHtml(t(pendientes === 1 ? 'pantry_en_tu_lista_sing' : 'pantry_en_tu_lista_plur')) +
+          '<button type="button" class="ingrediente-link" data-action="ir-compra-hoy">' + escapeHtml(t('revisala')) + '</button>' +
+          escapeHtml(t('pantry_antes_de_cocinar'))
+        : escapeHtml(t('pantry_todo_listo'));
+    }
+
+    var lineaPantry = function (icono, textoHtml, ok) {
+      return '<div class="ph-pantry-linea' + (ok ? ' ph-pantry-linea-ok' : '') + '">' +
+        '<span class="ph-pantry-icono"><i data-lucide="' + icono + '"></i></span>' +
+        '<p class="ph-pantry-texto">' + textoHtml + '</p></div>';
+    };
+    var pantryLineas =
+      (coleTextoHtml ? lineaPantry('graduation-cap', coleTextoHtml, false) : '') +
+      (compraTextoHtml ? lineaPantry(compraTodoListo ? 'check' : 'shopping-basket', compraTextoHtml, compraTodoListo) : '');
+    var pantryHtml = pantryLineas ? '<div class="ph-pantry">' + pantryLineas + '</div>' : '';
 
     // ---- pager comida/cena ----
     var pagerHtml = '<div id="home-pager" class="ph-pager-scroll scroll">' +
@@ -1700,15 +1733,6 @@
       return a.pasos && a.pasos.length
         ? '<p class="detalle-subtitulo" style="margin-top:18px">' + escapeHtml(a.nombre) + '</p><div class="rv-pasos">' + pasosCards(a.pasos) + '</div>' : '';
     }).join('');
-    // sanitarias primero y aparte, igual que en la card (§15.7)
-    var seguridad = p.seguridad_infantil.length
-      ? '<div class="ph-notas"><p class="ph-notas-tit ph-notas-tit-sanitaria">' + t('notas_seguridad') + '</p><ul class="ph-notas-lista">' +
-        p.seguridad_infantil.map(function (n) {
-          return '<li class="ph-nota ph-nota-sanitaria"><i data-lucide="shield-alert"></i><span>' +
-            escapeHtml(t('nota_seguridad').replace('{nombre}', nombreMiembro(estado, n.miembro))
-              .replace('{alimento}', nombreAlimento(banco, n.alimento_id)).replace('{forma}', n.forma_insegura || n.riesgo || '')) +
-            '</span></li>';
-        }).join('') + '</ul></div>' : '';
     var alergenos = p.alergenos.length
       ? '<p class="rv-variantes"><i data-lucide="alert-circle"></i>' + escapeHtml(t('contiene') + ' ' + p.alergenos.join(', ')) + '</p>' : '';
 
@@ -1726,7 +1750,6 @@
       '<div class="rv-stat"><i data-lucide="clock"></i><span class="rv-stat-valor">' + (p.tiempo_min || '?') + ' min</span></div>' +
       '<div class="rv-stat"><i data-lucide="leaf"></i><span class="rv-stat-valor">' + tag + '</span></div>' +
       '</div>' +
-      seguridad +
       (acomp ? '<p class="rv-variantes"><i data-lucide="info"></i>' + escapeHtml(acomp) + '</p>' : '') +
       (variantes ? '<p class="rv-variantes"><i data-lucide="shuffle"></i>' + escapeHtml(capitaliza(variantes)) + '</p>' : '') +
       alergenos +
@@ -1958,6 +1981,15 @@
       return '<li data-buscar="' + escapeHtml(normalizarTexto(a.nombre)) + '"><label class="fila-nevera">' +
         '<input type="checkbox" value="' + a.id + '" data-nombre="' + escapeHtml(a.nombre) + '"> ' + escapeHtml(a.nombre) + '</label></li>';
     }).join('');
+    // Handoff de Claude Design: junto al buscador van la CÁMARA («haz una foto de la nevera»)
+    // y la VOZ («dinos qué tienes»). El reconocimiento es backend y lo lleva Roger en paralelo
+    // (7-ago), así que aquí se dejan PUESTOS Y DESACTIVADOS con su marca de pendiente — §4.12:
+    // lo que no se puede conectar todavía se ve y se dice, jamás se esconde.
+    var botonModo = function (icono, claveAria) {
+      return '<button type="button" class="nevera-modo" disabled aria-disabled="true"' +
+        ' aria-label="' + escapeHtml(t(claveAria) + ' · ' + t('v6_pendiente_badge')) + '">' +
+        '<i data-lucide="' + icono + '"></i></button>';
+    };
     return sheetHead(t('con_lo_que_hay_en_la_nevera')) +
       '<div class="sheet-body">' +
       '<p class="card-msg">' + t('marca_lo_que_tienes_en_casa_y_buscamos_un') + '</p>' +
@@ -1965,9 +1997,13 @@
       '<div class="nevera-buscador-fila">' +
       '<label class="rc-buscador"><i data-lucide="search"></i>' +
       '<input type="search" id="nevera-buscador" placeholder="' + t('buscar_ingrediente') + '" autocomplete="off"></label>' +
+      botonModo('camera', 'nevera_foto_aria') +
+      botonModo('mic', 'nevera_voz_aria') +
       '</div>' +
+      '<p class="nevera-pendiente"><i data-lucide="hard-hat"></i>' + escapeHtml(t('nevera_foto_voz_pendiente')) + '</p>' +
       '<div class="nevera-seleccion" id="nevera-seleccion" hidden></div>' +
-      '<button type="button" class="btn-cta-gradiente" id="nevera-confirmar" data-action="confirmar-nevera" data-dia="' + dia + '" data-tipo="' + tipoComida + '">' + t('buscar_plato') + '</button>' +
+      '<button type="button" class="btn-cta-gradiente" id="nevera-confirmar" data-action="confirmar-nevera" data-dia="' + dia + '" data-tipo="' + tipoComida + '">' +
+      t('buscar_plato') + '<span id="nevera-cuenta" class="nevera-cuenta"></span></button>' +
       '</div>' +
       '<ul class="lista-nevera" id="lista-nevera-checks">' + filas + '</ul>' +
       '</div>';
@@ -2138,11 +2174,13 @@
           '<label class="onb-campo"><span class="onb-eyebrow">' + escapeHtml(t('onb_peso_kg')) + '</span>' +
             '<input type="number" inputmode="numeric" class="onb-input" data-persona-campo="peso" min="1" max="200" placeholder="—" value="' + (draft.peso || '') + '"></label>' +
         '</div>' +
-        '<div class="onb-campo"><span class="onb-eyebrow">' + escapeHtml(t('onb_actividad')) + '</span>' +
-          pildorasPersona('actividad', OPCIONES_ACTIVIDAD, draft.actividad || 'media') +
-          '<p class="onb-ayuda">' + escapeHtml(t(AYUDA_ACTIVIDAD[draft.actividad || 'media'])) + '</p></div>' +
-        '<div class="onb-campo"><span class="onb-eyebrow">' + escapeHtml(t('onb_objetivo')) + '</span>' +
-          pildorasPersona('objetivo', OPCIONES_OBJETIVO_PERSONA, draft.objetivo || 'mantenimiento') + '</div>';
+        (pideActividadYObjetivo(draft.anioNacimiento)
+          ? '<div class="onb-campo"><span class="onb-eyebrow">' + escapeHtml(t('onb_actividad')) + '</span>' +
+            pildorasPersona('actividad', OPCIONES_ACTIVIDAD, draft.actividad || 'media') +
+            '<p class="onb-ayuda">' + escapeHtml(t(AYUDA_ACTIVIDAD[draft.actividad || 'media'])) + '</p></div>' +
+            '<div class="onb-campo"><span class="onb-eyebrow">' + escapeHtml(t('onb_objetivo')) + '</span>' +
+            pildorasPersona('objetivo', OPCIONES_OBJETIVO_PERSONA, draft.objetivo || 'mantenimiento') + '</div>'
+          : avisoInfo(t('aviso_menor_sin_actividad_objetivo')));
     }
     if (paso === 2) {
       return '<h2 class="onb-h2">' + escapeHtml(t('onb_como_come')) + '</h2>' +
@@ -2391,10 +2429,12 @@
            '<label class="per-campo"><span class="onb-eyebrow">Peso (kg)</span>' +
              '<input type="number" inputmode="numeric" class="per-input" data-persona-campo="peso" min="1" max="200" placeholder="—" value="' + (draft.peso || '') + '"></label>' +
          '</div>' +
-         '<div class="per-campo"><span class="onb-eyebrow">Nivel de actividad</span>' +
-           pildorasPersona('actividad', OPCIONES_ACTIVIDAD, draft.actividad || 'media') + '</div>' +
-         '<div class="per-campo"><span class="onb-eyebrow">Objetivo de peso</span>' +
-           pildorasPersona('objetivo', OPCIONES_OBJETIVO_PERSONA, draft.objetivo || 'mantenimiento') + '</div>',
+         (pideActividadYObjetivo(draft.anioNacimiento)
+           ? '<div class="per-campo"><span class="onb-eyebrow">' + escapeHtml(t('onb_actividad')) + '</span>' +
+             pildorasPersona('actividad', OPCIONES_ACTIVIDAD, draft.actividad || 'media') + '</div>' +
+             '<div class="per-campo"><span class="onb-eyebrow">' + escapeHtml(t('onb_objetivo')) + '</span>' +
+             pildorasPersona('objetivo', OPCIONES_OBJETIVO_PERSONA, draft.objetivo || 'mantenimiento') + '</div>'
+           : avisoInfo(t('aviso_menor_sin_actividad_objetivo'))),
       2: tarjetasPersona('estilo', ESTILOS_VIDA, estiloDeMiembro(draft)),
       3: listaAlergias(draft.alergias, false) +
          '<label class="per-campo"><span class="onb-eyebrow">Otras restricciones</span>' +
@@ -2463,7 +2503,7 @@
   //    6.1.0 y no 6.0.3: el handoff 6 no es un parche, cambia la superficie que ve el usuario el
   //    primer día — LAUNCH sustituye a la portada rotatoria, y Sign in / Email y contraseña /
   //    Revisa tu correo / Familia se repintan enteras (4-ago-2026).
-  var VERSION_APP = '6.5.0';
+  var VERSION_APP = '6.6.0';
   var VERSION_FECHA = '04/08/2026';
 
   function renderAcercaDe() {
@@ -2838,10 +2878,13 @@
         '<div class="desc-titulo">' + escapeHtml(d.titulo) + '</div>' +
         '</div></button>';
     }).join('');
+    // Sin superficie no es que «no haya ideas todavía»: es que el motor no ha podido abrirla.
+    // Decir «muy pronto» ahí es la misma mentira que decía Compra, con otra cara.
+    var vacio = avisoErrorMotor(estado) || '<p class="card-msg">' + escapeHtml(t('descubrir_muy_pronto')) + '</p>';
     return '<div class="rc-cabecera"><div><h1 class="rc-titulo">' + t('descubrir') + '</h1>' +
       '<p class="cp-resumen">' + t('ideas_nuevas_para_tu_familia') + '</p></div></div>' +
       '<div class="vista-body rc-body"><div class="desc-lista">' +
-      (fichasHtml || '<p class="card-msg">Muy pronto: ideas nuevas para tu familia.</p>') +
+      (fichasHtml || vacio) +
       '</div></div>';
   }
 
@@ -2890,7 +2933,18 @@
     var anadirHtml = '<button type="button" class="pf-anadir-celda" data-action="familia-abrir-form-miembro">' +
       '<span class="pf-anadir-circulo"><i data-lucide="plus"></i></span>' + t('anadir_miembro') + '</button>';
 
-    return '<div class="rc-cabecera"><div><h1 class="rc-titulo">' + t('familia') + '</h1><p class="cp-resumen">' + t('personaliza_el_menu_para_cada_uno') + '</p></div></div>' +
+    // Handoff 7: la cabecera lleva el nombre de la casa, no la etiqueta genérica. Si todavía
+    // no hay nombre (familia local sin sincronizar), cae en «Familia» a secas. Y si el nombre
+    // YA empieza por la palabra «familia» —la demo se llama «Familia Ejemplo», y nadie impide
+    // que Roger escriba «Familia Pérez»— se pinta tal cual: medido en navegador, la plantilla
+    // a secas daba «Familia Familia Ejemplo».
+    var nombreCasa = (estado.nombreFamilia || '').trim();
+    var yaDiceFamilia = /^(familia|familie|famille|family)\b/.test(normalizarTexto(nombreCasa));
+    var tituloFamilia = !nombreCasa ? t('familia')
+      : yaDiceFamilia ? nombreCasa
+        : t('familia_titulada').replace('{f}', nombreCasa);
+
+    return '<div class="rc-cabecera"><div><h1 class="rc-titulo">' + escapeHtml(tituloFamilia) + '</h1><p class="cp-resumen">' + t('personaliza_el_menu_para_cada_uno') + '</p></div></div>' +
       '<div class="vista-body rc-body">' +
       '<div class="rc-grid pf-grid">' + cardsHtml + anadirHtml + '</div>' +
       '</div>';

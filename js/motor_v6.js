@@ -3378,10 +3378,15 @@ const reatribuir = desvios => desvios.map(d => (FRASE_SIN_ELECCION[d.tipo]
 
 function crearSuperficie({ familia: familiaDeclarada, datos, config, semanaRef }) {
   if (!familiaDeclarada || !datos || !config) throw new Error('superficie: faltan familia, datos o config');
-  const familia = normalizarFamilia(familiaDeclarada, datos).familia;
+  const semanaBase = semanaRef || null;
+  // LA MISMA LEY QUE EL GENERADOR, NI UNA MENOS. `normalizarFamilia` solo aplica el supuesto del
+  // alta sin peso (§3.4: menor de 3-10 sin peso → mediana OMS, declarada) cuando recibe la semana
+  // de referencia. `generar.js` se la pasa y la semana sale; esto NO se la pasaba, y la misma
+  // familia que genera menú mataba Recetas, Descubrir y Compra con «peso_kg fuera de rango:
+  // undefined». La ISO ya estaba aquí (`semanaRef`): era propagarla, no inventar nada.
+  const familia = normalizarFamilia(familiaDeclarada, datos, semanaBase).familia;
   // §13 en UN solo lugar: de aquí abajo, `banco` es el ÚNICO banco que la superficie conoce.
   const { datos: banco, politica } = bancoDelHogar(datos, familia);
-  const semanaBase = semanaRef || null;
 
   // ── perezosos: la compra no paga el prevuelo y el catálogo no paga la derivación
   let _pools = null, _preBase = null, _formas = null;

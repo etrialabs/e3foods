@@ -126,7 +126,16 @@
     try {
       _sup = MOTOR.crearSuperficie({ familia: fam, datos: BANCO, config: MOTOR.config, semanaRef: iso });
       _supClave = clave;
-    } catch (e) { _sup = null; _supClave = null; }
+      if (estado) estado.errorSuperficie = null;
+    } catch (e) {
+      // Antes esto se tragaba el error EN SILENCIO y Recetas, Descubrir y Compra decian
+      // «todavia no hay semana generada» con la semana delante, generada y visible en Semana
+      // (reportado por Roger, 7-ago). Es el patron de siempre: algo falla y nadie lo dice.
+      // El motivo se publica donde las tres pantallas ya saben leerlo (`avisoErrorMotor`),
+      // que ademas lo traduce a «Falta el peso de Enzo» y ofrece el boton de ir a su ficha.
+      _sup = null; _supClave = null;
+      if (estado) estado.errorSuperficie = e && e.message ? e.message : String(e);
+    }
     return _sup;
   }
 
@@ -317,7 +326,9 @@
   var filtroRecetas = 'todas'; // estado de UI, no persistido (SPEC: filtroRecetas)
   var busquedaRecetas = ''; // estado de UI, no persistido
   var busquedaTimer = null; // debounce del buscador de Recetas (audit 2026-07-20)
-  var rangoCompra = '7d'; // '7d' | 'hoy' — estado de UI, no persistido (SPEC: rangoCompra)
+  // Compra abre SIEMPRE en «Hoy» (Roger 2026-08-07): lo que se cocina hoy es la decisión de
+  // hoy; los 7 días son la previsión, no la portada. Sigue siendo estado de UI, no persistido.
+  var rangoCompra = 'hoy'; // 'hoy' | '7d' — estado de UI, no persistido (SPEC: rangoCompra)
   var categoriasAbiertasCompra = {}; // grupo -> bool, estado de UI, no persistido (Roger 2026-07-26)
   var recetasView = 'grid'; // 'grid' | 'list' — toggle nuevo del handoff, solo visual
   var vistaPerfil = 'lista'; // 'lista' | futuro detalle-miembro — estado de UI, no persistido
@@ -487,7 +498,7 @@
     var cursorBuscador = focoBuscador ? document.activeElement.selectionStart : 0;
     document.querySelectorAll('.vista').forEach(function (v) { v.hidden = (v.id !== 'vista-' + vistaActual); });
     document.querySelectorAll('.nav-btn').forEach(function (b) { b.classList.toggle('active', b.dataset.vista === vistaActual); b.setAttribute('aria-current', b.dataset.vista === vistaActual ? 'page' : 'false'); });
-    if (vistaActual === 'semana') cont.innerHTML = UI.renderHome(estado, BANCO, diaGlobalActivo(), pagerIdx, obtenerMiembroDispositivo(), estadoBadgeAbierto);
+    if (vistaActual === 'semana') cont.innerHTML = UI.renderHome(estado, BANCO, diaGlobalActivo(), pagerIdx, obtenerMiembroDispositivo(), estadoBadgeAbierto, superficie());
     else if (vistaActual === 'recetas') cont.innerHTML = recetaPlantillaAbierta
       ? UI.renderVistaRecetaPlantilla(estado, BANCO, recetaPlantillaAbierta, superficie())
       : UI.renderRecetasVista(estado, BANCO, filtroRecetas, busquedaRecetas, recetasView, superficie());
@@ -2254,6 +2265,18 @@
         li.hidden = !!q && li.dataset.buscar.indexOf(q) === -1;
       });
     }
+  });
+
+  // Contador del CTA de la nevera (handoff: «Buscar plato · 3»). Se toca el DOM del sheet
+  // directamente, igual que el buscador de arriba: un render() completo reconstruiría la
+  // lista y perdería lo ya marcado.
+  document.addEventListener('change', function (e) {
+    var t = e.target;
+    if (!t || t.type !== 'checkbox' || !t.closest || !t.closest('#lista-nevera-checks')) return;
+    var cuenta = document.getElementById('nevera-cuenta');
+    if (!cuenta) return;
+    var n = document.querySelectorAll('#lista-nevera-checks input:checked').length;
+    cuenta.textContent = n ? ' · ' + n : '';
   });
 
   // Pager comida/cena de la Home (Roger 2026-07-19) — scroll-snap NATIVO

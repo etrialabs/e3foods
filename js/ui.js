@@ -887,7 +887,7 @@
     }
     // gris · nadie en casa (§2.3) — fuera del código semáforo a propósito: no es una
     // advertencia, es una ausencia. Antes el badge se ocultaba entero en este caso
-    // (renderEstadoBadgeYPop cortaba con `!mesa.presentes.length`); el handoff exige
+    // (el render del badge cortaba con `!mesa.presentes.length`); el handoff exige
     // que se vea siempre, como cuarto estado.
     if (!mesa.presentes.length) {
       return {
@@ -947,7 +947,7 @@
       badgeVacio.popSub = t('estado_pop_patron_sub'); // «tocando su nombre» aquí seria mentira
       return '<div class="' + claseCard + ' ph-card-vacia" data-dia="' + diaIndex + '" data-tipo="' + meal + '">' + cabeceraVacia +
         '<p class="card-msg">' + escapeHtml(t(esCena ? 'nadie_come_noche' : 'nadie_come_mediodia')) + '</p>' +
-        renderEstadoBadgeYPop(banco, diaIndex, meal, popupAbierto, badgeVacio) +
+        renderEstadoBadge(meal, popupAbierto, badgeVacio) +
         '</div>';
     }
     if (!servicio || !principal) {
@@ -1011,7 +1011,7 @@
       // `renderNotasCard` se sigue pintando entera en la ficha de receta (ui.js §rv-body).
       // ⚠️ Choca con el funcional §6.8 («la salida es UNA card: plato, variante de base y
       // notas por persona»). Decisión de Roger; la ley la ajusta el jefe de obra.
-      renderEstadoBadgeYPop(banco, diaIndex, meal, popupAbierto, estadoBadge) +
+      renderEstadoBadge(meal, popupAbierto, estadoBadge) +
       '<button type="button" class="ph-cta" data-action="abrir-cambiar" data-dia="' + diaIndex + '" data-tipo="' + meal + '"><i data-lucide="sparkles"></i>' + t('me_apetece_otra_cosa') + '<i data-lucide="arrow-right" class="ph-cta-flecha"></i></button>' +
       '</div>';
   }
@@ -1022,15 +1022,27 @@
   // siempre está en el DOM, solo cambia de clase (.ph-estado-pop-abierto). Montarlo
   // condicionalmente (como hacía esta función antes) rompe la animación de entrada.
   // §2.6: badge y pop llevan data-whopop="1" para el cierre por toque fuera (app.js).
-  function renderEstadoBadgeYPop(banco, diaIndex, meal, popupAbierto, e) {
+  // handoff 8 §04: el BADGE vive en la card; el DESPLEGABLE, NO. Es hermano del scroller del
+  // pager, dentro del wrapper `position:relative` — «asi no se recorta con el overflow del
+  // pager y no se desplaza al cambiar de pagina». Y hay una razon MEDIDA ademas de la del
+  // documento: el pager es `overflow-x:auto`, lo que fuerza `overflow-y:auto` por regla de
+  // CSS, y el desplegable posicionado dentro de la card le anadia sobrante vertical — el
+  // pager se convertia en un SEGUNDO scroller vertical y la card se movia por su cuenta,
+  // metiendose debajo del resto de la pantalla (reportado por Roger; medidos 4 px de exceso
+  // en la demo, mas en un movil real con foto y fila de plato alternativo).
+  function renderEstadoBadge(meal, popupAbierto, e) {
     var abierta = !!popupAbierto;
-    var badge = '<button type="button" class="ph-estado-badge ph-estado-badge-' + e.clase + '" data-whopop="1" ' +
+    return '<button type="button" class="ph-estado-badge ph-estado-badge-' + e.clase + '" data-whopop="1" ' +
       'data-action="estado-toggle" data-tipo="' + meal + '" aria-expanded="' + abierta + '" ' +
       'aria-label="' + escapeHtml(e.label) + '. ' + escapeHtml(t('estado_aria_detalle')) + '">' +
       '<span class="ph-estado-dot"></span>' +
       '<span class="ph-estado-texto">' + escapeHtml(e.label) + '</span>' +
       '<span class="ph-estado-flecha' + (abierta ? ' ph-estado-flecha-abierta' : '') + '">' + ICONO_CHEVRON_ESTADO + '</span>' +
       '</button>';
+  }
+
+  // El desplegable, que se pinta UNA sola vez y FUERA del pager (ver renderEstadoBadge).
+  function renderEstadoPop(banco, diaIndex, meal, e) {
     // §2.5 NO NEGOCIABLE: cada fila es un botón que quita/retoma a esa persona de ESTA
     // comida de ESTE día — reutiliza togglePresente/ausenciasPuntuales, el mismo estado
     // de sesión por comida que ya usaba el avatar (ahora retirado de la foto, §02 intro).
@@ -1055,7 +1067,7 @@
         '<span class="ph-alt-plato">' + escapeHtml(e.altNombre || '') + '</span>' +
         '</span><span class="ph-estado-pop-count">' + escapeHtml(t('estado_pop_count').replace('{n}', e.nAlt)) + '</span></div>'
       : '';
-    var pop = '<div class="ph-estado-pop' + (abierta ? ' ph-estado-pop-abierto' : '') + '" data-whopop="1">' +
+    return '<div class="ph-estado-pop ph-estado-pop-abierto" data-whopop="1" data-tipo="' + meal + '">' +
       '<div class="ph-estado-pop-cab">' +
       '<span class="ph-estado-pop-titsub">' +
       '<span class="ph-estado-pop-tit ph-estado-pop-tit-' + e.clase + '">' + escapeHtml(e.popTitulo) + '</span>' +
@@ -1068,7 +1080,6 @@
       altPopHtml +
       '<span class="ph-estado-pop-flecha" aria-hidden="true"></span>' +
       '</div>';
-    return badge + pop;
   }
 
   // Feedback loop (P1, 2026-07-16): "¿qué tal?" post-comida, un toque por slot
@@ -1437,10 +1448,23 @@
     var pantryHtml = pantryLineas ? '<div class="ph-pantry">' + pantryLineas + '</div>' : '';
 
     // ---- pager comida/cena ----
-    var pagerHtml = '<div id="home-pager" class="ph-pager-scroll scroll">' +
+    // handoff 8 §00: «El pager va envuelto en un position:relative propio. Ese wrapper es el
+    // ancla de la subcard de comensales. No lo elimines al refactorizar: sin él la subcard se
+    // posiciona contra la pantalla.» §04: es UNA sola subcard compartida por las dos páginas,
+    // hermana del scroller — por eso se pinta aquí y no dentro de la card.
+    var popHtml = '';
+    if (estadoBadgeAbierto === 'comida' || estadoBadgeAbierto === 'cena') {
+      var mealPop = estadoBadgeAbierto;
+      var mesaPop = comensalesDeSlot(estado, planDia, diaLocal, mealPop);
+      var ePop = estadoMesaBadge(estado, banco, mesaPop, servicioDe(planDia, diaLocal, mealPop));
+      if (!mesaPop.miembrosDelSlot.length) ePop.popSub = t('estado_pop_patron_sub');
+      popHtml = renderEstadoPop(banco, diaLocal, mealPop, ePop);
+    }
+    var pagerHtml = '<div class="ph-pager-wrap">' +
+      '<div id="home-pager" class="ph-pager-scroll scroll">' +
       '<div class="ph-pager-slide">' + renderCardPager(estado, banco, planDia, diaLocal, 'comida', estadoBadgeAbierto === 'comida') + '</div>' +
       '<div class="ph-pager-slide">' + renderCardPager(estado, banco, planDia, diaLocal, 'cena', estadoBadgeAbierto === 'cena') + '</div>' +
-      '</div>';
+      '</div>' + popHtml + '</div>';
     var segHtml = '<div class="ph-seg">' +
       '<button type="button" id="pager-seg-comida" class="ph-seg-btn' + (pagerIdx === 0 ? ' pager-seg-activo' : '') + '" data-action="pager-ir" data-pager="0"><i data-lucide="sun"></i>' + t('boton_comida') + '</button>' +
       '<button type="button" id="pager-seg-cena" class="ph-seg-btn' + (pagerIdx === 1 ? ' pager-seg-activo' : '') + '" data-action="pager-ir" data-pager="1"><i data-lucide="moon"></i>' + t('boton_cena') + '</button>' +
@@ -2530,7 +2554,7 @@
   //    6.1.0 y no 6.0.3: el handoff 6 no es un parche, cambia la superficie que ve el usuario el
   //    primer día — LAUNCH sustituye a la portada rotatoria, y Sign in / Email y contraseña /
   //    Revisa tu correo / Familia se repintan enteras (4-ago-2026).
-  var VERSION_APP = '6.9.1';
+  var VERSION_APP = '6.9.2';
   var VERSION_FECHA = '04/08/2026';
 
   function renderAcercaDe() {

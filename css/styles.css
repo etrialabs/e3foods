@@ -1285,6 +1285,8 @@ body.sheet-open { overflow: hidden; }
    rompieron la navegacion. Ante prosa que contradice al mock, manda el mock. */
 .ph-pager-scroll { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 12px; padding-bottom: 2px; margin: 0 calc(-1 * var(--space-3)); }
 .ph-pager-slide { flex: 0 0 100%; scroll-snap-align: start; padding: 0 var(--space-3); }
+/* handoff 8 §00: el wrapper `position:relative` que envuelve al pager y ancla la subcard. */
+.ph-pager-wrap { position: relative; }
 
 /* handoff 7, §01.2: sombra/animación literales del mock (no las aproximaciones que traía
    la card antes de esta réplica) — comida .45s, cena .55s, e3pop definido junto a e3fade. */

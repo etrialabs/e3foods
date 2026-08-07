@@ -1024,6 +1024,27 @@ module.exports = { costeS, politicaPostre, TERMINOS };
 // y 0,3 en la guarnición son 0,6 y son UNA toma, no dos medias ni ninguna. Por eso la API
 // acumula gramos y decide al cerrar el servicio; sumar tomas pieza a pieza contaba de más y
 // filtrar pieza a pieza contaba de menos.
+//
+// ── §10.4 (ley `3b235ea`, 7-ago-2026): LA VARA DE LA TOMA ES PERSONAL EN EL ADULTO
+// El umbral ya no se mide contra la ración del TRAMO sino contra la ración de ESA PERSONA:
+// `gramos ≥ ración × factor × TOMA_MIN_FRACCION`, con `factor = min(1, objetivo_dia / AR)` y el
+// AR de EFSA que publica el banco. La ración del banco NO cambia — lo que se personaliza es la
+// vara con la que se decide si la toma cuenta. Menores EXENTOS (su ración ya escala por tramo).
+// El factor se define en UN solo sitio —`raciones.js` → `factorPersonal()`, que lee el banco— y
+// llega aquí YA RESUELTO dentro de `miembro`, como número. Nunca viaja una kcal hasta aquí:
+// §10.16 prohíbe que la energía entre en quien ELIGE (T2), y la suite b10 lo asierta sobre el
+// fuente. Quién lo resuelve: el prevuelo para T1/T2 (`pre.varas`), y T3 y T4 por su cuenta con
+// sus propios objetivos — recorridos distintos, definición única (§13.11).
+//
+// ── §10.4 · Y EL CONDIMENTO DEJA DE ALIMENTAR TOMAS
+// Una línea `papel === 'condimento'` no aporta ni mínimos ni techos de FRECUENCIA; sus gramos
+// siguen contando ÍNTEGROS en `gramosSalud` (nivel 3 de §10.3: el techo de salud es absoluto y no
+// existe «demasiado poco para contar»). Se implementa por DICTADO de Roger, y la tensión con la
+// fila 4.5 se escribe en vez de esconderse: esto ES una etiqueta que exime de contar, la figura
+// que este proyecto mató dos veces (`aporte` en 4.5, `sin-cuota` en 5.2), y §18.6 dice que es tan
+// peligrosa como una que afirma. Lo que la hace tolerable —no inocua— es que solo exime del nivel
+// 1: el gramo sigue entero en el nivel 3, que es el que protege la salud. El jamón de los
+// guisantes no es una vez de carne, pero sus gramos de carne procesada siguen siendo gramos.
 'use strict';
 const { racionParaLinea } = require('./raciones.js');
 
@@ -1090,9 +1111,13 @@ function unidadDe(datos, alimentoId) {
 const aPiezas = x => Math.max(0, Math.ceil(x - 0.5 - 1e-9));
 
 // ── LA FUNCIÓN DE LA UNIDAD
-// `piezas` = líneas ya resueltas por quien llama: { alimento, gramos } (`papel` se ignora a
-// propósito — fila 4.5: una etiqueta que EXIME de contar es tan peligrosa como una que afirma).
-// `miembro` = { edad } · null/undefined ⇒ vara adulta.
+// `piezas` = líneas ya resueltas por quien llama: { alimento, gramos, papel }. ⚑ `papel` DEJÓ de
+// ignorarse el 7-ago-2026 (§10.4): el condimento no alimenta tomas. Quien no lo pase estará
+// contando el jamón de los guisantes como una vez de carne — por eso lo pasan los seis
+// recorridos y una aserción de la suite b10 lo vigila.
+// `miembro` = la vara de `raciones.js` → `varaDe(m, edad, objetivo_dia, datos)`: { edad, factor }.
+// null/undefined, o sin `factor`, ⇒ vara del tramo SIN personalizar (factor 1), que es el lado
+// estricto: el factor solo puede BAJAR el umbral, así que olvidarlo nunca afloja una regla.
 // Devuelve, POR SERVICIO:
 //   tomas      — { cubo: 1 } de los cubos que superan el umbral. La unidad de `config.CUOTAS`.
 //   fracciones — { cubo: nº } raciones acumuladas. Informativo: NUNCA contra una banda.
@@ -1102,6 +1127,9 @@ const aPiezas = x => Math.max(0, Math.ceil(x - 0.5 - 1e-9));
 //                no pueda salir verde PORQUE no se midió.
 function cuotaDeServicio(piezas, miembro, datos, config, opts = {}) {
   const edad = miembro ? miembro.edad : null;
+  // §10.4 · la vara personal del comensal, ya resuelta por quien la puede calcular.
+  // 1 en menores (exentos por ley) y en cualquier adulto cuyo AR u objetivo no publique el dato.
+  const factor = miembro && miembro.factor > 0 ? miembro.factor : 1;
   const gramosCubo = {}, racionCubo = {}, gramosSalud = {}, huecos = [], protagonista = {};
   const piezasCubo = {};                       // solo para categorías CONTABLES: piezas físicas
   for (const l of piezas) {
@@ -1109,6 +1137,14 @@ function cuotaDeServicio(piezas, miembro, datos, config, opts = {}) {
     if (!filaD1) continue;
     const cubos = CUBOS_DE[filaD1.categoria];
     if (!cubos) continue;
+    // el techo de salud cuenta el gramo REAL servido, sin conversión ni umbral — y también el del
+    // CONDIMENTO: §10.4 lo saca de las TOMAS, jamás de los gramos. Va ANTES del `continue` de
+    // abajo justamente para eso.
+    if (config.TECHOS_SALUD_G_SEMANA[filaD1.categoria])
+      gramosSalud[filaD1.categoria] = (gramosSalud[filaD1.categoria] || 0) + (l.gramos || 0);
+    // ⚑ §10.4 · el CONDIMENTO no alimenta tomas: ni mínimos ni techos de frecuencia. Se sale
+    // aquí, después del gramo de salud y antes de tocar cubo, ración, pieza o hueco.
+    if (l.papel === 'condimento') continue;
     const r = racionParaLinea(datos, filaD1, edad);
     if (r.hueco) { huecos.push({ alimento: l.alimento, gramos: l.gramos, hueco: r.hueco }); continue; }
     // la legumbre del banco viaja en SECO y su ración también: se convierte ANTES de dividir,
@@ -1127,9 +1163,6 @@ function cuotaDeServicio(piezas, miembro, datos, config, opts = {}) {
       if (((config.PIEZAS_PROTAGONISTA || {})[filaD1.categoria] || []).includes(l.elaboracion_id))
         protagonista[c] = true;
     }
-    // el techo de salud cuenta el gramo REAL servido, sin conversión ni umbral
-    if (config.TECHOS_SALUD_G_SEMANA[filaD1.categoria])
-      gramosSalud[filaD1.categoria] = (gramosSalud[filaD1.categoria] || 0) + (l.gramos || 0);
   }
   const contables = config.CUOTAS_CONTABLES || [];
   const tomas = {}, fracciones = {};
@@ -1150,8 +1183,28 @@ function cuotaDeServicio(piezas, miembro, datos, config, opts = {}) {
       // mide lo servido, que ya es la verdad. Es la misma DEFINICIÓN con dos recorridos (§1-T4).
       if (opts.peorCaso && protagonista[c] && piezas > 0)
         piezas = Math.max(piezas, config.PIEZAS_PROTAGONISTA_RANGO[1]);
+      // ── EL EXTREMO BAJO DE LA MISMA HORQUILLA (§13.8, firma de Roger del 7-ago-2026 en
+      // `3b235ea`: «las piezas de la PERSONA, las que T3 le servirá según su tamaño»).
+      // `peorCaso` existía solo, y un solo extremo no puede ser conservador en las dos
+      // direcciones: contra un TECHO hay que contar con el máximo, contra un MÍNIMO con el
+      // mínimo. En una protagonista T3 mueve la línea dentro de `PIEZAS_PROTAGONISTA_RANGO`
+      // según la energía de esa persona, así que lo MENOS que puede recibir es el extremo bajo
+      // del rango — por mucho que la receta de su tramo escriba dos.
+      // ⚑ POR QUÉ EL EXTREMO Y NO UNA ESTIMACIÓN PUNTUAL DEL FACTOR. Medido sobre la parrilla
+      // (306 servicios con protagonista de huevo): el único estimador que el prevuelo puede
+      // calcular sin conocer el plato —`objetivoServicio / kcal(la propia protagonista)`— tiene
+      // un sesgo MEDIANO de 2,78× (rango 0,97-10,26) y sobreestima en 178 de 306; y el factor
+      // tampoco es una constante de la persona (mesa-6/n1 va de 0,96 a 1,84 y cruza el borde de
+      // la pieza en los dos sentidos). Fijar un punto ahí sería inventar precisión que el dato no
+      // tiene, que es lo que §10.9 prohíbe. El intervalo, en cambio, es EXACTO: son las propias
+      // cotas con las que T3 recorta. En todo cubo no contable esto no toca nada.
+      if (opts.mejorCaso && protagonista[c] && piezas > 0)
+        piezas = Math.min(piezas, config.PIEZAS_PROTAGONISTA_RANGO[0]);
       if (piezas > 0) tomas[c] = piezas;
-    } else if (g >= racionCubo[c] * config.TOMA_MIN_FRACCION) tomas[c] = 1;
+      // §10.4 · y aquí la vara es PERSONAL: `gramos / (ración × factor) ≥ TOMA_MIN_FRACCION`,
+      // escrito sin dividir. Con `factor` 1 —menores, y adultos sin dato— es exactamente el
+      // umbral de siempre, así que la ley no toca a quien la ley no nombra.
+    } else if (g >= racionCubo[c] * factor * config.TOMA_MIN_FRACCION) tomas[c] = 1;
   }
   return { tomas, fracciones, gramosSalud, huecos };
 }
@@ -2325,8 +2378,9 @@ module.exports = { compilarPools, disponibilidad, CUBOS: [...CUBOS] };
 // pero su familia lo recupera (tortilla con nota-sustituto para él).
 'use strict';
 const { SLOTS, cubosDe } = require('./t1_esqueleto.js');
-const { racionParaLinea, EDAD_TABLA_INFANTIL_MIN: EDAD_MINIMA_PRODUCTO } = require('./raciones.js');
+const { racionParaLinea, varaDe, EDAD_TABLA_INFANTIL_MIN: EDAD_MINIMA_PRODUCTO } = require('./raciones.js');
 const { cuotaDeServicio } = require('./cuotas.js');
+const { objetivoDiario } = require('./energia.js');
 const { casaAlergeno, NO_VEGANO_PESE_A_NATURALEZA, ALERGENO_CARNE_PESCADO,
   ALERGENO_ANIMAL_INDIRECTO } = require('./contrato_familia.js');
 
@@ -2348,6 +2402,25 @@ const VIA_POR_FUNCION = {
 
 function prevuelo(entrada, pools, datos, config) {
   const { familia, estacion, presencia, edades, memoria } = entrada;
+  // ── §10.4 · LA VARA PERSONAL DE LA MESA SE RESUELVE AQUÍ, Y AQUÍ SE QUEDA LA KCAL
+  // El umbral de la toma es personal en los adultos (`factor = min(1, objetivo_dia / AR)`), así
+  // que el peso de la casilla —que se cuenta con la MISMA `cuotaDeServicio`, §13.11— tiene que
+  // contarse con la misma vara o T1 presupuestaría contra un umbral que nadie usa.
+  //
+  // POR QUÉ EL PREVUELO Y NO T2. §10.16 es prohibición de ARQUITECTURA: «la kcal no elige ni el
+  // plato ni el postre», y la suite b10 asierta sobre el fuente que `t2_relleno.js` no importa ni
+  // calcula energía en ninguna línea. El primer intento de esta obra metió `objetivoDiario` en T2
+  // y la puso roja — el gate hizo su trabajo. El prevuelo es el sitio correcto: aquí ya se
+  // calcula el AFORO de cada miembro (`bandasEfectivas`), la vara personal es exactamente eso, y
+  // lo que sale hacia T1/T2 es un NÚMERO opaco, jamás una necesidad energética. La necesidad no
+  // elige; solo ajusta la vara con la que se mide lo servido.
+  //
+  // Y SE DERIVA DE `entrada`, NO SE RECIBE: cualquier llamador que sepa montar una entrada válida
+  // (familia + semana) tiene vara sin enterarse — generar.js y los tres montajes de superficie.js
+  // no pueden olvidarla porque no la construyen.
+  const varas = {};
+  for (const m of familia.miembros)
+    varas[m.id] = varaDe(m, edades[m.id], objetivoDiario(m, entrada.semana_iso, config).objetivo_dia, datos);
   const alim = Object.fromEntries(datos.alimentos.map(a => [a.id, a]));
   const cat = Object.fromEntries((datos.categorias_aesan || []).map(f => [f.alimento_id, f]));
   const lineasDe = {};
@@ -2760,8 +2833,14 @@ function prevuelo(entrada, pools, datos, config) {
   //   · `max` — lo MÁS que una casilla del cubo puede costarle. Es peor caso porque en las
   //     protagonistas T3 puede subir la ración hasta `PIEZAS_PROTAGONISTA_RANGO[1]` (por eso se
   //     pide `peorCaso`, exactamente como hace T2 al prever). Gobierna los techos.
-  //   · `min` — lo MENOS que una casilla puede aportarle, con la ración de la receta. Gobierna
-  //     los mínimos.
+  //   · `min` — lo MENOS que una casilla puede aportarle. Gobierna los mínimos. Desde la firma
+  //     del 7-ago-2026 (§13.8, `3b235ea`) NO es «la ración de la receta»: son las piezas de la
+  //     PERSONA, y lo menos que la persona puede recibir de una protagonista es el extremo bajo
+  //     de `PIEZAS_PROTAGONISTA_RANGO` — de ahí `mejorCaso`, el espejo exacto de `peorCaso`.
+  //     Antes se presupuestaba el mínimo con la receta y por eso se daba por cubierto lo que no
+  //     lo estaba: medido, `mesa-6/a2` (39a) tenía mínimo 2, T1 lo daba por cubierto con UNA
+  //     casilla de tortilla (receta 120 g = 2 piezas) y T3 le servía 1 porque su energía pide
+  //     ×0,56 — tres semanas de cuatro con el mínimo corto y sin que nadie lo viera venir.
   // En todo cubo NO contable las dos valen 1 y T1 se comporta EXACTAMENTE como antes: la
   // asimetría solo muerde donde la fuente publica piezas, que hoy es el huevo y solo él (§20.20).
   const pesoCubo = { min: {}, max: {} };
@@ -2798,13 +2877,13 @@ function prevuelo(entrada, pools, datos, config) {
       for (const l of planasConEscala(c.elaboracion_id, esNino)) {
         const aid = Array.isArray(l.alternativas) ? c.opcion : l.alimento_id;
         if (!aid || !cat[aid]) continue;
-        lineas.push({ alimento: aid, elaboracion_id: c.elaboracion_id,
+        lineas.push({ alimento: aid, elaboracion_id: c.elaboracion_id, papel: l.papel,
           gramos: ((esNino ? l.gramos_nino : l.gramos_adulto) || 0) * (l.escala || 1) });
       }
       if (!lineas.length) continue;
-      const m = { edad: edades[mid] };
+      const m = varas[mid];
       const alto = cuotaDeServicio(lineas, m, datos, config, { peorCaso: true }).tomas;
-      const bajo = cuotaDeServicio(lineas, m, datos, config).tomas;
+      const bajo = cuotaDeServicio(lineas, m, datos, config, { mejorCaso: true }).tomas;
       for (const cubo of Object.keys(config.CUOTAS)) {
         if (!cubosDe(c.categoria).includes(cubo)) continue;
         if (alto[cubo] > 0) {
@@ -2923,6 +3002,9 @@ function prevuelo(entrada, pools, datos, config) {
 
   return { fijosOK, opcionesLegales, resolucion, servible, dispPorSlot, exclusiones,
     puedeCubo, bandasEfectivas, aporteCubo, pesoCubo, profundidadClave, profundidadLigera,
+    // §10.4 · la vara personal de cada comensal, { edad, factor }, para que T1/T2 midan la toma
+    // con el mismo umbral que T3 sella y T4 audita. Viaja el FACTOR, jamás la kcal (§10.16).
+    varas,
     clavesBloqueadas, clavesProfundidad1, descargos, huecos };
 }
 
@@ -2992,7 +3074,91 @@ function racionParaLinea(datos, filaD1, edad) {
     tramo: 'adulto', fallback: 'adulta' };
 }
 
-module.exports = { racionRef, racionParaLinea, EDAD_TABLA_INFANTIL_MIN, EDAD_ADULTO };
+// ─────────────────────────────────────────────────────────────────────────────
+// §10.4 · LA VARA PERSONAL DEL ADULTO (ley `3b235ea`, firmada por Roger el 7-ago-2026)
+// ─────────────────────────────────────────────────────────────────────────────
+// QUÉ ES. La ración de referencia del adulto se PERSONALIZA: se multiplica por su factor
+//
+//        factor = min(1, objetivo_dia / AR)
+//
+// donde `objetivo_dia` son las kcal que le tocan (Mifflin, `energia.js`) y `AR` es la necesidad
+// media de los suyos —sexo × tramo de edad × actividad— que el banco publica en
+// `necesidades_referencia` (16ª tabla, EFSA). Con ella, una toma cuenta si
+// `gramos ≥ ración × factor × TOMA_MIN_FRACCION`: al adulto ligero la vara le baja con él.
+//
+// POR QUÉ VIVE AQUÍ Y NO EN `cuotas.js`. Este módulo es el dueño de LA VARA —la ración de
+// referencia por (categoría × edad)— y §10.4 personaliza exactamente eso. `cuotas.js` declara en
+// su propia cabecera que «NO recorre nada: recibe las líneas ya resueltas y solo aplica el
+// metro»: fabricar el metro leyendo una tabla nueva del banco es construirlo, no aplicarlo.
+// Además `cuotas.js` ya requiere este fichero, así que la definición no añade ninguna arista al
+// grafo de dependencias ni puede acabar duplicada del otro lado.
+//
+// ── EL CAPADO EN 1 ES OBLIGATORIO Y ESTÁ MEDIDO. Sin `min(1, ·)` el factor también SUBE la vara
+// a los comensales grandes y les hace PERDER tomas que hoy cuentan. Al pequeño la vara le baja
+// con él; al grande jamás se le sube. Quitarlo es el primer mutante de la suite.
+//
+// ── LOS MENORES QUEDAN EXENTOS, y el corte es `EDAD_ADULTO`. La razón que da la ley es que «su
+// ración ya viene escalada por tramo»: `racionParaLinea` resuelve 3-18 contra
+// `raciones_infantiles` y solo desde `EDAD_ADULTO` usa la ración adulta de D1. Aplicar el factor
+// donde la ración YA escaló es escalar dos veces — medido: un niño de 8 años salía con «factor
+// 0,92 ⬅ ligero» siendo un niño medio.
+// ⚠️ TENSIÓN DECLARADA: el encargo del punto 3 escribe «adultos = edad ≥ 18» y aquí el corte es
+// `EDAD_ADULTO` (19), que es la frontera EXACTA donde la ración deja de venir del tramo. A los 18
+// la ración todavía sale de `raciones_infantiles` (tramo 16-18), así que un factor encima sería
+// el doble escalado que la propia ley prohíbe: entre el número y su motivo, manda el motivo.
+// No es medible en la parrilla de hoy (ninguna de las 12 familias tiene un miembro de 18) y queda
+// como fila abierta para Roger.
+//
+// ── SIN DATO, FACTOR 1. Si falta el AR (EFSA no publica por encima de 79) o falta `objetivo_dia`,
+// el factor es 1 y la vara es la estándar del banco. Es el lado ESTRICTO —el factor solo puede
+// bajar la vara— así que ningún hueco de dato relaja un umbral: como mucho no lo afloja.
+const cacheAR = new WeakMap();
+function indiceAR(datos) {
+  let ix = cacheAR.get(datos);
+  if (!ix) {
+    ix = {};
+    for (const f of datos.necesidades_referencia || []) {
+      const k = `${f.sexo}|${f.actividad}`;
+      (ix[k] = ix[k] || []).push(f);
+    }
+    for (const k of Object.keys(ix)) ix[k].sort((a, b) => a.edad_min - b.edad_min);
+    cacheAR.set(datos, ix);
+  }
+  return ix;
+}
+
+// necesidad media de los suyos, en kcal/día · null si el banco no la publica para ese perfil
+function arDe(datos, sexo, actividad, edad) {
+  const filas = indiceAR(datos)[`${sexo}|${actividad}`];
+  if (!filas) return null;
+  const f = filas.find(x => edad >= x.edad_min && edad <= x.edad_max);
+  return f ? f.kcal_dia : null;
+}
+
+function factorPersonal(miembro, datos) {
+  if (!miembro || miembro.edad == null || miembro.edad < EDAD_ADULTO) return 1;   // menores EXENTOS
+  const ar = arDe(datos, miembro.sexo, miembro.actividad, miembro.edad);
+  const objetivo = miembro.objetivo_dia;
+  if (!(ar > 0) || !(objetivo > 0)) return 1;                                     // sin dato: vara del banco
+  return Math.min(1, objetivo / ar);                                              // CAPADO en 1, jamás por encima
+}
+
+// ── LO QUE VIAJA ES EL FACTOR, JAMÁS LA KCAL (§10.16, prohibición de arquitectura)
+// `cuotaDeServicio` recibe `{ edad, factor }` y no una necesidad energética. No es cosmética: la
+// suite b10 asierta que **T2 —quien ELIGE el plato y el postre— no importa ni calcula energía en
+// ninguna línea**, y el primer intento de esta obra metió `objetivoDiario` dentro de
+// `t2_relleno.js` y la puso roja. La necesidad no elige; aquí solo ajusta la vara con la que se
+// mide si lo servido cuenta. Por eso el factor se resuelve donde la energía ya es legítima
+// —`prevuelo.js` para T1/T2, y T3/T4 con sus propios objetivos— y llega a la definición única
+// como un número opaco.
+//
+// `varaDe` es el ÚNICO constructor de esa forma: un llamador nuevo lo usa y hereda la ley entera.
+const varaDe = (m, edad, objetivoDia, datos) => ({ edad,
+  factor: factorPersonal({ edad, sexo: m ? m.sexo : null, actividad: m ? m.actividad : null,
+    objetivo_dia: objetivoDia }, datos) });
+
+module.exports = { racionRef, racionParaLinea, EDAD_TABLA_INFANTIL_MIN, EDAD_ADULTO,
+  factorPersonal, arDe, varaDe };
 
   };
 
@@ -4660,7 +4826,7 @@ function rellenarSemana({ entrada, esq, pre, pools, datos, config, memoria, menu
     for (const l of lineasPlanas(ix, c.elaboracion_id)) {
       const alimentoId = Array.isArray(l.alternativas) ? c.opcion : l.alimento_id;
       if (!ix.cat[alimentoId]) continue;
-      lineas.push({ alimento: alimentoId, elaboracion_id: c.elaboracion_id,
+      lineas.push({ alimento: alimentoId, elaboracion_id: c.elaboracion_id, papel: l.papel,
         gramos: (esNino ? l.gramos_nino : l.gramos_adulto) * (l.escala || 1) });
     }
     return cacheAporte[k] = lineas;
@@ -4669,7 +4835,13 @@ function rellenarSemana({ entrada, esq, pre, pools, datos, config, memoria, menu
   // la cuota de un SERVICIO para un comensal: se juntan TODAS sus líneas y se decide una vez.
   // El umbral es del plato que se come, no de cada trozo (0,3 raciones en el principal + 0,3 en
   // la guarnición son UNA toma, no dos medias ni ninguna) — por eso nunca se llama por pieza.
-  const cuotaDe = (lineas, mid) => cuotaDeServicio(lineas, { edad: edades[mid] }, datos, config, { peorCaso: true });
+  // §10.4 · la vara de la toma es PERSONAL en los adultos, y T2 prevé con la MISMA que T3 sella y
+  // T4 audita: si no, vuelve el desacuerdo ininterpretable de §13.11. Sale del prevuelo ya
+  // resuelta —`{ edad, factor }`, un número— y por eso este fichero sigue SIN una sola kcal:
+  // §10.16 prohíbe que la energía entre en quien ELIGE, y la suite b10 lo asierta sobre el
+  // fuente. Sin prevuelo (nadie hoy), `{ edad }` a secas: factor 1, la vara de siempre.
+  const varaDe_ = mid => (pre.varas && pre.varas[mid]) || { edad: edades[mid] };
+  const cuotaDe = (lineas, mid) => cuotaDeServicio(lineas, varaDe_(mid), datos, config, { peorCaso: true });
   const reglasVentana = reglasDeVentana(datos);
   // el peso de una casilla en la unidad de la frecuencia (§13.8), calculado por el prevuelo con
   // esta misma `cuotaDeServicio`. Aquí solo se lee: es la MISMA definición que usa T1 al
@@ -6198,6 +6370,7 @@ const { derivarElaboracion, indexar, kcalDe, edadEnSemana } = require('./derivar
 const { objetivoDiario } = require('./energia.js');
 const { racionParaLinea } = require('./raciones.js');
 const { unidadDe, aPiezas, cuotaDeServicio } = require('./cuotas.js');
+const { varaDe } = require('./raciones.js');
 const { cubosDe } = require('./t1_esqueleto.js');
 
 // TECHOS DE SALUD: innegociables por spec §7 («Jamás: H entero, ni los techos de salud»). La
@@ -6452,14 +6625,33 @@ function fraccionarSemana({ semana, familia, config }, datos) {
             }
             piezasAcum[m.id][cat] = (piezasAcum[m.id][cat] || 0) + piezas;
             const g = Math.round(piezas * unidad);
-            if (g === Math.round(nominal * mejor)) continue;
+            // ── §10.8.2 · «NADIE COME MENOS DE UN HUEVO ENTERO» (firmado por Roger 7-ago-2026,
+            //    `3b235ea`). El escape vivía EXACTAMENTE aquí, en el guard de redundancia.
+            //    Este bloque solo escribe el ajuste cuando cambia algo; el guard preguntaba si el
+            //    ajuste era redundante comparando `g` contra `Math.round(nominal * mejor)` — un
+            //    valor REDONDEADO— cuando el derivador aplica la fracción CRUDA. Con la fracción a
+            //    menos de medio gramo de la pieza entera los dos enteros coincidían, el ajuste no
+            //    se emitía, y al plato llegaba `nominal × mejor`: una FRACCIÓN de huevo. Medido
+            //    sobre la parrilla (12 familias × 4 semanas), 3 líneas reales:
+            //      · omnivora-2a2n/W04 1-cena n1 huevos-rotos-jamon — receta 60 g → servido 59,5 g
+            //      · sin-gluten/W06 2-cena a2   huevos-rotos-jamon — receta 120 g → servido 59,6 g
+            //      · curso-escolar/W04 5-comida a1 carbonara       — 34,3 g = 2,02 yemas
+            //    Las dos primeras violan la ley por partida doble: ni es entera ni llega a UNA.
+            //    La comparación correcta es contra lo que de verdad recibiría la línea si aquí no
+            //    escribiéramos: el ajuste fino de 2-bis si lo hubo, y si no la receta escalada.
+            //    No es un suelo puesto encima —el suelo de pieza ya lo pone `pMin` arriba—: es que
+            //    el ajuste que YA estaba decidido llegue al plato.
+            const previo = ajustesLinea.filter(a => a.miembro === m.id
+              && a.elaboracion_id === pe.elaboracion_id && a.alimento_id === l.alimento_id).pop();
+            const efectivo = previo ? previo.gramos : nominal * mejor;
+            if (Math.abs(efectivo - g) < 1e-9) continue;
             ajustesLinea.push({ miembro: m.id, elaboracion_id: pe.elaboracion_id,
               alimento_id: l.alimento_id, gramos: g });
             // la proteína VIVA sigue a los gramos que de verdad se sirven: redondear a piezas
             // enteras mueve proteína, y la declaración de más abajo tiene que ver ese movimiento.
             // Sin esto, T3 declaraba (o callaba) sobre la receta y no sobre el plato — cazado por
             // T4 en `2026-W05 4-cena a2`, 15,1 g contra un suelo de 15,4 g **sin descargo**.
-            protViva += (g - nominal * mejor) * protPorGramo(ix, l);
+            protViva += (g - efectivo) * protPorGramo(ix, l);
           }
         }
       }
@@ -6515,7 +6707,9 @@ function fraccionarSemana({ semana, familia, config }, datos) {
           const r = derivarElaboracion(ix, pe, m.id, esNino, mejor, [], [], { ...ajustesSello, gramos: ajG });
           for (const l of r.lineas) lineasSello.push({ alimento: l.alimento, gramos: l.gramos_base, papel: l.papel });
         }
-        const q = cuotaDeServicio(lineasSello, { edad: obj.edad }, datos, config);
+        // §10.4 · la columna SERVIDA se cuenta con la vara personal del comensal: el sello es lo
+        // que la familia ve (13.11.1) y tiene que decir la cifra del juez, que usa la misma.
+        const q = cuotaDeServicio(lineasSello, varaDe(m, obj.edad, obj.objetivo_dia, datos), datos, config);
         for (const c of Object.keys(q.tomas))
           tomasServidas[m.id][c] = (tomasServidas[m.id][c] || 0) + q.tomas[c];
       }
@@ -6586,6 +6780,7 @@ module.exports = { fraccionarSemana, piezasDe, sellarResumenSemana };
 
 const { cubreEje } = require('./ejes.js');
 const { cuotaDeServicio } = require('./cuotas.js');
+const { varaDe } = require('./raciones.js');
 
 const KCAL = { proteina: 4, hidratos: 4, grasa: 9, fibra: 2 };
 
@@ -6632,6 +6827,15 @@ function composicion(sv, mid) {
 // `ambito`: 'servicio' = plato + postre (cuotas, techos de salud, suelo proteico, energía —
 // la fruta del postre SÍ cuenta ahí, dictado de Roger 6-ago) · 'plato' = sólo el plato (§6.9).
 function lineasServidas(ix, sv, mid, esNino, fraccion, ambito = 'servicio') {
+  // `fraccion == null` = VÍA BASE (la ración de la receta, para medir los ejes): fracción 1 y —la
+  // mitad que faltaba— los `ajustes_linea` de T3 NO aplican. La doctrina ya estaba escrita más
+  // abajo («la fracción de T3 ajusta ENERGÍA, no composición») pero el ajuste la colaba por la
+  // puerta de atrás: un miembro con gramos ajustados por persona medía su eje en SERVIDO aunque
+  // el llamador pidiera base. Invisible con la vara de servicio (ninguna divergencia cruzaba el
+  // 0,5); el careo de la vara de DÍA del 7-ago lo destapó (mesa-vegetariano/W06/día1/a1:
+  // 0,69 servido contra 1,14 base — el ×0,6 era su fracción de T3, clavada).
+  const esBase = fraccion == null;
+  if (esBase) fraccion = 1;
   const { plato, postre, quitar, cambiar, gramos } = composicion(sv, mid);
   const piezas = ambito === 'plato' || !postre ? plato : plato.concat([postre]);
   const out = [];
@@ -6652,7 +6856,7 @@ function lineasServidas(ix, sv, mid, esNino, fraccion, ambito = 'servicio') {
           // derivador, contada por separado — para eso existe la doble contabilidad)
           for (let salto = 0; salto < 4 && cambiar[aid]; salto++) aid = cambiar[aid];
         }
-        const ajuste = gramos[`${pe.elaboracion_id}|${aid}`];
+        const ajuste = esBase ? null : gramos[`${pe.elaboracion_id}|${aid}`];
         const g = ajuste != null ? ajuste
           : ((esNino ? l.gramos_nino : l.gramos_adulto) || 0) * escala * fraccion;
         out.push({ elaboracion: pe.elaboracion_id, alimento: aid, gramos: g, papel: l.papel, base: l.base, eje: Array.isArray(l.alternativas) });
@@ -6684,6 +6888,13 @@ const protDeLinea = (ix, l) => {
 function auditar(corrida, datos, config, objetivos) {
   const ix = indice(datos);
   const divergencias = [], silenciosas = [], ejeCorto = [], huecosEje = [], minimoCorto = [], techoMudo = [];
+  // §6.4-bis · LAS DOS MITADES DE LA VARA DE LA LEY para el hidrato (firmada por Roger, 7-ago-2026):
+  //   `hidratoDiaCorto`      = días ENTEROS de casa cuya suma comida+cena no llega a la ración entera.
+  //   `hidratoServicioCorto` = los servicios de los días que NO son enteros de casa, medidos con la
+  //                            vara de servicio (media ración) — la mitad del día que la app gobierna.
+  const hidratoDiaCorto = [], hidratoServicioCorto = [];
+  let diasCasa = 0, diasAServicio = 0, diasSinCasa = 0, serviciosAServicio = 0;
+  const causaDia = {};                              // causa que parte el día → cuántos días caen por ella
   let fvConPostre = 0;                              // §6.9 · el MISMO eje contando el postre
   const miembros = Object.fromEntries(corrida.familia.miembros.map(m => [m.id, m]));
   const anclas = new Set((corrida.familia.anclas || []).map(a => `${a.dia}-${a.servicio}:${a.elaboracion_id}`));
@@ -6709,6 +6920,13 @@ function auditar(corrida, datos, config, objetivos) {
   const serviciosGobernados = (sem, mid) =>
     SLOTS_SEMANA.filter(s => gobernados.has(s) && (sem.presencia[mid] || {})[s] === true).length;
 
+  // §6.4-bis · LA RACIÓN ENTERA DEL DÍA. Se DERIVA de la media ración del servicio (§6.4, el umbral
+  // `EJE_MIN_FRACCION`) en vez de escribir `1` a mano, y no es cosmética: las dos varas miden la
+  // MISMA unidad —la ración del banco— y dos copias a mano del mismo número es el bug nº1 de este
+  // árbol, ya pagado tres veces con la ración de verdura (cabecera de `ejes.js`). Derivada, la del
+  // día no puede quedarse atrás si la del servicio se mueve.
+  const UMBRAL_DIA = 2 * config.EJE_MIN_FRACCION;
+
   // La memoria de variedad CRUZA semanas (M1 se mide en días, M2 en servicios). Día absoluto por
   // índice de semana × 7: las corridas se generan en semanas consecutivas. Si alguna vez hubiera
   // salto, las distancias salen MENORES de lo real ⇒ el auditor peca de estricto, nunca de laxo,
@@ -6721,6 +6939,11 @@ function auditar(corrida, datos, config, objetivos) {
     if (sem.fallo) continue;
     const tomas = {}, saludG = {};                   // mid → cubo/categoría → recuento propio
     tomasPorSemana[sem.semana_iso] = tomas;
+    // §6.4-bis · `mid|dia` → lo que aportó de hidrato cada servicio de ese día, y el índice de
+    // slots de la semana para poder preguntar por el servicio que NO se caminó (el que falta es
+    // justo el que decide si el día es entero de casa).
+    const hidDia = {}, svPorSlot = {};
+    for (const s of sem.servicios) svPorSlot[`${s.dia}-${s.servicio}`] = s;
     let idx = -1;
 
     for (const sv of sem.servicios) {
@@ -6784,13 +7007,13 @@ function auditar(corrida, datos, config, objetivos) {
         // techos de salud y en la energía, que se miden sobre `lineas` (ámbito 'servicio', unas
         // líneas más abajo). Es dictado explícito de Roger, 6-ago: «no cuentan como verdura del
         // plato PERO sí suman en las calorías totales del menú».
-        const lineasBase = lineasServidas(ix, sv, mid, esNino, 1, 'plato');
+        const lineasBase = lineasServidas(ix, sv, mid, esNino, null, 'plato');
         // …y la MISMA medida con el postre dentro, publicada al lado. No es redundancia: es la
         // única forma de que la diferencia entre las dos siga siendo visible sin volver a
         // fabricar una vista. Mientras `eje_fv_corto` < `eje_fv_corto_con_postre`, hay platos que
         // sólo llegan a la verdura por el postre — y ésos son los que §6.9 no perdona.
         // (Pedido del controlador de la obra, 6-ago.)
-        const lineasConPostre = lineasServidas(ix, sv, mid, esNino, 1, 'servicio');
+        const lineasConPostre = lineasServidas(ix, sv, mid, esNino, null, 'servicio');
         // ⚑ 6-ago · LOS TRES EJES, no dos (§6.4: «todo servicio debe cubrir tres ejes para cada
         // presente: proteína, hidrato y fruta-verdura», medidos en gramos «nunca por etiqueta»).
         // El de proteína no se auditaba y el motivo escrito en `ejes.js:39-41` era que su suelo
@@ -6810,6 +7033,16 @@ function auditar(corrida, datos, config, objetivos) {
               tipo: `eje-${eje}-corto`,
               detalle: `${d.fraccion.toFixed(2)} raciones < ${d.umbral} (media ración de su tramo)`
                 + (d.huecos.length ? ` · ${d.huecos.length} línea(s) sin ración en el banco` : '') });
+          // §6.4-bis · el hidrato del DÍA se suma AQUÍ, con la medida que el bucle acaba de hacer:
+          // ni una segunda pasada por las líneas ni una segunda vara. Entre la vara de servicio y
+          // la de día cambian el DENOMINADOR y el umbral, jamás la medición.
+          if (eje === 'hidrato') {
+            const k = `${mid}|${sv.dia}`;
+            const a = hidDia[k] = hidDia[k] || { fraccion: 0, huecos: 0, porServicio: {} };
+            a.fraccion += d.fraccion;
+            a.huecos += d.huecos.length;
+            a.porServicio[sv.servicio] = { fraccion: d.fraccion, cubre: d.cubre };
+          }
         }
         // la contramedida de §6.9, publicada al lado y NUNCA como gate: el mismo eje de
         // fruta-verdura contando el postre. La distancia entre los dos números es cuántos platos
@@ -6826,16 +7059,19 @@ function auditar(corrida, datos, config, objetivos) {
 
         // tomas y gramos de salud, con RECORRIDO propio y METRO compartido.
         //
-        // ⚑ 3-ago (fila 4.5): AQUÍ YA NO SE MIRA `papel === 'condimento'`. Era una ETIQUETA
-        // eximiendo de contar, y este proyecto ya mató una vez esa figura (`aporte`): «toda
-        // etiqueta que gobierne una decisión del motor debe ser derivable desde gramos». Medido
-        // el 3-ago sobre el banco: de 58 líneas de condimento, **una** cae en cubo de cuota —
-        // `jamon-serrano` 40 g en `huevos-rotos-jamon`, que son 0,8 raciones de carne procesada
-        // que ni consumían cuota ni tocaban el techo de salud. Un techo de salud es ABSOLUTO
-        // (spec §4): no existe «demasiado poco para contar», existe el gramo.
-        // Y no hace falta ningún umbral nuevo: para las TOMAS ya filtra `TOMA_MIN_FRACCION`
-        // (los 10 g de limón son 0,06 raciones y no cuentan solos), y para los TECHOS cuenta
-        // todo. El condimento sigue SIN cerrar ejes —eso lo protege `cubreEje`— que es por
+        // ⚑ 3-ago (fila 4.5) → REVERTIDO EL 7-ago POR LEY (§10.4, commit `3b235ea`). El 3-ago se
+        // quitó de aquí el filtro `papel === 'condimento'` con este argumento, que sigue siendo
+        // bueno: era una ETIQUETA eximiendo de contar, la figura que este proyecto ya había
+        // matado dos veces (`aporte` en 4.5, `sin-cuota` en 5.2), y §18.6 dice que exime tan
+        // peligrosamente como afirma. Roger la ha vuelto a firmar el 7-ago para el NIVEL 1: el
+        // condimento no alimenta tomas —«el jamón de los guisantes no es una vez de carne»— y el
+        // filtro vive ahora en la definición ÚNICA (`cuotas.js`), no reimplementado aquí.
+        // LA TENSIÓN NO SE ESCONDE, SE ACOTA: la exención es SOLO del nivel 1. El gramo del
+        // condimento sigue ÍNTEGRO en `gramosSalud` (nivel 3, §10.3), que es el que protege la
+        // salud, y ahí sigue sin existir «demasiado poco para contar»: existe el gramo. Medido el
+        // 3-ago sobre el banco: de 58 líneas de condimento, **una** cae en cubo de cuota —
+        // `jamon-serrano` 40 g en `huevos-rotos-jamon`, 0,8 raciones de carne procesada— y es
+        // exactamente el caso que la ley nombra. El condimento sigue SIN cerrar ejes —eso lo protege `cubreEje`— que es por
         // donde volvería la hamburguesa sola: la asimetría es la que declara el encabezado de
         // `categorias_aesan` («los mínimos, el gramo del eje; los techos, todo gramo»).
         //
@@ -6846,11 +7082,92 @@ function auditar(corrida, datos, config, objetivos) {
         // RECORRIDO — `lineasServidas` de este mismo fichero, con su composición, sus sustitutos
         // y su opción elegida. Es la misma frontera que ya se cruzó con `ejes.js` el 3-ago, y el
         // motivo es el mismo: T4 conservaba una vara y T2 otra, y de ahí salía 5.4.
-        const q = cuotaDeServicio(lineas, { edad: obj.edad }, datos, config);
+        // §10.4 · el juez mide con la MISMA vara personal, por su recorrido propio (`lineasServidas`)
+        const q = cuotaDeServicio(lineas, varaDe(m, obj.edad, obj.objetivo_dia, datos), datos, config);
         for (const c of Object.keys(q.tomas))
           ((tomas[mid] = tomas[mid] || {})[c] = (tomas[mid][c] || 0) + q.tomas[c]);
         for (const [cat, g] of Object.entries(q.gramosSalud))
           ((saludG[mid] = saludG[mid] || {})[cat] = (saludG[mid][cat] || 0) + g);
+      }
+    }
+
+    // ── 2-bis · EL EJE DE HIDRATO POR DÍA (§6.4-bis, firmado por Roger el 7-ago-2026)
+    //
+    // LA LEY, literal: «el eje de hidrato se cumple por DÍA cuando la persona come en casa los dos
+    // servicios: una ración entera sumando comida y cena. Si uno de los dos no es de casa —el cole,
+    // o un servicio marcado fuera— ese día el hidrato de esa persona se mide POR SERVICIO, en el
+    // que la app sí gobierna».
+    //
+    // ⚑ LA CONDICIÓN «LOS DOS SERVICIOS DE CASA» ES LA MITAD IMPORTANTE DE LA LEY, no una salvedad
+    // de borde. Exigir la ración ENTERA del día a un día del que la app gobierna la MITAD es
+    // exactamente el error de denominador que §14.6 ya pagó con los mínimos de frecuencia —está
+    // contado en la sección 4 de este mismo fichero: prorratear por presencia en vez de por slots
+    // gobernados llamaba «mínimo corto sin declarar» a 28 casos que el motor había cumplido—. Por
+    // eso «de casa» se comprueba slot a slot y con las TRES causas que lo rompen, no con una.
+    //
+    // QUÉ ES «DE CASA» para un miembro en un slot — las tres condiciones, y las tres a la vez:
+    //   · GOBERNADO · el slot está en `corrida.familia.gobierno` (§10.7). `presencia-7-14` gobierna
+    //     solo las 7 cenas: ninguno de sus días es un día entero de esta app, y pedirle la ración
+    //     del día sería contarle como propia la comida que la familia hace fuera.
+    //   · PRESENTE  · `sem.presencia[mid][slot] === true`. Aquí caen LAS DOS formas de «no es de
+    //     casa» que la ley nombra, y llegan al juez como el MISMO hecho: el COLE (`curso-escolar`
+    //     marca ausencia fija en las cinco comidas de n1 y n2) y el servicio marcado FUERA
+    //     (`mesa-6` n1 el 3-cena, `severa-huevo-2a2n` n2 el finde). T4 no distingue uno de otro y
+    //     no debe: `menu_cole` ni siquiera viaja en `corrida.familia`, porque el juez no audita el
+    //     plato del comedor escolar — audita que la app no exija en casa lo que no sirve en casa.
+    //   · SERVIDO   · el servicio existe y trae plato. Un slot con `no_servido`, o una semana con
+    //     `fallo` (que este bucle ya saltó arriba), no es un servicio de casa: es uno que no hubo.
+    //
+    // T4 NO GENERA: esto lee `presencia`, `gobierno` y `plato` ya decididos y no mueve ni un menú.
+    for (const m of corrida.familia.miembros) {
+      if (!objetivos[m.id]) continue;                // sin objetivo no se midió ningún servicio suyo
+      for (let dia = 1; dia <= 7; dia++) {
+        const causaDeSlot = s => {
+          const slot = `${dia}-${s}`;
+          if (!gobernados.has(slot)) return 'no-gobernado';
+          if ((sem.presencia[m.id] || {})[slot] !== true) return 'fuera-de-casa';
+          const sv = svPorSlot[slot];
+          if (!sv || !sv.plato) return 'no-servido';
+          return null;                               // de casa
+        };
+        const causas = ['comida', 'cena'].map(causaDeSlot);
+        const a = hidDia[`${m.id}|${dia}`];
+
+        // ── DÍA ENTERO DE CASA · la vara es la ración ENTERA sumando los dos servicios
+        if (causas.every(c => c === null)) {
+          diasCasa++;
+          const f = a ? a.fraccion : 0;
+          if (f < UMBRAL_DIA - 1e-9)
+            hidratoDiaCorto.push({ semana: sem.semana_iso, dia, miembro: m.id,
+              tipo: 'eje-hidrato-dia-corto',
+              detalle: `${f.toFixed(2)} raciones sumando comida y cena < ${UMBRAL_DIA} (ración entera, §6.4-bis)`
+                + (a && a.huecos ? ` · ${a.huecos} línea(s) sin ración en el banco` : '') });
+          continue;
+        }
+
+        // ── DÍA PARTIDO · uno de los dos no es de casa ⇒ el hidrato se mide POR SERVICIO, y solo
+        // en los servicios que esta casa sí sirvió. Un día sin NINGÚN servicio de casa no se mide:
+        // no hay nada que auditar, y declararlo corto sería inventar un incumplimiento sobre un día
+        // que la app no gobierna — el denominador de §14.6 otra vez.
+        diasAServicio++;
+        const firma = [...new Set(causas.filter(Boolean))].sort().join('+');
+        causaDia[firma] = (causaDia[firma] || 0) + 1;
+        // «en el que la app SÍ gobierna», literal: se miden los slots que sí son de casa, no todo
+        // lo que se caminó. En la parrilla real da lo mismo —un slot no gobernado nunca trae
+        // plato— pero la ley dice «el que sí gobierna» y el juez tiene que decir eso mismo, no
+        // algo que hoy coincide.
+        const medidos = ['comida', 'cena']
+          .filter((s, k) => causas[k] === null && a && a.porServicio[s])
+          .map(s => ({ servicio: s, ...a.porServicio[s] }));
+        if (!medidos.length) { diasSinCasa++; continue; }
+        for (const s of medidos) {
+          serviciosAServicio++;
+          if (!s.cubre)
+            hidratoServicioCorto.push({ semana: sem.semana_iso, slot: `${dia}-${s.servicio}`, miembro: m.id,
+              tipo: 'eje-hidrato-servicio-corto',
+              detalle: `${s.fraccion.toFixed(2)} raciones < ${config.EJE_MIN_FRACCION} (media ración) · `
+                + `el día no es entero de casa: ${firma}` });
+        }
       }
     }
 
@@ -6953,8 +7270,12 @@ function auditar(corrida, datos, config, objetivos) {
   //    **181 de 644 servicios de la parrilla se quedan entre 0,25 y 0,50 raciones** — ninguno a
   //    cero: los platos SÍ llevan hidrato, no llega a media ración. Convertirlo en bloqueo
   //    reescribiría un cuarto de los menús por un umbral que nadie ha aprobado, así que se MIDE
-  //    y se REPORTA, y la decisión (D1 de la lista: ¿media ración por servicio o ración completa
-  //    por día? ¿y la ración de la sopa es la del plato principal?) es de Roger.
+  //    y se REPORTA.
+  //    ⚑ 7-ago · LA DECISIÓN D1 QUE ESTA NOTA DABA POR PENDIENTE YA ESTÁ FIRMADA. Preguntaba
+  //    «¿media ración por servicio o ración completa por día?»: §6.4-bis responde POR DÍA, y con
+  //    su condición —solo cuando la persona come en casa los dos servicios—. La vara vive en la
+  //    sección 2-bis y el gate la lee desde ahí. (La otra mitad de D1, si la ración de la sopa es
+  //    la del plato principal, sigue abierta y es del BANCO, no del juez.)
   //    Un gate rojo que se apaga solo no vale: por eso está en `gates`, a la vista, no escondido.
   const gates = { relajaciones_silenciosas_cero: silenciosas.length === 0,
     ejes_cubiertos_en_gramos: cortos('fruta-verdura') === 0,
@@ -6974,13 +7295,38 @@ function auditar(corrida, datos, config, objetivos) {
   //    las letras. Se MIDE y se REPORTA a la vista; cerrarlo es alta de banco (los 171) más
   //    revisión del campo `ejes` de tres elaboraciones (los 138), y ninguna de las dos cosas se
   //    hace desde el juez.
-  const gatesInformativos = { eje_hidrato_cubierto: cortos('hidrato') === 0,
+  // ⚑ 7-ago · `eje_hidrato_cubierto` SE RE-ANCLA a la vara de §6.4-bis: por DÍA donde la ley manda
+  // día, por SERVICIO donde la ley manda servicio. Hasta hoy leía `cortos('hidrato')`, que es la
+  // vara de servicio aplicada a los 14 slots — la que la ley acaba de dejar de ser. El gate sigue
+  // INFORMATIVO y no bloqueante: la firma de Roger fija la VARA, no ordena cerrar el hueco, y
+  // cerrarlo reescribe menús. Lo que cambia hoy es QUÉ mide, no cuánto pesa.
+  const gatesInformativos = {
+    eje_hidrato_cubierto: hidratoDiaCorto.length === 0 && hidratoServicioCorto.length === 0,
     eje_proteina_cubierto: cortos('proteina') === 0,
     minimos_de_frecuencia_cubiertos: minimoCorto.length === 0 };
   return { tiempo: 'T4', gates, gates_informativos: gatesInformativos,
     ok: Object.values(gates).every(Boolean),
     metricas: { silenciosas: silenciosas.length, divergencias: divergencias.length,
-      eje_fv_corto: cortos('fruta-verdura'), eje_hidrato_corto: cortos('hidrato'),
+      eje_fv_corto: cortos('fruta-verdura'),
+      // §6.4-bis · LAS DOS CIFRAS DEL HIDRATO, las dos a la vista y con nombre propio — el mismo
+      // patrón que `eje_fv_corto` / `eje_fv_corto_con_postre` (6-ago): al cambiar de vara no se
+      // tira ninguna vista.
+      //  · `eje_hidrato_corto` es la vara VIEJA: por servicio, sobre los 14 slots. Ya NO es la del
+      //    gate, y se sigue publicando porque es la serie que existe desde el 3-ago y la única
+      //    forma de ver cuánto movió la ley el número (§6.4-bis lo midió al firmar: 153 de 2.240).
+      //  · `eje_hidrato_corto_ley` es la vara NUEVA y la que lee el gate: los días enteros de casa
+      //    que no llegan a la ración entera MÁS los servicios de los días partidos que no llegan a
+      //    la media. Sus dos sumandos y sus dos DENOMINADORES van al lado, porque un corto sin su
+      //    denominador no se puede leer — que es exactamente lo que enseñó §14.6.
+      eje_hidrato_corto: cortos('hidrato'),
+      eje_hidrato_corto_ley: hidratoDiaCorto.length + hidratoServicioCorto.length,
+      eje_hidrato_corto_dia: hidratoDiaCorto.length,
+      eje_hidrato_dias_casa: diasCasa,
+      eje_hidrato_corto_servicio: hidratoServicioCorto.length,
+      eje_hidrato_servicios_a_vara_servicio: serviciosAServicio,
+      eje_hidrato_dias_a_vara_servicio: diasAServicio,
+      eje_hidrato_dias_sin_servicio_de_casa: diasSinCasa,
+      eje_hidrato_causa_dia_partido: causaDia,
       eje_proteina_corto: cortos('proteina'),
       // §6.9 · la contramedida: el eje de fruta-verdura contando el postre. `eje_fv_corto` es el
       // que manda (la ley dice que el postre no exime); éste sólo existe para que la diferencia
@@ -6995,6 +7341,10 @@ function auditar(corrida, datos, config, objetivos) {
     tomas: tomasPorSemana,
     silenciosas: silenciosas.slice(0, 50), divergencias: divergencias.slice(0, 50),
     eje_corto: ejeCorto.slice(0, 50), eje_huecos: huecosEje.slice(0, 50),
+    // §6.4-bis · los cortos de la vara de la ley, con nombre y sitio: el día corto lleva su día y
+    // su suma; el servicio corto lleva su slot y POR QUÉ su día no era entero de casa.
+    eje_hidrato_dia_corto: hidratoDiaCorto.slice(0, 50),
+    eje_hidrato_servicio_corto: hidratoServicioCorto.slice(0, 50),
     minimo_corto: minimoCorto.slice(0, 50), techo_mudo: techoMudo.slice(0, 50) };
 }
 
@@ -7202,11 +7552,16 @@ function tomasPreviasDeCubo(diario, datos, config, edades, hasta, cubos, ventana
           const aid = Array.isArray(l.alternativas)
             ? (pe.opciones_eje && (pe.opciones_eje[mid] || pe.opciones_eje['*'])) : l.alimento_id;
           if (!aid || quitar.has(aid)) continue;
-          lineas.push({ alimento: aid, elaboracion_id: pe.elaboracion_id,
+          lineas.push({ alimento: aid, elaboracion_id: pe.elaboracion_id, papel: l.papel,
             gramos: ((esNino ? l.gramos_nino : l.gramos_adulto) || 0) * (l.escala || 1) * fr });
         }
       }
       if (!lineas.length) continue;
+      // §10.4 · aquí NO viaja el comensal completo, y es deliberado: `CUOTAS_MENSUALES` solo
+      // tiene hoy `carne-procesada: { nino: 2 }` (AC25) y los MENORES están exentos de la vara
+      // personal, así que su factor es 1 por ley. Lo que sí cambia es el condimento, que ya no
+      // alimenta tomas: por eso las líneas de arriba llevan `papel`. El día que un cubo mensual
+      // sea de adultos, esto necesita el comensal — y la aserción de b10 lo cazará.
       const q = cuotaDeServicio(lineas, { edad }, datos, config);
       for (const cubo of cubos) if (q.tomas[cubo] > 0)
         (acc[mid] = acc[mid] || {})[cubo] = (acc[mid][cubo] || 0) + q.tomas[cubo];
@@ -7222,7 +7577,7 @@ module.exports = { reglasDeVentana, acumuladoPrevio, techoVentana, tomasPreviasD
   /* ---- hash_banco (precalculado en build; sin crypto en el navegador) ---- */
   REG['hash_banco'] = function (module) {
     module.exports = {
-      hashCompleto: function () { return 'ee8d2d756cf03d8e1068822c8addf52891e7dfc0a852357cfaf561d4ed969e6d'; },
+      hashCompleto: function () { return '371cf1b34a99b9de2b55c45fbf6f52c10cc26a6eefa7545cef6dccd1fef745cf'; },
       hashGeneracion: function () { return '1a623f5aa08ea7ebdd6f55ef89ba8de598eb16c4b2b65be96c25988d212978f4'; }
     };
   };

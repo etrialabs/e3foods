@@ -988,7 +988,12 @@
       altTiraHtml +
       '</div>' +
       '</div>' +
-      renderNotasCard(estado, banco, servicio, esCena) +
+      // Sin bloque «En esta mesa» en la card (Roger, 7-ago-2026: «elimina esta parte de la
+      // card, esto no se ve»). La información NO se pierde ni se esconde: el badge de estado
+      // sigue diciendo «Erik come otra cosa» justo encima, su desplegable lo detalla, y
+      // `renderNotasCard` se sigue pintando entera en la ficha de receta (ui.js §rv-body).
+      // ⚠️ Choca con el funcional §6.8 («la salida es UNA card: plato, variante de base y
+      // notas por persona»). Decisión de Roger; la ley la ajusta el jefe de obra.
       renderEstadoBadgeYPop(banco, diaIndex, meal, popupAbierto, estadoBadge) +
       '<button type="button" class="ph-cta" data-action="abrir-cambiar" data-dia="' + diaIndex + '" data-tipo="' + meal + '"><i data-lucide="sparkles"></i>' + t('me_apetece_otra_cosa') + '<i data-lucide="arrow-right" class="ph-cta-flecha"></i></button>' +
       '</div>';
@@ -2503,7 +2508,7 @@
   //    6.1.0 y no 6.0.3: el handoff 6 no es un parche, cambia la superficie que ve el usuario el
   //    primer día — LAUNCH sustituye a la portada rotatoria, y Sign in / Email y contraseña /
   //    Revisa tu correo / Familia se repintan enteras (4-ago-2026).
-  var VERSION_APP = '6.7.2';
+  var VERSION_APP = '6.8.0';
   var VERSION_FECHA = '04/08/2026';
 
   function renderAcercaDe() {

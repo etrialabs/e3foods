@@ -2312,6 +2312,54 @@
     if (seg) { seg.classList.toggle('pager-seg-activo', pagerIdx === 0); }
     if (sec) { sec.classList.toggle('pager-seg-activo', pagerIdx === 1); }
   }
+  // ---------------------------------------------------------------
+  // UMBRAL DEL PAGER (Roger 7-ago-2026) — quién decide el eje del gesto
+  // ---------------------------------------------------------------
+  // El pager ocupa el 68,3% del alto del viewport (375x554 px, medido en navegador), así que
+  // casi todo scroll vertical empieza encima de él. Con `touch-action:auto` era el navegador
+  // quien elegía el eje por el ángulo inicial del dedo, y un vertical con algo de desvío
+  // lateral deslizaba la card dejando la página quieta. `touch-action: pan-y` (styles.css) le
+  // quita esa elección: el vertical lo sigue haciendo el navegador, y el horizontal lo decide
+  // este umbral — los mismos 8 px que ya se pagaron con el bottom-sheet (UI_MOBILE §5.1).
+  // Una vez decidido el eje, no se revisa: cambiar de opinión a mitad de gesto es justo lo
+  // que hacía que la card «bailara».
+  var UMBRAL_EJE = 8;
+  var gesto = null; // { el, x0, y0, base, eje: null|'x'|'y' }
+
+  document.addEventListener('touchstart', function (e) {
+    gesto = null;
+    if (e.touches.length !== 1) return;                    // pellizco: no es nuestro
+    var el = e.target.closest && e.target.closest('#home-pager');
+    if (!el) return;
+    gesto = { el: el, x0: e.touches[0].clientX, y0: e.touches[0].clientY, base: el.scrollLeft, eje: null };
+  }, { passive: true });
+
+  document.addEventListener('touchmove', function (e) {
+    if (!gesto || e.touches.length !== 1) return;
+    var dx = e.touches[0].clientX - gesto.x0;
+    var dy = e.touches[0].clientY - gesto.y0;
+    if (gesto.eje === null) {
+      if (Math.abs(dx) < UMBRAL_EJE && Math.abs(dy) < UMBRAL_EJE) return;  // todavía no se sabe
+      gesto.eje = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
+      // el snap obligatorio pelea con mover scrollLeft a mano: se suelta durante el arrastre
+      if (gesto.eje === 'x') gesto.el.style.scrollSnapType = 'none';
+    }
+    if (gesto.eje !== 'x') return;                          // vertical: lo scrollea el navegador
+    var max = gesto.el.scrollWidth - gesto.el.clientWidth;
+    gesto.el.scrollLeft = Math.max(0, Math.min(gesto.base - dx, max));
+  }, { passive: true });
+
+  document.addEventListener('touchend', function () {
+    if (!gesto) return;
+    if (gesto.eje === 'x') {
+      gesto.el.style.scrollSnapType = '';
+      // se suelta donde se suelta: manda la mitad recorrida, no la velocidad
+      var paso = gesto.el.clientWidth + 12;
+      irPager(gesto.el.scrollLeft > paso / 2 ? 1 : 0);
+    }
+    gesto = null;
+  }, { passive: true });
+
   document.addEventListener('scroll', function (e) {
     var el = e.target;
     if (!el || el.id !== 'home-pager') return;

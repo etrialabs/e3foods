@@ -1254,15 +1254,14 @@ body.sheet-open { overflow: hidden; }
 .ph-pantry-texto { font-size: 13.5px; font-weight: 700; color: var(--cena-ink); line-height: 1.35; margin: 0; }
 .ph-pantry-texto .ingrediente-link { color: inherit; }
 
-/* pager: scroll-snap nativo, sin JS de gesto — solo listener de posición.
-   ⚠️ NO poner aquí `touch-action: pan-y`. Se probó el 7-ago-2026 y arreglaba el gesto (este
-   scroller mide 375x554 px, el 68,3% del alto del viewport, medido en navegador: con
-   `touch-action:auto` el navegador elige el eje por el ángulo inicial del dedo y un scroll
-   vertical con algo de desvío lateral se engancha al eje X). Pero `pan-y` mata el swipe
-   lateral de comida/cena, y Roger lo quiere. Revertido por decisión suya el mismo día.
-   Si se vuelve a atacar el baile de la card, la vía es el umbral de gesto en JS
-   (UI_MOBILE §5.1: 8 px antes de interpretar arrastre), no matar el eje entero. */
-.ph-pager-scroll { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; margin: 0 calc(-1 * var(--space-3)); }
+/* pager: scroll-snap nativo para la posición, y el GESTO lo decide JS (app.js, §umbral del
+   pager). `touch-action: pan-y` aquí NO mata el swipe: le quita al navegador la elección de
+   eje —que es la que fallaba: este scroller mide 375x554 px, el 68,3% del alto del viewport
+   (medido), y con `auto` un scroll vertical con desvío lateral se enganchaba al eje X y
+   deslizaba la card— y deja el eje horizontal en manos del umbral de 8 px, que sí distingue
+   intención. Primer intento (7-ago) fue `pan-y` a secas: arreglaba el baile pero mataba el
+   swipe, y Roger lo rechazó con razón. Los dos ejes conviven; ninguno adivina. */
+.ph-pager-scroll { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; touch-action: pan-y; margin: 0 calc(-1 * var(--space-3)); }
 .ph-pager-slide { flex: 0 0 100%; scroll-snap-align: start; padding: 0 var(--space-3); }
 
 /* handoff 7, §01.2: sombra/animación literales del mock (no las aproximaciones que traía
